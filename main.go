@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -63,63 +62,6 @@ func handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (re
 	}
 
 	return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeMethodNotFound, Message: fmt.Sprintf("method not supported: %s", req.Method)}
-}
-
-type InitializeParams struct {
-	ProcessID             int                `json:"processId,omitempty"`
-	RootPath              string             `json:"rootPath,omitempty"`
-	InitializationOptions InitializeOptions  `json:"initializationOptions,omitempty"`
-	Capabilities          ClientCapabilities `json:"capabilities,omitempty"`
-	Trace                 string             `json:"trace,omitempty"`
-}
-
-type InitializeOptions struct {
-}
-
-type ClientCapabilities struct {
-}
-
-type InitializeResult struct {
-	Capabilities ServerCapabilities `json:"capabilities,omitempty"`
-}
-
-type TextDocumentSyncKind int
-
-type ServerCapabilities struct {
-	TextDocumentSync           TextDocumentSyncKind `json:"textDocumentSync,omitempty"`
-	DocumentSymbolProvider     bool                 `json:"documentSymbolProvider,omitempty"`
-	CompletionProvider         *CompletionProvider  `json:"completionProvider,omitempty"`
-	DocumentFormattingProvider bool                 `json:"documentFormattingProvider,omitEmpty"`
-}
-
-type CompletionProvider struct {
-	ResolveProvider   bool     `json:"resolveProvider,omitempty"`
-	TriggerCharacters []string `json:"triggerCharacters"`
-}
-
-const (
-	TDSKNone        TextDocumentSyncKind = 0
-	TDSKFull                             = 1
-	TDSKIncremental                      = 2
-)
-
-func handleInitialize(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
-	if req.Params == nil {
-		return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeInvalidParams}
-	}
-
-	var params InitializeParams
-	if err := json.Unmarshal(*req.Params, &params); err != nil {
-		return nil, err
-	}
-
-	return InitializeResult{
-		Capabilities: ServerCapabilities{
-			TextDocumentSync:           TDSKFull,
-			DocumentFormattingProvider: true,
-			DocumentSymbolProvider:     true,
-		},
-	}, nil
 }
 
 type stdrwc struct{}
