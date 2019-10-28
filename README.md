@@ -1,0 +1,3 @@
+# sqls
+
+SQL language server
