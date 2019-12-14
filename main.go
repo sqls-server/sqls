@@ -47,14 +47,14 @@ func handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (re
 		return handleInitialize(ctx, conn, req)
 	case "shutdown":
 		return handleShutdown(ctx, conn, req)
-		// case "textDocument/didOpen":
-		// 	return h.handleTextDocumentDidOpen(ctx, conn, req)
-		// case "textDocument/didChange":
-		// 	return h.handleTextDocumentDidChange(ctx, conn, req)
-		// case "textDocument/didSave":
-		// 	return h.handleTextDocumentDidSave(ctx, conn, req)
-		// case "textDocument/didClose":
-		// 	return h.handleTextDocumentDidClose(ctx, conn, req)
+	case "textDocument/didOpen":
+		return handleTextDocumentDidOpen(ctx, conn, req)
+	case "textDocument/didChange":
+		return handleTextDocumentDidChange(ctx, conn, req)
+	case "textDocument/didSave":
+		return handleTextDocumentDidSave(ctx, conn, req)
+	case "textDocument/didClose":
+		return handleTextDocumentDidClose(ctx, conn, req)
 		// case "textDocument/formatting":
 		// 	return h.handleTextDocumentFormatting(ctx, conn, req)
 		// case "textDocument/documentSymbol":
