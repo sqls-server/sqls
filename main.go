@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
 	"log"
 	"os"
 
@@ -32,36 +31,14 @@ func main() {
 		defer f.Close()
 	}
 
-	handler := jsonrpc2.HandlerWithError(handle)
+	server := NewServer()
+	handler := jsonrpc2.HandlerWithError(server.handle)
 	var connOpt []jsonrpc2.ConnOpt
 	<-jsonrpc2.NewConn(
 		context.Background(),
 		jsonrpc2.NewBufferedStream(stdrwc{}, jsonrpc2.VSCodeObjectCodec{}),
 		handler, connOpt...).DisconnectNotify()
 	log.Println("sqls: connections closed")
-}
-
-func handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
-	switch req.Method {
-	case "initialize":
-		return handleInitialize(ctx, conn, req)
-	case "shutdown":
-		return handleShutdown(ctx, conn, req)
-	case "textDocument/didOpen":
-		return handleTextDocumentDidOpen(ctx, conn, req)
-	case "textDocument/didChange":
-		return handleTextDocumentDidChange(ctx, conn, req)
-	case "textDocument/didSave":
-		return handleTextDocumentDidSave(ctx, conn, req)
-	case "textDocument/didClose":
-		return handleTextDocumentDidClose(ctx, conn, req)
-		// case "textDocument/formatting":
-		// 	return h.handleTextDocumentFormatting(ctx, conn, req)
-		// case "textDocument/documentSymbol":
-		// 	return h.handleTextDocumentSymbol(ctx, conn, req)
-	}
-
-	return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeMethodNotFound, Message: fmt.Sprintf("method not supported: %s", req.Method)}
 }
 
 type stdrwc struct{}

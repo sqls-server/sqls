@@ -79,14 +79,14 @@ type DidChangeTextDocumentParams struct {
 }
 
 type VersionedTextDocumentIdentifier struct {
-	TextDocumentIdentifier
-	Version int `json:"version"`
+	URI     string `json:"uri"`
+	Version int    `json:"version"`
 }
 
 // https://microsoft.github.io/language-server-protocol/specifications/specification-3-14/#textDocument_didSave
 
 type DidSaveTextDocumentParams struct {
-	Text         *string                `json:"text"`
+	Text         string                 `json:"text"`
 	TextDocument TextDocumentIdentifier `json:"textDocument"`
 }
 
