@@ -17,6 +17,15 @@ func main() {
 	flag.StringVar(&logfile, "log", "", "logfile")
 	flag.Parse()
 
+	if logfile != "" {
+		f, err := os.OpenFile(logfile, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0660)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer f.Close()
+		log.SetOutput(f)
+	}
+
 	if flag.NArg() != 0 {
 		flag.Usage()
 		os.Exit(1)

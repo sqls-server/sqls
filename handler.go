@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 
 	"github.com/sourcegraph/jsonrpc2"
 )
@@ -66,7 +67,7 @@ func (s *Server) handleInitialize(ctx context.Context, conn *jsonrpc2.Conn, req 
 
 	return InitializeResult{
 		Capabilities: ServerCapabilities{
-			TextDocumentSync:           TDSKFull,
+			TextDocumentSync: TDSKFull,
 			DocumentFormattingProvider: true,
 			DocumentSymbolProvider:     true,
 		},
@@ -81,6 +82,7 @@ func (s *Server) handleShutdown(ctx context.Context, conn *jsonrpc2.Conn, req *j
 }
 
 func (s *Server) handleTextDocumentDidOpen(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
+	log.Println("handle textdocument/didOpen")
 	if req.Params == nil {
 		return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeInvalidParams}
 	}
@@ -98,6 +100,7 @@ func (s *Server) handleTextDocumentDidOpen(ctx context.Context, conn *jsonrpc2.C
 }
 
 func (s *Server) handleTextDocumentDidChange(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
+	log.Println("handle textdocument/didChange")
 	if req.Params == nil {
 		return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeInvalidParams}
 	}
@@ -114,6 +117,7 @@ func (s *Server) handleTextDocumentDidChange(ctx context.Context, conn *jsonrpc2
 }
 
 func (s *Server) handleTextDocumentDidSave(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
+	log.Println("handle textdocument/didSave")
 	if req.Params == nil {
 		return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeInvalidParams}
 	}
@@ -135,6 +139,7 @@ func (s *Server) handleTextDocumentDidSave(ctx context.Context, conn *jsonrpc2.C
 }
 
 func (s *Server) handleTextDocumentDidClose(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
+	log.Println("handle textdocument/didClose")
 	if req.Params == nil {
 		return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeInvalidParams}
 	}
