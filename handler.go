@@ -68,8 +68,14 @@ func (s *Server) handleInitialize(ctx context.Context, conn *jsonrpc2.Conn, req 
 	return InitializeResult{
 		Capabilities: ServerCapabilities{
 			TextDocumentSync: TDSKFull,
-			DocumentFormattingProvider: true,
-			DocumentSymbolProvider:     true,
+			HoverProvider:    false,
+			CompletionProvider: &CompletionOptions{
+				ResolveProvider:   false,
+				TriggerCharacters: []string{"*"},
+			},
+			DefinitionProvider:              false,
+			DocumentFormattingProvider:      false,
+			DocumentRangeFormattingProvider: false,
 		},
 	}, nil
 }

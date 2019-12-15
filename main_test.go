@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net"
+	"reflect"
 	"testing"
 
 	"github.com/sourcegraph/jsonrpc2"
@@ -59,6 +60,33 @@ func (tx *TestContext) initServer(t *testing.T) {
 	params := InitializeParams{}
 	if err := tx.conn.Call(tx.ctx, "initialize", params, nil); err != nil {
 		t.Fatal("conn.Call initialize:", err)
+	}
+}
+
+func TestInitialized(t *testing.T) {
+	tx := newTestContext()
+	tx.initServer(t)
+
+	want := InitializeResult{
+		ServerCapabilities{
+			TextDocumentSync: TDSKFull,
+			HoverProvider:    false,
+			CompletionProvider: &CompletionOptions{
+				ResolveProvider:   false,
+				TriggerCharacters: []string{"*"},
+			},
+			DefinitionProvider:              false,
+			DocumentFormattingProvider:      false,
+			DocumentRangeFormattingProvider: false,
+		},
+	}
+	var got InitializeResult
+	params := InitializeParams{}
+	if err := tx.conn.Call(tx.ctx, "initialize", params, &got); err != nil {
+		t.Fatal("conn.Call initialize:", err)
+	}
+	if !reflect.DeepEqual(want, got) {
+		t.Errorf("not match \n%v\n%v", want, got)
 	}
 }
 
@@ -127,7 +155,9 @@ func TestFileWatch(t *testing.T) {
 	if ok {
 		t.Errorf("found opened file. URI:%s", didCloseParams.TextDocument.URI)
 	}
+}
 
+func TestComplete(t *testing.T) {
 }
 
 func (tx *TestContext) testFile(t *testing.T, uri, text string) {
