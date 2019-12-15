@@ -33,6 +33,8 @@ func (s *Server) handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.
 	switch req.Method {
 	case "initialize":
 		return s.handleInitialize(ctx, conn, req)
+	case "initialized":
+		return
 	case "shutdown":
 		return s.handleShutdown(ctx, conn, req)
 	case "textDocument/didOpen":
