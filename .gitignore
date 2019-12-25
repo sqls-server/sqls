@@ -24,5 +24,8 @@
 
 # End of https://www.gitignore.io/api/go
 
+# docker
+docker
+
 # build dist
 sqls
