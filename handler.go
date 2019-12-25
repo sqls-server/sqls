@@ -46,6 +46,8 @@ func (s *Server) handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.
 		return s.handleTextDocumentDidSave(ctx, conn, req)
 	case "textDocument/didClose":
 		return s.handleTextDocumentDidClose(ctx, conn, req)
+	case "textDocument/completion":
+		return s.handleTextDocumentCompletion(ctx, conn, req)
 		// case "textDocument/formatting":
 		// 	return h.handleTextDocumentFormatting(ctx, conn, req)
 		// case "textDocument/documentSymbol":
@@ -70,8 +72,7 @@ func (s *Server) handleInitialize(ctx context.Context, conn *jsonrpc2.Conn, req 
 			TextDocumentSync: TDSKFull,
 			HoverProvider:    false,
 			CompletionProvider: &CompletionOptions{
-				ResolveProvider:   false,
-				TriggerCharacters: []string{"*"},
+				TriggerCharacters: []string{"."},
 			},
 			DefinitionProvider:              false,
 			DocumentFormattingProvider:      false,
@@ -157,6 +158,26 @@ func (s *Server) handleTextDocumentDidClose(ctx context.Context, conn *jsonrpc2.
 
 	s.closeFile(params.TextDocument.URI)
 	return nil, nil
+}
+
+func (s *Server) handleTextDocumentCompletion(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
+	log.Println("handle textDocument/completion")
+	if req.Params == nil {
+		return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeInvalidParams}
+	}
+
+	var params CompletionParams
+	if err := json.Unmarshal(*req.Params, &params); err != nil {
+		return nil, err
+	}
+
+	completer := &Completer{}
+	completionItems, err := completer.complete()
+	if err != nil {
+		return nil, err
+	}
+	result = completionItems
+	return
 }
 
 func (s *Server) openFile(uri string, languageID string) error {

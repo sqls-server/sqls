@@ -72,8 +72,7 @@ func TestInitialized(t *testing.T) {
 			TextDocumentSync: TDSKFull,
 			HoverProvider:    false,
 			CompletionProvider: &CompletionOptions{
-				ResolveProvider:   false,
-				TriggerCharacters: []string{"*"},
+				TriggerCharacters: []string{"."},
 			},
 			DefinitionProvider:              false,
 			DocumentFormattingProvider:      false,
