@@ -1,0 +1,18 @@
+version: '3'
+services:
+  mysql:
+    image: mysql:5.7
+    container_name: sqls_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: world
+      MYSQL_USER: docker
+      MYSQL_PASSWORD: docker
+      TZ: 'Asia/Tokyo'
+    command: mysqld --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    volumes:
+    - ./docker/mysql/data:/var/lib/mysql
+    - ./docker/mysql/my.cnf:/etc/mysql/conf.d/my.cnf
+    - ./docker/mysql/sql:/docker-entrypoint-initdb.d
+    ports:
+    - 13306:3306
