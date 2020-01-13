@@ -42,6 +42,16 @@ func matchingEndQuote(quoteStyle rune) rune {
 func MakeKeyword(word string, quoteStyle rune) *SQLWord {
 	w := strings.ToUpper(word)
 
+	// Escaped identifier
+	if quoteStyle != 0 {
+		return &SQLWord{
+			Value:      word,
+			Keyword:    w,
+			QuoteStyle: quoteStyle,
+			Kind:       dialect.Unmatched,
+		}
+	}
+
 	kind := dialect.MatchKeyword(w)
 	return &SQLWord{
 		Value:      word,

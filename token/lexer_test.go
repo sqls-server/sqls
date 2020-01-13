@@ -125,7 +125,7 @@ func TestTokenizer_Tokenize(t *testing.T) {
 		},
 		{
 			name: "quoted string",
-			in:   "\"SELECT\"",
+			in:   `"SELECT"`,
 			out: []*Token{
 				{
 					Kind: SQLKeyword,
@@ -133,43 +133,110 @@ func TestTokenizer_Tokenize(t *testing.T) {
 						Value:      "SELECT",
 						Keyword:    "SELECT",
 						QuoteStyle: '"',
-						Kind:       dialect.DML,
-					},
-					From: Pos{Line: 1, Col: 1},
-					To:   Pos{Line: 1, Col: 9},
-				},
-			},
-		},
-		{
-			name: "flat string",
-			in:   "string",
-			out: []*Token{
-				{
-					Kind: SQLKeyword,
-					Value: &SQLWord{
-						Value:   "string",
-						Keyword: "STRING",
-						Kind:    dialect.Unmatched,
-					},
-					From: Pos{Line: 1, Col: 1},
-					To:   Pos{Line: 1, Col: 7},
-				},
-			},
-		},
-		{
-			name: "back quote string",
-			in:   "`string`",
-			out: []*Token{
-				{
-					Kind: SQLKeyword,
-					Value: &SQLWord{
-						Value:      "string",
-						Keyword:    "STRING",
-						QuoteStyle: '`',
 						Kind:       dialect.Unmatched,
 					},
 					From: Pos{Line: 1, Col: 1},
 					To:   Pos{Line: 1, Col: 9},
+				},
+			},
+		},
+		{
+			name: "parent identifier",
+			in:   "foo.bar",
+			out: []*Token{
+				{
+					Kind: SQLKeyword,
+					Value: &SQLWord{
+						Value:   "foo",
+						Keyword: "FOO",
+						Kind:    dialect.Unmatched,
+					},
+					From: Pos{Line: 1, Col: 1},
+					To:   Pos{Line: 1, Col: 4},
+				},
+				{
+					Kind:  Period,
+					Value: ".",
+					From:  Pos{Line: 1, Col: 4},
+					To:    Pos{Line: 1, Col: 5},
+				},
+				{
+					Kind: SQLKeyword,
+					Value: &SQLWord{
+						Value:   "bar",
+						Keyword: "BAR",
+						Kind:    dialect.Unmatched,
+					},
+					From: Pos{Line: 1, Col: 5},
+					To:   Pos{Line: 1, Col: 8},
+				},
+			},
+		},
+		{
+			name: "parent identifier with double quote",
+			in:   `"foo"."bar"`,
+			out: []*Token{
+				{
+					Kind: SQLKeyword,
+					Value: &SQLWord{
+						Value:      "foo",
+						Keyword:    "FOO",
+						QuoteStyle: '"',
+						Kind:       dialect.Unmatched,
+					},
+					From: Pos{Line: 1, Col: 1},
+					To:   Pos{Line: 1, Col: 6},
+				},
+				{
+					Kind:  Period,
+					Value: ".",
+					From:  Pos{Line: 1, Col: 6},
+					To:    Pos{Line: 1, Col: 7},
+				},
+				{
+					Kind: SQLKeyword,
+					Value: &SQLWord{
+						Value:      "bar",
+						Keyword:    "BAR",
+						QuoteStyle: '"',
+						Kind:       dialect.Unmatched,
+					},
+					From: Pos{Line: 1, Col: 7},
+					To:   Pos{Line: 1, Col: 12},
+				},
+			},
+		},
+		{
+			name: "parent identifier with back quote",
+			in:   "`foo`.`bar`",
+			out: []*Token{
+				{
+					Kind: SQLKeyword,
+					Value: &SQLWord{
+						Value:      "foo",
+						Keyword:    "FOO",
+						QuoteStyle: '`',
+						Kind:       dialect.Unmatched,
+					},
+					From: Pos{Line: 1, Col: 1},
+					To:   Pos{Line: 1, Col: 6},
+				},
+				{
+					Kind:  Period,
+					Value: ".",
+					From:  Pos{Line: 1, Col: 6},
+					To:    Pos{Line: 1, Col: 7},
+				},
+				{
+					Kind: SQLKeyword,
+					Value: &SQLWord{
+						Value:      "bar",
+						Keyword:    "BAR",
+						QuoteStyle: '`',
+						Kind:       dialect.Unmatched,
+					},
+					From: Pos{Line: 1, Col: 7},
+					To:   Pos{Line: 1, Col: 12},
 				},
 			},
 		},
