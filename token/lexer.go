@@ -66,7 +66,7 @@ func (t *Token) MatchSQLKind(expect dialect.KeywordKind) bool {
 	if t.Kind != SQLKeyword {
 		return false
 	}
-	sqlWord, _ := t.Value.(SQLWord)
+	sqlWord, _ := t.Value.(*SQLWord)
 	return sqlWord.Kind == expect
 }
 
