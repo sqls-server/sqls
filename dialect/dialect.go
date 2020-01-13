@@ -18,7 +18,7 @@ func (*GenericSQLDialect) IsIdentifierPart(r rune) bool {
 }
 
 func (*GenericSQLDialect) IsDelimitedIdentifierStart(r rune) bool {
-	return r == '"'
+	return r == '"' || r == '`'
 }
 
 var _ Dialect = &GenericSQLDialect{}

@@ -3,13 +3,13 @@ package token
 import (
 	"bytes"
 	"fmt"
-	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/k0kubun/pp"
 
-	"github.com/akito0107/xsqlparser/dialect"
+	"github.com/lighttiger2505/sqls/dialect"
 )
 
 func TestTokenizer_Tokenize(t *testing.T) {
@@ -100,6 +100,7 @@ func TestTokenizer_Tokenize(t *testing.T) {
 					Value: &SQLWord{
 						Value:   "NOT",
 						Keyword: "NOT",
+						Kind:    dialect.Matched,
 					},
 					From: Pos{Line: 1, Col: 11},
 					To:   Pos{Line: 1, Col: 14},
@@ -115,6 +116,7 @@ func TestTokenizer_Tokenize(t *testing.T) {
 					Value: &SQLWord{
 						Value:   "select",
 						Keyword: "SELECT",
+						Kind:    dialect.DML,
 					},
 					From: Pos{Line: 1, Col: 1},
 					To:   Pos{Line: 1, Col: 7},
@@ -131,6 +133,40 @@ func TestTokenizer_Tokenize(t *testing.T) {
 						Value:      "SELECT",
 						Keyword:    "SELECT",
 						QuoteStyle: '"',
+						Kind:       dialect.DML,
+					},
+					From: Pos{Line: 1, Col: 1},
+					To:   Pos{Line: 1, Col: 9},
+				},
+			},
+		},
+		{
+			name: "flat string",
+			in:   "string",
+			out: []*Token{
+				{
+					Kind: SQLKeyword,
+					Value: &SQLWord{
+						Value:   "string",
+						Keyword: "STRING",
+						Kind:    dialect.Unmatched,
+					},
+					From: Pos{Line: 1, Col: 1},
+					To:   Pos{Line: 1, Col: 7},
+				},
+			},
+		},
+		{
+			name: "back quote string",
+			in:   "`string`",
+			out: []*Token{
+				{
+					Kind: SQLKeyword,
+					Value: &SQLWord{
+						Value:      "string",
+						Keyword:    "STRING",
+						QuoteStyle: '`',
+						Kind:       dialect.Unmatched,
 					},
 					From: Pos{Line: 1, Col: 1},
 					To:   Pos{Line: 1, Col: 9},
@@ -404,21 +440,6 @@ comment */`,
 			},
 		},
 		{
-			name: "column",
-			in:   "column",
-			out: []*Token{
-				{
-					Kind: SQLKeyword,
-					Value: &SQLWord{
-						Value:   "colum",
-						Keyword: "COLUM",
-					},
-					From: Pos{Line: 1, Col: 1},
-					To:   Pos{Line: 1, Col: 7},
-				},
-			},
-		},
-		{
 			name: "others",
 			in:   "\\[{&}]",
 			out: []*Token{
@@ -473,21 +494,30 @@ comment */`,
 			}
 
 			if len(tok) != len(c.out) {
-				t.Fatalf("should be same length but %d, %d", len(tok), len(c.out))
+				t.Fatalf("should be same length but want %d, got %d, want%s,got%s", len(tok), len(c.out), pp.Sprint(tok), pp.Sprint(c.out))
 			}
 
 			for i := 0; i < len(tok); i++ {
 				if tok[i].Kind != c.out[i].Kind {
 					t.Errorf("%d, expected sqltoken: %d, but got %d", i, c.out[i].Kind, tok[i].Kind)
 				}
-				if !reflect.DeepEqual(tok[i].Value, c.out[i].Value) {
-					t.Errorf("%d, expected value: %+v, but got %+v", i, c.out[i].Value, tok[i].Value)
+				// if !reflect.DeepEqual(tok[i].Value, c.out[i].Value) {
+				// 	t.Errorf("%d, expected value: %#v, but got %#v", i, c.out[i].Value, tok[i].Value)
+				// }
+				if d := cmp.Diff(tok[i].Value, c.out[i].Value); d != "" {
+					t.Errorf("unmatched value: %s", d)
 				}
-				if !reflect.DeepEqual(tok[i].From, c.out[i].From) {
-					t.Errorf("%d, expected value: %+v, but got %+v", i, c.out[i].From, tok[i].From)
+				// if !reflect.DeepEqual(tok[i].From, c.out[i].From) {
+				// 	t.Errorf("%d, expected value: %+v, but got %+v", i, c.out[i].From, tok[i].From)
+				// }
+				if d := cmp.Diff(tok[i].From, c.out[i].From); d != "" {
+					t.Errorf("unmatched From: %s", d)
 				}
-				if !reflect.DeepEqual(tok[i].To, c.out[i].To) {
-					t.Errorf("%d, expected value: %+v, but got %+v", i, c.out[i].To, tok[i].To)
+				// if !reflect.DeepEqual(tok[i].To, c.out[i].To) {
+				// 	t.Errorf("%d, expected value: %+v, but got %+v", i, c.out[i].To, tok[i].To)
+				// }
+				if d := cmp.Diff(tok[i].To, c.out[i].To); d != "" {
+					t.Errorf("unmatched To: %s", d)
 				}
 			}
 		})

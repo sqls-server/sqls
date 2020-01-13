@@ -15,6 +15,7 @@ type SQLWord struct {
 	Value      string
 	QuoteStyle rune
 	Keyword    string
+	Kind       dialect.KeywordKind
 }
 
 func (s *SQLWord) String() string {
@@ -41,19 +42,12 @@ func matchingEndQuote(quoteStyle rune) rune {
 func MakeKeyword(word string, quoteStyle rune) *SQLWord {
 	w := strings.ToUpper(word)
 
-	_, ok := dialect.Keywords[w]
-
-	if quoteStyle == 0 && ok {
-		return &SQLWord{
-			Value:   word,
-			Keyword: w,
-		}
-	} else {
-		return &SQLWord{
-			Value:      word,
-			Keyword:    w,
-			QuoteStyle: quoteStyle,
-		}
+	kind := dialect.MatchKeyword(w)
+	return &SQLWord{
+		Value:      word,
+		Keyword:    w,
+		QuoteStyle: quoteStyle,
+		Kind:       kind,
 	}
 }
 
@@ -62,6 +56,18 @@ type Token struct {
 	Value interface{}
 	From  Pos
 	To    Pos
+}
+
+func (t *Token) MatchKind(expect Kind) bool {
+	return t.Kind == expect
+}
+
+func (t *Token) MatchSQLKind(expect dialect.KeywordKind) bool {
+	if t.Kind != SQLKeyword {
+		return false
+	}
+	sqlWord, _ := t.Value.(SQLWord)
+	return sqlWord.Kind == expect
 }
 
 func NewPos(line, col int) Pos {
