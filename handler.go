@@ -172,7 +172,7 @@ func (s *Server) handleTextDocumentCompletion(ctx context.Context, conn *jsonrpc
 	}
 
 	completer := &Completer{}
-	completionItems, err := completer.complete()
+	completionItems, err := completer.complete(params)
 	if err != nil {
 		return nil, err
 	}

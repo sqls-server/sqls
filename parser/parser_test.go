@@ -8,31 +8,6 @@ import (
 	"github.com/lighttiger2505/sqls/dialect"
 )
 
-// func TestParseComment(t *testing.T) {
-// 	input := `/*\n * foo\n */   \n  bar`
-// 	src := bytes.NewBuffer([]byte(input))
-// 	parser, err := NewParser(src, &dialect.GenericSQLDialect{})
-// 	if err != nil {
-// 		t.Fatalf("parse error %s", err)
-// 	}
-//
-// 	got, err := parser.Parse()
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	list, ok := got.(*ast.SQLTokenList)
-// 	if !ok {
-// 		t.Fatalf("invalid type %T", got)
-// 	}
-//
-// 	pp.Println(list)
-//
-// 	want := 2
-// 	if want != len(list.Children) {
-// 		t.Errorf("invalid statement num, want %d got %d", want, len(list.Children))
-// 	}
-// }
-
 func TestParseStatement(t *testing.T) {
 	input := `select 1;select 2;select`
 	src := bytes.NewBuffer([]byte(input))
@@ -45,42 +20,30 @@ func TestParseStatement(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	list, ok := got.(*ast.SQLTokenList)
-	if !ok {
-		t.Fatalf("invalid type %T", got)
+	var stmts []*ast.Statement
+	for _, node := range got.GetTokens() {
+		stmt, ok := node.(*ast.Statement)
+		if !ok {
+			t.Fatalf("invalid type want Statement got %T", stmt)
+		}
+		stmts = append(stmts, stmt)
 	}
+	wantStmtLen := 3
+	if wantStmtLen != len(stmts) {
+		t.Errorf("Statements does not contain 3 statements, want %d got %d", wantStmtLen, len(stmts))
+	}
+	testStatement(t, stmts[0], 4, "select 1;")
+	testStatement(t, stmts[1], 4, "select 2;")
+	testStatement(t, stmts[2], 1, "select")
+}
 
-	var want int
-	want = 3
-	if want != len(list.Children) {
-		t.Errorf("invalid statement num, want %d got %d", want, len(list.Children))
+func testStatement(t *testing.T, stmt *ast.Statement, length int, expect string) {
+	t.Helper()
+	if length != len(stmt.GetTokens()) {
+		t.Errorf("Statements does not contain 3 tokens, want %d got %d", length, len(stmt.GetTokens()))
 	}
-
-	list1, ok := list.Children[0].(*ast.SQLTokenList)
-	if !ok {
-		t.Fatalf("invalid type %T", got)
-	}
-	want = 4
-	if want != len(list1.Children) {
-		t.Errorf("invalid list1 num, want %d got %d", want, len(list1.Children))
-	}
-
-	list2, ok := list.Children[1].(*ast.SQLTokenList)
-	if !ok {
-		t.Fatalf("invalid type %T", got)
-	}
-	want = 4
-	if want != len(list2.Children) {
-		t.Errorf("invalid list2 num, want %d got %d", want, len(list2.Children))
-	}
-
-	list3, ok := list.Children[2].(*ast.SQLTokenList)
-	if !ok {
-		t.Fatalf("invalid type %T", got)
-	}
-	want = 1
-	if want != len(list3.Children) {
-		t.Errorf("invalid list3 num, want %d got %d", want, len(list3.Children))
+	if expect != stmt.String() {
+		t.Errorf("expected=%q, got=%q", expect, stmt.String())
 	}
 }
 

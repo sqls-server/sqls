@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/lighttiger2505/sqls/ast"
@@ -10,17 +11,14 @@ import (
 )
 
 type writeContext struct {
-	node     *ast.SQLTokenList
+	node     ast.TokenList
 	curNode  ast.Node
 	peekNode ast.Node
 	index    uint
 }
 
-func newWriteContext(node ast.Node) *writeContext {
-	list, ok := node.(*ast.SQLTokenList)
-	if !ok {
-		panic("invalit node")
-	}
+func newWriteContext(list ast.TokenList) *writeContext {
+	fmt.Println(list)
 	wc := &writeContext{
 		node: list,
 	}
@@ -29,11 +27,11 @@ func newWriteContext(node ast.Node) *writeContext {
 }
 
 func (wc *writeContext) nodesWithRange(startIndex, endIndex uint) []ast.Node {
-	return wc.node.Children[startIndex:endIndex]
+	return wc.node.GetTokens()[startIndex:endIndex]
 }
 
 func (wc *writeContext) replace(add ast.Node, startIndex, endIndex uint) {
-	oldList := wc.node.Children
+	oldList := wc.node.GetTokens()
 
 	start := oldList[:startIndex]
 	end := oldList[endIndex:]
@@ -42,7 +40,7 @@ func (wc *writeContext) replace(add ast.Node, startIndex, endIndex uint) {
 	out = append(out, start...)
 	out = append(out, add)
 	out = append(out, end...)
-	wc.node.Children = out
+	wc.node.SetTokens(out)
 
 	offset := (endIndex - startIndex)
 	wc.index = wc.index - uint(offset)
@@ -50,33 +48,33 @@ func (wc *writeContext) replace(add ast.Node, startIndex, endIndex uint) {
 }
 
 func (wc *writeContext) hasNext() bool {
-	return wc.index < uint(len(wc.node.Children))
+	return wc.index < uint(len(wc.node.GetTokens()))
 }
 
 func (wc *writeContext) nextNode() bool {
 	if !wc.hasNext() {
 		return false
 	}
-	wc.curNode = wc.node.Children[wc.index]
+	wc.curNode = wc.node.GetTokens()[wc.index]
 	wc.index++
 	return true
 }
 
 func (wc *writeContext) hasTokenList() bool {
-	_, ok := wc.curNode.(*ast.SQLTokenList)
+	_, ok := wc.curNode.(ast.TokenList)
 	return ok
 }
 
-func (wc *writeContext) getTokenList() *ast.SQLTokenList {
+func (wc *writeContext) getTokenList() ast.TokenList {
 	if !wc.hasTokenList() {
 		return nil
 	}
-	children, _ := wc.curNode.(*ast.SQLTokenList)
+	children, _ := wc.curNode.(ast.TokenList)
 	return children
 }
 
 func (wc *writeContext) hasToken() bool {
-	_, ok := wc.curNode.(*ast.SQLToken)
+	_, ok := wc.curNode.(ast.Token)
 	return ok
 }
 
@@ -84,14 +82,12 @@ func (wc *writeContext) getToken() *ast.SQLToken {
 	if !wc.hasToken() {
 		return nil
 	}
-	token, _ := wc.curNode.(*ast.SQLToken)
-	return token
+	token, _ := wc.curNode.(ast.Token)
+	return token.GetToken()
 }
 
 type Parser struct {
-	tokens []ast.Node
-	index  uint
-	root   ast.Node
+	root ast.TokenList
 }
 
 func NewParser(src io.Reader, d dialect.Dialect) (*Parser, error) {
@@ -103,18 +99,17 @@ func NewParser(src io.Reader, d dialect.Dialect) (*Parser, error) {
 
 	parsed := []ast.Node{}
 	for _, tok := range tokens {
-		parsed = append(parsed, ast.NewSQLToken(tok))
+		parsed = append(parsed, ast.NewItem(tok))
 	}
 
 	parser := &Parser{
-		tokens: parsed,
-		root:   ast.NewSQLTokenList(parsed),
+		root: &ast.Query{Toks: parsed},
 	}
 
 	return parser, nil
 }
 
-func (p *Parser) Parse() (ast.Node, error) {
+func (p *Parser) Parse() (ast.TokenList, error) {
 	// var result []ast.Node
 	var err error
 
@@ -242,14 +237,14 @@ func parseStatement(wc *writeContext) error {
 			return errors.Errorf("failed parse statement want Token")
 		}
 		if tok.MatchKind(token.Semicolon) {
-			list := ast.NewSQLTokenList(wc.nodesWithRange(startIndex, wc.index))
-			wc.replace(list, startIndex, wc.index)
+			stmt := &ast.Statement{Toks: wc.nodesWithRange(startIndex, wc.index)}
+			wc.replace(stmt, startIndex, wc.index)
 			startIndex = wc.index
 		}
 	}
 	if wc.index != startIndex {
-		list := ast.NewSQLTokenList(wc.nodesWithRange(startIndex, wc.index))
-		wc.replace(list, startIndex, wc.index)
+		stmt := &ast.Statement{Toks: wc.nodesWithRange(startIndex, wc.index)}
+		wc.replace(stmt, startIndex, wc.index)
 	}
 	return nil
 }
