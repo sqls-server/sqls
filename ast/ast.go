@@ -1,25 +1,64 @@
 package ast
 
 import (
+	"strings"
+
 	"github.com/lighttiger2505/sqls/dialect"
 	"github.com/lighttiger2505/sqls/token"
 )
 
 type Node interface {
-	// Pos() token.Pos
-	// End() token.Pos
 	String() string
 }
 
 type Token interface {
 	Node
-	Token() *SQLToken
+	GetToken() *SQLToken
 }
 
 type TokenList interface {
 	Node
-	Tokens() []*SQLToken
+	GetTokens() []Node
+	SetTokens([]Node)
 }
+
+type Item struct {
+	Tok *SQLToken
+}
+
+func NewItem(tok *token.Token) Node {
+	return &Item{NewSQLToken(tok)}
+}
+func (i *Item) String() string      { return i.Tok.String() }
+func (i *Item) GetToken() *SQLToken { return i.Tok }
+
+type Query struct {
+	Toks []Node
+}
+
+func (q *Query) String() string {
+	var strs []string
+	for _, t := range q.Toks {
+		strs = append(strs, t.String())
+	}
+	return strings.Join(strs, "")
+}
+func (q *Query) GetTokens() []Node     { return q.Toks }
+func (q *Query) SetTokens(toks []Node) { q.Toks = toks }
+
+type Statement struct {
+	Toks []Node
+}
+
+func (s *Statement) String() string {
+	var strs []string
+	for _, t := range s.Toks {
+		strs = append(strs, t.String())
+	}
+	return strings.Join(strs, "")
+}
+func (s *Statement) GetTokens() []Node     { return s.Toks }
+func (s *Statement) SetTokens(toks []Node) { s.Toks = toks }
 
 type SQLToken struct {
 	Node
@@ -29,7 +68,7 @@ type SQLToken struct {
 	To    token.Pos
 }
 
-func NewSQLToken(tok *token.Token) Node {
+func NewSQLToken(tok *token.Token) *SQLToken {
 	return &SQLToken{
 		Kind:  tok.Kind,
 		Value: tok.Value,
@@ -50,13 +89,15 @@ func (t *SQLToken) MatchSQLKind(expect dialect.KeywordKind) bool {
 	return sqlWord.Kind == expect
 }
 
-type SQLTokenList struct {
-	Node
-	Children []Node
-}
-
-func NewSQLTokenList(children []Node) Node {
-	return &SQLTokenList{Children: children}
+func (t *SQLToken) String() string {
+	switch v := t.Value.(type) {
+	case *token.SQLWord:
+		return v.String()
+	case string:
+		return v
+	default:
+		return " "
+	}
 }
 
 // Token

@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"fmt"
 	"io"
 
 	"github.com/lighttiger2505/sqls/ast"
@@ -18,7 +17,6 @@ type writeContext struct {
 }
 
 func newWriteContext(list ast.TokenList) *writeContext {
-	fmt.Println(list)
 	wc := &writeContext{
 		node: list,
 	}
