@@ -20,12 +20,15 @@ func newWriteContext(list ast.TokenList) *writeContext {
 	wc := &writeContext{
 		node: list,
 	}
-	wc.nextNode()
 	return wc
 }
 
 func (wc *writeContext) nodesWithRange(startIndex, endIndex uint) []ast.Node {
 	return wc.node.GetTokens()[startIndex:endIndex]
+}
+
+func (wc *writeContext) replaceIndex(add ast.Node, index uint) {
+	wc.node.GetTokens()[index] = add
 }
 
 func (wc *writeContext) replace(add ast.Node, startIndex, endIndex uint) {
@@ -63,12 +66,12 @@ func (wc *writeContext) hasTokenList() bool {
 	return ok
 }
 
-func (wc *writeContext) getTokenList() ast.TokenList {
+func (wc *writeContext) getTokenList() (ast.TokenList, error) {
 	if !wc.hasTokenList() {
-		return nil
+		return nil, errors.Errorf("want TokenList got %T", wc.curNode)
 	}
 	children, _ := wc.curNode.(ast.TokenList)
-	return children
+	return children, nil
 }
 
 func (wc *writeContext) hasToken() bool {
@@ -76,16 +79,24 @@ func (wc *writeContext) hasToken() bool {
 	return ok
 }
 
-func (wc *writeContext) getToken() *ast.SQLToken {
+func (wc *writeContext) getToken() (*ast.SQLToken, error) {
 	if !wc.hasToken() {
-		return nil
+		return nil, errors.Errorf("want Token got %T", wc.curNode)
 	}
 	token, _ := wc.curNode.(ast.Token)
-	return token.GetToken()
+	return token.GetToken(), nil
 }
+
+type (
+	prefixParseFn func() ast.Node
+	infixParseFn  func(ast.Node) ast.Node
+)
 
 type Parser struct {
 	root ast.TokenList
+
+	prefixParseFns map[token.Kind]prefixParseFn
+	infixParseFns  map[token.Kind]infixParseFn
 }
 
 func NewParser(src io.Reader, d dialect.Dialect) (*Parser, error) {
@@ -108,131 +119,33 @@ func NewParser(src io.Reader, d dialect.Dialect) (*Parser, error) {
 }
 
 func (p *Parser) Parse() (ast.TokenList, error) {
-	// var result []ast.Node
 	var err error
 
 	if err = parseStatement(newWriteContext(p.root)); err != nil {
 		return nil, err
 	}
+	if err = parseIdentifier(newWriteContext(p.root)); err != nil {
+		return nil, err
+	}
+
 	return p.root, nil
-	// p.tokens = result
-
-	// result, err = parseIdentifier(p.tokens)
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// p.tokens = result
-
-	// return p.tokens, nil
 }
-
-// func (p *Parser) nextTokenByKind(expect token.Kind) (ast.Node, error) {
-// 	for {
-// 		tok, err := p.nextToken()
-// 		if err != nil {
-// 			return nil, err
-// 		}
-//
-// 		if expect == tok.Kind {
-// 			return tok, nil
-// 		}
-// 	}
-// 	return nil, EOF
-// }
-
-// func (p *Parser) expectKeyword(expected string) ast.Node {
-// 	ok, tok, err := p.parseKeyword(expected)
-// 	if err != nil || !ok {
-// 		for i := 0; i < int(p.index); i++ {
-// 			fmt.Printf("%v", p.tokens[i].Value)
-// 		}
-// 		fmt.Println()
-// 		log.Fatalf("should be expected keyword: %s err: %v", expected, err)
-// 	}
-//
-// 	return tok
-// }
-//
-// func (p *Parser) parseKeyword(expected string) (bool, ast.Node, error) {
-// 	tok, err := p.peekToken()
-// 	if err != nil {
-// 		return false, nil, errors.Errorf("parseKeyword %s failed: %w", expected, err)
-// 	}
-//
-// 	word, ok := tok.Value.(*token.SQLWord)
-// 	if !ok {
-// 		return false, tok, nil
-// 	}
-//
-// 	if strings.EqualFold(word.Value, expected) {
-// 		p.mustNextToken()
-// 		return true, tok, nil
-// 	}
-// 	return false, tok, nil
-// }
-
-// func (p *Parser) peekToken() (ast.Node, error) {
-// 	u, err := p.tilNonWhitespace()
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	return p.tokens[u], nil
-// }
-
-// func (p *Parser) tilNonWhitespace() (uint, error) {
-// 	idx := p.index
-// 	for {
-// 		if idx >= uint(len(p.tokens)) {
-// 			return 0, EOF
-// 		}
-// 		tok := p.tokens[idx]
-// 		if tok.Kind == token.Whitespace || tok.Kind == token.Comment {
-// 			idx += 1
-// 			continue
-// 		}
-// 		return idx, nil
-// 	}
-// }
-//
-// func (p *Parser) expectToken(expected token.Kind) {
-// 	ok, err := p.consumeToken(expected)
-// 	if err != nil || !ok {
-// 		tok, _ := p.peekToken()
-//
-// 		for i := 0; i < int(p.index); i++ {
-// 			fmt.Printf("%v", p.tokens[i].Value)
-// 		}
-// 		fmt.Println()
-// 		log.Fatalf("should be %s token, but %+v,  err: %+v", expected, tok, err)
-// 	}
-// }
-//
-// func (p *Parser) consumeToken(expected token.Kind) (bool, error) {
-// 	tok, err := p.peekToken()
-// 	if err != nil {
-// 		return false, err
-// 	}
-//
-// 	if tok.Kind == expected {
-// 		if _, err := p.nextToken(); err != nil {
-// 			return false, err
-// 		}
-// 		return true, nil
-// 	}
-//
-// 	return false, nil
-// }
 
 func parseStatement(wc *writeContext) error {
 	var startIndex uint
 	for wc.nextNode() {
 		if wc.hasTokenList() {
-			parseStatement(newWriteContext(wc.getTokenList()))
+			list, err := wc.getTokenList()
+			if err != nil {
+				return err
+			}
+			parseStatement(newWriteContext(list))
+			continue
 		}
 
-		tok := wc.getToken()
-		if tok == nil {
-			return errors.Errorf("failed parse statement want Token")
+		tok, err := wc.getToken()
+		if err != nil {
+			return err
 		}
 		if tok.MatchKind(token.Semicolon) {
 			stmt := &ast.Statement{Toks: wc.nodesWithRange(startIndex, wc.index)}
@@ -248,109 +161,39 @@ func parseStatement(wc *writeContext) error {
 }
 
 // parseComments
-
-// func (p *Parser) parseBrackets() {
-// }
-
-// func (p *Parser) parseParenthesis() ([]ast.Node, error) {
-// 	start := token.LBracket
-// 	end := token.RBracket
-//
-// 	opens := []uint{}
-// 	parsed := []ast.Node{}
-//
-// 	for _, t := range p.tokens {
-// 		tok, ok := t.(ast.Token)
-// 		if !ok {
-// 			return nil, errors.Errorf("err")
-// 		}
-// 		realToken := tok.Token()
-//
-// 		if realToken.Kind == token.Whitespace || realToken.Kind == token.Comment {
-// 			continue
-// 		}
-//
-// 		if realToken.Kind == start {
-// 			opens = append(opens, p.index)
-// 		}
-// 		if realToken.Kind == end {
-// 			n := len(opens) - 1
-// 			openIdx := opens[n]
-// 			opens = opens[:n]
-// 			closeIdx := p.index
-// 			ast.NewGrouped(p.tokens[openIdx:closeIdx])
-// 		}
-// 	}
-// 	return parsed, nil
-// }
-
+// parseBrackets
+// parseParenthesis
 // parseCase
 // parseIf
 // parseFor
 // parseBegin
-
 // parseFunctions
 // parseWhere
-
-// func parsePeriod(tokens []ast.Node) ([]ast.Node, error) {
-// 	parsed := []ast.Node{}
-//
-// 	for _, t := range tokens {
-// 		if tokList, ok := t.(ast.TokenList); ok {
-// 			res, err := parseIdentifier(tokList.Tokens())
-// 			if err != nil {
-// 				return nil, err
-// 			}
-// 			tokList.SetTokens(res)
-// 			parsed = append(parsed, tokList)
-// 			continue
-// 		}
-//
-// 		if tok, ok := t.(ast.Token); ok {
-// 			realToken := tok.Token()
-// 			if realToken.MatchSQLKind(dialect.Unmatched) {
-// 				parsed = append(parsed, ast.NewIdentifier(realToken))
-// 			} else {
-// 				parsed = append(parsed, t)
-// 			}
-// 			continue
-// 		}
-//
-// 		return nil, errors.Errorf("parse error want Token or TokenList got %T", t)
-// 	}
-// 	return parsed, nil
-// }
-
+// parsePeriod
 // parseArrays
 
-// func parseIdentifier(tokens []ast.Node) ([]ast.Node, error) {
-// 	parsed := []ast.Node{}
-//
-// 	for _, t := range tokens {
-// 		if tokList, ok := t.(ast.TokenList); ok {
-// 			res, err := parseIdentifier(tokList.Tokens())
-// 			if err != nil {
-// 				return nil, err
-// 			}
-// 			tokList.SetTokens(res)
-// 			parsed = append(parsed, tokList)
-// 			continue
-// 		}
-//
-// 		if tok, ok := t.(ast.Token); ok {
-// 			realToken := tok.Token()
-// 			if realToken.MatchSQLKind(dialect.Unmatched) {
-// 				parsed = append(parsed, ast.NewIdentifier(realToken))
-// 			} else {
-// 				parsed = append(parsed, t)
-// 			}
-// 			continue
-// 		}
-//
-// 		return nil, errors.Errorf("parse error want Token or TokenList got %T", t)
-// 	}
-// 	return parsed, nil
-// }
+func parseIdentifier(wc *writeContext) error {
+	for wc.nextNode() {
+		if wc.hasTokenList() {
+			list, err := wc.getTokenList()
+			if err != nil {
+				return err
+			}
+			parseIdentifier(newWriteContext(list))
+			continue
+		}
+
+		tok, err := wc.getToken()
+		if err != nil {
+			return err
+		}
+		if tok.MatchSQLKind(dialect.Unmatched) {
+			identifer := &ast.Identifer{Tok: tok}
+			wc.replaceIndex(identifer, wc.index-1)
+		}
+	}
+	return nil
+}
 
 // parseOrder
 // parseTypecasts
@@ -361,7 +204,6 @@ func parseStatement(wc *writeContext) error {
 // parseAs
 // parseAliased
 // parseAssignment
-
 // alignComments
 // parseIdentifierList
 // parseValues

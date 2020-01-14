@@ -32,6 +32,13 @@ func NewItem(tok *token.Token) Node {
 func (i *Item) String() string      { return i.Tok.String() }
 func (i *Item) GetToken() *SQLToken { return i.Tok }
 
+type Identifer struct {
+	Tok *SQLToken
+}
+
+func (i *Identifer) String() string      { return i.Tok.String() }
+func (i *Identifer) GetToken() *SQLToken { return i.Tok }
+
 type Query struct {
 	Toks []Node
 }
