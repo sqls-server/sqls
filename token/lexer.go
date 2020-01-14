@@ -68,18 +68,6 @@ type Token struct {
 	To    Pos
 }
 
-func (t *Token) MatchKind(expect Kind) bool {
-	return t.Kind == expect
-}
-
-func (t *Token) MatchSQLKind(expect dialect.KeywordKind) bool {
-	if t.Kind != SQLKeyword {
-		return false
-	}
-	sqlWord, _ := t.Value.(*SQLWord)
-	return sqlWord.Kind == expect
-}
-
 func NewPos(line, col int) Pos {
 	return Pos{
 		Line: line,
