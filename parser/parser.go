@@ -74,6 +74,11 @@ func (wc *writeContext) getTokenList() (ast.TokenList, error) {
 	return children, nil
 }
 
+func (wc *writeContext) mustTokenList() ast.TokenList {
+	children, _ := wc.getTokenList()
+	return children
+}
+
 func (wc *writeContext) hasToken() bool {
 	_, ok := wc.curNode.(ast.Token)
 	return ok
@@ -85,6 +90,11 @@ func (wc *writeContext) getToken() (*ast.SQLToken, error) {
 	}
 	token, _ := wc.curNode.(ast.Token)
 	return token.GetToken(), nil
+}
+
+func (wc *writeContext) mustToken() *ast.SQLToken {
+	token, _ := wc.getToken()
+	return token
 }
 
 type (
@@ -119,45 +129,35 @@ func NewParser(src io.Reader, d dialect.Dialect) (*Parser, error) {
 }
 
 func (p *Parser) Parse() (ast.TokenList, error) {
-	var err error
-
-	if err = parseStatement(newWriteContext(p.root)); err != nil {
-		return nil, err
-	}
-	if err = parseIdentifier(newWriteContext(p.root)); err != nil {
-		return nil, err
-	}
-
-	return p.root, nil
+	root := p.root
+	root = parseStatement(newWriteContext(root))
+	root = parseIdentifier(newWriteContext(root))
+	return root, nil
 }
 
-func parseStatement(wc *writeContext) error {
+func parseStatement(wc *writeContext) ast.TokenList {
+	var replaceNodes []ast.Node
 	var startIndex uint
 	for wc.nextNode() {
 		if wc.hasTokenList() {
-			list, err := wc.getTokenList()
-			if err != nil {
-				return err
-			}
-			parseStatement(newWriteContext(list))
+			list := wc.mustTokenList()
+			replaceNodes = append(replaceNodes, parseStatement(newWriteContext(list)))
 			continue
 		}
 
-		tok, err := wc.getToken()
-		if err != nil {
-			return err
-		}
+		tok := wc.mustToken()
 		if tok.MatchKind(token.Semicolon) {
 			stmt := &ast.Statement{Toks: wc.nodesWithRange(startIndex, wc.index)}
-			wc.replace(stmt, startIndex, wc.index)
+			replaceNodes = append(replaceNodes, stmt)
 			startIndex = wc.index
 		}
 	}
 	if wc.index != startIndex {
 		stmt := &ast.Statement{Toks: wc.nodesWithRange(startIndex, wc.index)}
-		wc.replace(stmt, startIndex, wc.index)
+		replaceNodes = append(replaceNodes, stmt)
 	}
-	return nil
+	wc.node.SetTokens(replaceNodes)
+	return wc.node
 }
 
 // parseComments
@@ -172,27 +172,25 @@ func parseStatement(wc *writeContext) error {
 // parsePeriod
 // parseArrays
 
-func parseIdentifier(wc *writeContext) error {
+func parseIdentifier(wc *writeContext) ast.TokenList {
+	var replaceNodes []ast.Node
 	for wc.nextNode() {
 		if wc.hasTokenList() {
-			list, err := wc.getTokenList()
-			if err != nil {
-				return err
-			}
-			parseIdentifier(newWriteContext(list))
+			list := wc.mustTokenList()
+			replaceNodes = append(replaceNodes, parseIdentifier(newWriteContext(list)))
 			continue
 		}
 
-		tok, err := wc.getToken()
-		if err != nil {
-			return err
-		}
+		tok := wc.mustToken()
 		if tok.MatchSQLKind(dialect.Unmatched) {
 			identifer := &ast.Identifer{Tok: tok}
-			wc.replaceIndex(identifer, wc.index-1)
+			replaceNodes = append(replaceNodes, identifer)
+		} else {
+			replaceNodes = append(replaceNodes, wc.curNode)
 		}
 	}
-	return nil
+	wc.node.SetTokens(replaceNodes)
+	return wc.node
 }
 
 // parseOrder
