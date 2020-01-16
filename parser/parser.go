@@ -23,6 +23,14 @@ func newWriteContext(list ast.TokenList) *writeContext {
 	return wc
 }
 
+func newWriteContextWithIndex(list ast.TokenList, index uint) *writeContext {
+	wc := &writeContext{
+		node:  list,
+		index: index,
+	}
+	return wc
+}
+
 func (wc *writeContext) nodesWithRange(startIndex, endIndex uint) []ast.Node {
 	return wc.node.GetTokens()[startIndex:endIndex]
 }
@@ -131,6 +139,7 @@ func NewParser(src io.Reader, d dialect.Dialect) (*Parser, error) {
 func (p *Parser) Parse() (ast.TokenList, error) {
 	root := p.root
 	root = parseStatement(newWriteContext(root))
+	root = parseParenthesis(newWriteContext(root))
 	root = parseIdentifier(newWriteContext(root))
 	return root, nil
 }
@@ -163,6 +172,51 @@ func parseStatement(wc *writeContext) ast.TokenList {
 // parseComments
 // parseBrackets
 // parseParenthesis
+
+func parseParenthesis(wc *writeContext) ast.TokenList {
+	var replaceNodes []ast.Node
+
+	for wc.nextNode() {
+		if wc.hasTokenList() {
+			list := wc.mustTokenList()
+			replaceNodes = append(replaceNodes, parseParenthesis(newWriteContext(list)))
+			continue
+		}
+
+		tok := wc.mustToken()
+		if tok.MatchKind(token.LParen) {
+			group := findMatch(wc, wc.curNode, wc.index)
+			replaceNodes = append(replaceNodes, group)
+		} else {
+			replaceNodes = append(replaceNodes, wc.curNode)
+		}
+	}
+	wc.node.SetTokens(replaceNodes)
+	return wc.node
+}
+
+func findMatch(wc *writeContext, startTok ast.Node, startIndex uint) ast.Node {
+	var nodes []ast.Node
+	nodes = append(nodes, startTok)
+	for wc.nextNode() {
+		tok := wc.mustToken()
+		if wc.hasTokenList() {
+			continue
+		}
+
+		if tok.MatchKind(token.LParen) {
+			group := findMatch(wc, wc.curNode, wc.index)
+			nodes = append(nodes, group)
+		} else if tok.MatchKind(token.RParen) {
+			nodes = append(nodes, wc.curNode)
+			return &ast.Parenthesis{Toks: nodes}
+		} else {
+			nodes = append(nodes, wc.curNode)
+		}
+	}
+	return nil
+}
+
 // parseCase
 // parseIf
 // parseFor

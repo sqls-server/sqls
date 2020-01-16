@@ -22,7 +22,7 @@ func TestParseStatement(t *testing.T) {
 	}
 	wantStmtLen := 3
 	if wantStmtLen != len(got.GetTokens()) {
-		t.Errorf("Statements does not contain 3 statements, want %d got %d", wantStmtLen, len(got.GetTokens()))
+		t.Errorf("Statements does not contain %d statements, got %d", wantStmtLen, len(got.GetTokens()))
 	}
 	var stmts []*ast.Statement
 	for _, node := range got.GetTokens() {
@@ -35,6 +35,33 @@ func TestParseStatement(t *testing.T) {
 	testStatement(t, stmts[0], 4, "select 1;")
 	testStatement(t, stmts[1], 4, "select 2;")
 	testStatement(t, stmts[2], 1, "select")
+}
+
+func TestParseParenthesis(t *testing.T) {
+	input := `select (select (x3) x2) and (y2) bar`
+	src := bytes.NewBuffer([]byte(input))
+	parser, err := NewParser(src, &dialect.GenericSQLDialect{})
+	if err != nil {
+		t.Fatalf("error %+v\n", err)
+	}
+
+	got, err := parser.Parse()
+	if err != nil {
+		t.Fatalf("error %+v\n", err)
+	}
+	wantStmtLen := 1
+	if wantStmtLen != len(got.GetTokens()) {
+		t.Errorf("Statements does not contain %d statements, got %d", wantStmtLen, len(got.GetTokens()))
+	}
+	var stmts []*ast.Statement
+	for _, node := range got.GetTokens() {
+		stmt, ok := node.(*ast.Statement)
+		if !ok {
+			t.Fatalf("invalid type want Statement got %T", stmt)
+		}
+		stmts = append(stmts, stmt)
+	}
+	testStatement(t, stmts[0], 9, input)
 }
 
 func TestParseIdentifier(t *testing.T) {

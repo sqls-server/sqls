@@ -39,6 +39,20 @@ type Identifer struct {
 func (i *Identifer) String() string      { return i.Tok.String() }
 func (i *Identifer) GetToken() *SQLToken { return i.Tok }
 
+type Parenthesis struct {
+	Toks []Node
+}
+
+func (p *Parenthesis) String() string {
+	var strs []string
+	for _, t := range p.Toks {
+		strs = append(strs, t.String())
+	}
+	return strings.Join(strs, "")
+}
+func (p *Parenthesis) GetTokens() []Node     { return p.Toks }
+func (p *Parenthesis) SetTokens(toks []Node) { p.Toks = toks }
+
 type Query struct {
 	Toks []Node
 }
