@@ -110,7 +110,34 @@ func TestParseWhere(t *testing.T) {
 		}
 		stmts = append(stmts, stmt)
 	}
-	testStatement(t, stmts[0], 15, input)
+	testStatement(t, stmts[0], 16, input)
+
+	list := stmts[0].GetTokens()
+	testItem(t, list[0], "select")
+	testItem(t, list[1], " ")
+	testItem(t, list[2], "*")
+	testItem(t, list[3], " ")
+	testItem(t, list[4], "from")
+	testItem(t, list[5], " ")
+	testIdentifier(t, list[6], "foo")
+	testItem(t, list[7], " ")
+	testWhere(t, list[8], "where bar = 1 ")
+	testItem(t, list[9], "order")
+	testItem(t, list[10], " ")
+	testItem(t, list[11], "by")
+	testItem(t, list[12], " ")
+	testIdentifier(t, list[13], "id")
+	testItem(t, list[14], " ")
+	testItem(t, list[15], "desc")
+
+	where := testTokenList(t, list[8], 8).GetTokens()
+	testItem(t, where[0], "where")
+	testItem(t, where[1], " ")
+	testIdentifier(t, where[2], "bar")
+	testItem(t, where[3], " ")
+	testItem(t, where[4], "=")
+	testItem(t, where[5], " ")
+	testItem(t, where[6], "1")
 }
 
 func TestParseIdentifier(t *testing.T) {
@@ -168,7 +195,7 @@ func testTokenList(t *testing.T, node ast.Node, length int) ast.TokenList {
 func testStatement(t *testing.T, stmt *ast.Statement, length int, expect string) {
 	t.Helper()
 	if length != len(stmt.GetTokens()) {
-		t.Errorf("Statements does not contain 3 tokens, want %d got %d", length, len(stmt.GetTokens()))
+		t.Errorf("Statements does not contain %d statements, got %d", length, len(stmt.GetTokens()))
 	}
 	if expect != stmt.String() {
 		t.Errorf("expected %q, got %q", expect, stmt.String())
@@ -202,6 +229,17 @@ func testParenthesis(t *testing.T, node ast.Node, expect string) {
 	_, ok := node.(*ast.Parenthesis)
 	if !ok {
 		t.Errorf("invalid type want Parenthesis got %T", node)
+	}
+	if expect != node.String() {
+		t.Errorf("expected %q, got %q", expect, node.String())
+	}
+}
+
+func testWhere(t *testing.T, node ast.Node, expect string) {
+	t.Helper()
+	_, ok := node.(*ast.Where)
+	if !ok {
+		t.Errorf("invalid type want Where got %T", node)
 	}
 	if expect != node.String() {
 		t.Errorf("expected %q, got %q", expect, node.String())

@@ -297,7 +297,7 @@ func findWhereMatch(wc *writeContext, startTok ast.Node, startIndex uint) ast.No
 			nodes = append(nodes, group)
 		} else if wc.peekTokenMatchSQLKeywords(WhereCloseKeywords) {
 			nodes = append(nodes, wc.curNode)
-			return &ast.Parenthesis{Toks: nodes}
+			return &ast.Where{Toks: nodes}
 		} else {
 			nodes = append(nodes, wc.curNode)
 		}
