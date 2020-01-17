@@ -62,6 +62,26 @@ func TestParseParenthesis(t *testing.T) {
 		stmts = append(stmts, stmt)
 	}
 	testStatement(t, stmts[0], 9, input)
+
+	list := stmts[0].GetTokens()
+	testItem(t, list[0], "select")
+	testItem(t, list[1], " ")
+	testParenthesis(t, list[2], "(select (x3) x2)")
+	testItem(t, list[3], " ")
+	testItem(t, list[4], "and")
+	testItem(t, list[5], " ")
+	testParenthesis(t, list[6], "(y2)")
+	testItem(t, list[7], " ")
+	testIdentifier(t, list[8], `bar`)
+
+	parenthesis := testTokenList(t, list[2], 7).GetTokens()
+	testItem(t, parenthesis[0], "(")
+	testItem(t, parenthesis[1], "select")
+	testItem(t, parenthesis[2], " ")
+	testParenthesis(t, parenthesis[3], "(x3)")
+	testItem(t, parenthesis[4], " ")
+	testIdentifier(t, parenthesis[5], "x2")
+	testItem(t, parenthesis[6], ")")
 }
 
 func TestParseIdentifier(t *testing.T) {
@@ -104,6 +124,18 @@ func TestParseIdentifier(t *testing.T) {
 	testIdentifier(t, list[10], `"table"`)
 }
 
+func testTokenList(t *testing.T, node ast.Node, length int) ast.TokenList {
+	t.Helper()
+	list, ok := node.(ast.TokenList)
+	if !ok {
+		t.Fatalf("invalid type want GetTokens got %T", node)
+	}
+	if length != len(list.GetTokens()) {
+		t.Errorf("Statements does not contain 3 tokens, want %d got %d", length, len(list.GetTokens()))
+	}
+	return list
+}
+
 func testStatement(t *testing.T, stmt *ast.Statement, length int, expect string) {
 	t.Helper()
 	if length != len(stmt.GetTokens()) {
@@ -130,6 +162,17 @@ func testIdentifier(t *testing.T, node ast.Node, expect string) {
 	_, ok := node.(*ast.Identifer)
 	if !ok {
 		t.Errorf("invalid type want Identifier got %T", node)
+	}
+	if expect != node.String() {
+		t.Errorf("expected %q, got %q", expect, node.String())
+	}
+}
+
+func testParenthesis(t *testing.T, node ast.Node, expect string) {
+	t.Helper()
+	_, ok := node.(*ast.Parenthesis)
+	if !ok {
+		t.Errorf("invalid type want Parenthesis got %T", node)
 	}
 	if expect != node.String() {
 		t.Errorf("expected %q, got %q", expect, node.String())
