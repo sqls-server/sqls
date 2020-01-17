@@ -38,6 +38,7 @@ func TestParseStatement(t *testing.T) {
 }
 
 func TestParseParenthesis(t *testing.T) {
+	// TODO Add case of not found close parenthesis
 	input := `select (select (x3) x2) and (y2) bar`
 	src := bytes.NewBuffer([]byte(input))
 	parser, err := NewParser(src, &dialect.GenericSQLDialect{})
@@ -84,6 +85,34 @@ func TestParseParenthesis(t *testing.T) {
 	testItem(t, parenthesis[6], ")")
 }
 
+func TestParseWhere(t *testing.T) {
+	// TODO Add case of not found close keyword
+	input := "select * from foo where bar = 1 order by id desc"
+	src := bytes.NewBuffer([]byte(input))
+	parser, err := NewParser(src, &dialect.GenericSQLDialect{})
+	if err != nil {
+		t.Fatalf("error %+v\n", err)
+	}
+
+	got, err := parser.Parse()
+	if err != nil {
+		t.Fatalf("error %+v\n", err)
+	}
+	wantStmtLen := 1
+	if wantStmtLen != len(got.GetTokens()) {
+		t.Errorf("Statements does not contain %d statements, got %d", wantStmtLen, len(got.GetTokens()))
+	}
+	var stmts []*ast.Statement
+	for _, node := range got.GetTokens() {
+		stmt, ok := node.(*ast.Statement)
+		if !ok {
+			t.Fatalf("invalid type want Statement got %T", stmt)
+		}
+		stmts = append(stmts, stmt)
+	}
+	testStatement(t, stmts[0], 15, input)
+}
+
 func TestParseIdentifier(t *testing.T) {
 	input := `select foo.bar from "myschema"."table"`
 	src := bytes.NewBuffer([]byte(input))
@@ -98,7 +127,7 @@ func TestParseIdentifier(t *testing.T) {
 	}
 	wantStmtLen := 1
 	if wantStmtLen != len(got.GetTokens()) {
-		t.Errorf("Statements does not contain 3 statements, want %d got %d", wantStmtLen, len(got.GetTokens()))
+		t.Errorf("Statements does not contain %d statements, got %d", wantStmtLen, len(got.GetTokens()))
 	}
 	var stmts []*ast.Statement
 	for _, node := range got.GetTokens() {
@@ -131,7 +160,7 @@ func testTokenList(t *testing.T, node ast.Node, length int) ast.TokenList {
 		t.Fatalf("invalid type want GetTokens got %T", node)
 	}
 	if length != len(list.GetTokens()) {
-		t.Errorf("Statements does not contain 3 tokens, want %d got %d", length, len(list.GetTokens()))
+		t.Errorf("Statements does not contain %d statements, got %d", length, len(list.GetTokens()))
 	}
 	return list
 }

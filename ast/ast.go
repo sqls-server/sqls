@@ -53,6 +53,20 @@ func (p *Parenthesis) String() string {
 func (p *Parenthesis) GetTokens() []Node     { return p.Toks }
 func (p *Parenthesis) SetTokens(toks []Node) { p.Toks = toks }
 
+type Where struct {
+	Toks []Node
+}
+
+func (w *Where) String() string {
+	var strs []string
+	for _, t := range w.Toks {
+		strs = append(strs, t.String())
+	}
+	return strings.Join(strs, "")
+}
+func (w *Where) GetTokens() []Node     { return w.Toks }
+func (w *Where) SetTokens(toks []Node) { w.Toks = toks }
+
 type Query struct {
 	Toks []Node
 }
@@ -108,6 +122,23 @@ func (t *SQLToken) MatchSQLKind(expect dialect.KeywordKind) bool {
 	}
 	sqlWord, _ := t.Value.(*token.SQLWord)
 	return sqlWord.Kind == expect
+}
+
+func (t *SQLToken) MatchSQLKeyword(expect string) bool {
+	if t.Kind != token.SQLKeyword {
+		return false
+	}
+	sqlWord, _ := t.Value.(*token.SQLWord)
+	return sqlWord.Keyword == expect
+}
+
+func (t *SQLToken) MatchSQLKeywords(expects []string) bool {
+	for _, expect := range expects {
+		if t.MatchSQLKeyword(expect) {
+			return true
+		}
+	}
+	return false
 }
 
 func (t *SQLToken) String() string {

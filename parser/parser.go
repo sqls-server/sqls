@@ -10,10 +10,9 @@ import (
 )
 
 type writeContext struct {
-	node     ast.TokenList
-	curNode  ast.Node
-	peekNode ast.Node
-	index    uint
+	node    ast.TokenList
+	curNode ast.Node
+	index   uint
 }
 
 func newWriteContext(list ast.TokenList) *writeContext {
@@ -105,6 +104,33 @@ func (wc *writeContext) mustToken() *ast.SQLToken {
 	return token
 }
 
+func (wc *writeContext) getPeekToken() (*ast.SQLToken, error) {
+	if !wc.hasNext() {
+		return nil, errors.Errorf("EOF")
+	}
+	tok, ok := wc.node.GetTokens()[wc.index].(ast.Token)
+	if !ok {
+		return nil, errors.Errorf("want Token got %T", wc.curNode)
+	}
+	return tok.GetToken(), nil
+}
+
+func (wc *writeContext) peekTokenMatchSQLKeyword(expect string) bool {
+	token, err := wc.getPeekToken()
+	if err != nil {
+		return false
+	}
+	return token.MatchSQLKeyword(expect)
+}
+
+func (wc *writeContext) peekTokenMatchSQLKeywords(expects []string) bool {
+	token, err := wc.getPeekToken()
+	if err != nil {
+		return false
+	}
+	return token.MatchSQLKeywords(expects)
+}
+
 type (
 	prefixParseFn func() ast.Node
 	infixParseFn  func(ast.Node) ast.Node
@@ -140,6 +166,7 @@ func (p *Parser) Parse() (ast.TokenList, error) {
 	root := p.root
 	root = parseStatement(newWriteContext(root))
 	root = parseParenthesis(newWriteContext(root))
+	root = parseWhere(newWriteContext(root))
 	root = parseIdentifier(newWriteContext(root))
 	return root, nil
 }
@@ -171,7 +198,6 @@ func parseStatement(wc *writeContext) ast.TokenList {
 
 // parseComments
 // parseBrackets
-// parseParenthesis
 
 func parseParenthesis(wc *writeContext) ast.TokenList {
 	var replaceNodes []ast.Node
@@ -185,7 +211,7 @@ func parseParenthesis(wc *writeContext) ast.TokenList {
 
 		tok := wc.mustToken()
 		if tok.MatchKind(token.LParen) {
-			group := findMatch(wc, wc.curNode, wc.index)
+			group := findParenthesisMatch(wc, wc.curNode, wc.index)
 			replaceNodes = append(replaceNodes, group)
 		} else {
 			replaceNodes = append(replaceNodes, wc.curNode)
@@ -195,17 +221,17 @@ func parseParenthesis(wc *writeContext) ast.TokenList {
 	return wc.node
 }
 
-func findMatch(wc *writeContext, startTok ast.Node, startIndex uint) ast.Node {
+func findParenthesisMatch(wc *writeContext, startTok ast.Node, startIndex uint) ast.Node {
 	var nodes []ast.Node
 	nodes = append(nodes, startTok)
 	for wc.nextNode() {
-		tok := wc.mustToken()
 		if wc.hasTokenList() {
 			continue
 		}
 
+		tok := wc.mustToken()
 		if tok.MatchKind(token.LParen) {
-			group := findMatch(wc, wc.curNode, wc.index)
+			group := findParenthesisMatch(wc, wc.curNode, wc.index)
 			nodes = append(nodes, group)
 		} else if tok.MatchKind(token.RParen) {
 			nodes = append(nodes, wc.curNode)
@@ -222,7 +248,63 @@ func findMatch(wc *writeContext, startTok ast.Node, startIndex uint) ast.Node {
 // parseFor
 // parseBegin
 // parseFunctions
-// parseWhere
+
+var WhereOpenKeyword = "WHERE"
+var WhereCloseKeywords = []string{
+	"ORDER",
+	"GROUP",
+	"LIMIT",
+	"UNION",
+	"EXCEPT",
+	"HAVING",
+	"RETURNING",
+	"INTO",
+}
+
+func parseWhere(wc *writeContext) ast.TokenList {
+	var replaceNodes []ast.Node
+
+	for wc.nextNode() {
+		if wc.hasTokenList() {
+			list := wc.mustTokenList()
+			replaceNodes = append(replaceNodes, parseWhere(newWriteContext(list)))
+			continue
+		}
+
+		tok := wc.mustToken()
+		if tok.MatchSQLKeyword(WhereOpenKeyword) {
+			group := findWhereMatch(wc, wc.curNode, wc.index)
+			replaceNodes = append(replaceNodes, group)
+		} else {
+			replaceNodes = append(replaceNodes, wc.curNode)
+		}
+	}
+	wc.node.SetTokens(replaceNodes)
+	return wc.node
+}
+
+func findWhereMatch(wc *writeContext, startTok ast.Node, startIndex uint) ast.Node {
+	var nodes []ast.Node
+	nodes = append(nodes, startTok)
+	for wc.nextNode() {
+		if wc.hasTokenList() {
+			continue
+		}
+
+		tok := wc.mustToken()
+		if tok.MatchSQLKeyword(WhereOpenKeyword) {
+			group := findWhereMatch(wc, wc.curNode, wc.index)
+			nodes = append(nodes, group)
+		} else if wc.peekTokenMatchSQLKeywords(WhereCloseKeywords) {
+			nodes = append(nodes, wc.curNode)
+			return &ast.Parenthesis{Toks: nodes}
+		} else {
+			nodes = append(nodes, wc.curNode)
+		}
+	}
+	return nil
+}
+
 // parsePeriod
 // parseArrays
 
