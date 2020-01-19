@@ -86,7 +86,6 @@ func TestParseParenthesis(t *testing.T) {
 }
 
 func TestParseWhere(t *testing.T) {
-	// TODO Add case of not found close keyword
 	input := "select * from foo where bar = 1 order by id desc"
 	src := bytes.NewBuffer([]byte(input))
 	parser, err := NewParser(src, &dialect.GenericSQLDialect{})
@@ -131,6 +130,54 @@ func TestParseWhere(t *testing.T) {
 	testItem(t, list[15], "desc")
 
 	where := testTokenList(t, list[8], 8).GetTokens()
+	testItem(t, where[0], "where")
+	testItem(t, where[1], " ")
+	testIdentifier(t, where[2], "bar")
+	testItem(t, where[3], " ")
+	testItem(t, where[4], "=")
+	testItem(t, where[5], " ")
+	testItem(t, where[6], "1")
+	testItem(t, where[7], " ")
+}
+
+func TestParseWhere_NotFoundClose(t *testing.T) {
+	input := "select * from foo where bar = 1"
+	src := bytes.NewBuffer([]byte(input))
+	parser, err := NewParser(src, &dialect.GenericSQLDialect{})
+	if err != nil {
+		t.Fatalf("error %+v\n", err)
+	}
+
+	got, err := parser.Parse()
+	if err != nil {
+		t.Fatalf("error %+v\n", err)
+	}
+	wantStmtLen := 1
+	if wantStmtLen != len(got.GetTokens()) {
+		t.Errorf("Statements does not contain %d statements, got %d", wantStmtLen, len(got.GetTokens()))
+	}
+	var stmts []*ast.Statement
+	for _, node := range got.GetTokens() {
+		stmt, ok := node.(*ast.Statement)
+		if !ok {
+			t.Fatalf("invalid type want Statement got %T", stmt)
+		}
+		stmts = append(stmts, stmt)
+	}
+	testStatement(t, stmts[0], 9, input)
+
+	list := stmts[0].GetTokens()
+	testItem(t, list[0], "select")
+	testItem(t, list[1], " ")
+	testItem(t, list[2], "*")
+	testItem(t, list[3], " ")
+	testItem(t, list[4], "from")
+	testItem(t, list[5], " ")
+	testIdentifier(t, list[6], "foo")
+	testItem(t, list[7], " ")
+	testWhere(t, list[8], "where bar = 1")
+
+	where := testTokenList(t, list[8], 7).GetTokens()
 	testItem(t, where[0], "where")
 	testItem(t, where[1], " ")
 	testIdentifier(t, where[2], "bar")

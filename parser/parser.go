@@ -273,8 +273,10 @@ func parseWhere(wc *writeContext) ast.TokenList {
 
 		tok := wc.mustToken()
 		if tok.MatchSQLKeyword(WhereOpenKeyword) {
-			group := findWhereMatch(wc, wc.curNode, wc.index)
-			replaceNodes = append(replaceNodes, group)
+			where := findWhereMatch(wc, wc.curNode, wc.index)
+			if where != nil {
+				replaceNodes = append(replaceNodes, where)
+			}
 		} else {
 			replaceNodes = append(replaceNodes, wc.curNode)
 		}
@@ -302,7 +304,7 @@ func findWhereMatch(wc *writeContext, startTok ast.Node, startIndex uint) ast.No
 			nodes = append(nodes, wc.curNode)
 		}
 	}
-	return nil
+	return &ast.Where{Toks: nodes}
 }
 
 // parsePeriod
