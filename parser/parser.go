@@ -219,8 +219,14 @@ func parseParenthesis(wc *writeContext) ast.TokenList {
 
 		tok := wc.mustToken()
 		if tok.MatchKind(token.LParen) {
-			group := findParenthesisMatch(wc, wc.curNode, wc.index)
-			replaceNodes = append(replaceNodes, group)
+			newWC := newWriteContextWithIndex(wc.node, wc.index)
+			parenthesis := findParenthesisMatch(newWC, wc.curNode, wc.index)
+			if parenthesis != nil {
+				wc = newWC
+				replaceNodes = append(replaceNodes, parenthesis)
+			} else {
+				replaceNodes = append(replaceNodes, wc.curNode)
+			}
 		} else {
 			replaceNodes = append(replaceNodes, wc.curNode)
 		}

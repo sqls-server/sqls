@@ -38,7 +38,6 @@ func TestParseStatement(t *testing.T) {
 }
 
 func TestParseParenthesis(t *testing.T) {
-	// TODO Add case of not found close parenthesis
 	input := `select (select (x3) x2) and (y2) bar`
 	src := bytes.NewBuffer([]byte(input))
 	parser, err := NewParser(src, &dialect.GenericSQLDialect{})
@@ -83,6 +82,49 @@ func TestParseParenthesis(t *testing.T) {
 	testItem(t, parenthesis[4], " ")
 	testIdentifier(t, parenthesis[5], "x2")
 	testItem(t, parenthesis[6], ")")
+}
+
+func TestParseParenthesis_NotFoundClose(t *testing.T) {
+	input := `select (select (x3) x2 and (y2) bar`
+	src := bytes.NewBuffer([]byte(input))
+	parser, err := NewParser(src, &dialect.GenericSQLDialect{})
+	if err != nil {
+		t.Fatalf("error %+v\n", err)
+	}
+
+	got, err := parser.Parse()
+	if err != nil {
+		t.Fatalf("error %+v\n", err)
+	}
+	wantStmtLen := 1
+	if wantStmtLen != len(got.GetTokens()) {
+		t.Errorf("Statements does not contain %d statements, got %d", wantStmtLen, len(got.GetTokens()))
+	}
+	var stmts []*ast.Statement
+	for _, node := range got.GetTokens() {
+		stmt, ok := node.(*ast.Statement)
+		if !ok {
+			t.Fatalf("invalid type want Statement got %T", stmt)
+		}
+		stmts = append(stmts, stmt)
+	}
+	testStatement(t, stmts[0], 14, input)
+
+	list := stmts[0].GetTokens()
+	testItem(t, list[0], "select")
+	testItem(t, list[1], " ")
+	testItem(t, list[2], "(")
+	testItem(t, list[3], "select")
+	testItem(t, list[4], " ")
+	testParenthesis(t, list[5], "(x3)")
+	testItem(t, list[6], " ")
+	testIdentifier(t, list[7], "x2")
+	testItem(t, list[8], " ")
+	testItem(t, list[9], "and")
+	testItem(t, list[10], " ")
+	testParenthesis(t, list[11], "(y2)")
+	testItem(t, list[12], " ")
+	testIdentifier(t, list[13], "bar")
 }
 
 func TestParseWhere(t *testing.T) {
