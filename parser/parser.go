@@ -115,6 +115,14 @@ func (wc *writeContext) getPeekToken() (*ast.SQLToken, error) {
 	return tok.GetToken(), nil
 }
 
+func (wc *writeContext) peekTokenMatchKind(expect token.Kind) bool {
+	token, err := wc.getPeekToken()
+	if err != nil {
+		return false
+	}
+	return token.MatchKind(expect)
+}
+
 func (wc *writeContext) peekTokenMatchSQLKeyword(expect string) bool {
 	token, err := wc.getPeekToken()
 	if err != nil {
@@ -302,6 +310,9 @@ func findWhereMatch(wc *writeContext, startTok ast.Node, startIndex uint) ast.No
 			return &ast.Where{Toks: nodes}
 		} else {
 			nodes = append(nodes, wc.curNode)
+		}
+		if wc.peekTokenMatchKind(token.RParen) {
+			break
 		}
 	}
 	return &ast.Where{Toks: nodes}

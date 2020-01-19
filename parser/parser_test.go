@@ -187,6 +187,56 @@ func TestParseWhere_NotFoundClose(t *testing.T) {
 	testItem(t, where[6], "1")
 }
 
+func TestParseWhere_WithParenthesis(t *testing.T) {
+	input := "select x from (select y from foo where bar = 1) z"
+	src := bytes.NewBuffer([]byte(input))
+	parser, err := NewParser(src, &dialect.GenericSQLDialect{})
+	if err != nil {
+		t.Fatalf("error %+v\n", err)
+	}
+
+	got, err := parser.Parse()
+	if err != nil {
+		t.Fatalf("error %+v\n", err)
+	}
+	wantStmtLen := 1
+	if wantStmtLen != len(got.GetTokens()) {
+		t.Errorf("Statements does not contain %d statements, got %d", wantStmtLen, len(got.GetTokens()))
+	}
+	var stmts []*ast.Statement
+	for _, node := range got.GetTokens() {
+		stmt, ok := node.(*ast.Statement)
+		if !ok {
+			t.Fatalf("invalid type want Statement got %T", stmt)
+		}
+		stmts = append(stmts, stmt)
+	}
+	testStatement(t, stmts[0], 9, input)
+
+	list := stmts[0].GetTokens()
+	testItem(t, list[0], "select")
+	testItem(t, list[1], " ")
+	testIdentifier(t, list[2], "x")
+	testItem(t, list[3], " ")
+	testItem(t, list[4], "from")
+	testItem(t, list[5], " ")
+	testParenthesis(t, list[6], "(select y from foo where bar = 1)")
+	testItem(t, list[7], " ")
+	testIdentifier(t, list[8], "z")
+
+	parenthesis := testTokenList(t, list[6], 11).GetTokens()
+	testItem(t, parenthesis[0], "(")
+	testItem(t, parenthesis[1], "select")
+	testItem(t, parenthesis[2], " ")
+	testIdentifier(t, parenthesis[3], "y")
+	testItem(t, parenthesis[4], " ")
+	testItem(t, parenthesis[5], "from")
+	testItem(t, parenthesis[6], " ")
+	testIdentifier(t, parenthesis[7], "foo")
+	testItem(t, parenthesis[8], " ")
+	testWhere(t, parenthesis[9], "where bar = 1")
+	testItem(t, parenthesis[10], ")")
+}
 func TestParseIdentifier(t *testing.T) {
 	input := `select foo.bar from "myschema"."table"`
 	src := bytes.NewBuffer([]byte(input))
