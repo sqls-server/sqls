@@ -77,7 +77,7 @@ type Completer struct {
 	// columns
 }
 
-func (c *Completer) complete() ([]CompletionItem, error) {
+func (c *Completer) complete(params CompletionParams) ([]CompletionItem, error) {
 	completionItems := []CompletionItem{}
 	for _, k := range keywords {
 		completionItems = append(completionItems, CompletionItem{
