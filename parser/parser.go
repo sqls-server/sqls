@@ -123,6 +123,14 @@ func (wc *writeContext) peekTokenMatchKind(expect token.Kind) bool {
 	return token.MatchKind(expect)
 }
 
+func (wc *writeContext) peekTokenMatchSQLKind(expect dialect.KeywordKind) bool {
+	token, err := wc.getPeekToken()
+	if err != nil {
+		return false
+	}
+	return token.MatchSQLKind(expect)
+}
+
 func (wc *writeContext) peekTokenMatchSQLKeyword(expect string) bool {
 	token, err := wc.getPeekToken()
 	if err != nil {
@@ -175,6 +183,7 @@ func (p *Parser) Parse() (ast.TokenList, error) {
 	root = parseStatement(newWriteContext(root))
 	root = parseParenthesis(newWriteContext(root))
 	root = parseWhere(newWriteContext(root))
+	root = parsePeriod(newWriteContext(root))
 	root = parseIdentifier(newWriteContext(root))
 	return root, nil
 }
@@ -324,7 +333,38 @@ func findWhereMatch(wc *writeContext, startTok ast.Node, startIndex uint) ast.No
 	return &ast.Where{Toks: nodes}
 }
 
-// parsePeriod
+func parsePeriod(wc *writeContext) ast.TokenList {
+	var replaceNodes []ast.Node
+	for wc.nextNode() {
+		if wc.hasTokenList() {
+			list := wc.mustTokenList()
+			replaceNodes = append(replaceNodes, parsePeriod(newWriteContext(list)))
+			continue
+		}
+
+		tok := wc.mustToken()
+		if wc.peekTokenMatchKind(token.Period) {
+			memberIdentifer := &ast.MemberIdentifer{
+				Parent: tok,
+			}
+			wc.nextNode()
+			period := wc.mustToken()
+			memberIdentifer.Period = period
+
+			if wc.peekTokenMatchSQLKind(dialect.Unmatched) || wc.peekTokenMatchKind(token.Mult) {
+				wc.nextNode()
+				child := wc.mustToken()
+				memberIdentifer.Child = child
+			}
+			replaceNodes = append(replaceNodes, memberIdentifer)
+		} else {
+			replaceNodes = append(replaceNodes, wc.curNode)
+		}
+	}
+	wc.node.SetTokens(replaceNodes)
+	return wc.node
+}
+
 // parseArrays
 
 func parseIdentifier(wc *writeContext) ast.TokenList {
@@ -332,6 +372,10 @@ func parseIdentifier(wc *writeContext) ast.TokenList {
 	for wc.nextNode() {
 		if wc.hasTokenList() {
 			list := wc.mustTokenList()
+			if _, ok := list.(*ast.MemberIdentifer); ok {
+				replaceNodes = append(replaceNodes, wc.curNode)
+				continue
+			}
 			replaceNodes = append(replaceNodes, parseIdentifier(newWriteContext(list)))
 			continue
 		}

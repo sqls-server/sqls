@@ -32,6 +32,28 @@ func NewItem(tok *token.Token) Node {
 func (i *Item) String() string      { return i.Tok.String() }
 func (i *Item) GetToken() *SQLToken { return i.Tok }
 
+type MemberIdentifer struct {
+	Parent *SQLToken
+	Period *SQLToken
+	Child  *SQLToken
+}
+
+func (mi *MemberIdentifer) String() string {
+	res := mi.Parent.String() + mi.Period.String()
+	if mi.Child != nil {
+		res = res + mi.Child.String()
+	}
+	return res
+}
+func (mi *MemberIdentifer) GetTokens() []Node {
+	res := []Node{mi.Parent, mi.Period}
+	if mi.Child != nil {
+		res = append(res, mi.Child)
+	}
+	return res
+}
+func (mi *MemberIdentifer) SetTokens(toks []Node) {}
+
 type Identifer struct {
 	Tok *SQLToken
 }

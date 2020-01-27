@@ -279,6 +279,56 @@ func TestParseWhere_WithParenthesis(t *testing.T) {
 	testWhere(t, parenthesis[9], "where bar = 1")
 	testItem(t, parenthesis[10], ")")
 }
+
+func TestParsePeriod_Double(t *testing.T) {
+	input := `a.*, b.id`
+	stmts := parseInit(t, input)
+
+	testStatement(t, stmts[0], 4, input)
+
+	list := stmts[0].GetTokens()
+	testMemberIdentifier(t, list[0], "a.*")
+	testItem(t, list[1], ",")
+	testItem(t, list[2], " ")
+	testMemberIdentifier(t, list[3], "b.id")
+}
+
+func TestParsePeriod_WithWildcard(t *testing.T) {
+	input := `a.*`
+	stmts := parseInit(t, input)
+
+	testStatement(t, stmts[0], 1, input)
+
+	list := stmts[0].GetTokens()
+	testMemberIdentifier(t, list[0], "a.*")
+}
+
+func TestParsePeriod_Invalid(t *testing.T) {
+	input := `a.`
+	stmts := parseInit(t, input)
+
+	testStatement(t, stmts[0], 1, input)
+
+	list := stmts[0].GetTokens()
+	testMemberIdentifier(t, list[0], "a.")
+}
+
+func TestParsePeriod_InvalidWithSelect(t *testing.T) {
+	input := `SELECT foo. FROM foo`
+	stmts := parseInit(t, input)
+
+	testStatement(t, stmts[0], 7, input)
+
+	list := stmts[0].GetTokens()
+	testItem(t, list[0], "SELECT")
+	testItem(t, list[1], " ")
+	testMemberIdentifier(t, list[2], "foo.")
+	testItem(t, list[3], " ")
+	testItem(t, list[4], "FROM")
+	testItem(t, list[5], " ")
+	testIdentifier(t, list[6], "foo")
+}
+
 func TestParseIdentifier(t *testing.T) {
 	input := `select foo.bar from "myschema"."table"`
 	src := bytes.NewBuffer([]byte(input))
@@ -303,20 +353,40 @@ func TestParseIdentifier(t *testing.T) {
 		}
 		stmts = append(stmts, stmt)
 	}
-	testStatement(t, stmts[0], 11, input)
+	testStatement(t, stmts[0], 7, input)
 
 	list := stmts[0].GetTokens()
 	testItem(t, list[0], "select")
 	testItem(t, list[1], " ")
-	testIdentifier(t, list[2], "foo")
-	testItem(t, list[3], ".")
-	testIdentifier(t, list[4], "bar")
+	testMemberIdentifier(t, list[2], "foo.bar")
+	testItem(t, list[3], " ")
+	testItem(t, list[4], "from")
 	testItem(t, list[5], " ")
-	testItem(t, list[6], "from")
-	testItem(t, list[7], " ")
-	testIdentifier(t, list[8], `"myschema"`)
-	testItem(t, list[9], ".")
-	testIdentifier(t, list[10], `"table"`)
+	testMemberIdentifier(t, list[6], `"myschema"."table"`)
+}
+
+func parseInit(t *testing.T, input string) []*ast.Statement {
+	t.Helper()
+	src := bytes.NewBuffer([]byte(input))
+	parser, err := NewParser(src, &dialect.GenericSQLDialect{})
+	if err != nil {
+		t.Fatalf("error %+v\n", err)
+	}
+
+	parsed, err := parser.Parse()
+	if err != nil {
+		t.Fatalf("error %+v\n", err)
+	}
+
+	var stmts []*ast.Statement
+	for _, node := range parsed.GetTokens() {
+		stmt, ok := node.(*ast.Statement)
+		if !ok {
+			t.Fatalf("invalid type want Statement parsed %T", stmt)
+		}
+		stmts = append(stmts, stmt)
+	}
+	return stmts
 }
 
 func testTokenList(t *testing.T, node ast.Node, length int) ast.TokenList {
@@ -349,6 +419,17 @@ func testItem(t *testing.T, node ast.Node, expect string) {
 	}
 	if expect != item.String() {
 		t.Errorf("expected %q, got %q", expect, item.String())
+	}
+}
+
+func testMemberIdentifier(t *testing.T, node ast.Node, expect string) {
+	t.Helper()
+	_, ok := node.(*ast.MemberIdentifer)
+	if !ok {
+		t.Errorf("invalid type want MemberIdentifer got %T", node)
+	}
+	if expect != node.String() {
+		t.Errorf("expected %q, got %q", expect, node.String())
 	}
 }
 
