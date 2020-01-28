@@ -185,6 +185,7 @@ func (p *Parser) Parse() (ast.TokenList, error) {
 	root = parseWhere(newWriteContext(root))
 	root = parsePeriod(newWriteContext(root))
 	root = parseIdentifier(newWriteContext(root))
+	root = parseAliased(newWriteContext(root))
 	return root, nil
 }
 
@@ -399,7 +400,60 @@ func parseIdentifier(wc *writeContext) ast.TokenList {
 // parseOperator
 // parseComparison
 // parseAs
-// parseAliased
+
+// ast.Identifer,
+// ast.MemberIdentifer,
+// ast.Parenthesis,
+
+func parseAliased(wc *writeContext) ast.TokenList {
+	var replaceNodes []ast.Node
+	for wc.nextNode() {
+		if wc.hasTokenList() {
+			list := wc.mustTokenList()
+			replaceNodes = append(replaceNodes, parseAliased(newWriteContext(list)))
+			continue
+		}
+
+		if _, ok := wc.curNode.(*ast.Identifer); ok {
+			newWC := newWriteContextWithIndex(wc.node, wc.index)
+			aliased := findAliasMatch(newWC, wc.curNode, wc.index)
+			if aliased != nil {
+				wc = newWC
+				replaceNodes = append(replaceNodes, aliased)
+			} else {
+				replaceNodes = append(replaceNodes, wc.curNode)
+			}
+		} else {
+			replaceNodes = append(replaceNodes, wc.curNode)
+		}
+	}
+	wc.node.SetTokens(replaceNodes)
+	return wc.node
+}
+
+func findAliasMatch(wc *writeContext, startTok ast.Node, startIndex uint) ast.Node {
+	var nodes []ast.Node
+	nodes = append(nodes, startTok)
+	for wc.nextNode() {
+		if wc.hasTokenList() {
+			continue
+		}
+
+		if _, ok := wc.curNode.(*ast.Identifer); ok {
+			nodes = append(nodes, wc.curNode)
+			return &ast.Aliased{Toks: nodes}
+		}
+
+		tok := wc.mustToken()
+		if tok.MatchSQLKeyword("AS") || tok.MatchKind(token.Whitespace) {
+			nodes = append(nodes, wc.curNode)
+		} else {
+			break
+		}
+	}
+	return nil
+}
+
 // parseAssignment
 // alignComments
 // parseIdentifierList

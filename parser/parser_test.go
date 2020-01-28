@@ -365,6 +365,21 @@ func TestParseIdentifier(t *testing.T) {
 	testMemberIdentifier(t, list[6], `"myschema"."table"`)
 }
 
+func TestParseAliased(t *testing.T) {
+	input := `select foo as bar from mytable`
+	stmts := parseInit(t, input)
+	testStatement(t, stmts[0], 7, input)
+
+	list := stmts[0].GetTokens()
+	testItem(t, list[0], "select")
+	testItem(t, list[1], " ")
+	testAliased(t, list[2], "foo as bar")
+	testItem(t, list[3], " ")
+	testItem(t, list[4], "from")
+	testItem(t, list[5], " ")
+	testIdentifier(t, list[6], `mytable`)
+}
+
 func parseInit(t *testing.T, input string) []*ast.Statement {
 	t.Helper()
 	src := bytes.NewBuffer([]byte(input))
@@ -404,7 +419,7 @@ func testTokenList(t *testing.T, node ast.Node, length int) ast.TokenList {
 func testStatement(t *testing.T, stmt *ast.Statement, length int, expect string) {
 	t.Helper()
 	if length != len(stmt.GetTokens()) {
-		t.Errorf("Statements does not contain %d statements, got %d", length, len(stmt.GetTokens()))
+		t.Fatalf("Statements does not contain %d statements, got %d", length, len(stmt.GetTokens()))
 	}
 	if expect != stmt.String() {
 		t.Errorf("expected %q, got %q", expect, stmt.String())
@@ -460,6 +475,17 @@ func testWhere(t *testing.T, node ast.Node, expect string) {
 	_, ok := node.(*ast.Where)
 	if !ok {
 		t.Errorf("invalid type want Where got %T", node)
+	}
+	if expect != node.String() {
+		t.Errorf("expected %q, got %q", expect, node.String())
+	}
+}
+
+func testAliased(t *testing.T, node ast.Node, expect string) {
+	t.Helper()
+	_, ok := node.(*ast.Aliased)
+	if !ok {
+		t.Errorf("invalid type want Identifier got %T", node)
 	}
 	if expect != node.String() {
 		t.Errorf("expected %q, got %q", expect, node.String())

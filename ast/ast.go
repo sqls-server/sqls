@@ -54,6 +54,20 @@ func (mi *MemberIdentifer) GetTokens() []Node {
 }
 func (mi *MemberIdentifer) SetTokens(toks []Node) {}
 
+type Aliased struct {
+	Toks []Node
+}
+
+func (a *Aliased) String() string {
+	var strs []string
+	for _, t := range a.Toks {
+		strs = append(strs, t.String())
+	}
+	return strings.Join(strs, "")
+}
+func (a *Aliased) GetTokens() []Node     { return a.Toks }
+func (a *Aliased) SetTokens(toks []Node) { a.Toks = toks }
+
 type Identifer struct {
 	Tok *SQLToken
 }
