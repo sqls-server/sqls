@@ -89,6 +89,20 @@ func (p *Parenthesis) String() string {
 func (p *Parenthesis) GetTokens() []Node     { return p.Toks }
 func (p *Parenthesis) SetTokens(toks []Node) { p.Toks = toks }
 
+type Function struct {
+	Toks []Node
+}
+
+func (f *Function) String() string {
+	var strs []string
+	for _, t := range f.Toks {
+		strs = append(strs, t.String())
+	}
+	return strings.Join(strs, "")
+}
+func (f *Function) GetTokens() []Node     { return f.Toks }
+func (f *Function) SetTokens(toks []Node) { f.Toks = toks }
+
 type Where struct {
 	Toks []Node
 }

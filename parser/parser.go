@@ -104,6 +104,13 @@ func (wc *writeContext) mustToken() *ast.SQLToken {
 	return token
 }
 
+func (wc *writeContext) getPeekNode() ast.Node {
+	if !wc.hasNext() {
+		return nil
+	}
+	return wc.node.GetTokens()[wc.index]
+}
+
 func (wc *writeContext) getPeekToken() (*ast.SQLToken, error) {
 	if !wc.hasNext() {
 		return nil, errors.Errorf("EOF")
@@ -182,6 +189,7 @@ func (p *Parser) Parse() (ast.TokenList, error) {
 	root := p.root
 	root = parseStatement(newWriteContext(root))
 	root = parseParenthesis(newWriteContext(root))
+	root = parseFunctions(newWriteContext(root))
 	root = parseWhere(newWriteContext(root))
 	root = parsePeriod(newWriteContext(root))
 	root = parseIdentifier(newWriteContext(root))
@@ -271,7 +279,34 @@ func findParenthesisMatch(wc *writeContext, startTok ast.Node, startIndex uint) 
 // parseIf
 // parseFor
 // parseBegin
-// parseFunctions
+
+func parseFunctions(wc *writeContext) ast.TokenList {
+	var replaceNodes []ast.Node
+
+	for wc.nextNode() {
+		if wc.hasTokenList() {
+			list := wc.mustTokenList()
+			replaceNodes = append(replaceNodes, parseFunctions(newWriteContext(list)))
+			continue
+		}
+
+		tok := wc.mustToken()
+		if tok.MatchSQLKind(dialect.Matched) || tok.MatchSQLKind(dialect.Unmatched) {
+			peekNode := wc.getPeekNode()
+			if _, ok := peekNode.(*ast.Parenthesis); ok {
+				funcName := wc.curNode
+				wc.nextNode()
+				args := wc.curNode
+				funcNode := &ast.Function{Toks: []ast.Node{funcName, args}}
+				replaceNodes = append(replaceNodes, funcNode)
+				continue
+			}
+		}
+		replaceNodes = append(replaceNodes, wc.curNode)
+	}
+	wc.node.SetTokens(replaceNodes)
+	return wc.node
+}
 
 var WhereOpenKeyword = "WHERE"
 var WhereCloseKeywords = []string{
@@ -398,8 +433,11 @@ func parseIdentifier(wc *writeContext) ast.TokenList {
 // parseTzcasts
 // parseTyped_literal
 // parseOperator
-// parseComparison
-// parseAs
+
+func parseComparison(wc *writeContext) ast.TokenList {
+	// TODO add impl
+	return nil
+}
 
 // ast.Identifer,
 // ast.MemberIdentifer,

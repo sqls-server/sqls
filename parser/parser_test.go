@@ -280,6 +280,15 @@ func TestParseWhere_WithParenthesis(t *testing.T) {
 	testItem(t, parenthesis[10], ")")
 }
 
+func TestParseFunction(t *testing.T) {
+	input := `foo()`
+	stmts := parseInit(t, input)
+	testStatement(t, stmts[0], 1, input)
+
+	list := stmts[0].GetTokens()
+	testFunction(t, list[0], "foo()")
+}
+
 func TestParsePeriod_Double(t *testing.T) {
 	input := `a.*, b.id`
 	stmts := parseInit(t, input)
@@ -411,7 +420,7 @@ func testTokenList(t *testing.T, node ast.Node, length int) ast.TokenList {
 		t.Fatalf("invalid type want GetTokens got %T", node)
 	}
 	if length != len(list.GetTokens()) {
-		t.Errorf("Statements does not contain %d statements, got %d", length, len(list.GetTokens()))
+		t.Fatalf("Statements does not contain %d statements, got %d", length, len(list.GetTokens()))
 	}
 	return list
 }
@@ -464,6 +473,17 @@ func testParenthesis(t *testing.T, node ast.Node, expect string) {
 	_, ok := node.(*ast.Parenthesis)
 	if !ok {
 		t.Errorf("invalid type want Parenthesis got %T", node)
+	}
+	if expect != node.String() {
+		t.Errorf("expected %q, got %q", expect, node.String())
+	}
+}
+
+func testFunction(t *testing.T, node ast.Node, expect string) {
+	t.Helper()
+	_, ok := node.(*ast.Function)
+	if !ok {
+		t.Errorf("invalid type want Function got %T", node)
 	}
 	if expect != node.String() {
 		t.Errorf("expected %q, got %q", expect, node.String())
