@@ -15,14 +15,14 @@ type nodeWalkContext struct {
 	index   uint
 }
 
-func newWriteContext(list ast.TokenList) *nodeWalkContext {
+func newNodeWalkContext(list ast.TokenList) *nodeWalkContext {
 	ctx := &nodeWalkContext{
 		node: list,
 	}
 	return ctx
 }
 
-func newWriteContextWithIndex(list ast.TokenList, index uint) *nodeWalkContext {
+func newNodeWalkContextWithIndex(list ast.TokenList, index uint) *nodeWalkContext {
 	ctx := &nodeWalkContext{
 		node:  list,
 		index: index,
@@ -187,14 +187,14 @@ func NewParser(src io.Reader, d dialect.Dialect) (*Parser, error) {
 
 func (p *Parser) Parse() (ast.TokenList, error) {
 	root := p.root
-	root = parseStatement(newWriteContext(root))
-	root = parseParenthesis(newWriteContext(root))
-	root = parseFunctions(newWriteContext(root))
-	root = parseWhere(newWriteContext(root))
-	root = parsePeriod(newWriteContext(root))
-	root = parseIdentifier(newWriteContext(root))
-	root = parseOperator(newWriteContext(root))
-	root = parseAliased(newWriteContext(root))
+	root = parseStatement(newNodeWalkContext(root))
+	root = parseParenthesis(newNodeWalkContext(root))
+	root = parseFunctions(newNodeWalkContext(root))
+	root = parseWhere(newNodeWalkContext(root))
+	root = parsePeriod(newNodeWalkContext(root))
+	root = parseIdentifier(newNodeWalkContext(root))
+	root = parseOperator(newNodeWalkContext(root))
+	root = parseAliased(newNodeWalkContext(root))
 	return root, nil
 }
 
@@ -204,7 +204,7 @@ func parseStatement(ctx *nodeWalkContext) ast.TokenList {
 	for ctx.nextNode() {
 		if ctx.hasTokenList() {
 			list := ctx.mustTokenList()
-			replaceNodes = append(replaceNodes, parseStatement(newWriteContext(list)))
+			replaceNodes = append(replaceNodes, parseStatement(newNodeWalkContext(list)))
 			continue
 		}
 
@@ -232,13 +232,13 @@ func parseParenthesis(ctx *nodeWalkContext) ast.TokenList {
 	for ctx.nextNode() {
 		if ctx.hasTokenList() {
 			list := ctx.mustTokenList()
-			replaceNodes = append(replaceNodes, parseParenthesis(newWriteContext(list)))
+			replaceNodes = append(replaceNodes, parseParenthesis(newNodeWalkContext(list)))
 			continue
 		}
 
 		tok := ctx.mustToken()
 		if tok.MatchKind(token.LParen) {
-			newctx := newWriteContextWithIndex(ctx.node, ctx.index)
+			newctx := newNodeWalkContextWithIndex(ctx.node, ctx.index)
 			parenthesis := findParenthesisMatch(newctx, ctx.curNode, ctx.index)
 			if parenthesis != nil {
 				ctx = newctx
@@ -287,7 +287,7 @@ func parseFunctions(ctx *nodeWalkContext) ast.TokenList {
 	for ctx.nextNode() {
 		if ctx.hasTokenList() {
 			list := ctx.mustTokenList()
-			replaceNodes = append(replaceNodes, parseFunctions(newWriteContext(list)))
+			replaceNodes = append(replaceNodes, parseFunctions(newNodeWalkContext(list)))
 			continue
 		}
 
@@ -327,7 +327,7 @@ func parseWhere(ctx *nodeWalkContext) ast.TokenList {
 	for ctx.nextNode() {
 		if ctx.hasTokenList() {
 			list := ctx.mustTokenList()
-			replaceNodes = append(replaceNodes, parseWhere(newWriteContext(list)))
+			replaceNodes = append(replaceNodes, parseWhere(newNodeWalkContext(list)))
 			continue
 		}
 
@@ -375,7 +375,7 @@ func parsePeriod(ctx *nodeWalkContext) ast.TokenList {
 	for ctx.nextNode() {
 		if ctx.hasTokenList() {
 			list := ctx.mustTokenList()
-			replaceNodes = append(replaceNodes, parsePeriod(newWriteContext(list)))
+			replaceNodes = append(replaceNodes, parsePeriod(newNodeWalkContext(list)))
 			continue
 		}
 
@@ -413,7 +413,7 @@ func parseIdentifier(ctx *nodeWalkContext) ast.TokenList {
 				replaceNodes = append(replaceNodes, ctx.curNode)
 				continue
 			}
-			replaceNodes = append(replaceNodes, parseIdentifier(newWriteContext(list)))
+			replaceNodes = append(replaceNodes, parseIdentifier(newNodeWalkContext(list)))
 			continue
 		}
 
@@ -453,7 +453,7 @@ func parseOperator(ctx *nodeWalkContext) ast.TokenList {
 	for ctx.nextNode() {
 		if ctx.hasTokenList() {
 			list := ctx.mustTokenList()
-			replaceNodes = append(replaceNodes, parseOperator(newWriteContext(list)))
+			replaceNodes = append(replaceNodes, parseOperator(newNodeWalkContext(list)))
 			continue
 		}
 
@@ -475,7 +475,7 @@ func parseOperator(ctx *nodeWalkContext) ast.TokenList {
 			}
 			left := ctx.curNode
 			op := ctx.getPeekNode()
-			newCtx := newWriteContextWithIndex(ctx.node, ctx.index)
+			newCtx := newNodeWalkContextWithIndex(ctx.node, ctx.index)
 
 			newCtx.nextNode()
 			nextPTok, _ := newCtx.getPeekToken()
@@ -560,12 +560,12 @@ func parseAliased(ctx *nodeWalkContext) ast.TokenList {
 	for ctx.nextNode() {
 		if ctx.hasTokenList() {
 			list := ctx.mustTokenList()
-			replaceNodes = append(replaceNodes, parseAliased(newWriteContext(list)))
+			replaceNodes = append(replaceNodes, parseAliased(newNodeWalkContext(list)))
 			continue
 		}
 
 		if _, ok := ctx.curNode.(*ast.Identifer); ok {
-			newWC := newWriteContextWithIndex(ctx.node, ctx.index)
+			newWC := newNodeWalkContextWithIndex(ctx.node, ctx.index)
 			aliased := findAliasMatch(newWC, ctx.curNode, ctx.index)
 			if aliased != nil {
 				ctx = newWC
