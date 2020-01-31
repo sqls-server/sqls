@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/lighttiger2505/sqls/ast"
@@ -62,6 +63,26 @@ func (f *finder) isMatchKeyword(tok *ast.SQLToken) bool {
 	return false
 }
 
+func (f *finder) isMatch(node ast.Node) bool {
+	// For node object
+	if f.isMatchNodeType(node) {
+		return true
+	}
+	if _, ok := node.(ast.TokenList); ok {
+		return false
+	}
+	// For token object
+	tok, ok := node.(ast.Token)
+	if !ok {
+		panic(fmt.Sprintf("invalid type. not has Token, got=(type: %T, value: %#v)", node, node.String()))
+	}
+	sqlTok := tok.GetToken()
+	if f.isMatchTokens(sqlTok) || f.isMatchSQLType(sqlTok) || f.isMatchKeyword(sqlTok) {
+		return true
+	}
+	return false
+}
+
 type nodeWalkContext struct {
 	node    ast.TokenList
 	curNode ast.Node
@@ -69,18 +90,16 @@ type nodeWalkContext struct {
 }
 
 func newNodeWalkContext(list ast.TokenList) *nodeWalkContext {
-	ctx := &nodeWalkContext{
+	return &nodeWalkContext{
 		node: list,
 	}
-	return ctx
 }
 
-func newNodeWalkContextWithIndex(list ast.TokenList, index uint) *nodeWalkContext {
-	ctx := &nodeWalkContext{
-		node:  list,
-		index: index,
+func (ctx *nodeWalkContext) copyContext() *nodeWalkContext {
+	return &nodeWalkContext{
+		node:  ctx.node,
+		index: ctx.index,
 	}
-	return ctx
 }
 
 func (ctx *nodeWalkContext) nodesWithRange(startIndex, endIndex uint) []ast.Node {
@@ -121,39 +140,51 @@ func (ctx *nodeWalkContext) nextNode() bool {
 	return true
 }
 
+func (ctx *nodeWalkContext) nextNodeIgnoreWhitespace() bool {
+	for ctx.nextNode() {
+		if !isWhitespace(ctx.curNode) {
+			return true
+		}
+	}
+	return false
+}
+
+func isWhitespace(node ast.Node) bool {
+	tok, ok := node.(ast.Token)
+	if !ok {
+		panic(fmt.Sprintf("invalid type. not has Token, got=(type: %T, value: %#v)", node, node.String()))
+	}
+	if tok.GetToken().MatchKind(token.Whitespace) {
+		return true
+	}
+	return false
+}
+
 func (ctx *nodeWalkContext) curNodeIs(fd finder) (uint, ast.Node) {
-	index := ctx.index
+	index := ctx.index - 1
 	node := ctx.curNode
 	if node != nil {
-		return 0, nil
-	}
-	// For node object
-	if fd.isMatchNodeType(node) {
-		return index, node
-	}
-	// For token object
-	tok, _ := ctx.curNode.(ast.Token)
-	sqlTok := tok.GetToken()
-	if fd.isMatchTokens(sqlTok) || fd.isMatchSQLType(sqlTok) || fd.isMatchSQLType(sqlTok) {
-		return index, node
+		if fd.isMatch(node) {
+			return index, node
+		}
 	}
 	return 0, nil
 }
 
 func (ctx *nodeWalkContext) peekNode(ignoreWhiteSpace bool) (uint, ast.Node) {
-	newCtx := newNodeWalkContextWithIndex(ctx.node, ctx.index)
+	newCtx := ctx.copyContext()
 	for newCtx.hasNext() {
+		index := newCtx.index
+		node := newCtx.node.GetTokens()[index]
+
+		if _, ok := node.(ast.TokenList); ok {
+			return index, node
+		}
+
+		if ignoreWhiteSpace && !isWhitespace(node) {
+			return index, node
+		}
 		newCtx.nextNode()
-		node := newCtx.node.GetTokens()[newCtx.index]
-
-		if newCtx.hasTokenList() {
-			return newCtx.index, node
-		}
-
-		tok, _ := newCtx.curNode.(ast.Token)
-		if ignoreWhiteSpace && !tok.GetToken().MatchKind(token.Whitespace) {
-			return newCtx.index, node
-		}
 	}
 	return 0, nil
 }
@@ -161,23 +192,15 @@ func (ctx *nodeWalkContext) peekNode(ignoreWhiteSpace bool) (uint, ast.Node) {
 func (ctx *nodeWalkContext) peekNodeIs(ignoreWhiteSpace bool, fd finder) (uint, ast.Node) {
 	index, node := ctx.peekNode(ignoreWhiteSpace)
 	if node != nil {
-		return 0, nil
-	}
-	// For node object
-	if fd.isMatchNodeType(node) {
-		return index, node
-	}
-	// For token object
-	tok, _ := ctx.curNode.(ast.Token)
-	sqlTok := tok.GetToken()
-	if fd.isMatchTokens(sqlTok) || fd.isMatchSQLType(sqlTok) || fd.isMatchSQLType(sqlTok) {
-		return index, node
+		if fd.isMatch(node) {
+			return index, node
+		}
 	}
 	return 0, nil
 }
 
 func (ctx *nodeWalkContext) findNode(fd finder) (uint, ast.Node) {
-	newCtx := newNodeWalkContextWithIndex(ctx.node, ctx.index)
+	newCtx := ctx.copyContext()
 	for newCtx.hasNext() {
 		newCtx.nextNode()
 		node := newCtx.node.GetTokens()[newCtx.index]
@@ -192,7 +215,7 @@ func (ctx *nodeWalkContext) findNode(fd finder) (uint, ast.Node) {
 		// For token object
 		tok, _ := ctx.curNode.(ast.Token)
 		sqlTok := tok.GetToken()
-		if fd.isMatchTokens(sqlTok) || fd.isMatchSQLType(sqlTok) || fd.isMatchSQLType(sqlTok) {
+		if fd.isMatchTokens(sqlTok) || fd.isMatchSQLType(sqlTok) || fd.isMatchKeyword(sqlTok) {
 			return newCtx.index, node
 		}
 	}
@@ -369,7 +392,7 @@ func parseParenthesis(ctx *nodeWalkContext) ast.TokenList {
 
 		tok := ctx.mustToken()
 		if tok.MatchKind(token.LParen) {
-			newctx := newNodeWalkContextWithIndex(ctx.node, ctx.index)
+			newctx := ctx.copyContext()
 			parenthesis := findParenthesisMatch(newctx, ctx.curNode, ctx.index)
 			if parenthesis != nil {
 				ctx = newctx
@@ -510,21 +533,20 @@ func parsePeriod(ctx *nodeWalkContext) ast.TokenList {
 			continue
 		}
 
-		tok := ctx.mustToken()
 		if ctx.peekTokenMatchKind(token.Period) {
-			memberIdentifer := &ast.MemberIdentifer{
-				Parent: tok,
-			}
+			parent := ctx.curNode
 			ctx.nextNode()
-			period := ctx.mustToken()
-			memberIdentifer.Period = period
+			period := ctx.curNode
 
 			if ctx.peekTokenMatchSQLKind(dialect.Unmatched) || ctx.peekTokenMatchKind(token.Mult) {
 				ctx.nextNode()
-				child := ctx.mustToken()
-				memberIdentifer.Child = child
+				child := ctx.curNode
+				memberIdentifer := &ast.MemberIdentifer{Toks: []ast.Node{parent, period, child}}
+				replaceNodes = append(replaceNodes, memberIdentifer)
+			} else {
+				memberIdentifer := &ast.MemberIdentifer{Toks: []ast.Node{parent, period}}
+				replaceNodes = append(replaceNodes, memberIdentifer)
 			}
-			replaceNodes = append(replaceNodes, memberIdentifer)
 		} else {
 			replaceNodes = append(replaceNodes, ctx.curNode)
 		}
@@ -616,44 +638,30 @@ func parseOperator(ctx *nodeWalkContext) ast.TokenList {
 			continue
 		}
 
-		tok, err := ctx.getToken()
-		if err != nil {
-			// FIXME workaround
-			continue
-		}
-
-		if !isMatchKindOfOpeTarget(tok) && !isMatchOperatorNodeType(ctx.curNode) {
-			replaceNodes = append(replaceNodes, ctx.curNode)
-			continue
-		}
-		ptok, _ := ctx.getPeekToken()
-		if ptok != nil {
-			if !isMatchKindOfOperator(ptok) {
+		_, ope := ctx.peekNodeIs(true, operatorFinder)
+		if ope != nil {
+			startIndex, left := ctx.curNodeIs(operatorTargetFinder)
+			if left == nil {
 				replaceNodes = append(replaceNodes, ctx.curNode)
 				continue
 			}
-			left := ctx.curNode
-			op := ctx.getPeekNode()
-			newCtx := newNodeWalkContextWithIndex(ctx.node, ctx.index)
+			tmpCtx := ctx.copyContext()
+			tmpCtx.nextNodeIgnoreWhitespace()
 
-			newCtx.nextNode()
-			nextPTok, _ := newCtx.getPeekToken()
-			if !isMatchKindOfOpeTarget(nextPTok) && !isMatchOperatorNodeType(newCtx.getPeekNode()) {
+			endIndex, right := tmpCtx.peekNodeIs(true, operatorTargetFinder)
+			if right == nil {
 				replaceNodes = append(replaceNodes, ctx.curNode)
 				continue
 			}
-			right := newCtx.getPeekNode()
-			newCtx.nextNode()
-			newCtx.nextNode()
-			ctx = newCtx
+			tmpCtx.nextNodeIgnoreWhitespace()
+			tmpCtx.nextNodeIgnoreWhitespace()
+			ctx = tmpCtx
 
-			operator := &ast.Operator{}
-			operator.SetTokens([]ast.Node{left, op, right})
+			operator := &ast.Operator{Toks: ctx.nodesWithRange(startIndex, endIndex+1)}
 			replaceNodes = append(replaceNodes, operator)
 		} else {
 			replaceNodes = append(replaceNodes, ctx.curNode)
 		}
-
 	}
 	ctx.node.SetTokens(replaceNodes)
 	return ctx.node
@@ -724,7 +732,7 @@ func parseAliased(ctx *nodeWalkContext) ast.TokenList {
 		}
 
 		if _, ok := ctx.curNode.(*ast.Identifer); ok {
-			newWC := newNodeWalkContextWithIndex(ctx.node, ctx.index)
+			newWC := ctx.copyContext()
 			aliased := findAliasMatch(newWC, ctx.curNode, ctx.index)
 			if aliased != nil {
 				ctx = newWC

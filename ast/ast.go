@@ -33,26 +33,18 @@ func (i *Item) String() string      { return i.Tok.String() }
 func (i *Item) GetToken() *SQLToken { return i.Tok }
 
 type MemberIdentifer struct {
-	Parent *SQLToken
-	Period *SQLToken
-	Child  *SQLToken
+	Toks []Node
 }
 
 func (mi *MemberIdentifer) String() string {
-	res := mi.Parent.String() + mi.Period.String()
-	if mi.Child != nil {
-		res = res + mi.Child.String()
+	var strs []string
+	for _, t := range mi.Toks {
+		strs = append(strs, t.String())
 	}
-	return res
+	return strings.Join(strs, "")
 }
-func (mi *MemberIdentifer) GetTokens() []Node {
-	res := []Node{mi.Parent, mi.Period}
-	if mi.Child != nil {
-		res = append(res, mi.Child)
-	}
-	return res
-}
-func (mi *MemberIdentifer) SetTokens(toks []Node) {}
+func (mi *MemberIdentifer) GetTokens() []Node     { return mi.Toks }
+func (mi *MemberIdentifer) SetTokens(toks []Node) { mi.Toks = toks }
 
 type Aliased struct {
 	Toks []Node

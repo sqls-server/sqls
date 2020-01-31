@@ -375,13 +375,27 @@ func TestParseIdentifier(t *testing.T) {
 }
 
 func TestParseOperator(t *testing.T) {
-	// 'foo+100', 'foo + 100', 'foo*100'
-	input := `foo+100`
-	stmts := parseInit(t, input)
-	testStatement(t, stmts[0], 1, input)
+	var input string
+	var stmts []*ast.Statement
+	var list []ast.Node
 
-	list := stmts[0].GetTokens()
-	testOperator(t, list[0], "foo+100")
+	input = "foo+100"
+	stmts = parseInit(t, input)
+	testStatement(t, stmts[0], 1, input)
+	list = stmts[0].GetTokens()
+	testOperator(t, list[0], input)
+
+	input = "foo + 100"
+	stmts = parseInit(t, input)
+	testStatement(t, stmts[0], 1, input)
+	list = stmts[0].GetTokens()
+	testOperator(t, list[0], input)
+
+	input = "foo*100"
+	stmts = parseInit(t, input)
+	testStatement(t, stmts[0], 1, input)
+	list = stmts[0].GetTokens()
+	testOperator(t, list[0], input)
 }
 
 // func TestParseComparison(t *testing.T) {
