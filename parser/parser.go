@@ -140,13 +140,17 @@ func (ctx *nodeWalkContext) nextNode() bool {
 	return true
 }
 
-func (ctx *nodeWalkContext) nextNodeIgnoreWhitespace() bool {
-	for ctx.nextNode() {
-		if !isWhitespace(ctx.curNode) {
-			return true
-		}
+func (ctx *nodeWalkContext) nextNodeIgnoreWhitespace(ignoreWiteSpace bool) bool {
+	if !ctx.hasNext() {
+		return false
 	}
-	return false
+	ctx.curNode = ctx.node.GetTokens()[ctx.index]
+	ctx.index++
+
+	if ignoreWiteSpace && isWhitespace(ctx.curNode) {
+		return ctx.nextNodeIgnoreWhitespace(ignoreWiteSpace)
+	}
+	return true
 }
 
 func isWhitespace(node ast.Node) bool {
@@ -631,7 +635,7 @@ var operatorTargetFinder = finder{
 func parseOperator(ctx *nodeWalkContext) ast.TokenList {
 	var replaceNodes []ast.Node
 
-	for ctx.nextNode() {
+	for ctx.nextNodeIgnoreWhitespace(false) {
 		if ctx.hasTokenList() {
 			list := ctx.mustTokenList()
 			replaceNodes = append(replaceNodes, parseOperator(newNodeWalkContext(list)))
@@ -646,15 +650,15 @@ func parseOperator(ctx *nodeWalkContext) ast.TokenList {
 				continue
 			}
 			tmpCtx := ctx.copyContext()
-			tmpCtx.nextNodeIgnoreWhitespace()
+			tmpCtx.nextNodeIgnoreWhitespace(true)
 
 			endIndex, right := tmpCtx.peekNodeIs(true, operatorTargetFinder)
 			if right == nil {
 				replaceNodes = append(replaceNodes, ctx.curNode)
 				continue
 			}
-			tmpCtx.nextNodeIgnoreWhitespace()
-			tmpCtx.nextNodeIgnoreWhitespace()
+			tmpCtx.nextNodeIgnoreWhitespace(true)
+			tmpCtx.nextNodeIgnoreWhitespace(true)
 			ctx = tmpCtx
 
 			operator := &ast.Operator{Toks: ctx.nodesWithRange(startIndex, endIndex+1)}
