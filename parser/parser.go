@@ -10,37 +10,37 @@ import (
 	"github.com/pkg/errors"
 )
 
-type writeContext struct {
+type nodeWalkContext struct {
 	node    ast.TokenList
 	curNode ast.Node
 	index   uint
 }
 
-func newWriteContext(list ast.TokenList) *writeContext {
-	wc := &writeContext{
+func newWriteContext(list ast.TokenList) *nodeWalkContext {
+	ctx := &nodeWalkContext{
 		node: list,
 	}
-	return wc
+	return ctx
 }
 
-func newWriteContextWithIndex(list ast.TokenList, index uint) *writeContext {
-	wc := &writeContext{
+func newWriteContextWithIndex(list ast.TokenList, index uint) *nodeWalkContext {
+	ctx := &nodeWalkContext{
 		node:  list,
 		index: index,
 	}
-	return wc
+	return ctx
 }
 
-func (wc *writeContext) nodesWithRange(startIndex, endIndex uint) []ast.Node {
-	return wc.node.GetTokens()[startIndex:endIndex]
+func (ctx *nodeWalkContext) nodesWithRange(startIndex, endIndex uint) []ast.Node {
+	return ctx.node.GetTokens()[startIndex:endIndex]
 }
 
-func (wc *writeContext) replaceIndex(add ast.Node, index uint) {
-	wc.node.GetTokens()[index] = add
+func (ctx *nodeWalkContext) replaceIndex(add ast.Node, index uint) {
+	ctx.node.GetTokens()[index] = add
 }
 
-func (wc *writeContext) replace(add ast.Node, startIndex, endIndex uint) {
-	oldList := wc.node.GetTokens()
+func (ctx *nodeWalkContext) replace(add ast.Node, startIndex, endIndex uint) {
+	oldList := ctx.node.GetTokens()
 
 	start := oldList[:startIndex]
 	end := oldList[endIndex:]
@@ -49,106 +49,106 @@ func (wc *writeContext) replace(add ast.Node, startIndex, endIndex uint) {
 	out = append(out, start...)
 	out = append(out, add)
 	out = append(out, end...)
-	wc.node.SetTokens(out)
+	ctx.node.SetTokens(out)
 
 	offset := (endIndex - startIndex)
-	wc.index = wc.index - uint(offset)
-	wc.nextNode()
+	ctx.index = ctx.index - uint(offset)
+	ctx.nextNode()
 }
 
-func (wc *writeContext) hasNext() bool {
-	return wc.index < uint(len(wc.node.GetTokens()))
+func (ctx *nodeWalkContext) hasNext() bool {
+	return ctx.index < uint(len(ctx.node.GetTokens()))
 }
 
-func (wc *writeContext) nextNode() bool {
-	if !wc.hasNext() {
+func (ctx *nodeWalkContext) nextNode() bool {
+	if !ctx.hasNext() {
 		return false
 	}
-	wc.curNode = wc.node.GetTokens()[wc.index]
-	wc.index++
+	ctx.curNode = ctx.node.GetTokens()[ctx.index]
+	ctx.index++
 	return true
 }
 
-func (wc *writeContext) hasTokenList() bool {
-	_, ok := wc.curNode.(ast.TokenList)
+func (ctx *nodeWalkContext) hasTokenList() bool {
+	_, ok := ctx.curNode.(ast.TokenList)
 	return ok
 }
 
-func (wc *writeContext) getTokenList() (ast.TokenList, error) {
-	if !wc.hasTokenList() {
-		return nil, errors.Errorf("want TokenList got %T", wc.curNode)
+func (ctx *nodeWalkContext) getTokenList() (ast.TokenList, error) {
+	if !ctx.hasTokenList() {
+		return nil, errors.Errorf("want TokenList got %T", ctx.curNode)
 	}
-	children, _ := wc.curNode.(ast.TokenList)
+	children, _ := ctx.curNode.(ast.TokenList)
 	return children, nil
 }
 
-func (wc *writeContext) mustTokenList() ast.TokenList {
-	children, _ := wc.getTokenList()
+func (ctx *nodeWalkContext) mustTokenList() ast.TokenList {
+	children, _ := ctx.getTokenList()
 	return children
 }
 
-func (wc *writeContext) hasToken() bool {
-	_, ok := wc.curNode.(ast.Token)
+func (ctx *nodeWalkContext) hasToken() bool {
+	_, ok := ctx.curNode.(ast.Token)
 	return ok
 }
 
-func (wc *writeContext) getToken() (*ast.SQLToken, error) {
-	if !wc.hasToken() {
-		return nil, errors.Errorf("want Token got %T", wc.curNode)
+func (ctx *nodeWalkContext) getToken() (*ast.SQLToken, error) {
+	if !ctx.hasToken() {
+		return nil, errors.Errorf("want Token got %T", ctx.curNode)
 	}
-	token, _ := wc.curNode.(ast.Token)
+	token, _ := ctx.curNode.(ast.Token)
 	return token.GetToken(), nil
 }
 
-func (wc *writeContext) mustToken() *ast.SQLToken {
-	token, _ := wc.getToken()
+func (ctx *nodeWalkContext) mustToken() *ast.SQLToken {
+	token, _ := ctx.getToken()
 	return token
 }
 
-func (wc *writeContext) getPeekNode() ast.Node {
-	if !wc.hasNext() {
+func (ctx *nodeWalkContext) getPeekNode() ast.Node {
+	if !ctx.hasNext() {
 		return nil
 	}
-	return wc.node.GetTokens()[wc.index]
+	return ctx.node.GetTokens()[ctx.index]
 }
 
-func (wc *writeContext) getPeekToken() (*ast.SQLToken, error) {
-	if !wc.hasNext() {
+func (ctx *nodeWalkContext) getPeekToken() (*ast.SQLToken, error) {
+	if !ctx.hasNext() {
 		return nil, errors.Errorf("EOF")
 	}
-	tok, ok := wc.node.GetTokens()[wc.index].(ast.Token)
+	tok, ok := ctx.node.GetTokens()[ctx.index].(ast.Token)
 	if !ok {
-		return nil, errors.Errorf("want Token got %T", wc.curNode)
+		return nil, errors.Errorf("want Token got %T", ctx.curNode)
 	}
 	return tok.GetToken(), nil
 }
 
-func (wc *writeContext) peekTokenMatchKind(expect token.Kind) bool {
-	token, err := wc.getPeekToken()
+func (ctx *nodeWalkContext) peekTokenMatchKind(expect token.Kind) bool {
+	token, err := ctx.getPeekToken()
 	if err != nil {
 		return false
 	}
 	return token.MatchKind(expect)
 }
 
-func (wc *writeContext) peekTokenMatchSQLKind(expect dialect.KeywordKind) bool {
-	token, err := wc.getPeekToken()
+func (ctx *nodeWalkContext) peekTokenMatchSQLKind(expect dialect.KeywordKind) bool {
+	token, err := ctx.getPeekToken()
 	if err != nil {
 		return false
 	}
 	return token.MatchSQLKind(expect)
 }
 
-func (wc *writeContext) peekTokenMatchSQLKeyword(expect string) bool {
-	token, err := wc.getPeekToken()
+func (ctx *nodeWalkContext) peekTokenMatchSQLKeyword(expect string) bool {
+	token, err := ctx.getPeekToken()
 	if err != nil {
 		return false
 	}
 	return token.MatchSQLKeyword(expect)
 }
 
-func (wc *writeContext) peekTokenMatchSQLKeywords(expects []string) bool {
-	token, err := wc.getPeekToken()
+func (ctx *nodeWalkContext) peekTokenMatchSQLKeywords(expects []string) bool {
+	token, err := ctx.getPeekToken()
 	if err != nil {
 		return false
 	}
@@ -199,79 +199,79 @@ func (p *Parser) Parse() (ast.TokenList, error) {
 	return root, nil
 }
 
-func parseStatement(wc *writeContext) ast.TokenList {
+func parseStatement(ctx *nodeWalkContext) ast.TokenList {
 	var replaceNodes []ast.Node
 	var startIndex uint
-	for wc.nextNode() {
-		if wc.hasTokenList() {
-			list := wc.mustTokenList()
+	for ctx.nextNode() {
+		if ctx.hasTokenList() {
+			list := ctx.mustTokenList()
 			replaceNodes = append(replaceNodes, parseStatement(newWriteContext(list)))
 			continue
 		}
 
-		tok := wc.mustToken()
+		tok := ctx.mustToken()
 		if tok.MatchKind(token.Semicolon) {
-			stmt := &ast.Statement{Toks: wc.nodesWithRange(startIndex, wc.index)}
+			stmt := &ast.Statement{Toks: ctx.nodesWithRange(startIndex, ctx.index)}
 			replaceNodes = append(replaceNodes, stmt)
-			startIndex = wc.index
+			startIndex = ctx.index
 		}
 	}
-	if wc.index != startIndex {
-		stmt := &ast.Statement{Toks: wc.nodesWithRange(startIndex, wc.index)}
+	if ctx.index != startIndex {
+		stmt := &ast.Statement{Toks: ctx.nodesWithRange(startIndex, ctx.index)}
 		replaceNodes = append(replaceNodes, stmt)
 	}
-	wc.node.SetTokens(replaceNodes)
-	return wc.node
+	ctx.node.SetTokens(replaceNodes)
+	return ctx.node
 }
 
 // parseComments
 // parseBrackets
 
-func parseParenthesis(wc *writeContext) ast.TokenList {
+func parseParenthesis(ctx *nodeWalkContext) ast.TokenList {
 	var replaceNodes []ast.Node
 
-	for wc.nextNode() {
-		if wc.hasTokenList() {
-			list := wc.mustTokenList()
+	for ctx.nextNode() {
+		if ctx.hasTokenList() {
+			list := ctx.mustTokenList()
 			replaceNodes = append(replaceNodes, parseParenthesis(newWriteContext(list)))
 			continue
 		}
 
-		tok := wc.mustToken()
+		tok := ctx.mustToken()
 		if tok.MatchKind(token.LParen) {
-			newWC := newWriteContextWithIndex(wc.node, wc.index)
-			parenthesis := findParenthesisMatch(newWC, wc.curNode, wc.index)
+			newctx := newWriteContextWithIndex(ctx.node, ctx.index)
+			parenthesis := findParenthesisMatch(newctx, ctx.curNode, ctx.index)
 			if parenthesis != nil {
-				wc = newWC
+				ctx = newctx
 				replaceNodes = append(replaceNodes, parenthesis)
 			} else {
-				replaceNodes = append(replaceNodes, wc.curNode)
+				replaceNodes = append(replaceNodes, ctx.curNode)
 			}
 		} else {
-			replaceNodes = append(replaceNodes, wc.curNode)
+			replaceNodes = append(replaceNodes, ctx.curNode)
 		}
 	}
-	wc.node.SetTokens(replaceNodes)
-	return wc.node
+	ctx.node.SetTokens(replaceNodes)
+	return ctx.node
 }
 
-func findParenthesisMatch(wc *writeContext, startTok ast.Node, startIndex uint) ast.Node {
+func findParenthesisMatch(ctx *nodeWalkContext, startTok ast.Node, startIndex uint) ast.Node {
 	var nodes []ast.Node
 	nodes = append(nodes, startTok)
-	for wc.nextNode() {
-		if wc.hasTokenList() {
+	for ctx.nextNode() {
+		if ctx.hasTokenList() {
 			continue
 		}
 
-		tok := wc.mustToken()
+		tok := ctx.mustToken()
 		if tok.MatchKind(token.LParen) {
-			group := findParenthesisMatch(wc, wc.curNode, wc.index)
+			group := findParenthesisMatch(ctx, ctx.curNode, ctx.index)
 			nodes = append(nodes, group)
 		} else if tok.MatchKind(token.RParen) {
-			nodes = append(nodes, wc.curNode)
+			nodes = append(nodes, ctx.curNode)
 			return &ast.Parenthesis{Toks: nodes}
 		} else {
-			nodes = append(nodes, wc.curNode)
+			nodes = append(nodes, ctx.curNode)
 		}
 	}
 	return nil
@@ -282,32 +282,32 @@ func findParenthesisMatch(wc *writeContext, startTok ast.Node, startIndex uint) 
 // parseFor
 // parseBegin
 
-func parseFunctions(wc *writeContext) ast.TokenList {
+func parseFunctions(ctx *nodeWalkContext) ast.TokenList {
 	var replaceNodes []ast.Node
 
-	for wc.nextNode() {
-		if wc.hasTokenList() {
-			list := wc.mustTokenList()
+	for ctx.nextNode() {
+		if ctx.hasTokenList() {
+			list := ctx.mustTokenList()
 			replaceNodes = append(replaceNodes, parseFunctions(newWriteContext(list)))
 			continue
 		}
 
-		tok := wc.mustToken()
+		tok := ctx.mustToken()
 		if tok.MatchSQLKind(dialect.Matched) || tok.MatchSQLKind(dialect.Unmatched) {
-			peekNode := wc.getPeekNode()
+			peekNode := ctx.getPeekNode()
 			if _, ok := peekNode.(*ast.Parenthesis); ok {
-				funcName := wc.curNode
-				wc.nextNode()
-				args := wc.curNode
+				funcName := ctx.curNode
+				ctx.nextNode()
+				args := ctx.curNode
 				funcNode := &ast.Function{Toks: []ast.Node{funcName, args}}
 				replaceNodes = append(replaceNodes, funcNode)
 				continue
 			}
 		}
-		replaceNodes = append(replaceNodes, wc.curNode)
+		replaceNodes = append(replaceNodes, ctx.curNode)
 	}
-	wc.node.SetTokens(replaceNodes)
-	return wc.node
+	ctx.node.SetTokens(replaceNodes)
+	return ctx.node
 }
 
 var WhereOpenKeyword = "WHERE"
@@ -322,112 +322,112 @@ var WhereCloseKeywords = []string{
 	"INTO",
 }
 
-func parseWhere(wc *writeContext) ast.TokenList {
+func parseWhere(ctx *nodeWalkContext) ast.TokenList {
 	var replaceNodes []ast.Node
 
-	for wc.nextNode() {
-		if wc.hasTokenList() {
-			list := wc.mustTokenList()
+	for ctx.nextNode() {
+		if ctx.hasTokenList() {
+			list := ctx.mustTokenList()
 			replaceNodes = append(replaceNodes, parseWhere(newWriteContext(list)))
 			continue
 		}
 
-		tok := wc.mustToken()
+		tok := ctx.mustToken()
 		if tok.MatchSQLKeyword(WhereOpenKeyword) {
-			where := findWhereMatch(wc, wc.curNode, wc.index)
+			where := findWhereMatch(ctx, ctx.curNode, ctx.index)
 			if where != nil {
 				replaceNodes = append(replaceNodes, where)
 			}
 		} else {
-			replaceNodes = append(replaceNodes, wc.curNode)
+			replaceNodes = append(replaceNodes, ctx.curNode)
 		}
 	}
-	wc.node.SetTokens(replaceNodes)
-	return wc.node
+	ctx.node.SetTokens(replaceNodes)
+	return ctx.node
 }
 
-func findWhereMatch(wc *writeContext, startTok ast.Node, startIndex uint) ast.Node {
+func findWhereMatch(ctx *nodeWalkContext, startTok ast.Node, startIndex uint) ast.Node {
 	var nodes []ast.Node
 	nodes = append(nodes, startTok)
-	for wc.nextNode() {
-		if wc.hasTokenList() {
+	for ctx.nextNode() {
+		if ctx.hasTokenList() {
 			continue
 		}
 
-		tok := wc.mustToken()
+		tok := ctx.mustToken()
 		if tok.MatchSQLKeyword(WhereOpenKeyword) {
-			group := findWhereMatch(wc, wc.curNode, wc.index)
+			group := findWhereMatch(ctx, ctx.curNode, ctx.index)
 			nodes = append(nodes, group)
-		} else if wc.peekTokenMatchSQLKeywords(WhereCloseKeywords) {
-			nodes = append(nodes, wc.curNode)
+		} else if ctx.peekTokenMatchSQLKeywords(WhereCloseKeywords) {
+			nodes = append(nodes, ctx.curNode)
 			return &ast.Where{Toks: nodes}
 		} else {
-			nodes = append(nodes, wc.curNode)
+			nodes = append(nodes, ctx.curNode)
 		}
-		if wc.peekTokenMatchKind(token.RParen) {
+		if ctx.peekTokenMatchKind(token.RParen) {
 			break
 		}
 	}
 	return &ast.Where{Toks: nodes}
 }
 
-func parsePeriod(wc *writeContext) ast.TokenList {
+func parsePeriod(ctx *nodeWalkContext) ast.TokenList {
 	var replaceNodes []ast.Node
-	for wc.nextNode() {
-		if wc.hasTokenList() {
-			list := wc.mustTokenList()
+	for ctx.nextNode() {
+		if ctx.hasTokenList() {
+			list := ctx.mustTokenList()
 			replaceNodes = append(replaceNodes, parsePeriod(newWriteContext(list)))
 			continue
 		}
 
-		tok := wc.mustToken()
-		if wc.peekTokenMatchKind(token.Period) {
+		tok := ctx.mustToken()
+		if ctx.peekTokenMatchKind(token.Period) {
 			memberIdentifer := &ast.MemberIdentifer{
 				Parent: tok,
 			}
-			wc.nextNode()
-			period := wc.mustToken()
+			ctx.nextNode()
+			period := ctx.mustToken()
 			memberIdentifer.Period = period
 
-			if wc.peekTokenMatchSQLKind(dialect.Unmatched) || wc.peekTokenMatchKind(token.Mult) {
-				wc.nextNode()
-				child := wc.mustToken()
+			if ctx.peekTokenMatchSQLKind(dialect.Unmatched) || ctx.peekTokenMatchKind(token.Mult) {
+				ctx.nextNode()
+				child := ctx.mustToken()
 				memberIdentifer.Child = child
 			}
 			replaceNodes = append(replaceNodes, memberIdentifer)
 		} else {
-			replaceNodes = append(replaceNodes, wc.curNode)
+			replaceNodes = append(replaceNodes, ctx.curNode)
 		}
 	}
-	wc.node.SetTokens(replaceNodes)
-	return wc.node
+	ctx.node.SetTokens(replaceNodes)
+	return ctx.node
 }
 
 // parseArrays
 
-func parseIdentifier(wc *writeContext) ast.TokenList {
+func parseIdentifier(ctx *nodeWalkContext) ast.TokenList {
 	var replaceNodes []ast.Node
-	for wc.nextNode() {
-		if wc.hasTokenList() {
-			list := wc.mustTokenList()
+	for ctx.nextNode() {
+		if ctx.hasTokenList() {
+			list := ctx.mustTokenList()
 			if _, ok := list.(*ast.MemberIdentifer); ok {
-				replaceNodes = append(replaceNodes, wc.curNode)
+				replaceNodes = append(replaceNodes, ctx.curNode)
 				continue
 			}
 			replaceNodes = append(replaceNodes, parseIdentifier(newWriteContext(list)))
 			continue
 		}
 
-		tok := wc.mustToken()
+		tok := ctx.mustToken()
 		if tok.MatchSQLKind(dialect.Unmatched) {
 			identifer := &ast.Identifer{Tok: tok}
 			replaceNodes = append(replaceNodes, identifer)
 		} else {
-			replaceNodes = append(replaceNodes, wc.curNode)
+			replaceNodes = append(replaceNodes, ctx.curNode)
 		}
 	}
-	wc.node.SetTokens(replaceNodes)
-	return wc.node
+	ctx.node.SetTokens(replaceNodes)
+	return ctx.node
 }
 
 // parseOrder
@@ -448,61 +448,61 @@ var comparisons = []token.Kind{
 	token.GtEq,
 }
 
-func parseOperator(wc *writeContext) ast.TokenList {
+func parseOperator(ctx *nodeWalkContext) ast.TokenList {
 	var replaceNodes []ast.Node
 
-	for wc.nextNode() {
-		fmt.Println(wc.curNode)
-		if wc.hasTokenList() {
-			list := wc.mustTokenList()
+	for ctx.nextNode() {
+		fmt.Println(ctx.curNode)
+		if ctx.hasTokenList() {
+			list := ctx.mustTokenList()
 			replaceNodes = append(replaceNodes, parseOperator(newWriteContext(list)))
 			continue
 		}
 
-		tok, err := wc.getToken()
+		tok, err := ctx.getToken()
 		if err != nil {
 			// FIXME workaround
 			continue
 		}
 
-		if !isMatchKindOfOpeTarget(tok) && !isMatchOperatorNodeType(wc.curNode) {
+		if !isMatchKindOfOpeTarget(tok) && !isMatchOperatorNodeType(ctx.curNode) {
 			fmt.Println("not match left")
-			replaceNodes = append(replaceNodes, wc.curNode)
+			replaceNodes = append(replaceNodes, ctx.curNode)
 			continue
 		}
-		ptok, _ := wc.getPeekToken()
+		ptok, _ := ctx.getPeekToken()
 		if ptok != nil {
 			if !isMatchKindOfOperator(ptok) {
 				fmt.Println("not match ope")
-				replaceNodes = append(replaceNodes, wc.curNode)
+				replaceNodes = append(replaceNodes, ctx.curNode)
 				continue
 			}
-			left := wc.curNode
-			op := wc.getPeekNode()
-			newWC := newWriteContextWithIndex(wc.node, wc.index)
+			left := ctx.curNode
+			op := ctx.getPeekNode()
+			newCtx := newWriteContextWithIndex(ctx.node, ctx.index)
 
-			newWC.nextNode()
-			nextPTok, _ := newWC.getPeekToken()
-			if !isMatchKindOfOpeTarget(nextPTok) && !isMatchOperatorNodeType(newWC.getPeekNode()) {
+			newCtx.nextNode()
+			nextPTok, _ := newCtx.getPeekToken()
+			if !isMatchKindOfOpeTarget(nextPTok) && !isMatchOperatorNodeType(newCtx.getPeekNode()) {
 				fmt.Println("not match write")
-				replaceNodes = append(replaceNodes, wc.curNode)
+				replaceNodes = append(replaceNodes, ctx.curNode)
 				continue
 			}
-			right := newWC.getPeekNode()
-			newWC.nextNode()
-			newWC.nextNode()
-			wc = newWC
+			right := newCtx.getPeekNode()
+			newCtx.nextNode()
+			newCtx.nextNode()
+			ctx = newCtx
 
 			operator := &ast.Operator{}
 			operator.SetTokens([]ast.Node{left, op, right})
 			replaceNodes = append(replaceNodes, operator)
 		} else {
-			replaceNodes = append(replaceNodes, wc.curNode)
+			replaceNodes = append(replaceNodes, ctx.curNode)
 		}
 
 	}
-	wc.node.SetTokens(replaceNodes)
-	return wc.node
+	ctx.node.SetTokens(replaceNodes)
+	return ctx.node
 }
 
 var operatorKinds = []token.Kind{
@@ -553,7 +553,7 @@ func isMatchOperatorNodeType(node interface{}) bool {
 	return false
 }
 
-func parseComparison(wc *writeContext) ast.TokenList {
+func parseComparison(ctx *nodeWalkContext) ast.TokenList {
 	// sql.Parenthesis
 	// sql.Function
 	// sql.Identifier
@@ -568,48 +568,48 @@ func parseComparison(wc *writeContext) ast.TokenList {
 // ast.MemberIdentifer,
 // ast.Parenthesis,
 
-func parseAliased(wc *writeContext) ast.TokenList {
+func parseAliased(ctx *nodeWalkContext) ast.TokenList {
 	var replaceNodes []ast.Node
-	for wc.nextNode() {
-		if wc.hasTokenList() {
-			list := wc.mustTokenList()
+	for ctx.nextNode() {
+		if ctx.hasTokenList() {
+			list := ctx.mustTokenList()
 			replaceNodes = append(replaceNodes, parseAliased(newWriteContext(list)))
 			continue
 		}
 
-		if _, ok := wc.curNode.(*ast.Identifer); ok {
-			newWC := newWriteContextWithIndex(wc.node, wc.index)
-			aliased := findAliasMatch(newWC, wc.curNode, wc.index)
+		if _, ok := ctx.curNode.(*ast.Identifer); ok {
+			newWC := newWriteContextWithIndex(ctx.node, ctx.index)
+			aliased := findAliasMatch(newWC, ctx.curNode, ctx.index)
 			if aliased != nil {
-				wc = newWC
+				ctx = newWC
 				replaceNodes = append(replaceNodes, aliased)
 			} else {
-				replaceNodes = append(replaceNodes, wc.curNode)
+				replaceNodes = append(replaceNodes, ctx.curNode)
 			}
 		} else {
-			replaceNodes = append(replaceNodes, wc.curNode)
+			replaceNodes = append(replaceNodes, ctx.curNode)
 		}
 	}
-	wc.node.SetTokens(replaceNodes)
-	return wc.node
+	ctx.node.SetTokens(replaceNodes)
+	return ctx.node
 }
 
-func findAliasMatch(wc *writeContext, startTok ast.Node, startIndex uint) ast.Node {
+func findAliasMatch(ctx *nodeWalkContext, startTok ast.Node, startIndex uint) ast.Node {
 	var nodes []ast.Node
 	nodes = append(nodes, startTok)
-	for wc.nextNode() {
-		if wc.hasTokenList() {
+	for ctx.nextNode() {
+		if ctx.hasTokenList() {
 			continue
 		}
 
-		if _, ok := wc.curNode.(*ast.Identifer); ok {
-			nodes = append(nodes, wc.curNode)
+		if _, ok := ctx.curNode.(*ast.Identifer); ok {
+			nodes = append(nodes, ctx.curNode)
 			return &ast.Aliased{Toks: nodes}
 		}
 
-		tok := wc.mustToken()
+		tok := ctx.mustToken()
 		if tok.MatchSQLKeyword("AS") || tok.MatchKind(token.Whitespace) {
-			nodes = append(nodes, wc.curNode)
+			nodes = append(nodes, ctx.curNode)
 		} else {
 			break
 		}
