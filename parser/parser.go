@@ -124,31 +124,22 @@ func (ctx *nodeWalkContext) replace(add ast.Node, startIndex, endIndex uint) {
 
 	offset := (endIndex - startIndex)
 	ctx.index = ctx.index - uint(offset)
-	ctx.nextNode()
+	ctx.nextNode(false)
 }
 
 func (ctx *nodeWalkContext) hasNext() bool {
 	return ctx.index < uint(len(ctx.node.GetTokens()))
 }
 
-func (ctx *nodeWalkContext) nextNode() bool {
-	if !ctx.hasNext() {
-		return false
-	}
-	ctx.curNode = ctx.node.GetTokens()[ctx.index]
-	ctx.index++
-	return true
-}
-
-func (ctx *nodeWalkContext) nextNodeIgnoreWhitespace(ignoreWiteSpace bool) bool {
+func (ctx *nodeWalkContext) nextNode(ignoreWhiteSpace bool) bool {
 	if !ctx.hasNext() {
 		return false
 	}
 	ctx.curNode = ctx.node.GetTokens()[ctx.index]
 	ctx.index++
 
-	if ignoreWiteSpace && isWhitespace(ctx.curNode) {
-		return ctx.nextNodeIgnoreWhitespace(ignoreWiteSpace)
+	if ignoreWhiteSpace && isWhitespace(ctx.curNode) {
+		return ctx.nextNode(ignoreWhiteSpace)
 	}
 	return true
 }
@@ -156,7 +147,7 @@ func (ctx *nodeWalkContext) nextNodeIgnoreWhitespace(ignoreWiteSpace bool) bool 
 func isWhitespace(node ast.Node) bool {
 	tok, ok := node.(ast.Token)
 	if !ok {
-		panic(fmt.Sprintf("invalid type. not has Token, got=(type: %T, value: %#v)", node, node.String()))
+		return false
 	}
 	if tok.GetToken().MatchKind(token.Whitespace) {
 		return true
@@ -181,14 +172,10 @@ func (ctx *nodeWalkContext) peekNode(ignoreWhiteSpace bool) (uint, ast.Node) {
 		index := newCtx.index
 		node := newCtx.node.GetTokens()[index]
 
-		if _, ok := node.(ast.TokenList); ok {
-			return index, node
-		}
-
 		if ignoreWhiteSpace && !isWhitespace(node) {
 			return index, node
 		}
-		newCtx.nextNode()
+		newCtx.nextNode(false)
 	}
 	return 0, nil
 }
@@ -203,10 +190,10 @@ func (ctx *nodeWalkContext) peekNodeIs(ignoreWhiteSpace bool, fd finder) (uint, 
 	return 0, nil
 }
 
-func (ctx *nodeWalkContext) findNode(fd finder) (uint, ast.Node) {
+func (ctx *nodeWalkContext) findNode(ignoreWhiteSpace bool, fd finder) (uint, ast.Node) {
 	newCtx := ctx.copyContext()
 	for newCtx.hasNext() {
-		newCtx.nextNode()
+		newCtx.nextNode(ignoreWhiteSpace)
 		node := newCtx.node.GetTokens()[newCtx.index]
 
 		// For node object
@@ -359,7 +346,7 @@ func (p *Parser) Parse() (ast.TokenList, error) {
 func parseStatement(ctx *nodeWalkContext) ast.TokenList {
 	var replaceNodes []ast.Node
 	var startIndex uint
-	for ctx.nextNode() {
+	for ctx.nextNode(false) {
 		if ctx.hasTokenList() {
 			list := ctx.mustTokenList()
 			replaceNodes = append(replaceNodes, parseStatement(newNodeWalkContext(list)))
@@ -387,7 +374,7 @@ func parseStatement(ctx *nodeWalkContext) ast.TokenList {
 func parseParenthesis(ctx *nodeWalkContext) ast.TokenList {
 	var replaceNodes []ast.Node
 
-	for ctx.nextNode() {
+	for ctx.nextNode(false) {
 		if ctx.hasTokenList() {
 			list := ctx.mustTokenList()
 			replaceNodes = append(replaceNodes, parseParenthesis(newNodeWalkContext(list)))
@@ -415,7 +402,7 @@ func parseParenthesis(ctx *nodeWalkContext) ast.TokenList {
 func findParenthesisMatch(ctx *nodeWalkContext, startTok ast.Node, startIndex uint) ast.Node {
 	var nodes []ast.Node
 	nodes = append(nodes, startTok)
-	for ctx.nextNode() {
+	for ctx.nextNode(false) {
 		if ctx.hasTokenList() {
 			continue
 		}
@@ -442,7 +429,7 @@ func findParenthesisMatch(ctx *nodeWalkContext, startTok ast.Node, startIndex ui
 func parseFunctions(ctx *nodeWalkContext) ast.TokenList {
 	var replaceNodes []ast.Node
 
-	for ctx.nextNode() {
+	for ctx.nextNode(false) {
 		if ctx.hasTokenList() {
 			list := ctx.mustTokenList()
 			replaceNodes = append(replaceNodes, parseFunctions(newNodeWalkContext(list)))
@@ -454,7 +441,7 @@ func parseFunctions(ctx *nodeWalkContext) ast.TokenList {
 			peekNode := ctx.getPeekNode()
 			if _, ok := peekNode.(*ast.Parenthesis); ok {
 				funcName := ctx.curNode
-				ctx.nextNode()
+				ctx.nextNode(false)
 				args := ctx.curNode
 				funcNode := &ast.Function{Toks: []ast.Node{funcName, args}}
 				replaceNodes = append(replaceNodes, funcNode)
@@ -482,7 +469,7 @@ var WhereCloseKeywords = []string{
 func parseWhere(ctx *nodeWalkContext) ast.TokenList {
 	var replaceNodes []ast.Node
 
-	for ctx.nextNode() {
+	for ctx.nextNode(false) {
 		if ctx.hasTokenList() {
 			list := ctx.mustTokenList()
 			replaceNodes = append(replaceNodes, parseWhere(newNodeWalkContext(list)))
@@ -506,7 +493,7 @@ func parseWhere(ctx *nodeWalkContext) ast.TokenList {
 func findWhereMatch(ctx *nodeWalkContext, startTok ast.Node, startIndex uint) ast.Node {
 	var nodes []ast.Node
 	nodes = append(nodes, startTok)
-	for ctx.nextNode() {
+	for ctx.nextNode(false) {
 		if ctx.hasTokenList() {
 			continue
 		}
@@ -530,7 +517,7 @@ func findWhereMatch(ctx *nodeWalkContext, startTok ast.Node, startIndex uint) as
 
 func parsePeriod(ctx *nodeWalkContext) ast.TokenList {
 	var replaceNodes []ast.Node
-	for ctx.nextNode() {
+	for ctx.nextNode(false) {
 		if ctx.hasTokenList() {
 			list := ctx.mustTokenList()
 			replaceNodes = append(replaceNodes, parsePeriod(newNodeWalkContext(list)))
@@ -539,11 +526,11 @@ func parsePeriod(ctx *nodeWalkContext) ast.TokenList {
 
 		if ctx.peekTokenMatchKind(token.Period) {
 			parent := ctx.curNode
-			ctx.nextNode()
+			ctx.nextNode(false)
 			period := ctx.curNode
 
 			if ctx.peekTokenMatchSQLKind(dialect.Unmatched) || ctx.peekTokenMatchKind(token.Mult) {
-				ctx.nextNode()
+				ctx.nextNode(false)
 				child := ctx.curNode
 				memberIdentifer := &ast.MemberIdentifer{Toks: []ast.Node{parent, period, child}}
 				replaceNodes = append(replaceNodes, memberIdentifer)
@@ -563,7 +550,7 @@ func parsePeriod(ctx *nodeWalkContext) ast.TokenList {
 
 func parseIdentifier(ctx *nodeWalkContext) ast.TokenList {
 	var replaceNodes []ast.Node
-	for ctx.nextNode() {
+	for ctx.nextNode(false) {
 		if ctx.hasTokenList() {
 			list := ctx.mustTokenList()
 			if _, ok := list.(*ast.MemberIdentifer); ok {
@@ -635,7 +622,7 @@ var operatorTargetFinder = finder{
 func parseOperator(ctx *nodeWalkContext) ast.TokenList {
 	var replaceNodes []ast.Node
 
-	for ctx.nextNodeIgnoreWhitespace(false) {
+	for ctx.nextNode(false) {
 		if ctx.hasTokenList() {
 			list := ctx.mustTokenList()
 			replaceNodes = append(replaceNodes, parseOperator(newNodeWalkContext(list)))
@@ -650,15 +637,15 @@ func parseOperator(ctx *nodeWalkContext) ast.TokenList {
 				continue
 			}
 			tmpCtx := ctx.copyContext()
-			tmpCtx.nextNodeIgnoreWhitespace(true)
+			tmpCtx.nextNode(true)
 
 			endIndex, right := tmpCtx.peekNodeIs(true, operatorTargetFinder)
 			if right == nil {
 				replaceNodes = append(replaceNodes, ctx.curNode)
 				continue
 			}
-			tmpCtx.nextNodeIgnoreWhitespace(true)
-			tmpCtx.nextNodeIgnoreWhitespace(true)
+			tmpCtx.nextNode(true)
+			tmpCtx.nextNode(true)
 			ctx = tmpCtx
 
 			operator := &ast.Operator{Toks: ctx.nodesWithRange(startIndex, endIndex+1)}
@@ -728,7 +715,7 @@ func parseComparison(ctx *nodeWalkContext) ast.TokenList {
 
 func parseAliased(ctx *nodeWalkContext) ast.TokenList {
 	var replaceNodes []ast.Node
-	for ctx.nextNode() {
+	for ctx.nextNode(false) {
 		if ctx.hasTokenList() {
 			list := ctx.mustTokenList()
 			replaceNodes = append(replaceNodes, parseAliased(newNodeWalkContext(list)))
@@ -755,7 +742,7 @@ func parseAliased(ctx *nodeWalkContext) ast.TokenList {
 func findAliasMatch(ctx *nodeWalkContext, startTok ast.Node, startIndex uint) ast.Node {
 	var nodes []ast.Node
 	nodes = append(nodes, startTok)
-	for ctx.nextNode() {
+	for ctx.nextNode(false) {
 		if ctx.hasTokenList() {
 			continue
 		}
