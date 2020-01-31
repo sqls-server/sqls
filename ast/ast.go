@@ -75,6 +75,20 @@ type Identifer struct {
 func (i *Identifer) String() string      { return i.Tok.String() }
 func (i *Identifer) GetToken() *SQLToken { return i.Tok }
 
+type Operator struct {
+	Toks []Node
+}
+
+func (o *Operator) String() string {
+	var strs []string
+	for _, t := range o.Toks {
+		strs = append(strs, t.String())
+	}
+	return strings.Join(strs, "")
+}
+func (o *Operator) GetTokens() []Node     { return o.Toks }
+func (o *Operator) SetTokens(toks []Node) { o.Toks = toks }
+
 type Parenthesis struct {
 	Toks []Node
 }

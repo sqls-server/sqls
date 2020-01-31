@@ -374,6 +374,29 @@ func TestParseIdentifier(t *testing.T) {
 	testMemberIdentifier(t, list[6], `"myschema"."table"`)
 }
 
+func TestParseOperator(t *testing.T) {
+	// 'foo+100', 'foo + 100', 'foo*100'
+	input := `foo+100`
+	stmts := parseInit(t, input)
+	testStatement(t, stmts[0], 1, input)
+
+	list := stmts[0].GetTokens()
+	testOperator(t, list[0], "foo+100")
+}
+
+// func TestParseComparison(t *testing.T) {
+// 	// foo = NULL
+// 	// foo = 25.5
+// 	// (3 + 4) = 7
+// 	// foo = 'bar'
+// 	// foo = DATE(bar.baz)
+// 	// DATE(foo.bar) = DATE(bar.baz)
+// 	// DATE(foo.bar) = bar.baz
+// 	input := `foo = NULL`
+// 	stmts := parseInit(t, input)
+// 	testStatement(t, stmts[0], 1, input)
+// }
+
 func TestParseAliased(t *testing.T) {
 	input := `select foo as bar from mytable`
 	stmts := parseInit(t, input)
@@ -462,6 +485,17 @@ func testIdentifier(t *testing.T, node ast.Node, expect string) {
 	_, ok := node.(*ast.Identifer)
 	if !ok {
 		t.Errorf("invalid type want Identifier got %T", node)
+	}
+	if expect != node.String() {
+		t.Errorf("expected %q, got %q", expect, node.String())
+	}
+}
+
+func testOperator(t *testing.T, node ast.Node, expect string) {
+	t.Helper()
+	_, ok := node.(*ast.Operator)
+	if !ok {
+		t.Errorf("invalid type want Operator got %T", node)
 	}
 	if expect != node.String() {
 		t.Errorf("expected %q, got %q", expect, node.String())

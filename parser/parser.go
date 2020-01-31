@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/lighttiger2505/sqls/ast"
@@ -193,6 +194,7 @@ func (p *Parser) Parse() (ast.TokenList, error) {
 	root = parseWhere(newWriteContext(root))
 	root = parsePeriod(newWriteContext(root))
 	root = parseIdentifier(newWriteContext(root))
+	root = parseOperator(newWriteContext(root))
 	root = parseAliased(newWriteContext(root))
 	return root, nil
 }
@@ -432,10 +434,133 @@ func parseIdentifier(wc *writeContext) ast.TokenList {
 // parseTypecasts
 // parseTzcasts
 // parseTyped_literal
-// parseOperator
+
+// operatorTypes
+// ast.Parenthesis
+// ast.Function
+// ast.Identifier
+var comparisons = []token.Kind{
+	token.Eq,
+	token.Neq,
+	token.Lt,
+	token.Gt,
+	token.LtEq,
+	token.GtEq,
+}
+
+func parseOperator(wc *writeContext) ast.TokenList {
+	var replaceNodes []ast.Node
+
+	for wc.nextNode() {
+		fmt.Println(wc.curNode)
+		if wc.hasTokenList() {
+			list := wc.mustTokenList()
+			replaceNodes = append(replaceNodes, parseOperator(newWriteContext(list)))
+			continue
+		}
+
+		tok, err := wc.getToken()
+		if err != nil {
+			// FIXME workaround
+			continue
+		}
+
+		if !isMatchKindOfOpeTarget(tok) && !isMatchOperatorNodeType(wc.curNode) {
+			fmt.Println("not match left")
+			replaceNodes = append(replaceNodes, wc.curNode)
+			continue
+		}
+		ptok, _ := wc.getPeekToken()
+		if ptok != nil {
+			if !isMatchKindOfOperator(ptok) {
+				fmt.Println("not match ope")
+				replaceNodes = append(replaceNodes, wc.curNode)
+				continue
+			}
+			left := wc.curNode
+			op := wc.getPeekNode()
+			newWC := newWriteContextWithIndex(wc.node, wc.index)
+
+			newWC.nextNode()
+			nextPTok, _ := newWC.getPeekToken()
+			if !isMatchKindOfOpeTarget(nextPTok) && !isMatchOperatorNodeType(newWC.getPeekNode()) {
+				fmt.Println("not match write")
+				replaceNodes = append(replaceNodes, wc.curNode)
+				continue
+			}
+			right := newWC.getPeekNode()
+			newWC.nextNode()
+			newWC.nextNode()
+			wc = newWC
+
+			operator := &ast.Operator{}
+			operator.SetTokens([]ast.Node{left, op, right})
+			replaceNodes = append(replaceNodes, operator)
+		} else {
+			replaceNodes = append(replaceNodes, wc.curNode)
+		}
+
+	}
+	wc.node.SetTokens(replaceNodes)
+	return wc.node
+}
+
+var operatorKinds = []token.Kind{
+	token.Number,
+	token.Char,
+	token.SingleQuotedString,
+	token.NationalStringLiteral,
+}
+
+func isMatchKindOfOpeTarget(tok *ast.SQLToken) bool {
+	for _, op := range operatorKinds {
+		if tok.MatchKind(op) {
+			fmt.Println(tok, "match ope target kind")
+			return true
+		}
+	}
+	fmt.Println(tok, "not match ope target kind")
+	return false
+}
+
+var operators = []token.Kind{
+	token.Plus,
+	token.Minus,
+	token.Mult,
+	token.Div,
+	token.Mod,
+}
+
+func isMatchKindOfOperator(tok *ast.SQLToken) bool {
+	for _, op := range operators {
+		if tok.MatchKind(op) {
+			fmt.Println(tok, "match operator kind")
+			return true
+		}
+	}
+	return false
+}
+
+func isMatchOperatorNodeType(node interface{}) bool {
+	if a, ok := node.(ast.Node); ok {
+		fmt.Println(a)
+	}
+	if _, ok := node.(*ast.Identifer); ok {
+		fmt.Println("match ope target node type")
+		return true
+	}
+	fmt.Println(fmt.Sprintf("%T", node))
+	return false
+}
 
 func parseComparison(wc *writeContext) ast.TokenList {
-	// TODO add impl
+	// sql.Parenthesis
+	// sql.Function
+	// sql.Identifier
+
+	// T_NUMERICAL = (T.Number, T.Number.Integer, T.Number.Float)
+	// T_STRING = (T.String, T.String.Single, T.String.Symbol)
+	// T_NAME = (T.Name, T.Name.Placeholder)
 	return nil
 }
 
