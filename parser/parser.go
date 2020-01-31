@@ -10,7 +10,7 @@ import (
 )
 
 type nodeTypeMatcher interface {
-	isMatch(interface{}) bool
+	match(node interface{}) bool
 }
 
 type finder struct {
@@ -22,7 +22,7 @@ type finder struct {
 
 func (f *finder) isMatchNodeType(node interface{}) bool {
 	if f.matcher != nil {
-		if f.matcher.isMatch(node) {
+		if f.matcher.match(node) {
 			return true
 		}
 	}
@@ -30,27 +30,33 @@ func (f *finder) isMatchNodeType(node interface{}) bool {
 }
 
 func (f *finder) isMatchTokens(tok *ast.SQLToken) bool {
-	for _, expect := range f.expectTokens {
-		if tok.MatchKind(expect) {
-			return true
+	if f.expectTokens != nil {
+		for _, expect := range f.expectTokens {
+			if tok.MatchKind(expect) {
+				return true
+			}
 		}
 	}
 	return false
 }
 
 func (f *finder) isMatchSQLType(tok *ast.SQLToken) bool {
-	for _, expect := range f.expectSQLType {
-		if tok.MatchSQLKind(expect) {
-			return true
+	if f.expectSQLType != nil {
+		for _, expect := range f.expectSQLType {
+			if tok.MatchSQLKind(expect) {
+				return true
+			}
 		}
 	}
 	return false
 }
 
 func (f *finder) isMatchKeyword(tok *ast.SQLToken) bool {
-	for _, expect := range f.expectKeyword {
-		if tok.MatchSQLKeyword(expect) {
-			return true
+	if f.expectKeyword != nil {
+		for _, expect := range f.expectKeyword {
+			if tok.MatchSQLKeyword(expect) {
+				return true
+			}
 		}
 	}
 	return false
@@ -115,6 +121,25 @@ func (ctx *nodeWalkContext) nextNode() bool {
 	return true
 }
 
+func (ctx *nodeWalkContext) curNodeIs(fd finder) (uint, ast.Node) {
+	index := ctx.index
+	node := ctx.curNode
+	if node != nil {
+		return 0, nil
+	}
+	// For node object
+	if fd.isMatchNodeType(node) {
+		return index, node
+	}
+	// For token object
+	tok, _ := ctx.curNode.(ast.Token)
+	sqlTok := tok.GetToken()
+	if fd.isMatchTokens(sqlTok) || fd.isMatchSQLType(sqlTok) || fd.isMatchSQLType(sqlTok) {
+		return index, node
+	}
+	return 0, nil
+}
+
 func (ctx *nodeWalkContext) peekNode(ignoreWhiteSpace bool) (uint, ast.Node) {
 	newCtx := newNodeWalkContextWithIndex(ctx.node, ctx.index)
 	for newCtx.hasNext() {
@@ -133,6 +158,24 @@ func (ctx *nodeWalkContext) peekNode(ignoreWhiteSpace bool) (uint, ast.Node) {
 	return 0, nil
 }
 
+func (ctx *nodeWalkContext) peekNodeIs(ignoreWhiteSpace bool, fd finder) (uint, ast.Node) {
+	index, node := ctx.peekNode(ignoreWhiteSpace)
+	if node != nil {
+		return 0, nil
+	}
+	// For node object
+	if fd.isMatchNodeType(node) {
+		return index, node
+	}
+	// For token object
+	tok, _ := ctx.curNode.(ast.Token)
+	sqlTok := tok.GetToken()
+	if fd.isMatchTokens(sqlTok) || fd.isMatchSQLType(sqlTok) || fd.isMatchSQLType(sqlTok) {
+		return index, node
+	}
+	return 0, nil
+}
+
 func (ctx *nodeWalkContext) findNode(fd finder) (uint, ast.Node) {
 	newCtx := newNodeWalkContextWithIndex(ctx.node, ctx.index)
 	for newCtx.hasNext() {
@@ -146,16 +189,10 @@ func (ctx *nodeWalkContext) findNode(fd finder) (uint, ast.Node) {
 		if newCtx.hasTokenList() {
 			continue
 		}
-
 		// For token object
 		tok, _ := ctx.curNode.(ast.Token)
-		if fd.isMatchTokens(tok.GetToken()) {
-			return newCtx.index, node
-		}
-		if fd.isMatchSQLType(tok.GetToken()) {
-			return newCtx.index, node
-		}
-		if fd.isMatchSQLType(tok.GetToken()) {
+		sqlTok := tok.GetToken()
+		if fd.isMatchTokens(sqlTok) || fd.isMatchSQLType(sqlTok) || fd.isMatchSQLType(sqlTok) {
 			return newCtx.index, node
 		}
 	}
@@ -539,6 +576,34 @@ var comparisons = []token.Kind{
 	token.Gt,
 	token.LtEq,
 	token.GtEq,
+}
+
+type operatorMatcher struct{}
+
+func (om *operatorMatcher) match(node interface{}) bool {
+	if _, ok := node.(*ast.Identifer); ok {
+		return true
+	}
+	return false
+}
+
+var operatorFinder = finder{
+	expectTokens: []token.Kind{
+		token.Plus,
+		token.Minus,
+		token.Mult,
+		token.Div,
+		token.Mod,
+	},
+}
+var operatorTargetFinder = finder{
+	matcher: &operatorMatcher{},
+	expectTokens: []token.Kind{
+		token.Number,
+		token.Char,
+		token.SingleQuotedString,
+		token.NationalStringLiteral,
+	},
 }
 
 func parseOperator(ctx *nodeWalkContext) ast.TokenList {
