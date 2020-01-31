@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"fmt"
 	"io"
 
 	"github.com/lighttiger2505/sqls/ast"
@@ -452,7 +451,6 @@ func parseOperator(ctx *nodeWalkContext) ast.TokenList {
 	var replaceNodes []ast.Node
 
 	for ctx.nextNode() {
-		fmt.Println(ctx.curNode)
 		if ctx.hasTokenList() {
 			list := ctx.mustTokenList()
 			replaceNodes = append(replaceNodes, parseOperator(newWriteContext(list)))
@@ -466,14 +464,12 @@ func parseOperator(ctx *nodeWalkContext) ast.TokenList {
 		}
 
 		if !isMatchKindOfOpeTarget(tok) && !isMatchOperatorNodeType(ctx.curNode) {
-			fmt.Println("not match left")
 			replaceNodes = append(replaceNodes, ctx.curNode)
 			continue
 		}
 		ptok, _ := ctx.getPeekToken()
 		if ptok != nil {
 			if !isMatchKindOfOperator(ptok) {
-				fmt.Println("not match ope")
 				replaceNodes = append(replaceNodes, ctx.curNode)
 				continue
 			}
@@ -484,7 +480,6 @@ func parseOperator(ctx *nodeWalkContext) ast.TokenList {
 			newCtx.nextNode()
 			nextPTok, _ := newCtx.getPeekToken()
 			if !isMatchKindOfOpeTarget(nextPTok) && !isMatchOperatorNodeType(newCtx.getPeekNode()) {
-				fmt.Println("not match write")
 				replaceNodes = append(replaceNodes, ctx.curNode)
 				continue
 			}
@@ -515,11 +510,9 @@ var operatorKinds = []token.Kind{
 func isMatchKindOfOpeTarget(tok *ast.SQLToken) bool {
 	for _, op := range operatorKinds {
 		if tok.MatchKind(op) {
-			fmt.Println(tok, "match ope target kind")
 			return true
 		}
 	}
-	fmt.Println(tok, "not match ope target kind")
 	return false
 }
 
@@ -534,7 +527,6 @@ var operators = []token.Kind{
 func isMatchKindOfOperator(tok *ast.SQLToken) bool {
 	for _, op := range operators {
 		if tok.MatchKind(op) {
-			fmt.Println(tok, "match operator kind")
 			return true
 		}
 	}
@@ -542,14 +534,9 @@ func isMatchKindOfOperator(tok *ast.SQLToken) bool {
 }
 
 func isMatchOperatorNodeType(node interface{}) bool {
-	if a, ok := node.(ast.Node); ok {
-		fmt.Println(a)
-	}
 	if _, ok := node.(*ast.Identifer); ok {
-		fmt.Println("match ope target node type")
 		return true
 	}
-	fmt.Println(fmt.Sprintf("%T", node))
 	return false
 }
 
