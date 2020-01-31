@@ -106,27 +106,6 @@ func (ctx *nodeWalkContext) nodesWithRange(startIndex, endIndex uint) []ast.Node
 	return ctx.node.GetTokens()[startIndex:endIndex]
 }
 
-func (ctx *nodeWalkContext) replaceIndex(add ast.Node, index uint) {
-	ctx.node.GetTokens()[index] = add
-}
-
-func (ctx *nodeWalkContext) replace(add ast.Node, startIndex, endIndex uint) {
-	oldList := ctx.node.GetTokens()
-
-	start := oldList[:startIndex]
-	end := oldList[endIndex:]
-
-	var out []ast.Node
-	out = append(out, start...)
-	out = append(out, add)
-	out = append(out, end...)
-	ctx.node.SetTokens(out)
-
-	offset := (endIndex - startIndex)
-	ctx.index = ctx.index - uint(offset)
-	ctx.nextNode(false)
-}
-
 func (ctx *nodeWalkContext) hasNext() bool {
 	return ctx.index < uint(len(ctx.node.GetTokens()))
 }
