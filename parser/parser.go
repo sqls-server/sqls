@@ -9,6 +9,53 @@ import (
 	"github.com/pkg/errors"
 )
 
+type nodeTypeMatcher interface {
+	isMatch(interface{}) bool
+}
+
+type finder struct {
+	matcher       nodeTypeMatcher
+	expectTokens  []token.Kind
+	expectSQLType []dialect.KeywordKind
+	expectKeyword []string
+}
+
+func (f *finder) isMatchNodeType(node interface{}) bool {
+	if f.matcher != nil {
+		if f.matcher.isMatch(node) {
+			return true
+		}
+	}
+	return false
+}
+
+func (f *finder) isMatchTokens(tok *ast.SQLToken) bool {
+	for _, expect := range f.expectTokens {
+		if tok.MatchKind(expect) {
+			return true
+		}
+	}
+	return false
+}
+
+func (f *finder) isMatchSQLType(tok *ast.SQLToken) bool {
+	for _, expect := range f.expectSQLType {
+		if tok.MatchSQLKind(expect) {
+			return true
+		}
+	}
+	return false
+}
+
+func (f *finder) isMatchKeyword(tok *ast.SQLToken) bool {
+	for _, expect := range f.expectKeyword {
+		if tok.MatchSQLKeyword(expect) {
+			return true
+		}
+	}
+	return false
+}
+
 type nodeWalkContext struct {
 	node    ast.TokenList
 	curNode ast.Node
@@ -66,6 +113,53 @@ func (ctx *nodeWalkContext) nextNode() bool {
 	ctx.curNode = ctx.node.GetTokens()[ctx.index]
 	ctx.index++
 	return true
+}
+
+func (ctx *nodeWalkContext) peekNode(ignoreWhiteSpace bool) (uint, ast.Node) {
+	newCtx := newNodeWalkContextWithIndex(ctx.node, ctx.index)
+	for newCtx.hasNext() {
+		newCtx.nextNode()
+		node := newCtx.node.GetTokens()[newCtx.index]
+
+		if newCtx.hasTokenList() {
+			return newCtx.index, node
+		}
+
+		tok, _ := newCtx.curNode.(ast.Token)
+		if ignoreWhiteSpace && !tok.GetToken().MatchKind(token.Whitespace) {
+			return newCtx.index, node
+		}
+	}
+	return 0, nil
+}
+
+func (ctx *nodeWalkContext) findNode(fd finder) (uint, ast.Node) {
+	newCtx := newNodeWalkContextWithIndex(ctx.node, ctx.index)
+	for newCtx.hasNext() {
+		newCtx.nextNode()
+		node := newCtx.node.GetTokens()[newCtx.index]
+
+		// For node object
+		if fd.isMatchNodeType(node) {
+			return newCtx.index, node
+		}
+		if newCtx.hasTokenList() {
+			continue
+		}
+
+		// For token object
+		tok, _ := ctx.curNode.(ast.Token)
+		if fd.isMatchTokens(tok.GetToken()) {
+			return newCtx.index, node
+		}
+		if fd.isMatchSQLType(tok.GetToken()) {
+			return newCtx.index, node
+		}
+		if fd.isMatchSQLType(tok.GetToken()) {
+			return newCtx.index, node
+		}
+	}
+	return 0, nil
 }
 
 func (ctx *nodeWalkContext) hasTokenList() bool {
