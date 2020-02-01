@@ -259,7 +259,7 @@ func (p *Parser) Parse() (ast.TokenList, error) {
 	root = parseStatement(newNodeWalkContext(root))
 	root = parsePrefixGroup(newNodeWalkContext(root), parenthesisPrefixMatcher, parseParenthesis)
 	root = parsePrefixGroup(newNodeWalkContext(root), functionPrefixMatcher, parseFunctions)
-	root = parseWhere(newNodeWalkContext(root))
+	root = parsePrefixGroup(newNodeWalkContext(root), wherePrefixMatcher, parseWhere)
 	root = parseMemberIdentifier(newNodeWalkContext(root))
 	root = parsePrefixGroup(newNodeWalkContext(root), identifierPrefixMatcher, parseIdentifier)
 	root = parseOperator(newNodeWalkContext(root))
@@ -365,7 +365,7 @@ func parseFunctions(ctx *nodeWalkContext) ast.Node {
 	return ctx.curNode
 }
 
-var whereOpenMatcher = nodeMatcher{
+var wherePrefixMatcher = nodeMatcher{
 	expectKeyword: []string{
 		"WHERE",
 	},
@@ -386,39 +386,15 @@ var whereCloseMatcher = nodeMatcher{
 	},
 }
 
-func parseWhere(ctx *nodeWalkContext) ast.TokenList {
-	var replaceNodes []ast.Node
-
-	for ctx.nextNode(false) {
-		if ctx.hasTokenList() {
-			list := ctx.mustTokenList()
-			replaceNodes = append(replaceNodes, parseWhere(newNodeWalkContext(list)))
-			continue
-		}
-
-		if index, whereOpener := ctx.curNodeIs(whereOpenMatcher); whereOpener != nil {
-			where := findWhereMatch(ctx, whereOpener, index)
-			if where != nil {
-				replaceNodes = append(replaceNodes, where)
-			}
-		} else {
-			replaceNodes = append(replaceNodes, ctx.curNode)
-		}
-	}
-	ctx.node.SetTokens(replaceNodes)
-	return ctx.node
-}
-
-func findWhereMatch(ctx *nodeWalkContext, startTok ast.Node, startIndex uint) ast.Node {
-	var nodes []ast.Node
-	nodes = append(nodes, startTok)
+func parseWhere(ctx *nodeWalkContext) ast.Node {
+	nodes := []ast.Node{ctx.curNode}
 	for ctx.nextNode(false) {
 		if ctx.hasTokenList() {
 			continue
 		}
 
-		if index, whereOpener := ctx.curNodeIs(whereOpenMatcher); whereOpener != nil {
-			nodes = append(nodes, findWhereMatch(ctx, whereOpener, index))
+		if _, whereOpener := ctx.curNodeIs(wherePrefixMatcher); whereOpener != nil {
+			nodes = append(nodes, parseWhere(ctx))
 		} else if _, node := ctx.peekNodeIs(false, whereCloseMatcher); node != nil {
 			nodes = append(nodes, ctx.curNode)
 			return &ast.Where{Toks: nodes}
