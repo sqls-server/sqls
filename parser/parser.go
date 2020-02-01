@@ -712,6 +712,26 @@ func parseComparison(ctx *nodeWalkContext) ast.TokenList {
 // ast.MemberIdentifer,
 // ast.Parenthesis,
 
+var aliasKeywordMatcher = nodeMatcher{
+	expectKeyword: []string{
+		"AS",
+	},
+}
+var aliasTargetMatcher = nodeMatcher{
+	nodeTypeMatcherFunc: func(node interface{}) bool {
+		if _, ok := node.(*ast.Identifer); ok {
+			return true
+		}
+		if _, ok := node.(*ast.MemberIdentifer); ok {
+			return true
+		}
+		if _, ok := node.(*ast.Parenthesis); ok {
+			return true
+		}
+		return false
+	},
+}
+
 func parseAliased(ctx *nodeWalkContext) ast.TokenList {
 	var replaceNodes []ast.Node
 	for ctx.nextNode(false) {
@@ -721,44 +741,31 @@ func parseAliased(ctx *nodeWalkContext) ast.TokenList {
 			continue
 		}
 
-		if _, ok := ctx.curNode.(*ast.Identifer); ok {
-			newWC := ctx.copyContext()
-			aliased := findAliasMatch(newWC, ctx.curNode, ctx.index)
-			if aliased != nil {
-				ctx = newWC
-				replaceNodes = append(replaceNodes, aliased)
-			} else {
+		if _, as := ctx.peekNodeIs(true, aliasKeywordMatcher); as != nil {
+			startIndex, realName := ctx.curNodeIs(aliasTargetMatcher)
+			if realName == nil {
 				replaceNodes = append(replaceNodes, ctx.curNode)
+				continue
 			}
+			tmpCtx := ctx.copyContext()
+			tmpCtx.nextNode(true)
+
+			endIndex, aliasedName := tmpCtx.peekNodeIs(true, aliasTargetMatcher)
+			if aliasedName == nil {
+				replaceNodes = append(replaceNodes, ctx.curNode)
+				continue
+			}
+			tmpCtx.nextNode(true)
+			ctx = tmpCtx
+
+			aliased := &ast.Aliased{Toks: ctx.nodesWithRange(startIndex, endIndex+1)}
+			replaceNodes = append(replaceNodes, aliased)
 		} else {
 			replaceNodes = append(replaceNodes, ctx.curNode)
 		}
 	}
 	ctx.node.SetTokens(replaceNodes)
 	return ctx.node
-}
-
-func findAliasMatch(ctx *nodeWalkContext, startTok ast.Node, startIndex uint) ast.Node {
-	var nodes []ast.Node
-	nodes = append(nodes, startTok)
-	for ctx.nextNode(false) {
-		if ctx.hasTokenList() {
-			continue
-		}
-
-		if _, ok := ctx.curNode.(*ast.Identifer); ok {
-			nodes = append(nodes, ctx.curNode)
-			return &ast.Aliased{Toks: nodes}
-		}
-
-		tok := ctx.mustToken()
-		if tok.MatchSQLKeyword("AS") || tok.MatchKind(token.Whitespace) {
-			nodes = append(nodes, ctx.curNode)
-		} else {
-			break
-		}
-	}
-	return nil
 }
 
 // parseAssignment
