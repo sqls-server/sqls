@@ -662,46 +662,6 @@ func parseOperator(ctx *nodeWalkContext) ast.TokenList {
 	return ctx.node
 }
 
-var operatorKinds = []token.Kind{
-	token.Number,
-	token.Char,
-	token.SingleQuotedString,
-	token.NationalStringLiteral,
-}
-
-func isMatchKindOfOpeTarget(tok *ast.SQLToken) bool {
-	for _, op := range operatorKinds {
-		if tok.MatchKind(op) {
-			return true
-		}
-	}
-	return false
-}
-
-var operators = []token.Kind{
-	token.Plus,
-	token.Minus,
-	token.Mult,
-	token.Div,
-	token.Mod,
-}
-
-func isMatchKindOfOperator(tok *ast.SQLToken) bool {
-	for _, op := range operators {
-		if tok.MatchKind(op) {
-			return true
-		}
-	}
-	return false
-}
-
-func isMatchOperatorNodeType(node interface{}) bool {
-	if _, ok := node.(*ast.Identifer); ok {
-		return true
-	}
-	return false
-}
-
 func parseComparison(ctx *nodeWalkContext) ast.TokenList {
 	// sql.Parenthesis
 	// sql.Function
