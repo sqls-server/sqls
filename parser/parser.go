@@ -210,16 +210,29 @@ func (ctx *nodeWalkContext) mustTokenList() ast.TokenList {
 	return children
 }
 
-type (
-	prefixParseFn func() ast.Node
-	infixParseFn  func(ast.Node) ast.Node
-)
+type prefixParseFn func(ctx *nodeWalkContext) ast.Node
+
+func parsePrefixGroup(ctx *nodeWalkContext, matcher nodeMatcher, fn prefixParseFn) ast.TokenList {
+	var replaceNodes []ast.Node
+	for ctx.nextNode(false) {
+		if list, ok := ctx.curNode.(ast.TokenList); ok {
+			newCtx := newNodeWalkContext(list)
+			replaceNodes = append(replaceNodes, parsePrefixGroup(newCtx, matcher, fn))
+			continue
+		}
+
+		if _, node := ctx.curNodeIs(matcher); node != nil {
+			replaceNodes = append(replaceNodes, fn(ctx))
+		} else {
+			replaceNodes = append(replaceNodes, ctx.curNode)
+		}
+	}
+	ctx.node.SetTokens(replaceNodes)
+	return ctx.node
+}
 
 type Parser struct {
 	root ast.TokenList
-
-	prefixParseFns map[token.Kind]prefixParseFn
-	infixParseFns  map[token.Kind]infixParseFn
 }
 
 func NewParser(src io.Reader, d dialect.Dialect) (*Parser, error) {
@@ -248,7 +261,7 @@ func (p *Parser) Parse() (ast.TokenList, error) {
 	root = parseFunctions(newNodeWalkContext(root))
 	root = parseWhere(newNodeWalkContext(root))
 	root = parseMemberIdentifier(newNodeWalkContext(root))
-	root = parseIdentifier(newNodeWalkContext(root))
+	root = parsePrefixGroup(newNodeWalkContext(root), identifierPrefixMatcher, parseIdentifier)
 	root = parseOperator(newNodeWalkContext(root))
 	root = parseAliased(newNodeWalkContext(root))
 	return root, nil
@@ -509,34 +522,15 @@ func parseMemberIdentifier(ctx *nodeWalkContext) ast.TokenList {
 
 // parseArrays
 
-var identifierTargetMatcher = nodeMatcher{
+var identifierPrefixMatcher = nodeMatcher{
 	expectSQLType: []dialect.KeywordKind{
 		dialect.Unmatched,
 	},
 }
 
-func parseIdentifier(ctx *nodeWalkContext) ast.TokenList {
-	var replaceNodes []ast.Node
-	for ctx.nextNode(false) {
-		if ctx.hasTokenList() {
-			list := ctx.mustTokenList()
-			if _, ok := list.(*ast.MemberIdentifer); ok {
-				replaceNodes = append(replaceNodes, ctx.curNode)
-				continue
-			}
-			replaceNodes = append(replaceNodes, parseIdentifier(newNodeWalkContext(list)))
-			continue
-		}
-
-		if _, item := ctx.curNodeIs(identifierTargetMatcher); item != nil {
-			token, _ := item.(ast.Token)
-			replaceNodes = append(replaceNodes, &ast.Identifer{Tok: token.GetToken()})
-		} else {
-			replaceNodes = append(replaceNodes, ctx.curNode)
-		}
-	}
-	ctx.node.SetTokens(replaceNodes)
-	return ctx.node
+func parseIdentifier(ctx *nodeWalkContext) ast.Node {
+	token, _ := ctx.curNode.(ast.Token)
+	return &ast.Identifer{Tok: token.GetToken()}
 }
 
 // parseOrder
