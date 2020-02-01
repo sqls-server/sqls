@@ -173,15 +173,14 @@ func (ctx *nodeWalkContext) peekNodeIs(ignoreWhiteSpace bool, fd finder) (uint, 
 	return 0, nil
 }
 
-func (ctx *nodeWalkContext) findNode(ignoreWhiteSpace bool, fd finder) (uint, ast.Node) {
+func (ctx *nodeWalkContext) findNode(ignoreWhiteSpace bool, fd finder) (*nodeWalkContext, ast.Node) {
 	newCtx := ctx.copyContext()
 	for newCtx.hasNext() {
-		newCtx.nextNode(ignoreWhiteSpace)
 		node := newCtx.node.GetTokens()[newCtx.index]
 
 		// For node object
 		if fd.isMatchNodeType(node) {
-			return newCtx.index, node
+			return newCtx, node
 		}
 		if newCtx.hasTokenList() {
 			continue
@@ -190,10 +189,11 @@ func (ctx *nodeWalkContext) findNode(ignoreWhiteSpace bool, fd finder) (uint, as
 		tok, _ := ctx.curNode.(ast.Token)
 		sqlTok := tok.GetToken()
 		if fd.isMatchTokens(sqlTok) || fd.isMatchSQLType(sqlTok) || fd.isMatchKeyword(sqlTok) {
-			return newCtx.index, node
+			return newCtx, node
 		}
+		newCtx.nextNode(ignoreWhiteSpace)
 	}
-	return 0, nil
+	return nil, nil
 }
 
 func (ctx *nodeWalkContext) hasTokenList() bool {
@@ -326,6 +326,12 @@ func (p *Parser) Parse() (ast.TokenList, error) {
 	return root, nil
 }
 
+var statementFinder = finder{
+	expectTokens: []token.Kind{
+		token.Semicolon,
+	},
+}
+
 func parseStatement(ctx *nodeWalkContext) ast.TokenList {
 	var replaceNodes []ast.Node
 	var startIndex uint
@@ -336,10 +342,11 @@ func parseStatement(ctx *nodeWalkContext) ast.TokenList {
 			continue
 		}
 
-		tok := ctx.mustToken()
-		if tok.MatchKind(token.Semicolon) {
-			stmt := &ast.Statement{Toks: ctx.nodesWithRange(startIndex, ctx.index)}
+		newCtx, node := ctx.findNode(true, statementFinder)
+		if node != nil {
+			stmt := &ast.Statement{Toks: ctx.nodesWithRange(startIndex, newCtx.index)}
 			replaceNodes = append(replaceNodes, stmt)
+			ctx = newCtx
 			startIndex = ctx.index
 		}
 	}

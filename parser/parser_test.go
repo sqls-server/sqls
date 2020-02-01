@@ -465,7 +465,7 @@ func testTokenList(t *testing.T, node ast.Node, length int) ast.TokenList {
 func testStatement(t *testing.T, stmt *ast.Statement, length int, expect string) {
 	t.Helper()
 	if length != len(stmt.GetTokens()) {
-		t.Fatalf("Statements does not contain %d statements, got %d", length, len(stmt.GetTokens()))
+		t.Fatalf("Statements does not contain %d statements, got %d, (expect %q got %q)", length, len(stmt.GetTokens()), expect, stmt.String())
 	}
 	if expect != stmt.String() {
 		t.Errorf("expected %q, got %q", expect, stmt.String())
