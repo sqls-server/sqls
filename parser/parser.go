@@ -460,16 +460,25 @@ func parseFunctions(ctx *nodeWalkContext) ast.TokenList {
 	return ctx.node
 }
 
-var WhereOpenKeyword = "WHERE"
-var WhereCloseKeywords = []string{
-	"ORDER",
-	"GROUP",
-	"LIMIT",
-	"UNION",
-	"EXCEPT",
-	"HAVING",
-	"RETURNING",
-	"INTO",
+var whereOpenMatcher = nodeMatcher{
+	expectKeyword: []string{
+		"WHERE",
+	},
+}
+var whereCloseMatcher = nodeMatcher{
+	expectTokens: []token.Kind{
+		token.RParen,
+	},
+	expectKeyword: []string{
+		"ORDER",
+		"GROUP",
+		"LIMIT",
+		"UNION",
+		"EXCEPT",
+		"HAVING",
+		"RETURNING",
+		"INTO",
+	},
 }
 
 func parseWhere(ctx *nodeWalkContext) ast.TokenList {
@@ -482,9 +491,8 @@ func parseWhere(ctx *nodeWalkContext) ast.TokenList {
 			continue
 		}
 
-		tok := ctx.mustToken()
-		if tok.MatchSQLKeyword(WhereOpenKeyword) {
-			where := findWhereMatch(ctx, ctx.curNode, ctx.index)
+		if index, whereOpener := ctx.curNodeIs(whereOpenMatcher); whereOpener != nil {
+			where := findWhereMatch(ctx, whereOpener, index)
 			if where != nil {
 				replaceNodes = append(replaceNodes, where)
 			}
@@ -504,18 +512,13 @@ func findWhereMatch(ctx *nodeWalkContext, startTok ast.Node, startIndex uint) as
 			continue
 		}
 
-		tok := ctx.mustToken()
-		if tok.MatchSQLKeyword(WhereOpenKeyword) {
-			group := findWhereMatch(ctx, ctx.curNode, ctx.index)
-			nodes = append(nodes, group)
-		} else if ctx.peekTokenMatchSQLKeywords(WhereCloseKeywords) {
+		if index, whereOpener := ctx.curNodeIs(whereOpenMatcher); whereOpener != nil {
+			nodes = append(nodes, findWhereMatch(ctx, whereOpener, index))
+		} else if _, node := ctx.peekNodeIs(false, whereCloseMatcher); node != nil {
 			nodes = append(nodes, ctx.curNode)
 			return &ast.Where{Toks: nodes}
 		} else {
 			nodes = append(nodes, ctx.curNode)
-		}
-		if ctx.peekTokenMatchKind(token.RParen) {
-			break
 		}
 	}
 	return &ast.Where{Toks: nodes}
