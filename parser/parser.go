@@ -257,7 +257,7 @@ func NewParser(src io.Reader, d dialect.Dialect) (*Parser, error) {
 func (p *Parser) Parse() (ast.TokenList, error) {
 	root := p.root
 	root = parseStatement(newNodeWalkContext(root))
-	root = parseParenthesis(newNodeWalkContext(root))
+	root = parsePrefixGroup(newNodeWalkContext(root), parenthesisPrefixMatcher, parseParenthesis)
 	root = parsePrefixGroup(newNodeWalkContext(root), functionPrefixMatcher, parseFunctions)
 	root = parseWhere(newNodeWalkContext(root))
 	root = parseMemberIdentifier(newNodeWalkContext(root))
@@ -302,62 +302,37 @@ func parseStatement(ctx *nodeWalkContext) ast.TokenList {
 // parseComments
 // parseBrackets
 
-var parenthesisOpenMatcher = nodeMatcher{
+var parenthesisPrefixMatcher = nodeMatcher{
 	expectTokens: []token.Kind{
 		token.LParen,
 	},
 }
-
 var parenthesisCloseMatcher = nodeMatcher{
 	expectTokens: []token.Kind{
 		token.RParen,
 	},
 }
 
-func parseParenthesis(ctx *nodeWalkContext) ast.TokenList {
-	var replaceNodes []ast.Node
-
-	for ctx.nextNode(false) {
-		if ctx.hasTokenList() {
-			list := ctx.mustTokenList()
-			replaceNodes = append(replaceNodes, parseParenthesis(newNodeWalkContext(list)))
+func parseParenthesis(ctx *nodeWalkContext) ast.Node {
+	nodes := []ast.Node{ctx.curNode}
+	tmpCtx := ctx.copyContext()
+	for tmpCtx.nextNode(false) {
+		if tmpCtx.hasTokenList() {
 			continue
 		}
 
-		if index, node := ctx.curNodeIs(parenthesisOpenMatcher); node != nil {
-			newCtx := ctx.copyContext()
-			if parenthesis := findParenthesisMatch(newCtx, node, index); parenthesis != nil {
-				ctx = newCtx
-				replaceNodes = append(replaceNodes, parenthesis)
-			} else {
-				replaceNodes = append(replaceNodes, ctx.curNode)
-			}
-		} else {
-			replaceNodes = append(replaceNodes, ctx.curNode)
-		}
-	}
-	ctx.node.SetTokens(replaceNodes)
-	return ctx.node
-}
-
-func findParenthesisMatch(ctx *nodeWalkContext, startTok ast.Node, startIndex uint) ast.Node {
-	var nodes []ast.Node
-	nodes = append(nodes, startTok)
-	for ctx.nextNode(false) {
-		if ctx.hasTokenList() {
-			continue
-		}
-
-		if index, node := ctx.curNodeIs(parenthesisOpenMatcher); node != nil {
-			parenthesis := findParenthesisMatch(ctx, node, index)
+		if _, node := tmpCtx.curNodeIs(parenthesisPrefixMatcher); node != nil {
+			parenthesis := parseParenthesis(tmpCtx)
 			nodes = append(nodes, parenthesis)
-		} else if _, node := ctx.curNodeIs(parenthesisCloseMatcher); node != nil {
+		} else if _, node := tmpCtx.curNodeIs(parenthesisCloseMatcher); node != nil {
+			ctx.index = tmpCtx.index
+			ctx.curNode = tmpCtx.curNode
 			return &ast.Parenthesis{Toks: append(nodes, node)}
 		} else {
-			nodes = append(nodes, ctx.curNode)
+			nodes = append(nodes, tmpCtx.curNode)
 		}
 	}
-	return nil
+	return ctx.curNode
 }
 
 // parseCase

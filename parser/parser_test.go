@@ -37,7 +37,7 @@ func TestParseStatement(t *testing.T) {
 	testStatement(t, stmts[2], 1, "select")
 }
 
-func TestParseParenthesis(t *testing.T) {
+func TestParseParenthesis_Normal(t *testing.T) {
 	input := `select (select (x3) x2) and (y2) bar`
 	src := bytes.NewBuffer([]byte(input))
 	parser, err := NewParser(src, &dialect.GenericSQLDialect{})
