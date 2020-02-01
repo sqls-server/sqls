@@ -157,7 +157,17 @@ func (nr *nodeReader) peekNode(ignoreWhiteSpace bool) (uint, ast.Node) {
 	return 0, nil
 }
 
-func (nr *nodeReader) peekNodeIs(ignoreWhiteSpace bool, fd nodeMatcher) (uint, ast.Node) {
+func (nr *nodeReader) peekNodeIs(ignoreWhiteSpace bool, fd nodeMatcher) bool {
+	_, node := nr.peekNode(ignoreWhiteSpace)
+	if node != nil {
+		if fd.isMatch(node) {
+			return true
+		}
+	}
+	return false
+}
+
+func (nr *nodeReader) matchedPeekNode(ignoreWhiteSpace bool, fd nodeMatcher) (uint, ast.Node) {
 	index, node := nr.peekNode(ignoreWhiteSpace)
 	if node != nil {
 		if fd.isMatch(node) {
@@ -241,7 +251,7 @@ func parseInfixGroup(reader *nodeReader, matcher nodeMatcher, ignoreWhiteSpace b
 			continue
 		}
 
-		if _, node := reader.peekNodeIs(ignoreWhiteSpace, matcher); node != nil {
+		if reader.peekNodeIs(ignoreWhiteSpace, matcher) {
 			replaceNodes = append(replaceNodes, fn(reader))
 		} else {
 			replaceNodes = append(replaceNodes, reader.curNode)
@@ -377,7 +387,7 @@ var functionArgsMatcher = nodeMatcher{
 
 func parseFunctions(reader *nodeReader) ast.Node {
 	funcName := reader.curNode
-	if _, funcArgs := reader.peekNodeIs(false, functionArgsMatcher); funcArgs != nil {
+	if _, funcArgs := reader.matchedPeekNode(false, functionArgsMatcher); funcArgs != nil {
 		function := &ast.Function{Toks: []ast.Node{funcName, funcArgs}}
 		reader.nextNode(false)
 		return function
@@ -415,7 +425,7 @@ func parseWhere(reader *nodeReader) ast.Node {
 
 		if reader.curNodeIs(wherePrefixMatcher) {
 			nodes = append(nodes, parseWhere(reader))
-		} else if _, node := reader.peekNodeIs(false, whereCloseMatcher); node != nil {
+		} else if reader.peekNodeIs(false, whereCloseMatcher) {
 			nodes = append(nodes, reader.curNode)
 			return &ast.Where{Toks: nodes}
 		} else {
@@ -447,7 +457,7 @@ func parseMemberIdentifier(reader *nodeReader) ast.Node {
 	memberIdentifier := &ast.MemberIdentifer{Toks: reader.nodesWithRange(startIndex, reader.index+1)}
 	reader.nextNode(false)
 
-	endIndex, right := reader.peekNodeIs(true, memberIdentifierTargetMatcher)
+	endIndex, right := reader.matchedPeekNode(true, memberIdentifierTargetMatcher)
 	if right == nil {
 		return memberIdentifier
 	}
@@ -529,7 +539,7 @@ func parseOperator(reader *nodeReader) ast.Node {
 	tmpReader := reader.copyReader()
 	tmpReader.nextNode(true)
 
-	endIndex, right := tmpReader.peekNodeIs(true, operatorTargetMatcher)
+	endIndex, right := tmpReader.matchedPeekNode(true, operatorTargetMatcher)
 	if right == nil {
 		return reader.curNode
 	}
@@ -584,7 +594,7 @@ func parseAliased(reader *nodeReader) ast.Node {
 	tmpReader := reader.copyReader()
 	tmpReader.nextNode(true)
 
-	endIndex, aliasedName := tmpReader.peekNodeIs(true, aliasTargetMatcher)
+	endIndex, aliasedName := tmpReader.matchedPeekNode(true, aliasTargetMatcher)
 	if aliasedName == nil {
 		return reader.curNode
 	}
