@@ -361,6 +361,18 @@ func parseStatement(ctx *nodeWalkContext) ast.TokenList {
 // parseComments
 // parseBrackets
 
+var parenthesisOpenMatcher = nodeMatcher{
+	expectTokens: []token.Kind{
+		token.LParen,
+	},
+}
+
+var parenthesisCloseMatcher = nodeMatcher{
+	expectTokens: []token.Kind{
+		token.RParen,
+	},
+}
+
 func parseParenthesis(ctx *nodeWalkContext) ast.TokenList {
 	var replaceNodes []ast.Node
 
@@ -371,12 +383,10 @@ func parseParenthesis(ctx *nodeWalkContext) ast.TokenList {
 			continue
 		}
 
-		tok := ctx.mustToken()
-		if tok.MatchKind(token.LParen) {
-			newctx := ctx.copyContext()
-			parenthesis := findParenthesisMatch(newctx, ctx.curNode, ctx.index)
-			if parenthesis != nil {
-				ctx = newctx
+		if index, node := ctx.curNodeIs(parenthesisOpenMatcher); node != nil {
+			newCtx := ctx.copyContext()
+			if parenthesis := findParenthesisMatch(newCtx, node, index); parenthesis != nil {
+				ctx = newCtx
 				replaceNodes = append(replaceNodes, parenthesis)
 			} else {
 				replaceNodes = append(replaceNodes, ctx.curNode)
@@ -397,13 +407,11 @@ func findParenthesisMatch(ctx *nodeWalkContext, startTok ast.Node, startIndex ui
 			continue
 		}
 
-		tok := ctx.mustToken()
-		if tok.MatchKind(token.LParen) {
-			group := findParenthesisMatch(ctx, ctx.curNode, ctx.index)
-			nodes = append(nodes, group)
-		} else if tok.MatchKind(token.RParen) {
-			nodes = append(nodes, ctx.curNode)
-			return &ast.Parenthesis{Toks: nodes}
+		if index, node := ctx.curNodeIs(parenthesisOpenMatcher); node != nil {
+			parenthesis := findParenthesisMatch(ctx, node, index)
+			nodes = append(nodes, parenthesis)
+		} else if _, node := ctx.curNodeIs(parenthesisCloseMatcher); node != nil {
+			return &ast.Parenthesis{Toks: append(nodes, node)}
 		} else {
 			nodes = append(nodes, ctx.curNode)
 		}
