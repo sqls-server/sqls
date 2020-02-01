@@ -258,7 +258,7 @@ func (p *Parser) Parse() (ast.TokenList, error) {
 	root := p.root
 	root = parseStatement(newNodeWalkContext(root))
 	root = parseParenthesis(newNodeWalkContext(root))
-	root = parseFunctions(newNodeWalkContext(root))
+	root = parsePrefixGroup(newNodeWalkContext(root), functionPrefixMatcher, parseFunctions)
 	root = parseWhere(newNodeWalkContext(root))
 	root = parseMemberIdentifier(newNodeWalkContext(root))
 	root = parsePrefixGroup(newNodeWalkContext(root), identifierPrefixMatcher, parseIdentifier)
@@ -371,7 +371,6 @@ var functionPrefixMatcher = nodeMatcher{
 		dialect.Unmatched,
 	},
 }
-
 var functionArgsMatcher = nodeMatcher{
 	nodeTypeMatcherFunc: func(node interface{}) bool {
 		if _, ok := node.(*ast.Parenthesis); ok {
@@ -381,28 +380,14 @@ var functionArgsMatcher = nodeMatcher{
 	},
 }
 
-func parseFunctions(ctx *nodeWalkContext) ast.TokenList {
-	var replaceNodes []ast.Node
-
-	for ctx.nextNode(false) {
-		if ctx.hasTokenList() {
-			list := ctx.mustTokenList()
-			replaceNodes = append(replaceNodes, parseFunctions(newNodeWalkContext(list)))
-			continue
-		}
-
-		if _, funcName := ctx.curNodeIs(functionPrefixMatcher); funcName != nil {
-			if _, funcArgs := ctx.peekNodeIs(false, functionArgsMatcher); funcArgs != nil {
-				funcNode := &ast.Function{Toks: []ast.Node{funcName, funcArgs}}
-				replaceNodes = append(replaceNodes, funcNode)
-				ctx.nextNode(false)
-				continue
-			}
-		}
-		replaceNodes = append(replaceNodes, ctx.curNode)
+func parseFunctions(ctx *nodeWalkContext) ast.Node {
+	funcName := ctx.curNode
+	if _, funcArgs := ctx.peekNodeIs(false, functionArgsMatcher); funcArgs != nil {
+		function := &ast.Function{Toks: []ast.Node{funcName, funcArgs}}
+		ctx.nextNode(false)
+		return function
 	}
-	ctx.node.SetTokens(replaceNodes)
-	return ctx.node
+	return ctx.curNode
 }
 
 var whereOpenMatcher = nodeMatcher{
