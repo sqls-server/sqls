@@ -210,74 +210,6 @@ func (ctx *nodeWalkContext) mustTokenList() ast.TokenList {
 	return children
 }
 
-func (ctx *nodeWalkContext) hasToken() bool {
-	_, ok := ctx.curNode.(ast.Token)
-	return ok
-}
-
-func (ctx *nodeWalkContext) getToken() (*ast.SQLToken, error) {
-	if !ctx.hasToken() {
-		return nil, errors.Errorf("want Token got %T", ctx.curNode)
-	}
-	token, _ := ctx.curNode.(ast.Token)
-	return token.GetToken(), nil
-}
-
-func (ctx *nodeWalkContext) mustToken() *ast.SQLToken {
-	token, _ := ctx.getToken()
-	return token
-}
-
-func (ctx *nodeWalkContext) getPeekNode() ast.Node {
-	if !ctx.hasNext() {
-		return nil
-	}
-	return ctx.node.GetTokens()[ctx.index]
-}
-
-func (ctx *nodeWalkContext) getPeekToken() (*ast.SQLToken, error) {
-	if !ctx.hasNext() {
-		return nil, errors.Errorf("EOF")
-	}
-	tok, ok := ctx.node.GetTokens()[ctx.index].(ast.Token)
-	if !ok {
-		return nil, errors.Errorf("want Token got %T", ctx.curNode)
-	}
-	return tok.GetToken(), nil
-}
-
-func (ctx *nodeWalkContext) peekTokenMatchKind(expect token.Kind) bool {
-	token, err := ctx.getPeekToken()
-	if err != nil {
-		return false
-	}
-	return token.MatchKind(expect)
-}
-
-func (ctx *nodeWalkContext) peekTokenMatchSQLKind(expect dialect.KeywordKind) bool {
-	token, err := ctx.getPeekToken()
-	if err != nil {
-		return false
-	}
-	return token.MatchSQLKind(expect)
-}
-
-func (ctx *nodeWalkContext) peekTokenMatchSQLKeyword(expect string) bool {
-	token, err := ctx.getPeekToken()
-	if err != nil {
-		return false
-	}
-	return token.MatchSQLKeyword(expect)
-}
-
-func (ctx *nodeWalkContext) peekTokenMatchSQLKeywords(expects []string) bool {
-	token, err := ctx.getPeekToken()
-	if err != nil {
-		return false
-	}
-	return token.MatchSQLKeywords(expects)
-}
-
 type (
 	prefixParseFn func() ast.Node
 	infixParseFn  func(ast.Node) ast.Node
@@ -596,9 +528,9 @@ func parseIdentifier(ctx *nodeWalkContext) ast.TokenList {
 			continue
 		}
 
-		_, item := ctx.curNodeIs(identifierTargetMatcher)
-		if item != nil {
-			replaceNodes = append(replaceNodes, &ast.Identifer{Tok: ctx.mustToken()})
+		if _, item := ctx.curNodeIs(identifierTargetMatcher); item != nil {
+			token, _ := item.(ast.Token)
+			replaceNodes = append(replaceNodes, &ast.Identifer{Tok: token.GetToken()})
 		} else {
 			replaceNodes = append(replaceNodes, ctx.curNode)
 		}
