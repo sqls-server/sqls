@@ -10,20 +10,16 @@ import (
 	"github.com/pkg/errors"
 )
 
-type nodeTypeMatcher interface {
-	match(node interface{}) bool
-}
-
 type nodeMatcher struct {
-	typeMatcher   nodeTypeMatcher
-	expectTokens  []token.Kind
-	expectSQLType []dialect.KeywordKind
-	expectKeyword []string
+	nodeTypeMatcherFunc func(node interface{}) bool
+	expectTokens        []token.Kind
+	expectSQLType       []dialect.KeywordKind
+	expectKeyword       []string
 }
 
 func (f *nodeMatcher) isMatchNodeType(node interface{}) bool {
-	if f.typeMatcher != nil {
-		if f.typeMatcher.match(node) {
+	if f.nodeTypeMatcherFunc != nil {
+		if f.nodeTypeMatcherFunc(node) {
 			return true
 		}
 	}
@@ -424,6 +420,22 @@ func findParenthesisMatch(ctx *nodeWalkContext, startTok ast.Node, startIndex ui
 // parseFor
 // parseBegin
 
+var functionPrefixMatcher = nodeMatcher{
+	expectSQLType: []dialect.KeywordKind{
+		dialect.Matched,
+		dialect.Unmatched,
+	},
+}
+
+var functionArgsMatcher = nodeMatcher{
+	nodeTypeMatcherFunc: func(node interface{}) bool {
+		if _, ok := node.(*ast.Parenthesis); ok {
+			return true
+		}
+		return false
+	},
+}
+
 func parseFunctions(ctx *nodeWalkContext) ast.TokenList {
 	var replaceNodes []ast.Node
 
@@ -434,15 +446,11 @@ func parseFunctions(ctx *nodeWalkContext) ast.TokenList {
 			continue
 		}
 
-		tok := ctx.mustToken()
-		if tok.MatchSQLKind(dialect.Matched) || tok.MatchSQLKind(dialect.Unmatched) {
-			peekNode := ctx.getPeekNode()
-			if _, ok := peekNode.(*ast.Parenthesis); ok {
-				funcName := ctx.curNode
-				ctx.nextNode(false)
-				args := ctx.curNode
-				funcNode := &ast.Function{Toks: []ast.Node{funcName, args}}
+		if _, funcName := ctx.curNodeIs(functionPrefixMatcher); funcName != nil {
+			if _, funcArgs := ctx.peekNodeIs(false, functionArgsMatcher); funcArgs != nil {
+				funcNode := &ast.Function{Toks: []ast.Node{funcName, funcArgs}}
 				replaceNodes = append(replaceNodes, funcNode)
+				ctx.nextNode(false)
 				continue
 			}
 		}
@@ -633,7 +641,12 @@ var operatorMatcher = nodeMatcher{
 	},
 }
 var operatorTargetMatcher = nodeMatcher{
-	typeMatcher: &operatorTypeMatcher{},
+	nodeTypeMatcherFunc: func(node interface{}) bool {
+		if _, ok := node.(*ast.Identifer); ok {
+			return true
+		}
+		return false
+	},
 	expectTokens: []token.Kind{
 		token.Number,
 		token.Char,
