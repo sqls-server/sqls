@@ -210,7 +210,10 @@ func (ctx *nodeWalkContext) mustTokenList() ast.TokenList {
 	return children
 }
 
-type prefixParseFn func(ctx *nodeWalkContext) ast.Node
+type (
+	prefixParseFn func(ctx *nodeWalkContext) ast.Node
+	infixParseFn  func(ctx *nodeWalkContext) ast.Node
+)
 
 func parsePrefixGroup(ctx *nodeWalkContext, matcher nodeMatcher, fn prefixParseFn) ast.TokenList {
 	var replaceNodes []ast.Node
@@ -222,6 +225,25 @@ func parsePrefixGroup(ctx *nodeWalkContext, matcher nodeMatcher, fn prefixParseF
 		}
 
 		if _, node := ctx.curNodeIs(matcher); node != nil {
+			replaceNodes = append(replaceNodes, fn(ctx))
+		} else {
+			replaceNodes = append(replaceNodes, ctx.curNode)
+		}
+	}
+	ctx.node.SetTokens(replaceNodes)
+	return ctx.node
+}
+
+func parseInfixGroup(ctx *nodeWalkContext, matcher nodeMatcher, ignoreWhiteSpace bool, fn infixParseFn) ast.TokenList {
+	var replaceNodes []ast.Node
+	for ctx.nextNode(false) {
+		if list, ok := ctx.curNode.(ast.TokenList); ok {
+			newCtx := newNodeWalkContext(list)
+			replaceNodes = append(replaceNodes, parseInfixGroup(newCtx, matcher, ignoreWhiteSpace, fn))
+			continue
+		}
+
+		if _, node := ctx.peekNodeIs(ignoreWhiteSpace, matcher); node != nil {
 			replaceNodes = append(replaceNodes, fn(ctx))
 		} else {
 			replaceNodes = append(replaceNodes, ctx.curNode)
@@ -260,7 +282,7 @@ func (p *Parser) Parse() (ast.TokenList, error) {
 	root = parsePrefixGroup(newNodeWalkContext(root), parenthesisPrefixMatcher, parseParenthesis)
 	root = parsePrefixGroup(newNodeWalkContext(root), functionPrefixMatcher, parseFunctions)
 	root = parsePrefixGroup(newNodeWalkContext(root), wherePrefixMatcher, parseWhere)
-	root = parseMemberIdentifier(newNodeWalkContext(root))
+	root = parseInfixGroup(newNodeWalkContext(root), memberIdentifierInfixMatcher, false, parseMemberIdentifier)
 	root = parsePrefixGroup(newNodeWalkContext(root), identifierPrefixMatcher, parseIdentifier)
 	root = parseOperator(newNodeWalkContext(root))
 	root = parseAliased(newNodeWalkContext(root))
@@ -405,12 +427,11 @@ func parseWhere(ctx *nodeWalkContext) ast.Node {
 	return &ast.Where{Toks: nodes}
 }
 
-var periodMatcher = nodeMatcher{
+var memberIdentifierInfixMatcher = nodeMatcher{
 	expectTokens: []token.Kind{
 		token.Period,
 	},
 }
-
 var memberIdentifierTargetMatcher = nodeMatcher{
 	expectTokens: []token.Kind{
 		token.Mult,
@@ -420,40 +441,22 @@ var memberIdentifierTargetMatcher = nodeMatcher{
 	},
 }
 
-func parseMemberIdentifier(ctx *nodeWalkContext) ast.TokenList {
-	var replaceNodes []ast.Node
-	for ctx.nextNode(false) {
-		if ctx.hasTokenList() {
-			list := ctx.mustTokenList()
-			replaceNodes = append(replaceNodes, parseMemberIdentifier(newNodeWalkContext(list)))
-			continue
-		}
-
-		_, period := ctx.peekNodeIs(false, periodMatcher)
-		if period != nil {
-			startIndex, left := ctx.curNodeIs(memberIdentifierTargetMatcher)
-			if left == nil {
-				replaceNodes = append(replaceNodes, ctx.curNode)
-				continue
-			}
-			mi := &ast.MemberIdentifer{Toks: ctx.nodesWithRange(startIndex, ctx.index+1)}
-			ctx.nextNode(false)
-
-			endIndex, right := ctx.peekNodeIs(true, memberIdentifierTargetMatcher)
-			if right == nil {
-				replaceNodes = append(replaceNodes, mi)
-				continue
-			}
-			ctx.nextNode(false)
-
-			mi = &ast.MemberIdentifer{Toks: ctx.nodesWithRange(startIndex, endIndex+1)}
-			replaceNodes = append(replaceNodes, mi)
-		} else {
-			replaceNodes = append(replaceNodes, ctx.curNode)
-		}
+func parseMemberIdentifier(ctx *nodeWalkContext) ast.Node {
+	startIndex, left := ctx.curNodeIs(memberIdentifierTargetMatcher)
+	if left == nil {
+		return ctx.curNode
 	}
-	ctx.node.SetTokens(replaceNodes)
-	return ctx.node
+	memberIdentifier := &ast.MemberIdentifer{Toks: ctx.nodesWithRange(startIndex, ctx.index+1)}
+	ctx.nextNode(false)
+
+	endIndex, right := ctx.peekNodeIs(true, memberIdentifierTargetMatcher)
+	if right == nil {
+		return memberIdentifier
+	}
+	ctx.nextNode(false)
+
+	memberIdentifier = &ast.MemberIdentifer{Toks: ctx.nodesWithRange(startIndex, endIndex+1)}
+	return memberIdentifier
 }
 
 // parseArrays
