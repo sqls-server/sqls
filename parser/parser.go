@@ -529,8 +529,7 @@ func parseMemberIdentifier(ctx *nodeWalkContext) ast.TokenList {
 				replaceNodes = append(replaceNodes, ctx.curNode)
 				continue
 			}
-			endIndex := ctx.index + 1
-			mi := &ast.MemberIdentifer{Toks: ctx.nodesWithRange(startIndex, endIndex)}
+			mi := &ast.MemberIdentifer{Toks: ctx.nodesWithRange(startIndex, ctx.index+1)}
 			ctx.nextNode(false)
 
 			endIndex, right := ctx.peekNodeIs(true, MemberIdentifierTargetFinder)
@@ -552,6 +551,12 @@ func parseMemberIdentifier(ctx *nodeWalkContext) ast.TokenList {
 
 // parseArrays
 
+var identifierTargetFinder = finder{
+	expectSQLType: []dialect.KeywordKind{
+		dialect.Unmatched,
+	},
+}
+
 func parseIdentifier(ctx *nodeWalkContext) ast.TokenList {
 	var replaceNodes []ast.Node
 	for ctx.nextNode(false) {
@@ -565,10 +570,9 @@ func parseIdentifier(ctx *nodeWalkContext) ast.TokenList {
 			continue
 		}
 
-		tok := ctx.mustToken()
-		if tok.MatchSQLKind(dialect.Unmatched) {
-			identifer := &ast.Identifer{Tok: tok}
-			replaceNodes = append(replaceNodes, identifer)
+		_, item := ctx.curNodeIs(identifierTargetFinder)
+		if item != nil {
+			replaceNodes = append(replaceNodes, &ast.Identifer{Tok: ctx.mustToken()})
 		} else {
 			replaceNodes = append(replaceNodes, ctx.curNode)
 		}
