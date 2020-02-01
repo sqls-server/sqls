@@ -284,7 +284,7 @@ func (p *Parser) Parse() (ast.TokenList, error) {
 	root = parsePrefixGroup(newNodeWalkContext(root), wherePrefixMatcher, parseWhere)
 	root = parseInfixGroup(newNodeWalkContext(root), memberIdentifierInfixMatcher, false, parseMemberIdentifier)
 	root = parsePrefixGroup(newNodeWalkContext(root), identifierPrefixMatcher, parseIdentifier)
-	root = parseOperator(newNodeWalkContext(root))
+	root = parseInfixGroup(newNodeWalkContext(root), operatorInfixMatcher, true, parseOperator)
 	root = parseAliased(newNodeWalkContext(root))
 	return root, nil
 }
@@ -499,7 +499,7 @@ func (om *operatorTypeMatcher) match(node interface{}) bool {
 	return false
 }
 
-var operatorMatcher = nodeMatcher{
+var operatorInfixMatcher = nodeMatcher{
 	expectTokens: []token.Kind{
 		token.Plus,
 		token.Minus,
@@ -523,43 +523,24 @@ var operatorTargetMatcher = nodeMatcher{
 	},
 }
 
-func parseOperator(ctx *nodeWalkContext) ast.TokenList {
-	var replaceNodes []ast.Node
-
-	for ctx.nextNode(false) {
-		if ctx.hasTokenList() {
-			list := ctx.mustTokenList()
-			replaceNodes = append(replaceNodes, parseOperator(newNodeWalkContext(list)))
-			continue
-		}
-
-		_, ope := ctx.peekNodeIs(true, operatorMatcher)
-		if ope != nil {
-			startIndex, left := ctx.curNodeIs(operatorTargetMatcher)
-			if left == nil {
-				replaceNodes = append(replaceNodes, ctx.curNode)
-				continue
-			}
-			tmpCtx := ctx.copyContext()
-			tmpCtx.nextNode(true)
-
-			endIndex, right := tmpCtx.peekNodeIs(true, operatorTargetMatcher)
-			if right == nil {
-				replaceNodes = append(replaceNodes, ctx.curNode)
-				continue
-			}
-			tmpCtx.nextNode(true)
-			tmpCtx.nextNode(true)
-			ctx = tmpCtx
-
-			operator := &ast.Operator{Toks: ctx.nodesWithRange(startIndex, endIndex+1)}
-			replaceNodes = append(replaceNodes, operator)
-		} else {
-			replaceNodes = append(replaceNodes, ctx.curNode)
-		}
+func parseOperator(ctx *nodeWalkContext) ast.Node {
+	startIndex, left := ctx.curNodeIs(operatorTargetMatcher)
+	if left == nil {
+		return ctx.curNode
 	}
-	ctx.node.SetTokens(replaceNodes)
-	return ctx.node
+	tmpCtx := ctx.copyContext()
+	tmpCtx.nextNode(true)
+
+	endIndex, right := tmpCtx.peekNodeIs(true, operatorTargetMatcher)
+	if right == nil {
+		return ctx.curNode
+	}
+	tmpCtx.nextNode(true)
+	tmpCtx.nextNode(true)
+	ctx.index = tmpCtx.index
+	ctx.curNode = tmpCtx.curNode
+
+	return &ast.Operator{Toks: ctx.nodesWithRange(startIndex, endIndex+1)}
 }
 
 func parseComparison(ctx *nodeWalkContext) ast.TokenList {
