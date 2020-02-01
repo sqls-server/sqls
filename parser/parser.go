@@ -285,7 +285,7 @@ func (p *Parser) Parse() (ast.TokenList, error) {
 	root = parseInfixGroup(newNodeWalkContext(root), memberIdentifierInfixMatcher, false, parseMemberIdentifier)
 	root = parsePrefixGroup(newNodeWalkContext(root), identifierPrefixMatcher, parseIdentifier)
 	root = parseInfixGroup(newNodeWalkContext(root), operatorInfixMatcher, true, parseOperator)
-	root = parseAliased(newNodeWalkContext(root))
+	root = parseInfixGroup(newNodeWalkContext(root), aliasInfixMatcher, true, parseAliased)
 	return root, nil
 }
 
@@ -558,7 +558,7 @@ func parseComparison(ctx *nodeWalkContext) ast.TokenList {
 // ast.MemberIdentifer,
 // ast.Parenthesis,
 
-var aliasKeywordMatcher = nodeMatcher{
+var aliasInfixMatcher = nodeMatcher{
 	expectKeyword: []string{
 		"AS",
 	},
@@ -578,40 +578,23 @@ var aliasTargetMatcher = nodeMatcher{
 	},
 }
 
-func parseAliased(ctx *nodeWalkContext) ast.TokenList {
-	var replaceNodes []ast.Node
-	for ctx.nextNode(false) {
-		if ctx.hasTokenList() {
-			list := ctx.mustTokenList()
-			replaceNodes = append(replaceNodes, parseAliased(newNodeWalkContext(list)))
-			continue
-		}
-
-		if _, as := ctx.peekNodeIs(true, aliasKeywordMatcher); as != nil {
-			startIndex, realName := ctx.curNodeIs(aliasTargetMatcher)
-			if realName == nil {
-				replaceNodes = append(replaceNodes, ctx.curNode)
-				continue
-			}
-			tmpCtx := ctx.copyContext()
-			tmpCtx.nextNode(true)
-
-			endIndex, aliasedName := tmpCtx.peekNodeIs(true, aliasTargetMatcher)
-			if aliasedName == nil {
-				replaceNodes = append(replaceNodes, ctx.curNode)
-				continue
-			}
-			tmpCtx.nextNode(true)
-			ctx = tmpCtx
-
-			aliased := &ast.Aliased{Toks: ctx.nodesWithRange(startIndex, endIndex+1)}
-			replaceNodes = append(replaceNodes, aliased)
-		} else {
-			replaceNodes = append(replaceNodes, ctx.curNode)
-		}
+func parseAliased(ctx *nodeWalkContext) ast.Node {
+	startIndex, realName := ctx.curNodeIs(aliasTargetMatcher)
+	if realName == nil {
+		return ctx.curNode
 	}
-	ctx.node.SetTokens(replaceNodes)
-	return ctx.node
+	tmpCtx := ctx.copyContext()
+	tmpCtx.nextNode(true)
+
+	endIndex, aliasedName := tmpCtx.peekNodeIs(true, aliasTargetMatcher)
+	if aliasedName == nil {
+		return ctx.curNode
+	}
+	tmpCtx.nextNode(true)
+	ctx.index = tmpCtx.index
+	ctx.curNode = tmpCtx.curNode
+
+	return &ast.Aliased{Toks: ctx.nodesWithRange(startIndex, endIndex+1)}
 }
 
 // parseAssignment
