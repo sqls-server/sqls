@@ -151,7 +151,11 @@ func (ctx *nodeWalkContext) peekNode(ignoreWhiteSpace bool) (uint, ast.Node) {
 		index := newCtx.index
 		node := newCtx.node.GetTokens()[index]
 
-		if ignoreWhiteSpace && !isWhitespace(node) {
+		if ignoreWhiteSpace {
+			if !isWhitespace(node) {
+				return index, node
+			}
+		} else {
 			return index, node
 		}
 		newCtx.nextNode(false)
@@ -315,7 +319,7 @@ func (p *Parser) Parse() (ast.TokenList, error) {
 	root = parseParenthesis(newNodeWalkContext(root))
 	root = parseFunctions(newNodeWalkContext(root))
 	root = parseWhere(newNodeWalkContext(root))
-	root = parsePeriod(newNodeWalkContext(root))
+	root = parseMemberIdentifier(newNodeWalkContext(root))
 	root = parseIdentifier(newNodeWalkContext(root))
 	root = parseOperator(newNodeWalkContext(root))
 	root = parseAliased(newNodeWalkContext(root))
@@ -494,29 +498,50 @@ func findWhereMatch(ctx *nodeWalkContext, startTok ast.Node, startIndex uint) as
 	return &ast.Where{Toks: nodes}
 }
 
-func parsePeriod(ctx *nodeWalkContext) ast.TokenList {
+var periodFinder = finder{
+	expectTokens: []token.Kind{
+		token.Period,
+	},
+}
+
+var MemberIdentifierTargetFinder = finder{
+	expectTokens: []token.Kind{
+		token.Mult,
+	},
+	expectSQLType: []dialect.KeywordKind{
+		dialect.Unmatched,
+	},
+}
+
+func parseMemberIdentifier(ctx *nodeWalkContext) ast.TokenList {
 	var replaceNodes []ast.Node
 	for ctx.nextNode(false) {
 		if ctx.hasTokenList() {
 			list := ctx.mustTokenList()
-			replaceNodes = append(replaceNodes, parsePeriod(newNodeWalkContext(list)))
+			replaceNodes = append(replaceNodes, parseMemberIdentifier(newNodeWalkContext(list)))
 			continue
 		}
 
-		if ctx.peekTokenMatchKind(token.Period) {
-			parent := ctx.curNode
-			ctx.nextNode(false)
-			period := ctx.curNode
-
-			if ctx.peekTokenMatchSQLKind(dialect.Unmatched) || ctx.peekTokenMatchKind(token.Mult) {
-				ctx.nextNode(false)
-				child := ctx.curNode
-				memberIdentifer := &ast.MemberIdentifer{Toks: []ast.Node{parent, period, child}}
-				replaceNodes = append(replaceNodes, memberIdentifer)
-			} else {
-				memberIdentifer := &ast.MemberIdentifer{Toks: []ast.Node{parent, period}}
-				replaceNodes = append(replaceNodes, memberIdentifer)
+		_, period := ctx.peekNodeIs(false, periodFinder)
+		if period != nil {
+			startIndex, left := ctx.curNodeIs(MemberIdentifierTargetFinder)
+			if left == nil {
+				replaceNodes = append(replaceNodes, ctx.curNode)
+				continue
 			}
+			endIndex := ctx.index + 1
+			mi := &ast.MemberIdentifer{Toks: ctx.nodesWithRange(startIndex, endIndex)}
+			ctx.nextNode(false)
+
+			endIndex, right := ctx.peekNodeIs(true, MemberIdentifierTargetFinder)
+			if right == nil {
+				replaceNodes = append(replaceNodes, mi)
+				continue
+			}
+			ctx.nextNode(false)
+
+			mi = &ast.MemberIdentifer{Toks: ctx.nodesWithRange(startIndex, endIndex+1)}
+			replaceNodes = append(replaceNodes, mi)
 		} else {
 			replaceNodes = append(replaceNodes, ctx.curNode)
 		}
