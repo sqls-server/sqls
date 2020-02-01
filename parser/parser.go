@@ -14,23 +14,23 @@ type nodeTypeMatcher interface {
 	match(node interface{}) bool
 }
 
-type finder struct {
-	matcher       nodeTypeMatcher
+type nodeMatcher struct {
+	typeMatcher   nodeTypeMatcher
 	expectTokens  []token.Kind
 	expectSQLType []dialect.KeywordKind
 	expectKeyword []string
 }
 
-func (f *finder) isMatchNodeType(node interface{}) bool {
-	if f.matcher != nil {
-		if f.matcher.match(node) {
+func (f *nodeMatcher) isMatchNodeType(node interface{}) bool {
+	if f.typeMatcher != nil {
+		if f.typeMatcher.match(node) {
 			return true
 		}
 	}
 	return false
 }
 
-func (f *finder) isMatchTokens(tok *ast.SQLToken) bool {
+func (f *nodeMatcher) isMatchTokens(tok *ast.SQLToken) bool {
 	if f.expectTokens != nil {
 		for _, expect := range f.expectTokens {
 			if tok.MatchKind(expect) {
@@ -41,7 +41,7 @@ func (f *finder) isMatchTokens(tok *ast.SQLToken) bool {
 	return false
 }
 
-func (f *finder) isMatchSQLType(tok *ast.SQLToken) bool {
+func (f *nodeMatcher) isMatchSQLType(tok *ast.SQLToken) bool {
 	if f.expectSQLType != nil {
 		for _, expect := range f.expectSQLType {
 			if tok.MatchSQLKind(expect) {
@@ -52,7 +52,7 @@ func (f *finder) isMatchSQLType(tok *ast.SQLToken) bool {
 	return false
 }
 
-func (f *finder) isMatchKeyword(tok *ast.SQLToken) bool {
+func (f *nodeMatcher) isMatchKeyword(tok *ast.SQLToken) bool {
 	if f.expectKeyword != nil {
 		for _, expect := range f.expectKeyword {
 			if tok.MatchSQLKeyword(expect) {
@@ -63,7 +63,7 @@ func (f *finder) isMatchKeyword(tok *ast.SQLToken) bool {
 	return false
 }
 
-func (f *finder) isMatch(node ast.Node) bool {
+func (f *nodeMatcher) isMatch(node ast.Node) bool {
 	// For node object
 	if f.isMatchNodeType(node) {
 		return true
@@ -134,7 +134,7 @@ func isWhitespace(node ast.Node) bool {
 	return false
 }
 
-func (ctx *nodeWalkContext) curNodeIs(fd finder) (uint, ast.Node) {
+func (ctx *nodeWalkContext) curNodeIs(fd nodeMatcher) (uint, ast.Node) {
 	index := ctx.index - 1
 	node := ctx.curNode
 	if node != nil {
@@ -163,7 +163,7 @@ func (ctx *nodeWalkContext) peekNode(ignoreWhiteSpace bool) (uint, ast.Node) {
 	return 0, nil
 }
 
-func (ctx *nodeWalkContext) peekNodeIs(ignoreWhiteSpace bool, fd finder) (uint, ast.Node) {
+func (ctx *nodeWalkContext) peekNodeIs(ignoreWhiteSpace bool, fd nodeMatcher) (uint, ast.Node) {
 	index, node := ctx.peekNode(ignoreWhiteSpace)
 	if node != nil {
 		if fd.isMatch(node) {
@@ -173,7 +173,7 @@ func (ctx *nodeWalkContext) peekNodeIs(ignoreWhiteSpace bool, fd finder) (uint, 
 	return 0, nil
 }
 
-func (ctx *nodeWalkContext) findNode(ignoreWhiteSpace bool, fd finder) (*nodeWalkContext, ast.Node) {
+func (ctx *nodeWalkContext) findNode(ignoreWhiteSpace bool, fd nodeMatcher) (*nodeWalkContext, ast.Node) {
 	newCtx := ctx.copyContext()
 	for newCtx.hasNext() {
 		node := newCtx.node.GetTokens()[newCtx.index]
@@ -326,7 +326,7 @@ func (p *Parser) Parse() (ast.TokenList, error) {
 	return root, nil
 }
 
-var statementFinder = finder{
+var statementMatcher = nodeMatcher{
 	expectTokens: []token.Kind{
 		token.Semicolon,
 	},
@@ -342,7 +342,7 @@ func parseStatement(ctx *nodeWalkContext) ast.TokenList {
 			continue
 		}
 
-		newCtx, node := ctx.findNode(true, statementFinder)
+		newCtx, node := ctx.findNode(true, statementMatcher)
 		if node != nil {
 			stmt := &ast.Statement{Toks: ctx.nodesWithRange(startIndex, newCtx.index)}
 			replaceNodes = append(replaceNodes, stmt)
@@ -505,13 +505,13 @@ func findWhereMatch(ctx *nodeWalkContext, startTok ast.Node, startIndex uint) as
 	return &ast.Where{Toks: nodes}
 }
 
-var periodFinder = finder{
+var periodMatcher = nodeMatcher{
 	expectTokens: []token.Kind{
 		token.Period,
 	},
 }
 
-var MemberIdentifierTargetFinder = finder{
+var memberIdentifierTargetMatcher = nodeMatcher{
 	expectTokens: []token.Kind{
 		token.Mult,
 	},
@@ -529,9 +529,9 @@ func parseMemberIdentifier(ctx *nodeWalkContext) ast.TokenList {
 			continue
 		}
 
-		_, period := ctx.peekNodeIs(false, periodFinder)
+		_, period := ctx.peekNodeIs(false, periodMatcher)
 		if period != nil {
-			startIndex, left := ctx.curNodeIs(MemberIdentifierTargetFinder)
+			startIndex, left := ctx.curNodeIs(memberIdentifierTargetMatcher)
 			if left == nil {
 				replaceNodes = append(replaceNodes, ctx.curNode)
 				continue
@@ -539,7 +539,7 @@ func parseMemberIdentifier(ctx *nodeWalkContext) ast.TokenList {
 			mi := &ast.MemberIdentifer{Toks: ctx.nodesWithRange(startIndex, ctx.index+1)}
 			ctx.nextNode(false)
 
-			endIndex, right := ctx.peekNodeIs(true, MemberIdentifierTargetFinder)
+			endIndex, right := ctx.peekNodeIs(true, memberIdentifierTargetMatcher)
 			if right == nil {
 				replaceNodes = append(replaceNodes, mi)
 				continue
@@ -558,7 +558,7 @@ func parseMemberIdentifier(ctx *nodeWalkContext) ast.TokenList {
 
 // parseArrays
 
-var identifierTargetFinder = finder{
+var identifierTargetMatcher = nodeMatcher{
 	expectSQLType: []dialect.KeywordKind{
 		dialect.Unmatched,
 	},
@@ -577,7 +577,7 @@ func parseIdentifier(ctx *nodeWalkContext) ast.TokenList {
 			continue
 		}
 
-		_, item := ctx.curNodeIs(identifierTargetFinder)
+		_, item := ctx.curNodeIs(identifierTargetMatcher)
 		if item != nil {
 			replaceNodes = append(replaceNodes, &ast.Identifer{Tok: ctx.mustToken()})
 		} else {
@@ -606,16 +606,16 @@ var comparisons = []token.Kind{
 	token.GtEq,
 }
 
-type operatorMatcher struct{}
+type operatorTypeMatcher struct{}
 
-func (om *operatorMatcher) match(node interface{}) bool {
+func (om *operatorTypeMatcher) match(node interface{}) bool {
 	if _, ok := node.(*ast.Identifer); ok {
 		return true
 	}
 	return false
 }
 
-var operatorFinder = finder{
+var operatorMatcher = nodeMatcher{
 	expectTokens: []token.Kind{
 		token.Plus,
 		token.Minus,
@@ -624,8 +624,8 @@ var operatorFinder = finder{
 		token.Mod,
 	},
 }
-var operatorTargetFinder = finder{
-	matcher: &operatorMatcher{},
+var operatorTargetMatcher = nodeMatcher{
+	typeMatcher: &operatorTypeMatcher{},
 	expectTokens: []token.Kind{
 		token.Number,
 		token.Char,
@@ -644,9 +644,9 @@ func parseOperator(ctx *nodeWalkContext) ast.TokenList {
 			continue
 		}
 
-		_, ope := ctx.peekNodeIs(true, operatorFinder)
+		_, ope := ctx.peekNodeIs(true, operatorMatcher)
 		if ope != nil {
-			startIndex, left := ctx.curNodeIs(operatorTargetFinder)
+			startIndex, left := ctx.curNodeIs(operatorTargetMatcher)
 			if left == nil {
 				replaceNodes = append(replaceNodes, ctx.curNode)
 				continue
@@ -654,7 +654,7 @@ func parseOperator(ctx *nodeWalkContext) ast.TokenList {
 			tmpCtx := ctx.copyContext()
 			tmpCtx.nextNode(true)
 
-			endIndex, right := tmpCtx.peekNodeIs(true, operatorTargetFinder)
+			endIndex, right := tmpCtx.peekNodeIs(true, operatorTargetMatcher)
 			if right == nil {
 				replaceNodes = append(replaceNodes, ctx.curNode)
 				continue
