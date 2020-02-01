@@ -79,6 +79,17 @@ func (f *nodeMatcher) isMatch(node ast.Node) bool {
 	return false
 }
 
+func isWhitespace(node ast.Node) bool {
+	tok, ok := node.(ast.Token)
+	if !ok {
+		return false
+	}
+	if tok.GetToken().MatchKind(token.Whitespace) {
+		return true
+	}
+	return false
+}
+
 type nodeWalkContext struct {
 	node    ast.TokenList
 	curNode ast.Node
@@ -117,17 +128,6 @@ func (ctx *nodeWalkContext) nextNode(ignoreWhiteSpace bool) bool {
 		return ctx.nextNode(ignoreWhiteSpace)
 	}
 	return true
-}
-
-func isWhitespace(node ast.Node) bool {
-	tok, ok := node.(ast.Token)
-	if !ok {
-		return false
-	}
-	if tok.GetToken().MatchKind(token.Whitespace) {
-		return true
-	}
-	return false
 }
 
 func (ctx *nodeWalkContext) curNodeIs(fd nodeMatcher) (uint, ast.Node) {
