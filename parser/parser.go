@@ -90,49 +90,49 @@ func isWhitespace(node ast.Node) bool {
 	return false
 }
 
-type nodeWalkContext struct {
+type nodeReader struct {
 	node    ast.TokenList
 	curNode ast.Node
 	index   uint
 }
 
-func newNodeWalkContext(list ast.TokenList) *nodeWalkContext {
-	return &nodeWalkContext{
+func newNodeReader(list ast.TokenList) *nodeReader {
+	return &nodeReader{
 		node: list,
 	}
 }
 
-func (ctx *nodeWalkContext) copyContext() *nodeWalkContext {
-	return &nodeWalkContext{
-		node:  ctx.node,
-		index: ctx.index,
+func (nr *nodeReader) copyReader() *nodeReader {
+	return &nodeReader{
+		node:  nr.node,
+		index: nr.index,
 	}
 }
 
-func (ctx *nodeWalkContext) nodesWithRange(startIndex, endIndex uint) []ast.Node {
-	return ctx.node.GetTokens()[startIndex:endIndex]
+func (nr *nodeReader) nodesWithRange(startIndex, endIndex uint) []ast.Node {
+	return nr.node.GetTokens()[startIndex:endIndex]
 }
 
-func (ctx *nodeWalkContext) hasNext() bool {
-	return ctx.index < uint(len(ctx.node.GetTokens()))
+func (nr *nodeReader) hasNext() bool {
+	return nr.index < uint(len(nr.node.GetTokens()))
 }
 
-func (ctx *nodeWalkContext) nextNode(ignoreWhiteSpace bool) bool {
-	if !ctx.hasNext() {
+func (nr *nodeReader) nextNode(ignoreWhiteSpace bool) bool {
+	if !nr.hasNext() {
 		return false
 	}
-	ctx.curNode = ctx.node.GetTokens()[ctx.index]
-	ctx.index++
+	nr.curNode = nr.node.GetTokens()[nr.index]
+	nr.index++
 
-	if ignoreWhiteSpace && isWhitespace(ctx.curNode) {
-		return ctx.nextNode(ignoreWhiteSpace)
+	if ignoreWhiteSpace && isWhitespace(nr.curNode) {
+		return nr.nextNode(ignoreWhiteSpace)
 	}
 	return true
 }
 
-func (ctx *nodeWalkContext) curNodeIs(fd nodeMatcher) (uint, ast.Node) {
-	index := ctx.index - 1
-	node := ctx.curNode
+func (nr *nodeReader) curNodeIs(fd nodeMatcher) (uint, ast.Node) {
+	index := nr.index - 1
+	node := nr.curNode
 	if node != nil {
 		if fd.isMatch(node) {
 			return index, node
@@ -141,11 +141,11 @@ func (ctx *nodeWalkContext) curNodeIs(fd nodeMatcher) (uint, ast.Node) {
 	return 0, nil
 }
 
-func (ctx *nodeWalkContext) peekNode(ignoreWhiteSpace bool) (uint, ast.Node) {
-	newCtx := ctx.copyContext()
-	for newCtx.hasNext() {
-		index := newCtx.index
-		node := newCtx.node.GetTokens()[index]
+func (nr *nodeReader) peekNode(ignoreWhiteSpace bool) (uint, ast.Node) {
+	tmpReader := nr.copyReader()
+	for tmpReader.hasNext() {
+		index := tmpReader.index
+		node := tmpReader.node.GetTokens()[index]
 
 		if ignoreWhiteSpace {
 			if !isWhitespace(node) {
@@ -154,13 +154,13 @@ func (ctx *nodeWalkContext) peekNode(ignoreWhiteSpace bool) (uint, ast.Node) {
 		} else {
 			return index, node
 		}
-		newCtx.nextNode(false)
+		tmpReader.nextNode(false)
 	}
 	return 0, nil
 }
 
-func (ctx *nodeWalkContext) peekNodeIs(ignoreWhiteSpace bool, fd nodeMatcher) (uint, ast.Node) {
-	index, node := ctx.peekNode(ignoreWhiteSpace)
+func (nr *nodeReader) peekNodeIs(ignoreWhiteSpace bool, fd nodeMatcher) (uint, ast.Node) {
+	index, node := nr.peekNode(ignoreWhiteSpace)
 	if node != nil {
 		if fd.isMatch(node) {
 			return index, node
@@ -169,88 +169,88 @@ func (ctx *nodeWalkContext) peekNodeIs(ignoreWhiteSpace bool, fd nodeMatcher) (u
 	return 0, nil
 }
 
-func (ctx *nodeWalkContext) findNode(ignoreWhiteSpace bool, fd nodeMatcher) (*nodeWalkContext, ast.Node) {
-	newCtx := ctx.copyContext()
-	for newCtx.hasNext() {
-		node := newCtx.node.GetTokens()[newCtx.index]
+func (nr *nodeReader) findNode(ignoreWhiteSpace bool, fd nodeMatcher) (*nodeReader, ast.Node) {
+	tmpReader := nr.copyReader()
+	for tmpReader.hasNext() {
+		node := tmpReader.node.GetTokens()[tmpReader.index]
 
 		// For node object
 		if fd.isMatchNodeType(node) {
-			return newCtx, node
+			return tmpReader, node
 		}
-		if newCtx.hasTokenList() {
+		if tmpReader.hasTokenList() {
 			continue
 		}
 		// For token object
-		tok, _ := ctx.curNode.(ast.Token)
+		tok, _ := nr.curNode.(ast.Token)
 		sqlTok := tok.GetToken()
 		if fd.isMatchTokens(sqlTok) || fd.isMatchSQLType(sqlTok) || fd.isMatchKeyword(sqlTok) {
-			return newCtx, node
+			return tmpReader, node
 		}
-		newCtx.nextNode(ignoreWhiteSpace)
+		tmpReader.nextNode(ignoreWhiteSpace)
 	}
 	return nil, nil
 }
 
-func (ctx *nodeWalkContext) hasTokenList() bool {
-	_, ok := ctx.curNode.(ast.TokenList)
+func (nr *nodeReader) hasTokenList() bool {
+	_, ok := nr.curNode.(ast.TokenList)
 	return ok
 }
 
-func (ctx *nodeWalkContext) getTokenList() (ast.TokenList, error) {
-	if !ctx.hasTokenList() {
-		return nil, errors.Errorf("want TokenList got %T", ctx.curNode)
+func (nr *nodeReader) getTokenList() (ast.TokenList, error) {
+	if !nr.hasTokenList() {
+		return nil, errors.Errorf("want TokenList got %T", nr.curNode)
 	}
-	children, _ := ctx.curNode.(ast.TokenList)
+	children, _ := nr.curNode.(ast.TokenList)
 	return children, nil
 }
 
-func (ctx *nodeWalkContext) mustTokenList() ast.TokenList {
-	children, _ := ctx.getTokenList()
+func (nr *nodeReader) mustTokenList() ast.TokenList {
+	children, _ := nr.getTokenList()
 	return children
 }
 
 type (
-	prefixParseFn func(ctx *nodeWalkContext) ast.Node
-	infixParseFn  func(ctx *nodeWalkContext) ast.Node
+	prefixParseFn func(reader *nodeReader) ast.Node
+	infixParseFn  func(reader *nodeReader) ast.Node
 )
 
-func parsePrefixGroup(ctx *nodeWalkContext, matcher nodeMatcher, fn prefixParseFn) ast.TokenList {
+func parsePrefixGroup(reader *nodeReader, matcher nodeMatcher, fn prefixParseFn) ast.TokenList {
 	var replaceNodes []ast.Node
-	for ctx.nextNode(false) {
-		if list, ok := ctx.curNode.(ast.TokenList); ok {
-			newCtx := newNodeWalkContext(list)
-			replaceNodes = append(replaceNodes, parsePrefixGroup(newCtx, matcher, fn))
+	for reader.nextNode(false) {
+		if list, ok := reader.curNode.(ast.TokenList); ok {
+			newReader := newNodeReader(list)
+			replaceNodes = append(replaceNodes, parsePrefixGroup(newReader, matcher, fn))
 			continue
 		}
 
-		if _, node := ctx.curNodeIs(matcher); node != nil {
-			replaceNodes = append(replaceNodes, fn(ctx))
+		if _, node := reader.curNodeIs(matcher); node != nil {
+			replaceNodes = append(replaceNodes, fn(reader))
 		} else {
-			replaceNodes = append(replaceNodes, ctx.curNode)
+			replaceNodes = append(replaceNodes, reader.curNode)
 		}
 	}
-	ctx.node.SetTokens(replaceNodes)
-	return ctx.node
+	reader.node.SetTokens(replaceNodes)
+	return reader.node
 }
 
-func parseInfixGroup(ctx *nodeWalkContext, matcher nodeMatcher, ignoreWhiteSpace bool, fn infixParseFn) ast.TokenList {
+func parseInfixGroup(reader *nodeReader, matcher nodeMatcher, ignoreWhiteSpace bool, fn infixParseFn) ast.TokenList {
 	var replaceNodes []ast.Node
-	for ctx.nextNode(false) {
-		if list, ok := ctx.curNode.(ast.TokenList); ok {
-			newCtx := newNodeWalkContext(list)
-			replaceNodes = append(replaceNodes, parseInfixGroup(newCtx, matcher, ignoreWhiteSpace, fn))
+	for reader.nextNode(false) {
+		if list, ok := reader.curNode.(ast.TokenList); ok {
+			newReader := newNodeReader(list)
+			replaceNodes = append(replaceNodes, parseInfixGroup(newReader, matcher, ignoreWhiteSpace, fn))
 			continue
 		}
 
-		if _, node := ctx.peekNodeIs(ignoreWhiteSpace, matcher); node != nil {
-			replaceNodes = append(replaceNodes, fn(ctx))
+		if _, node := reader.peekNodeIs(ignoreWhiteSpace, matcher); node != nil {
+			replaceNodes = append(replaceNodes, fn(reader))
 		} else {
-			replaceNodes = append(replaceNodes, ctx.curNode)
+			replaceNodes = append(replaceNodes, reader.curNode)
 		}
 	}
-	ctx.node.SetTokens(replaceNodes)
-	return ctx.node
+	reader.node.SetTokens(replaceNodes)
+	return reader.node
 }
 
 type Parser struct {
@@ -278,14 +278,14 @@ func NewParser(src io.Reader, d dialect.Dialect) (*Parser, error) {
 
 func (p *Parser) Parse() (ast.TokenList, error) {
 	root := p.root
-	root = parseStatement(newNodeWalkContext(root))
-	root = parsePrefixGroup(newNodeWalkContext(root), parenthesisPrefixMatcher, parseParenthesis)
-	root = parsePrefixGroup(newNodeWalkContext(root), functionPrefixMatcher, parseFunctions)
-	root = parsePrefixGroup(newNodeWalkContext(root), wherePrefixMatcher, parseWhere)
-	root = parseInfixGroup(newNodeWalkContext(root), memberIdentifierInfixMatcher, false, parseMemberIdentifier)
-	root = parsePrefixGroup(newNodeWalkContext(root), identifierPrefixMatcher, parseIdentifier)
-	root = parseInfixGroup(newNodeWalkContext(root), operatorInfixMatcher, true, parseOperator)
-	root = parseInfixGroup(newNodeWalkContext(root), aliasInfixMatcher, true, parseAliased)
+	root = parseStatement(newNodeReader(root))
+	root = parsePrefixGroup(newNodeReader(root), parenthesisPrefixMatcher, parseParenthesis)
+	root = parsePrefixGroup(newNodeReader(root), functionPrefixMatcher, parseFunctions)
+	root = parsePrefixGroup(newNodeReader(root), wherePrefixMatcher, parseWhere)
+	root = parseInfixGroup(newNodeReader(root), memberIdentifierInfixMatcher, false, parseMemberIdentifier)
+	root = parsePrefixGroup(newNodeReader(root), identifierPrefixMatcher, parseIdentifier)
+	root = parseInfixGroup(newNodeReader(root), operatorInfixMatcher, true, parseOperator)
+	root = parseInfixGroup(newNodeReader(root), aliasInfixMatcher, true, parseAliased)
 	return root, nil
 }
 
@@ -295,30 +295,30 @@ var statementMatcher = nodeMatcher{
 	},
 }
 
-func parseStatement(ctx *nodeWalkContext) ast.TokenList {
+func parseStatement(reader *nodeReader) ast.TokenList {
 	var replaceNodes []ast.Node
 	var startIndex uint
-	for ctx.nextNode(false) {
-		if ctx.hasTokenList() {
-			list := ctx.mustTokenList()
-			replaceNodes = append(replaceNodes, parseStatement(newNodeWalkContext(list)))
+	for reader.nextNode(false) {
+		if reader.hasTokenList() {
+			list := reader.mustTokenList()
+			replaceNodes = append(replaceNodes, parseStatement(newNodeReader(list)))
 			continue
 		}
 
-		newCtx, node := ctx.findNode(true, statementMatcher)
+		tmpReader, node := reader.findNode(true, statementMatcher)
 		if node != nil {
-			stmt := &ast.Statement{Toks: ctx.nodesWithRange(startIndex, newCtx.index)}
+			stmt := &ast.Statement{Toks: reader.nodesWithRange(startIndex, tmpReader.index)}
 			replaceNodes = append(replaceNodes, stmt)
-			ctx = newCtx
-			startIndex = ctx.index
+			reader = tmpReader
+			startIndex = reader.index
 		}
 	}
-	if ctx.index != startIndex {
-		stmt := &ast.Statement{Toks: ctx.nodesWithRange(startIndex, ctx.index)}
+	if reader.index != startIndex {
+		stmt := &ast.Statement{Toks: reader.nodesWithRange(startIndex, reader.index)}
 		replaceNodes = append(replaceNodes, stmt)
 	}
-	ctx.node.SetTokens(replaceNodes)
-	return ctx.node
+	reader.node.SetTokens(replaceNodes)
+	return reader.node
 }
 
 // parseComments
@@ -335,26 +335,26 @@ var parenthesisCloseMatcher = nodeMatcher{
 	},
 }
 
-func parseParenthesis(ctx *nodeWalkContext) ast.Node {
-	nodes := []ast.Node{ctx.curNode}
-	tmpCtx := ctx.copyContext()
-	for tmpCtx.nextNode(false) {
-		if tmpCtx.hasTokenList() {
+func parseParenthesis(reader *nodeReader) ast.Node {
+	nodes := []ast.Node{reader.curNode}
+	tmpReader := reader.copyReader()
+	for tmpReader.nextNode(false) {
+		if tmpReader.hasTokenList() {
 			continue
 		}
 
-		if _, node := tmpCtx.curNodeIs(parenthesisPrefixMatcher); node != nil {
-			parenthesis := parseParenthesis(tmpCtx)
+		if _, node := tmpReader.curNodeIs(parenthesisPrefixMatcher); node != nil {
+			parenthesis := parseParenthesis(tmpReader)
 			nodes = append(nodes, parenthesis)
-		} else if _, node := tmpCtx.curNodeIs(parenthesisCloseMatcher); node != nil {
-			ctx.index = tmpCtx.index
-			ctx.curNode = tmpCtx.curNode
+		} else if _, node := tmpReader.curNodeIs(parenthesisCloseMatcher); node != nil {
+			reader.index = tmpReader.index
+			reader.curNode = tmpReader.curNode
 			return &ast.Parenthesis{Toks: append(nodes, node)}
 		} else {
-			nodes = append(nodes, tmpCtx.curNode)
+			nodes = append(nodes, tmpReader.curNode)
 		}
 	}
-	return ctx.curNode
+	return reader.curNode
 }
 
 // parseCase
@@ -377,14 +377,14 @@ var functionArgsMatcher = nodeMatcher{
 	},
 }
 
-func parseFunctions(ctx *nodeWalkContext) ast.Node {
-	funcName := ctx.curNode
-	if _, funcArgs := ctx.peekNodeIs(false, functionArgsMatcher); funcArgs != nil {
+func parseFunctions(reader *nodeReader) ast.Node {
+	funcName := reader.curNode
+	if _, funcArgs := reader.peekNodeIs(false, functionArgsMatcher); funcArgs != nil {
 		function := &ast.Function{Toks: []ast.Node{funcName, funcArgs}}
-		ctx.nextNode(false)
+		reader.nextNode(false)
 		return function
 	}
-	return ctx.curNode
+	return reader.curNode
 }
 
 var wherePrefixMatcher = nodeMatcher{
@@ -408,20 +408,20 @@ var whereCloseMatcher = nodeMatcher{
 	},
 }
 
-func parseWhere(ctx *nodeWalkContext) ast.Node {
-	nodes := []ast.Node{ctx.curNode}
-	for ctx.nextNode(false) {
-		if ctx.hasTokenList() {
+func parseWhere(reader *nodeReader) ast.Node {
+	nodes := []ast.Node{reader.curNode}
+	for reader.nextNode(false) {
+		if reader.hasTokenList() {
 			continue
 		}
 
-		if _, whereOpener := ctx.curNodeIs(wherePrefixMatcher); whereOpener != nil {
-			nodes = append(nodes, parseWhere(ctx))
-		} else if _, node := ctx.peekNodeIs(false, whereCloseMatcher); node != nil {
-			nodes = append(nodes, ctx.curNode)
+		if _, whereOpener := reader.curNodeIs(wherePrefixMatcher); whereOpener != nil {
+			nodes = append(nodes, parseWhere(reader))
+		} else if _, node := reader.peekNodeIs(false, whereCloseMatcher); node != nil {
+			nodes = append(nodes, reader.curNode)
 			return &ast.Where{Toks: nodes}
 		} else {
-			nodes = append(nodes, ctx.curNode)
+			nodes = append(nodes, reader.curNode)
 		}
 	}
 	return &ast.Where{Toks: nodes}
@@ -441,21 +441,21 @@ var memberIdentifierTargetMatcher = nodeMatcher{
 	},
 }
 
-func parseMemberIdentifier(ctx *nodeWalkContext) ast.Node {
-	startIndex, left := ctx.curNodeIs(memberIdentifierTargetMatcher)
+func parseMemberIdentifier(reader *nodeReader) ast.Node {
+	startIndex, left := reader.curNodeIs(memberIdentifierTargetMatcher)
 	if left == nil {
-		return ctx.curNode
+		return reader.curNode
 	}
-	memberIdentifier := &ast.MemberIdentifer{Toks: ctx.nodesWithRange(startIndex, ctx.index+1)}
-	ctx.nextNode(false)
+	memberIdentifier := &ast.MemberIdentifer{Toks: reader.nodesWithRange(startIndex, reader.index+1)}
+	reader.nextNode(false)
 
-	endIndex, right := ctx.peekNodeIs(true, memberIdentifierTargetMatcher)
+	endIndex, right := reader.peekNodeIs(true, memberIdentifierTargetMatcher)
 	if right == nil {
 		return memberIdentifier
 	}
-	ctx.nextNode(false)
+	reader.nextNode(false)
 
-	memberIdentifier = &ast.MemberIdentifer{Toks: ctx.nodesWithRange(startIndex, endIndex+1)}
+	memberIdentifier = &ast.MemberIdentifer{Toks: reader.nodesWithRange(startIndex, endIndex+1)}
 	return memberIdentifier
 }
 
@@ -467,8 +467,8 @@ var identifierPrefixMatcher = nodeMatcher{
 	},
 }
 
-func parseIdentifier(ctx *nodeWalkContext) ast.Node {
-	token, _ := ctx.curNode.(ast.Token)
+func parseIdentifier(reader *nodeReader) ast.Node {
+	token, _ := reader.curNode.(ast.Token)
 	return &ast.Identifer{Tok: token.GetToken()}
 }
 
@@ -523,27 +523,27 @@ var operatorTargetMatcher = nodeMatcher{
 	},
 }
 
-func parseOperator(ctx *nodeWalkContext) ast.Node {
-	startIndex, left := ctx.curNodeIs(operatorTargetMatcher)
+func parseOperator(reader *nodeReader) ast.Node {
+	startIndex, left := reader.curNodeIs(operatorTargetMatcher)
 	if left == nil {
-		return ctx.curNode
+		return reader.curNode
 	}
-	tmpCtx := ctx.copyContext()
-	tmpCtx.nextNode(true)
+	tmpReader := reader.copyReader()
+	tmpReader.nextNode(true)
 
-	endIndex, right := tmpCtx.peekNodeIs(true, operatorTargetMatcher)
+	endIndex, right := tmpReader.peekNodeIs(true, operatorTargetMatcher)
 	if right == nil {
-		return ctx.curNode
+		return reader.curNode
 	}
-	tmpCtx.nextNode(true)
-	tmpCtx.nextNode(true)
-	ctx.index = tmpCtx.index
-	ctx.curNode = tmpCtx.curNode
+	tmpReader.nextNode(true)
+	tmpReader.nextNode(true)
+	reader.index = tmpReader.index
+	reader.curNode = tmpReader.curNode
 
-	return &ast.Operator{Toks: ctx.nodesWithRange(startIndex, endIndex+1)}
+	return &ast.Operator{Toks: reader.nodesWithRange(startIndex, endIndex+1)}
 }
 
-func parseComparison(ctx *nodeWalkContext) ast.TokenList {
+func parseComparison(reader *nodeReader) ast.TokenList {
 	// sql.Parenthesis
 	// sql.Function
 	// sql.Identifier
@@ -578,23 +578,23 @@ var aliasTargetMatcher = nodeMatcher{
 	},
 }
 
-func parseAliased(ctx *nodeWalkContext) ast.Node {
-	startIndex, realName := ctx.curNodeIs(aliasTargetMatcher)
+func parseAliased(reader *nodeReader) ast.Node {
+	startIndex, realName := reader.curNodeIs(aliasTargetMatcher)
 	if realName == nil {
-		return ctx.curNode
+		return reader.curNode
 	}
-	tmpCtx := ctx.copyContext()
-	tmpCtx.nextNode(true)
+	tmpReader := reader.copyReader()
+	tmpReader.nextNode(true)
 
-	endIndex, aliasedName := tmpCtx.peekNodeIs(true, aliasTargetMatcher)
+	endIndex, aliasedName := tmpReader.peekNodeIs(true, aliasTargetMatcher)
 	if aliasedName == nil {
-		return ctx.curNode
+		return reader.curNode
 	}
-	tmpCtx.nextNode(true)
-	ctx.index = tmpCtx.index
-	ctx.curNode = tmpCtx.curNode
+	tmpReader.nextNode(true)
+	reader.index = tmpReader.index
+	reader.curNode = tmpReader.curNode
 
-	return &ast.Aliased{Toks: ctx.nodesWithRange(startIndex, endIndex+1)}
+	return &ast.Aliased{Toks: reader.nodesWithRange(startIndex, endIndex+1)}
 }
 
 // parseAssignment
