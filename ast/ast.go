@@ -165,6 +165,20 @@ func (s *Statement) String() string {
 func (s *Statement) GetTokens() []Node     { return s.Toks }
 func (s *Statement) SetTokens(toks []Node) { s.Toks = toks }
 
+type IdentiferList struct {
+	Toks []Node
+}
+
+func (il *IdentiferList) String() string {
+	var strs []string
+	for _, t := range il.Toks {
+		strs = append(strs, t.String())
+	}
+	return strings.Join(strs, "")
+}
+func (il *IdentiferList) GetTokens() []Node     { return il.Toks }
+func (il *IdentiferList) SetTokens(toks []Node) { il.Toks = toks }
+
 type SQLToken struct {
 	Node
 	Kind  token.Kind

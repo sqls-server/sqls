@@ -289,6 +289,7 @@ func (p *Parser) Parse() (ast.TokenList, error) {
 	root = parseInfixGroup(newNodeReader(root), operatorInfixMatcher, true, parseOperator)
 	root = parseInfixGroup(newNodeReader(root), comparisonInfixMatcher, true, parseComparison)
 	root = parseInfixGroup(newNodeReader(root), aliasInfixMatcher, true, parseAliased)
+	root = parseInfixGroup(newNodeReader(root), identifierListInfixMatcher, true, parseIdentifierList)
 	return root, nil
 }
 
@@ -600,8 +601,15 @@ var aliasInfixMatcher = nodeMatcher{
 		"AS",
 	},
 }
+
 var aliasTargetMatcher = nodeMatcher{
 	nodeTypeMatcherFunc: func(node interface{}) bool {
+		if _, ok := node.(*ast.Parenthesis); ok {
+			return true
+		}
+		if _, ok := node.(*ast.Function); ok {
+			return true
+		}
 		if _, ok := node.(*ast.Identifer); ok {
 			return true
 		}
@@ -636,5 +644,68 @@ func parseAliased(reader *nodeReader) ast.Node {
 
 // parseAssignment
 // alignComments
-// parseIdentifierList
+
+var identifierListInfixMatcher = nodeMatcher{
+	expectTokens: []token.Kind{
+		token.Comma,
+	},
+}
+var identifierListTargetMatcher = nodeMatcher{
+	nodeTypeMatcherFunc: func(node interface{}) bool {
+		if _, ok := node.(*ast.Function); ok {
+			return true
+		}
+		if _, ok := node.(*ast.Identifer); ok {
+			return true
+		}
+		if _, ok := node.(*ast.MemberIdentifer); ok {
+			return true
+		}
+		if _, ok := node.(*ast.Aliased); ok {
+			return true
+		}
+		if _, ok := node.(*ast.Comparison); ok {
+			return true
+		}
+		if _, ok := node.(*ast.Operator); ok {
+			return true
+		}
+		return false
+	},
+}
+
+func parseIdentifierList(reader *nodeReader) ast.Node {
+	if !reader.curNodeIs(identifierListTargetMatcher) {
+		return reader.curNode
+	}
+	startIndex := reader.index - 1
+	tmpReader := reader.copyReader()
+	tmpReader.nextNode(true)
+
+	var endIndex uint
+	var count uint
+	for {
+		tmpIndex, ident := tmpReader.matchedPeekNode(true, identifierListTargetMatcher)
+		if ident == nil {
+			if count > 0 {
+				break
+			}
+			return tmpReader.curNode
+		}
+		count++
+		tmpReader.nextNode(true)
+		endIndex = tmpIndex
+
+		_, nextIdent := tmpReader.matchedPeekNode(true, identifierListInfixMatcher)
+		if nextIdent == nil {
+			break
+		}
+		tmpReader.nextNode(true)
+	}
+
+	reader.index = tmpReader.index
+	reader.curNode = tmpReader.curNode
+	return &ast.IdentiferList{Toks: reader.nodesWithRange(startIndex, endIndex+1)}
+}
+
 // parseValues

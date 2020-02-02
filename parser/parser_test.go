@@ -303,13 +303,16 @@ func TestParsePeriod_Double(t *testing.T) {
 	input := `a.*, b.id`
 	stmts := parseInit(t, input)
 
-	testStatement(t, stmts[0], 4, input)
+	testStatement(t, stmts[0], 1, input)
 
 	list := stmts[0].GetTokens()
-	testMemberIdentifier(t, list[0], "a.*")
-	testItem(t, list[1], ",")
-	testItem(t, list[2], " ")
-	testMemberIdentifier(t, list[3], "b.id")
+	testIdentifierList(t, list[0], input)
+
+	il := testTokenList(t, list[0], 4).GetTokens()
+	testMemberIdentifier(t, il[0], "a.*")
+	testItem(t, il[1], ",")
+	testItem(t, il[2], " ")
+	testMemberIdentifier(t, il[3], "b.id")
 }
 
 func TestParsePeriod_WithWildcard(t *testing.T) {
@@ -450,19 +453,6 @@ func TestParseComparison(t *testing.T) {
 	testComparison(t, list[0], input)
 }
 
-// func TestParseComparison(t *testing.T) {
-// 	// foo = NULL
-// 	// foo = 25.5
-// 	// (3 + 4) = 7
-// 	// foo = 'bar'
-// 	// foo = DATE(bar.baz)
-// 	// DATE(foo.bar) = DATE(bar.baz)
-// 	// DATE(foo.bar) = bar.baz
-// 	input := `foo = NULL`
-// 	stmts := parseInit(t, input)
-// 	testStatement(t, stmts[0], 1, input)
-// }
-
 func TestParseAliased(t *testing.T) {
 	input := `select foo as bar from mytable`
 	stmts := parseInit(t, input)
@@ -476,6 +466,36 @@ func TestParseAliased(t *testing.T) {
 	testItem(t, list[4], "from")
 	testItem(t, list[5], " ")
 	testIdentifier(t, list[6], `mytable`)
+}
+
+func TestParseIdentifierList(t *testing.T) {
+	var input string
+	var stmts []*ast.Statement
+	var list []ast.Node
+
+	input = `foo, bar`
+	stmts = parseInit(t, input)
+	testStatement(t, stmts[0], 1, input)
+	list = stmts[0].GetTokens()
+	testIdentifierList(t, list[0], input)
+
+	input = `sum(a), sum(b)`
+	stmts = parseInit(t, input)
+	testStatement(t, stmts[0], 1, input)
+	list = stmts[0].GetTokens()
+	testIdentifierList(t, list[0], input)
+
+	input = `sum(a) as x, b as y`
+	stmts = parseInit(t, input)
+	testStatement(t, stmts[0], 1, input)
+	list = stmts[0].GetTokens()
+	testIdentifierList(t, list[0], input)
+
+	input = `foo, bar, hoge`
+	stmts = parseInit(t, input)
+	testStatement(t, stmts[0], 1, input)
+	list = stmts[0].GetTokens()
+	testIdentifierList(t, list[0], input)
 }
 
 func parseInit(t *testing.T, input string) []*ast.Statement {
@@ -617,6 +637,17 @@ func testAliased(t *testing.T, node ast.Node, expect string) {
 	_, ok := node.(*ast.Aliased)
 	if !ok {
 		t.Errorf("invalid type want Identifier got %T", node)
+	}
+	if expect != node.String() {
+		t.Errorf("expected %q, got %q", expect, node.String())
+	}
+}
+
+func testIdentifierList(t *testing.T, node ast.Node, expect string) {
+	t.Helper()
+	_, ok := node.(*ast.IdentiferList)
+	if !ok {
+		t.Errorf("invalid type want IdentiferList got %T", node)
 	}
 	if expect != node.String() {
 		t.Errorf("expected %q, got %q", expect, node.String())
