@@ -226,14 +226,11 @@ type (
 func parsePrefixGroup(reader *nodeReader, matcher nodeMatcher, fn prefixParseFn) ast.TokenList {
 	var replaceNodes []ast.Node
 	for reader.nextNode(false) {
-		if list, ok := reader.curNode.(ast.TokenList); ok {
-			newReader := newNodeReader(list)
-			replaceNodes = append(replaceNodes, parsePrefixGroup(newReader, matcher, fn))
-			continue
-		}
-
 		if reader.curNodeIs(matcher) {
 			replaceNodes = append(replaceNodes, fn(reader))
+		} else if list, ok := reader.curNode.(ast.TokenList); ok {
+			newReader := newNodeReader(list)
+			replaceNodes = append(replaceNodes, parsePrefixGroup(newReader, matcher, fn))
 		} else {
 			replaceNodes = append(replaceNodes, reader.curNode)
 		}
@@ -245,7 +242,6 @@ func parsePrefixGroup(reader *nodeReader, matcher nodeMatcher, fn prefixParseFn)
 func parseInfixGroup(reader *nodeReader, matcher nodeMatcher, ignoreWhiteSpace bool, fn infixParseFn) ast.TokenList {
 	var replaceNodes []ast.Node
 	for reader.nextNode(false) {
-
 		if reader.peekNodeIs(ignoreWhiteSpace, matcher) {
 			replaceNodes = append(replaceNodes, fn(reader))
 		} else if list, ok := reader.curNode.(ast.TokenList); ok {
