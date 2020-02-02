@@ -438,7 +438,8 @@ func (t *Tokenizer) tokenizeSingleQuotedString() (string, error) {
 	}
 	t.Col += 2 + len(str)
 
-	return string(str), nil
+	// FIXME work around
+	return "'" + string(str) + "'", nil
 }
 
 func (t *Tokenizer) tokenizeMultilineComment() (string, error) {

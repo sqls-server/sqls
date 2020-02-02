@@ -245,14 +245,12 @@ func parsePrefixGroup(reader *nodeReader, matcher nodeMatcher, fn prefixParseFn)
 func parseInfixGroup(reader *nodeReader, matcher nodeMatcher, ignoreWhiteSpace bool, fn infixParseFn) ast.TokenList {
 	var replaceNodes []ast.Node
 	for reader.nextNode(false) {
-		if list, ok := reader.curNode.(ast.TokenList); ok {
-			newReader := newNodeReader(list)
-			replaceNodes = append(replaceNodes, parseInfixGroup(newReader, matcher, ignoreWhiteSpace, fn))
-			continue
-		}
 
 		if reader.peekNodeIs(ignoreWhiteSpace, matcher) {
 			replaceNodes = append(replaceNodes, fn(reader))
+		} else if list, ok := reader.curNode.(ast.TokenList); ok {
+			newReader := newNodeReader(list)
+			replaceNodes = append(replaceNodes, parseInfixGroup(newReader, matcher, ignoreWhiteSpace, fn))
 		} else {
 			replaceNodes = append(replaceNodes, reader.curNode)
 		}
@@ -293,6 +291,7 @@ func (p *Parser) Parse() (ast.TokenList, error) {
 	root = parseInfixGroup(newNodeReader(root), memberIdentifierInfixMatcher, false, parseMemberIdentifier)
 	root = parsePrefixGroup(newNodeReader(root), identifierPrefixMatcher, parseIdentifier)
 	root = parseInfixGroup(newNodeReader(root), operatorInfixMatcher, true, parseOperator)
+	root = parseInfixGroup(newNodeReader(root), comparisonInfixMatcher, true, parseComparison)
 	root = parseInfixGroup(newNodeReader(root), aliasInfixMatcher, true, parseAliased)
 	return root, nil
 }
@@ -485,28 +484,6 @@ func parseIdentifier(reader *nodeReader) ast.Node {
 // parseTzcasts
 // parseTyped_literal
 
-// operatorTypes
-// ast.Parenthesis
-// ast.Function
-// ast.Identifier
-var comparisons = []token.Kind{
-	token.Eq,
-	token.Neq,
-	token.Lt,
-	token.Gt,
-	token.LtEq,
-	token.GtEq,
-}
-
-type operatorTypeMatcher struct{}
-
-func (om *operatorTypeMatcher) match(node interface{}) bool {
-	if _, ok := node.(*ast.Identifer); ok {
-		return true
-	}
-	return false
-}
-
 var operatorInfixMatcher = nodeMatcher{
 	expectTokens: []token.Kind{
 		token.Plus,
@@ -519,6 +496,18 @@ var operatorInfixMatcher = nodeMatcher{
 var operatorTargetMatcher = nodeMatcher{
 	nodeTypeMatcherFunc: func(node interface{}) bool {
 		if _, ok := node.(*ast.Identifer); ok {
+			return true
+		}
+		if _, ok := node.(*ast.MemberIdentifer); ok {
+			return true
+		}
+		if _, ok := node.(*ast.Operator); ok {
+			return true
+		}
+		if _, ok := node.(*ast.Parenthesis); ok {
+			return true
+		}
+		if _, ok := node.(*ast.Function); ok {
 			return true
 		}
 		return false
@@ -544,22 +533,66 @@ func parseOperator(reader *nodeReader) ast.Node {
 		return reader.curNode
 	}
 	tmpReader.nextNode(true)
-	tmpReader.nextNode(true)
 	reader.index = tmpReader.index
 	reader.curNode = tmpReader.curNode
 
 	return &ast.Operator{Toks: reader.nodesWithRange(startIndex, endIndex+1)}
 }
 
-func parseComparison(reader *nodeReader) ast.TokenList {
-	// sql.Parenthesis
-	// sql.Function
-	// sql.Identifier
+var comparisonInfixMatcher = nodeMatcher{
+	expectTokens: []token.Kind{
+		token.Eq,
+		token.Neq,
+		token.Lt,
+		token.Gt,
+		token.LtEq,
+		token.GtEq,
+	},
+}
+var comparisonTargetMatcher = nodeMatcher{
+	nodeTypeMatcherFunc: func(node interface{}) bool {
+		if _, ok := node.(*ast.Parenthesis); ok {
+			return true
+		}
+		if _, ok := node.(*ast.Identifer); ok {
+			return true
+		}
+		if _, ok := node.(*ast.MemberIdentifer); ok {
+			return true
+		}
+		if _, ok := node.(*ast.Operator); ok {
+			return true
+		}
+		if _, ok := node.(*ast.Function); ok {
+			return true
+		}
+		return false
+	},
+	expectTokens: []token.Kind{
+		token.Number,
+		token.Char,
+		token.SingleQuotedString,
+		token.NationalStringLiteral,
+	},
+}
 
-	// T_NUMERICAL = (T.Number, T.Number.Integer, T.Number.Float)
-	// T_STRING = (T.String, T.String.Single, T.String.Symbol)
-	// T_NAME = (T.Name, T.Name.Placeholder)
-	return nil
+func parseComparison(reader *nodeReader) ast.Node {
+	if !reader.curNodeIs(comparisonTargetMatcher) {
+		return reader.curNode
+	}
+	startIndex := reader.index - 1
+	tmpReader := reader.copyReader()
+	tmpReader.nextNode(true)
+
+	endIndex, right := tmpReader.matchedPeekNode(true, comparisonTargetMatcher)
+	if right == nil {
+		return reader.curNode
+	}
+	tmpReader.nextNode(true)
+	reader.index = tmpReader.index
+	reader.curNode = tmpReader.curNode
+
+	return &ast.Comparison{Toks: reader.nodesWithRange(startIndex, endIndex+1)}
 }
 
 // ast.Identifer,

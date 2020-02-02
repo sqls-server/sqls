@@ -37,7 +37,25 @@ func TestParseStatement(t *testing.T) {
 	testStatement(t, stmts[2], 1, "select")
 }
 
-func TestParseParenthesis_Normal(t *testing.T) {
+func TestParseParenthesis_Single(t *testing.T) {
+	var input string
+	var stmts []*ast.Statement
+	var list []ast.Node
+
+	input = "(3)"
+	stmts = parseInit(t, input)
+	testStatement(t, stmts[0], 1, input)
+	list = stmts[0].GetTokens()
+	testParenthesis(t, list[0], input)
+
+	input = "(3 - 4)"
+	stmts = parseInit(t, input)
+	testStatement(t, stmts[0], 1, input)
+	list = stmts[0].GetTokens()
+	testParenthesis(t, list[0], input)
+}
+
+func TestParseParenthesis_Recursion(t *testing.T) {
 	input := `select (select (x3) x2) and (y2) bar`
 	src := bytes.NewBuffer([]byte(input))
 	parser, err := NewParser(src, &dialect.GenericSQLDialect{})
@@ -171,15 +189,11 @@ func TestParseWhere(t *testing.T) {
 	testItem(t, list[14], " ")
 	testItem(t, list[15], "desc")
 
-	where := testTokenList(t, list[8], 8).GetTokens()
+	where := testTokenList(t, list[8], 4).GetTokens()
 	testItem(t, where[0], "where")
 	testItem(t, where[1], " ")
-	testIdentifier(t, where[2], "bar")
+	testComparison(t, where[2], "bar = 1")
 	testItem(t, where[3], " ")
-	testItem(t, where[4], "=")
-	testItem(t, where[5], " ")
-	testItem(t, where[6], "1")
-	testItem(t, where[7], " ")
 }
 
 func TestParseWhere_NotFoundClose(t *testing.T) {
@@ -219,14 +233,10 @@ func TestParseWhere_NotFoundClose(t *testing.T) {
 	testItem(t, list[7], " ")
 	testWhere(t, list[8], "where bar = 1")
 
-	where := testTokenList(t, list[8], 7).GetTokens()
+	where := testTokenList(t, list[8], 3).GetTokens()
 	testItem(t, where[0], "where")
 	testItem(t, where[1], " ")
-	testIdentifier(t, where[2], "bar")
-	testItem(t, where[3], " ")
-	testItem(t, where[4], "=")
-	testItem(t, where[5], " ")
-	testItem(t, where[6], "1")
+	testComparison(t, where[2], "bar = 1")
 }
 
 func TestParseWhere_WithParenthesis(t *testing.T) {
@@ -398,6 +408,48 @@ func TestParseOperator(t *testing.T) {
 	testOperator(t, list[0], input)
 }
 
+func TestParseComparison(t *testing.T) {
+	var input string
+	var stmts []*ast.Statement
+	var list []ast.Node
+
+	input = "foo = 25.5"
+	stmts = parseInit(t, input)
+	testStatement(t, stmts[0], 1, input)
+	list = stmts[0].GetTokens()
+	testComparison(t, list[0], input)
+
+	input = "foo = 'bar'"
+	stmts = parseInit(t, input)
+	testStatement(t, stmts[0], 1, input)
+	list = stmts[0].GetTokens()
+	testComparison(t, list[0], input)
+
+	input = "(3 + 4) = 7"
+	stmts = parseInit(t, input)
+	testStatement(t, stmts[0], 1, input)
+	list = stmts[0].GetTokens()
+	testComparison(t, list[0], input)
+
+	input = "foo = DATE(bar.baz)"
+	stmts = parseInit(t, input)
+	testStatement(t, stmts[0], 1, input)
+	list = stmts[0].GetTokens()
+	testComparison(t, list[0], input)
+
+	input = "foo = DATE(bar.baz)"
+	stmts = parseInit(t, input)
+	testStatement(t, stmts[0], 1, input)
+	list = stmts[0].GetTokens()
+	testComparison(t, list[0], input)
+
+	input = "DATE(foo.bar) = bar.baz"
+	stmts = parseInit(t, input)
+	testStatement(t, stmts[0], 1, input)
+	list = stmts[0].GetTokens()
+	testComparison(t, list[0], input)
+}
+
 // func TestParseComparison(t *testing.T) {
 // 	// foo = NULL
 // 	// foo = 25.5
@@ -510,6 +562,17 @@ func testOperator(t *testing.T, node ast.Node, expect string) {
 	_, ok := node.(*ast.Operator)
 	if !ok {
 		t.Errorf("invalid type want Operator got %T", node)
+	}
+	if expect != node.String() {
+		t.Errorf("expected %q, got %q", expect, node.String())
+	}
+}
+
+func testComparison(t *testing.T, node ast.Node, expect string) {
+	t.Helper()
+	_, ok := node.(*ast.Comparison)
+	if !ok {
+		t.Errorf("invalid type want Comparison got %T", node)
 	}
 	if expect != node.String() {
 		t.Errorf("expected %q, got %q", expect, node.String())

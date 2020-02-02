@@ -73,7 +73,7 @@ func TestTokenizer_Tokenize(t *testing.T) {
 			out: []*Token{
 				{
 					Kind:  NationalStringLiteral,
-					Value: "string",
+					Value: "'string'",
 					From:  Pos{Line: 1, Col: 1},
 					To:    Pos{Line: 1, Col: 10},
 				},
@@ -85,7 +85,7 @@ func TestTokenizer_Tokenize(t *testing.T) {
 			out: []*Token{
 				{
 					Kind:  NationalStringLiteral,
-					Value: "string",
+					Value: "'string'",
 					From:  Pos{Line: 1, Col: 1},
 					To:    Pos{Line: 1, Col: 10},
 				},
@@ -120,6 +120,18 @@ func TestTokenizer_Tokenize(t *testing.T) {
 					},
 					From: Pos{Line: 1, Col: 1},
 					To:   Pos{Line: 1, Col: 7},
+				},
+			},
+		},
+		{
+			name: "single quote string",
+			in:   "'test'",
+			out: []*Token{
+				{
+					Kind:  SingleQuotedString,
+					Value: "'test'",
+					From:  Pos{Line: 1, Col: 1},
+					To:    Pos{Line: 1, Col: 7},
 				},
 			},
 		},

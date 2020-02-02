@@ -81,6 +81,20 @@ func (o *Operator) String() string {
 func (o *Operator) GetTokens() []Node     { return o.Toks }
 func (o *Operator) SetTokens(toks []Node) { o.Toks = toks }
 
+type Comparison struct {
+	Toks []Node
+}
+
+func (c *Comparison) String() string {
+	var strs []string
+	for _, t := range c.Toks {
+		strs = append(strs, t.String())
+	}
+	return strings.Join(strs, "")
+}
+func (c *Comparison) GetTokens() []Node     { return c.Toks }
+func (c *Comparison) SetTokens(toks []Node) { c.Toks = toks }
+
 type Parenthesis struct {
 	Toks []Node
 }
