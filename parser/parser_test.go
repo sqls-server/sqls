@@ -6,6 +6,7 @@ import (
 
 	"github.com/lighttiger2505/sqls/ast"
 	"github.com/lighttiger2505/sqls/dialect"
+	"github.com/lighttiger2505/sqls/token"
 )
 
 func TestParseStatement(t *testing.T) {
@@ -37,112 +38,101 @@ func TestParseStatement(t *testing.T) {
 	testStatement(t, stmts[2], 1, "select")
 }
 
-func TestParseParenthesis_Single(t *testing.T) {
-	var input string
-	var stmts []*ast.Statement
-	var list []ast.Node
+func TestParseParenthesis(t *testing.T) {
+	testcases := []struct {
+		name    string
+		input   string
+		checkFn func(t *testing.T, stmts []*ast.Statement, input string)
+	}{
+		{
+			name:  "single",
+			input: "(3)",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				t.Helper()
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testParenthesis(t, list[0], input)
+			},
+		},
+		{
+			name:  "with operator",
+			input: "(3 - 4)",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				t.Helper()
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testParenthesis(t, list[0], input)
+			},
+		},
+		{
+			name:  "inner parenthesis",
+			input: "(1 * 2 + (3 - 4))",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				t.Helper()
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testParenthesis(t, list[0], input)
+			},
+		},
+		{
+			name:  "with select",
+			input: "select (select (x3) x2) and (y2) bar",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				t.Helper()
+				testStatement(t, stmts[0], 9, input)
 
-	input = "(3)"
-	stmts = parseInit(t, input)
-	testStatement(t, stmts[0], 1, input)
-	list = stmts[0].GetTokens()
-	testParenthesis(t, list[0], input)
+				list := stmts[0].GetTokens()
+				testItem(t, list[0], "select")
+				testItem(t, list[1], " ")
+				testParenthesis(t, list[2], "(select (x3) x2)")
+				testItem(t, list[3], " ")
+				testItem(t, list[4], "and")
+				testItem(t, list[5], " ")
+				testParenthesis(t, list[6], "(y2)")
+				testItem(t, list[7], " ")
+				testIdentifier(t, list[8], `bar`)
 
-	input = "(3 - 4)"
-	stmts = parseInit(t, input)
-	testStatement(t, stmts[0], 1, input)
-	list = stmts[0].GetTokens()
-	testParenthesis(t, list[0], input)
-}
+				parenthesis := testTokenList(t, list[2], 7).GetTokens()
+				testItem(t, parenthesis[0], "(")
+				testItem(t, parenthesis[1], "select")
+				testItem(t, parenthesis[2], " ")
+				testParenthesis(t, parenthesis[3], "(x3)")
+				testItem(t, parenthesis[4], " ")
+				testIdentifier(t, parenthesis[5], "x2")
+				testItem(t, parenthesis[6], ")")
+			},
+		},
+		{
+			name:  "not close parenthesis",
+			input: "select (select (x3) x2 and (y2) bar",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				t.Helper()
 
-func TestParseParenthesis_Recursion(t *testing.T) {
-	input := `select (select (x3) x2) and (y2) bar`
-	src := bytes.NewBuffer([]byte(input))
-	parser, err := NewParser(src, &dialect.GenericSQLDialect{})
-	if err != nil {
-		t.Fatalf("error %+v\n", err)
+				list := stmts[0].GetTokens()
+				testItem(t, list[0], "select")
+				testItem(t, list[1], " ")
+				testItem(t, list[2], "(")
+				testItem(t, list[3], "select")
+				testItem(t, list[4], " ")
+				testParenthesis(t, list[5], "(x3)")
+				testItem(t, list[6], " ")
+				testIdentifier(t, list[7], "x2")
+				testItem(t, list[8], " ")
+				testItem(t, list[9], "and")
+				testItem(t, list[10], " ")
+				testParenthesis(t, list[11], "(y2)")
+				testItem(t, list[12], " ")
+				testIdentifier(t, list[13], "bar")
+			},
+		},
 	}
 
-	got, err := parser.Parse()
-	if err != nil {
-		t.Fatalf("error %+v\n", err)
+	for _, tt := range testcases {
+		t.Run(tt.name, func(t *testing.T) {
+			stmts := parseInit(t, tt.input)
+			tt.checkFn(t, stmts, tt.input)
+		})
 	}
-	wantStmtLen := 1
-	if wantStmtLen != len(got.GetTokens()) {
-		t.Errorf("Statements does not contain %d statements, got %d", wantStmtLen, len(got.GetTokens()))
-	}
-	var stmts []*ast.Statement
-	for _, node := range got.GetTokens() {
-		stmt, ok := node.(*ast.Statement)
-		if !ok {
-			t.Fatalf("invalid type want Statement got %T", stmt)
-		}
-		stmts = append(stmts, stmt)
-	}
-	testStatement(t, stmts[0], 9, input)
-
-	list := stmts[0].GetTokens()
-	testItem(t, list[0], "select")
-	testItem(t, list[1], " ")
-	testParenthesis(t, list[2], "(select (x3) x2)")
-	testItem(t, list[3], " ")
-	testItem(t, list[4], "and")
-	testItem(t, list[5], " ")
-	testParenthesis(t, list[6], "(y2)")
-	testItem(t, list[7], " ")
-	testIdentifier(t, list[8], `bar`)
-
-	parenthesis := testTokenList(t, list[2], 7).GetTokens()
-	testItem(t, parenthesis[0], "(")
-	testItem(t, parenthesis[1], "select")
-	testItem(t, parenthesis[2], " ")
-	testParenthesis(t, parenthesis[3], "(x3)")
-	testItem(t, parenthesis[4], " ")
-	testIdentifier(t, parenthesis[5], "x2")
-	testItem(t, parenthesis[6], ")")
-}
-
-func TestParseParenthesis_NotFoundClose(t *testing.T) {
-	input := `select (select (x3) x2 and (y2) bar`
-	src := bytes.NewBuffer([]byte(input))
-	parser, err := NewParser(src, &dialect.GenericSQLDialect{})
-	if err != nil {
-		t.Fatalf("error %+v\n", err)
-	}
-
-	got, err := parser.Parse()
-	if err != nil {
-		t.Fatalf("error %+v\n", err)
-	}
-	wantStmtLen := 1
-	if wantStmtLen != len(got.GetTokens()) {
-		t.Errorf("Statements does not contain %d statements, got %d", wantStmtLen, len(got.GetTokens()))
-	}
-	var stmts []*ast.Statement
-	for _, node := range got.GetTokens() {
-		stmt, ok := node.(*ast.Statement)
-		if !ok {
-			t.Fatalf("invalid type want Statement got %T", stmt)
-		}
-		stmts = append(stmts, stmt)
-	}
-	testStatement(t, stmts[0], 14, input)
-
-	list := stmts[0].GetTokens()
-	testItem(t, list[0], "select")
-	testItem(t, list[1], " ")
-	testItem(t, list[2], "(")
-	testItem(t, list[3], "select")
-	testItem(t, list[4], " ")
-	testParenthesis(t, list[5], "(x3)")
-	testItem(t, list[6], " ")
-	testIdentifier(t, list[7], "x2")
-	testItem(t, list[8], " ")
-	testItem(t, list[9], "and")
-	testItem(t, list[10], " ")
-	testParenthesis(t, list[11], "(y2)")
-	testItem(t, list[12], " ")
-	testIdentifier(t, list[13], "bar")
 }
 
 func TestParseWhere(t *testing.T) {
@@ -651,5 +641,38 @@ func testIdentifierList(t *testing.T, node ast.Node, expect string) {
 	}
 	if expect != node.String() {
 		t.Errorf("expected %q, got %q", expect, node.String())
+	}
+}
+
+func Test_nodeMatcher_isMatchNodeType(t *testing.T) {
+	type fields struct {
+		nodeTypeMatcherFunc func(node interface{}) bool
+		expectTokens        []token.Kind
+		expectSQLType       []dialect.KeywordKind
+		expectKeyword       []string
+	}
+	type args struct {
+		node interface{}
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		want   bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := &nodeMatcher{
+				nodeTypeMatcherFunc: tt.fields.nodeTypeMatcherFunc,
+				expectTokens:        tt.fields.expectTokens,
+				expectSQLType:       tt.fields.expectSQLType,
+				expectKeyword:       tt.fields.expectKeyword,
+			}
+			if got := f.isMatchNodeType(tt.args.node); got != tt.want {
+				t.Errorf("nodeMatcher.isMatchNodeType() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
