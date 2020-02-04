@@ -283,6 +283,7 @@ func (p *Parser) Parse() (ast.TokenList, error) {
 	root = parseStatement(newNodeReader(root))
 	root = parsePrefixGroup(newNodeReader(root), parenthesisPrefixMatcher, parseParenthesis)
 	root = parsePrefixGroup(newNodeReader(root), functionPrefixMatcher, parseFunctions)
+	root = parsePrefixGroup(newNodeReader(root), FromPrefixMatcher, parseFrom)
 	root = parsePrefixGroup(newNodeReader(root), wherePrefixMatcher, parseWhere)
 	root = parseInfixGroup(newNodeReader(root), memberIdentifierInfixMatcher, false, parseMemberIdentifier)
 	root = parsePrefixGroup(newNodeReader(root), identifierPrefixMatcher, parseIdentifier)
@@ -413,22 +414,53 @@ var whereCloseMatcher = nodeMatcher{
 }
 
 func parseWhere(reader *nodeReader) ast.Node {
-	nodes := []ast.Node{reader.curNode}
-	for reader.nextNode(false) {
-		if reader.hasTokenList() {
-			continue
-		}
+	whereExpr := reader.curNode
+	nodes := []ast.Node{whereExpr}
 
-		if reader.curNodeIs(wherePrefixMatcher) {
-			nodes = append(nodes, parseWhere(reader))
-		} else if reader.peekNodeIs(false, whereCloseMatcher) {
-			nodes = append(nodes, reader.curNode)
+	for reader.nextNode(false) {
+		nodes = append(nodes, reader.curNode)
+		if reader.peekNodeIs(false, whereCloseMatcher) {
+			fmt.Println(reader.peekNode(false))
 			return &ast.Where{Toks: nodes}
-		} else {
-			nodes = append(nodes, reader.curNode)
 		}
 	}
 	return &ast.Where{Toks: nodes}
+}
+
+var FromPrefixMatcher = nodeMatcher{
+	expectKeyword: []string{
+		"FROM",
+	},
+}
+var FromCloseMatcher = nodeMatcher{
+	expectTokens: []token.Kind{
+		token.RParen,
+	},
+	expectKeyword: []string{
+		"WHERE",
+		"ORDER",
+		"GROUP",
+		"LIMIT",
+		"UNION",
+		"EXCEPT",
+		"HAVING",
+		"RETURNING",
+		"INTO",
+	},
+}
+
+func parseFrom(reader *nodeReader) ast.Node {
+	fromExpr := reader.curNode
+	nodes := []ast.Node{fromExpr}
+
+	for reader.nextNode(false) {
+		nodes = append(nodes, reader.curNode)
+		if reader.peekNodeIs(false, FromCloseMatcher) {
+			fmt.Println(reader.peekNode(false))
+			return &ast.From{Toks: nodes}
+		}
+	}
+	return &ast.From{Toks: nodes}
 }
 
 var memberIdentifierInfixMatcher = nodeMatcher{

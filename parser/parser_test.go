@@ -137,53 +137,44 @@ func TestParseParenthesis(t *testing.T) {
 
 func TestParseWhere(t *testing.T) {
 	input := "select * from foo where bar = 1 order by id desc"
-	src := bytes.NewBuffer([]byte(input))
-	parser, err := NewParser(src, &dialect.GenericSQLDialect{})
-	if err != nil {
-		t.Fatalf("error %+v\n", err)
-	}
-
-	got, err := parser.Parse()
-	if err != nil {
-		t.Fatalf("error %+v\n", err)
-	}
-	wantStmtLen := 1
-	if wantStmtLen != len(got.GetTokens()) {
-		t.Errorf("Statements does not contain %d statements, got %d", wantStmtLen, len(got.GetTokens()))
-	}
-	var stmts []*ast.Statement
-	for _, node := range got.GetTokens() {
-		stmt, ok := node.(*ast.Statement)
-		if !ok {
-			t.Fatalf("invalid type want Statement got %T", stmt)
-		}
-		stmts = append(stmts, stmt)
-	}
-	testStatement(t, stmts[0], 16, input)
+	stmts := parseInit(t, input)
+	testStatement(t, stmts[0], 13, input)
 
 	list := stmts[0].GetTokens()
 	testItem(t, list[0], "select")
 	testItem(t, list[1], " ")
 	testItem(t, list[2], "*")
 	testItem(t, list[3], " ")
-	testItem(t, list[4], "from")
-	testItem(t, list[5], " ")
-	testIdentifier(t, list[6], "foo")
-	testItem(t, list[7], " ")
-	testWhere(t, list[8], "where bar = 1 ")
-	testItem(t, list[9], "order")
-	testItem(t, list[10], " ")
-	testItem(t, list[11], "by")
-	testItem(t, list[12], " ")
-	testIdentifier(t, list[13], "id")
-	testItem(t, list[14], " ")
-	testItem(t, list[15], "desc")
+	testFrom(t, list[4], "from foo ")
 
-	where := testTokenList(t, list[8], 4).GetTokens()
+	testWhere(t, list[5], "where bar = 1 ")
+	testItem(t, list[6], "order")
+	testItem(t, list[7], " ")
+	testItem(t, list[8], "by")
+	testItem(t, list[9], " ")
+	testIdentifier(t, list[10], "id")
+	testItem(t, list[11], " ")
+	testItem(t, list[12], "desc")
+
+	where := testTokenList(t, list[5], 4).GetTokens()
 	testItem(t, where[0], "where")
 	testItem(t, where[1], " ")
 	testComparison(t, where[2], "bar = 1")
 	testItem(t, where[3], " ")
+}
+
+func TestParseFrom(t *testing.T) {
+	input := "select * from abc"
+
+	stmts := parseInit(t, input)
+	testStatement(t, stmts[0], 5, input)
+
+	list := stmts[0].GetTokens()
+	testItem(t, list[0], "select")
+	testItem(t, list[1], " ")
+	testItem(t, list[2], "*")
+	testItem(t, list[3], " ")
+	testFrom(t, list[4], "from abc")
 }
 
 func TestParseWhere_NotFoundClose(t *testing.T) {
@@ -210,20 +201,17 @@ func TestParseWhere_NotFoundClose(t *testing.T) {
 		}
 		stmts = append(stmts, stmt)
 	}
-	testStatement(t, stmts[0], 9, input)
+	testStatement(t, stmts[0], 6, input)
 
 	list := stmts[0].GetTokens()
 	testItem(t, list[0], "select")
 	testItem(t, list[1], " ")
 	testItem(t, list[2], "*")
 	testItem(t, list[3], " ")
-	testItem(t, list[4], "from")
-	testItem(t, list[5], " ")
-	testIdentifier(t, list[6], "foo")
-	testItem(t, list[7], " ")
-	testWhere(t, list[8], "where bar = 1")
+	testFrom(t, list[4], "from foo ")
+	testWhere(t, list[5], "where bar = 1")
 
-	where := testTokenList(t, list[8], 3).GetTokens()
+	where := testTokenList(t, list[5], 3).GetTokens()
 	testItem(t, where[0], "where")
 	testItem(t, where[1], " ")
 	testComparison(t, where[2], "bar = 1")
@@ -231,42 +219,18 @@ func TestParseWhere_NotFoundClose(t *testing.T) {
 
 func TestParseWhere_WithParenthesis(t *testing.T) {
 	input := "select x from (select y from foo where bar = 1) z"
-	src := bytes.NewBuffer([]byte(input))
-	parser, err := NewParser(src, &dialect.GenericSQLDialect{})
-	if err != nil {
-		t.Fatalf("error %+v\n", err)
-	}
-
-	got, err := parser.Parse()
-	if err != nil {
-		t.Fatalf("error %+v\n", err)
-	}
-	wantStmtLen := 1
-	if wantStmtLen != len(got.GetTokens()) {
-		t.Errorf("Statements does not contain %d statements, got %d", wantStmtLen, len(got.GetTokens()))
-	}
-	var stmts []*ast.Statement
-	for _, node := range got.GetTokens() {
-		stmt, ok := node.(*ast.Statement)
-		if !ok {
-			t.Fatalf("invalid type want Statement got %T", stmt)
-		}
-		stmts = append(stmts, stmt)
-	}
-	testStatement(t, stmts[0], 9, input)
+	stmts := parseInit(t, input)
+	testStatement(t, stmts[0], 5, input)
 
 	list := stmts[0].GetTokens()
 	testItem(t, list[0], "select")
 	testItem(t, list[1], " ")
 	testIdentifier(t, list[2], "x")
 	testItem(t, list[3], " ")
-	testItem(t, list[4], "from")
-	testItem(t, list[5], " ")
-	testParenthesis(t, list[6], "(select y from foo where bar = 1)")
-	testItem(t, list[7], " ")
-	testIdentifier(t, list[8], "z")
+	testFrom(t, list[4], "from (select y from foo where bar = 1) z")
 
-	parenthesis := testTokenList(t, list[6], 11).GetTokens()
+	from := testTokenList(t, list[4], 5).GetTokens()
+	parenthesis := testTokenList(t, from[2], 11).GetTokens()
 	testItem(t, parenthesis[0], "(")
 	testItem(t, parenthesis[1], "select")
 	testItem(t, parenthesis[2], " ")
@@ -329,16 +293,14 @@ func TestParsePeriod_InvalidWithSelect(t *testing.T) {
 	input := `SELECT foo. FROM foo`
 	stmts := parseInit(t, input)
 
-	testStatement(t, stmts[0], 7, input)
+	testStatement(t, stmts[0], 5, input)
 
 	list := stmts[0].GetTokens()
 	testItem(t, list[0], "SELECT")
 	testItem(t, list[1], " ")
 	testMemberIdentifier(t, list[2], "foo.")
 	testItem(t, list[3], " ")
-	testItem(t, list[4], "FROM")
-	testItem(t, list[5], " ")
-	testIdentifier(t, list[6], "foo")
+	testFrom(t, list[4], "FROM foo")
 }
 
 func TestParseIdentifier(t *testing.T) {
@@ -365,16 +327,14 @@ func TestParseIdentifier(t *testing.T) {
 		}
 		stmts = append(stmts, stmt)
 	}
-	testStatement(t, stmts[0], 7, input)
+	testStatement(t, stmts[0], 5, input)
 
 	list := stmts[0].GetTokens()
 	testItem(t, list[0], "select")
 	testItem(t, list[1], " ")
 	testMemberIdentifier(t, list[2], "foo.bar")
 	testItem(t, list[3], " ")
-	testItem(t, list[4], "from")
-	testItem(t, list[5], " ")
-	testMemberIdentifier(t, list[6], `"myschema"."table"`)
+	testFrom(t, list[4], `from "myschema"."table"`)
 }
 
 func TestParseOperator(t *testing.T) {
@@ -446,16 +406,14 @@ func TestParseComparison(t *testing.T) {
 func TestParseAliased(t *testing.T) {
 	input := `select foo as bar from mytable`
 	stmts := parseInit(t, input)
-	testStatement(t, stmts[0], 7, input)
+	testStatement(t, stmts[0], 5, input)
 
 	list := stmts[0].GetTokens()
 	testItem(t, list[0], "select")
 	testItem(t, list[1], " ")
 	testAliased(t, list[2], "foo as bar")
 	testItem(t, list[3], " ")
-	testItem(t, list[4], "from")
-	testItem(t, list[5], " ")
-	testIdentifier(t, list[6], `mytable`)
+	testFrom(t, list[4], "from mytable")
 }
 
 func TestParseIdentifierList(t *testing.T) {
@@ -616,6 +574,17 @@ func testWhere(t *testing.T, node ast.Node, expect string) {
 	_, ok := node.(*ast.Where)
 	if !ok {
 		t.Errorf("invalid type want Where got %T", node)
+	}
+	if expect != node.String() {
+		t.Errorf("expected %q, got %q", expect, node.String())
+	}
+}
+
+func testFrom(t *testing.T, node ast.Node, expect string) {
+	t.Helper()
+	_, ok := node.(*ast.From)
+	if !ok {
+		t.Errorf("invalid type want From got %T", node)
 	}
 	if expect != node.String() {
 		t.Errorf("expected %q, got %q", expect, node.String())

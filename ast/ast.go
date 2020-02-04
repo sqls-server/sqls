@@ -137,6 +137,20 @@ func (w *Where) String() string {
 func (w *Where) GetTokens() []Node     { return w.Toks }
 func (w *Where) SetTokens(toks []Node) { w.Toks = toks }
 
+type From struct {
+	Toks []Node
+}
+
+func (f *From) String() string {
+	var strs []string
+	for _, t := range f.Toks {
+		strs = append(strs, t.String())
+	}
+	return strings.Join(strs, "")
+}
+func (f *From) GetTokens() []Node     { return f.Toks }
+func (f *From) SetTokens(toks []Node) { f.Toks = toks }
+
 type Query struct {
 	Toks []Node
 }
@@ -213,7 +227,7 @@ func (t *SQLToken) MatchSQLKeyword(expect string) bool {
 		return false
 	}
 	sqlWord, _ := t.Value.(*token.SQLWord)
-	return sqlWord.Keyword == expect
+	return strings.EqualFold(sqlWord.Keyword, expect)
 }
 
 func (t *SQLToken) MatchSQLKeywords(expects []string) bool {
