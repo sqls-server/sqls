@@ -151,6 +151,20 @@ func (f *From) String() string {
 func (f *From) GetTokens() []Node     { return f.Toks }
 func (f *From) SetTokens(toks []Node) { f.Toks = toks }
 
+type Join struct {
+	Toks []Node
+}
+
+func (j *Join) String() string {
+	var strs []string
+	for _, t := range j.Toks {
+		strs = append(strs, t.String())
+	}
+	return strings.Join(strs, "")
+}
+func (j *Join) GetTokens() []Node     { return j.Toks }
+func (j *Join) SetTokens(toks []Node) { j.Toks = toks }
+
 type Query struct {
 	Toks []Node
 }

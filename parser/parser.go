@@ -284,6 +284,7 @@ func (p *Parser) Parse() (ast.TokenList, error) {
 	root = parsePrefixGroup(newNodeReader(root), parenthesisPrefixMatcher, parseParenthesis)
 	root = parsePrefixGroup(newNodeReader(root), functionPrefixMatcher, parseFunctions)
 	root = parsePrefixGroup(newNodeReader(root), FromPrefixMatcher, parseFrom)
+	root = parsePrefixGroup(newNodeReader(root), JoinPrefixMatcher, parseJoin)
 	root = parsePrefixGroup(newNodeReader(root), wherePrefixMatcher, parseWhere)
 	root = parseInfixGroup(newNodeReader(root), memberIdentifierInfixMatcher, false, parseMemberIdentifier)
 	root = parsePrefixGroup(newNodeReader(root), identifierPrefixMatcher, parseIdentifier)
@@ -427,6 +428,43 @@ func parseWhere(reader *nodeReader) ast.Node {
 	return &ast.Where{Toks: nodes}
 }
 
+var JoinPrefixMatcher = nodeMatcher{
+	expectKeyword: []string{
+		"JOIN",
+	},
+}
+var JoinCloseMatcher = nodeMatcher{
+	expectTokens: []token.Kind{
+		token.RParen,
+	},
+	expectKeyword: []string{
+		"ON",
+		"WHERE",
+		"ORDER",
+		"GROUP",
+		"LIMIT",
+		"UNION",
+		"EXCEPT",
+		"HAVING",
+		"RETURNING",
+		"INTO",
+	},
+}
+
+func parseJoin(reader *nodeReader) ast.Node {
+	fromExpr := reader.curNode
+	nodes := []ast.Node{fromExpr}
+
+	for reader.nextNode(false) {
+		nodes = append(nodes, reader.curNode)
+		if reader.peekNodeIs(false, JoinCloseMatcher) {
+			fmt.Println(reader.peekNode(false))
+			return &ast.Join{Toks: nodes}
+		}
+	}
+	return &ast.Join{Toks: nodes}
+}
+
 var FromPrefixMatcher = nodeMatcher{
 	expectKeyword: []string{
 		"FROM",
@@ -437,6 +475,14 @@ var FromCloseMatcher = nodeMatcher{
 		token.RParen,
 	},
 	expectKeyword: []string{
+		// for join prefix
+		"LEFT",
+		"RIGHT",
+		"INNER",
+		"OUTER",
+		"CROSS",
+		"JOIN",
+		// for other expression
 		"WHERE",
 		"ORDER",
 		"GROUP",

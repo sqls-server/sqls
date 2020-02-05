@@ -177,6 +177,39 @@ func TestParseFrom(t *testing.T) {
 	testFrom(t, list[4], "from abc")
 }
 
+func TestParseJoin(t *testing.T) {
+	input := "select * from abc join efd"
+
+	stmts := parseInit(t, input)
+	testStatement(t, stmts[0], 6, input)
+
+	list := stmts[0].GetTokens()
+	testItem(t, list[0], "select")
+	testItem(t, list[1], " ")
+	testItem(t, list[2], "*")
+	testItem(t, list[3], " ")
+	testFrom(t, list[4], "from abc ")
+	testJoin(t, list[5], "join efd")
+}
+
+func TestParseJoin_WithOn(t *testing.T) {
+	input := "select * from abc join efd on abc.id = efd.id"
+
+	stmts := parseInit(t, input)
+	testStatement(t, stmts[0], 9, input)
+
+	list := stmts[0].GetTokens()
+	testItem(t, list[0], "select")
+	testItem(t, list[1], " ")
+	testItem(t, list[2], "*")
+	testItem(t, list[3], " ")
+	testFrom(t, list[4], "from abc ")
+	testJoin(t, list[5], "join efd ")
+	testItem(t, list[6], "on")
+	testItem(t, list[7], " ")
+	testComparison(t, list[8], "abc.id = efd.id")
+}
+
 func TestParseWhere_NotFoundClose(t *testing.T) {
 	input := "select * from foo where bar = 1"
 	src := bytes.NewBuffer([]byte(input))
@@ -585,6 +618,17 @@ func testFrom(t *testing.T, node ast.Node, expect string) {
 	_, ok := node.(*ast.From)
 	if !ok {
 		t.Errorf("invalid type want From got %T", node)
+	}
+	if expect != node.String() {
+		t.Errorf("expected %q, got %q", expect, node.String())
+	}
+}
+
+func testJoin(t *testing.T, node ast.Node, expect string) {
+	t.Helper()
+	_, ok := node.(*ast.Join)
+	if !ok {
+		t.Errorf("invalid type want Join got %T", node)
 	}
 	if expect != node.String() {
 		t.Errorf("expected %q, got %q", expect, node.String())
