@@ -527,17 +527,22 @@ func parseMemberIdentifier(reader *nodeReader) ast.Node {
 	if !reader.curNodeIs(memberIdentifierTargetMatcher) {
 		return reader.curNode
 	}
+	parent := reader.curNode
 	startIndex := reader.index - 1
 	memberIdentifier := &ast.MemberIdentifer{Toks: reader.nodesWithRange(startIndex, reader.index+1)}
 	reader.nextNode(false)
 
-	endIndex, right := reader.matchedPeekNode(true, memberIdentifierTargetMatcher)
-	if right == nil {
+	endIndex, child := reader.matchedPeekNode(true, memberIdentifierTargetMatcher)
+	if child == nil {
 		return memberIdentifier
 	}
 	reader.nextNode(false)
 
-	memberIdentifier = &ast.MemberIdentifer{Toks: reader.nodesWithRange(startIndex, endIndex+1)}
+	memberIdentifier = &ast.MemberIdentifer{
+		Toks:   reader.nodesWithRange(startIndex, endIndex+1),
+		Parent: parent,
+		Child:  child,
+	}
 	return memberIdentifier
 }
 

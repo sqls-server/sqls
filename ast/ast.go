@@ -33,7 +33,9 @@ func (i *Item) String() string      { return i.Tok.String() }
 func (i *Item) GetToken() *SQLToken { return i.Tok }
 
 type MemberIdentifer struct {
-	Toks []Node
+	Toks   []Node
+	Parent Node
+	Child  Node
 }
 
 func (mi *MemberIdentifer) String() string {
