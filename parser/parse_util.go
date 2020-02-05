@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/lighttiger2505/sqls/ast"
+	"golang.org/x/xerrors"
 )
 
 type TableInfo struct {
@@ -14,14 +15,17 @@ type TableInfo struct {
 
 func ExtractTable(stmt ast.TokenList) []*TableInfo {
 	list := stmt.GetTokens()[0].(ast.TokenList)
-	fromJoinExpr := filterByMatcher(newNodeReader(list), fromJoinMatcher)
-	fmt.Println(fromJoinExpr)
-	identifiers := filterByMatcher(newNodeReader(fromJoinExpr), identifierMatcher)
-	fmt.Println(identifiers)
+	fromJoinExpr := filterTokenList(newNodeReader(list), fromJoinMatcher)
+	identifiers := filterTokenList(newNodeReader(fromJoinExpr), identifierMatcher)
 
 	res := []*TableInfo{}
 	for _, ident := range identifiers.GetTokens() {
-		res = append(res, parseTableInfo(ident))
+		infos, err := parseTableInfo(ident)
+		if err != nil {
+			// FIXME error tracking
+			return res
+		}
+		res = append(res, infos...)
 	}
 	return res
 }
@@ -56,32 +60,96 @@ var identifierMatcher = nodeMatcher{
 	},
 }
 
-func filterByMatcher(reader *nodeReader, matcher nodeMatcher) ast.TokenList {
+func filterTokenList(reader *nodeReader, matcher nodeMatcher) ast.TokenList {
 	var res []ast.Node
 	for reader.nextNode(false) {
 		if reader.curNodeIs(matcher) {
 			res = append(res, reader.curNode)
 		} else if list, ok := reader.curNode.(ast.TokenList); ok {
 			newReader := newNodeReader(list)
-			res = append(res, filterByMatcher(newReader, matcher).GetTokens()...)
+			res = append(res, filterTokenList(newReader, matcher).GetTokens()...)
 		}
 	}
 	return &ast.Statement{Toks: res}
 }
 
-func parseTableInfo(ident ast.Node) *TableInfo {
-	res := &TableInfo{}
-	switch v := ident.(type) {
-	case *ast.Identifer:
-		res.Name = v.String()
-	case *ast.IdentiferList:
-		res.Name = v.String()
-	case *ast.MemberIdentifer:
-		res.Name = v.String()
-	default:
-		panic(fmt.Sprintf("unknown node type %T", v))
+func filterTokens(toks []ast.Node, matcher nodeMatcher) []ast.Node {
+	res := []ast.Node{}
+	for _, tok := range toks {
+		if matcher.isMatch(tok) {
+			res = append(res, tok)
+		}
 	}
 	return res
+}
+
+func parseTableInfo(idents ast.Node) ([]*TableInfo, error) {
+	res := []*TableInfo{}
+	switch v := idents.(type) {
+	case *ast.Identifer:
+		ti := &TableInfo{Name: v.String()}
+		res = append(res, ti)
+	case *ast.IdentiferList:
+		res = append(res, identifierListToTableInfo(v)...)
+	case *ast.MemberIdentifer:
+		ti := &TableInfo{
+			DatabaseSchema: v.Parent.String(),
+			Name:           v.Child.String(),
+		}
+		res = append(res, ti)
+	case *ast.Aliased:
+		res = append(res, aliasedToTableInfo(v))
+	default:
+		return nil, xerrors.Errorf("unknown node type %T", v)
+	}
+	return res, nil
+}
+
+func identifierListToTableInfo(il *ast.IdentiferList) []*TableInfo {
+	tis := []*TableInfo{}
+	idents := filterTokens(il.GetTokens(), identifierMatcher)
+	for _, ident := range idents {
+		switch v := ident.(type) {
+		case *ast.Identifer:
+			ti := &TableInfo{
+				Name: v.String(),
+			}
+			tis = append(tis, ti)
+		case *ast.MemberIdentifer:
+			ti := &TableInfo{
+				DatabaseSchema: v.Parent.String(),
+				Name:           v.Child.String(),
+			}
+			tis = append(tis, ti)
+		default:
+			// FIXME add error tracking
+			panic(fmt.Sprintf("unknown node type %T", v))
+		}
+	}
+	return tis
+}
+
+func aliasedToTableInfo(aliased *ast.Aliased) *TableInfo {
+	ti := &TableInfo{}
+	switch v := aliased.RealName.(type) {
+	case *ast.Identifer:
+		ti.Name = v.String()
+	case *ast.MemberIdentifer:
+		ti.DatabaseSchema = v.Parent.String()
+		ti.Name = v.Child.String()
+	default:
+		// FIXME add error tracking
+		panic(fmt.Sprintf("unknown node type, want Identifer or MemberIdentifier, got %T", v))
+	}
+
+	switch v := aliased.AliasedName.(type) {
+	case *ast.Identifer:
+		ti.Alias = v.String()
+	default:
+		// FIXME add error tracking
+		panic(fmt.Sprintf("unknown node type, want Identifer, got %T", v))
+	}
+	return ti
 }
 
 // func PathEnclosingInterval() {

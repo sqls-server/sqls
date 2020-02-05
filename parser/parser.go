@@ -710,6 +710,7 @@ func parseAliased(reader *nodeReader) ast.Node {
 	if !reader.curNodeIs(aliasTargetMatcher) {
 		return reader.curNode
 	}
+	realName := reader.curNode
 	startIndex := reader.index - 1
 	tmpReader := reader.copyReader()
 	tmpReader.nextNode(true)
@@ -722,7 +723,11 @@ func parseAliased(reader *nodeReader) ast.Node {
 	reader.index = tmpReader.index
 	reader.curNode = tmpReader.curNode
 
-	return &ast.Aliased{Toks: reader.nodesWithRange(startIndex, endIndex+1)}
+	return &ast.Aliased{
+		Toks:        reader.nodesWithRange(startIndex, endIndex+1),
+		RealName:    realName,
+		AliasedName: aliasedName,
+	}
 }
 
 // parseAssignment

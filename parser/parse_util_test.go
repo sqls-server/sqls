@@ -16,11 +16,44 @@ func TestExtractTable(t *testing.T) {
 		want  []*TableInfo
 	}{
 		{
-			name:  "",
+			name:  "one table",
 			input: "select * from abc",
 			want: []*TableInfo{
 				&TableInfo{
 					Name: "abc",
+				},
+			},
+		},
+		{
+			name:  "multiple table",
+			input: "select * from abc, def",
+			want: []*TableInfo{
+				&TableInfo{
+					Name: "abc",
+				},
+				&TableInfo{
+					Name: "def",
+				},
+			},
+		},
+		{
+			name:  "with database schema",
+			input: "select * from abc.def",
+			want: []*TableInfo{
+				&TableInfo{
+					DatabaseSchema: "abc",
+					Name:           "def",
+				},
+			},
+		},
+		{
+			name:  "with database schema and alias",
+			input: "select * from abc.def as ghi",
+			want: []*TableInfo{
+				&TableInfo{
+					DatabaseSchema: "abc",
+					Name:           "def",
+					Alias:          "ghi",
 				},
 			},
 		},

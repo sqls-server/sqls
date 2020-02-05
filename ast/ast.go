@@ -49,7 +49,9 @@ func (mi *MemberIdentifer) GetTokens() []Node     { return mi.Toks }
 func (mi *MemberIdentifer) SetTokens(toks []Node) { mi.Toks = toks }
 
 type Aliased struct {
-	Toks []Node
+	Toks        []Node
+	RealName    Node
+	AliasedName Node
 }
 
 func (a *Aliased) String() string {
