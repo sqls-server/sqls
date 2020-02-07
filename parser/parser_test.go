@@ -593,7 +593,7 @@ func testParenthesis(t *testing.T, node ast.Node, expect string) {
 
 func testFunction(t *testing.T, node ast.Node, expect string) {
 	t.Helper()
-	_, ok := node.(*ast.Function)
+	_, ok := node.(*ast.FunctionLiteral)
 	if !ok {
 		t.Errorf("invalid type want Function got %T", node)
 	}

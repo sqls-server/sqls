@@ -386,7 +386,7 @@ var functionArgsMatcher = nodeMatcher{
 func parseFunctions(reader *nodeReader) ast.Node {
 	funcName := reader.curNode
 	if _, funcArgs := reader.matchedPeekNode(false, functionArgsMatcher); funcArgs != nil {
-		function := &ast.Function{Toks: []ast.Node{funcName, funcArgs}}
+		function := &ast.FunctionLiteral{Toks: []ast.Node{funcName, funcArgs}}
 		reader.nextNode(false)
 		return function
 	}
@@ -587,7 +587,7 @@ var operatorTargetMatcher = nodeMatcher{
 		if _, ok := node.(*ast.Parenthesis); ok {
 			return true
 		}
-		if _, ok := node.(*ast.Function); ok {
+		if _, ok := node.(*ast.FunctionLiteral); ok {
 			return true
 		}
 		return false
@@ -643,7 +643,7 @@ var comparisonTargetMatcher = nodeMatcher{
 		if _, ok := node.(*ast.Operator); ok {
 			return true
 		}
-		if _, ok := node.(*ast.Function); ok {
+		if _, ok := node.(*ast.FunctionLiteral); ok {
 			return true
 		}
 		return false
@@ -690,7 +690,7 @@ var aliasTargetMatcher = nodeMatcher{
 		if _, ok := node.(*ast.Parenthesis); ok {
 			return true
 		}
-		if _, ok := node.(*ast.Function); ok {
+		if _, ok := node.(*ast.FunctionLiteral); ok {
 			return true
 		}
 		if _, ok := node.(*ast.Identifer); ok {
@@ -740,7 +740,7 @@ var identifierListInfixMatcher = nodeMatcher{
 }
 var identifierListTargetMatcher = nodeMatcher{
 	nodeTypeMatcherFunc: func(node interface{}) bool {
-		if _, ok := node.(*ast.Function); ok {
+		if _, ok := node.(*ast.FunctionLiteral); ok {
 			return true
 		}
 		if _, ok := node.(*ast.Identifer); ok {
