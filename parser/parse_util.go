@@ -35,7 +35,7 @@ var fromJoinMatcher = nodeMatcher{
 		if _, ok := node.(*ast.FromClause); ok {
 			return true
 		}
-		if _, ok := node.(*ast.Join); ok {
+		if _, ok := node.(*ast.JoinClause); ok {
 			return true
 		}
 		return false

@@ -626,7 +626,7 @@ func testFrom(t *testing.T, node ast.Node, expect string) {
 
 func testJoin(t *testing.T, node ast.Node, expect string) {
 	t.Helper()
-	_, ok := node.(*ast.Join)
+	_, ok := node.(*ast.JoinClause)
 	if !ok {
 		t.Errorf("invalid type want Join got %T", node)
 	}

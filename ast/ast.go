@@ -177,21 +177,21 @@ func (f *FromClause) SetTokens(toks []Node) { f.Toks = toks }
 func (f *FromClause) From() token.Pos       { return findFrom(f) }
 func (f *FromClause) To() token.Pos         { return findTo(f) }
 
-type Join struct {
+type JoinClause struct {
 	Toks []Node
 }
 
-func (j *Join) String() string {
+func (j *JoinClause) String() string {
 	var strs []string
 	for _, t := range j.Toks {
 		strs = append(strs, t.String())
 	}
 	return strings.Join(strs, "")
 }
-func (j *Join) GetTokens() []Node     { return j.Toks }
-func (j *Join) SetTokens(toks []Node) { j.Toks = toks }
-func (j *Join) From() token.Pos       { return findFrom(j) }
-func (j *Join) To() token.Pos         { return findTo(j) }
+func (j *JoinClause) GetTokens() []Node     { return j.Toks }
+func (j *JoinClause) SetTokens(toks []Node) { j.Toks = toks }
+func (j *JoinClause) From() token.Pos       { return findFrom(j) }
+func (j *JoinClause) To() token.Pos         { return findTo(j) }
 
 type Query struct {
 	Toks []Node

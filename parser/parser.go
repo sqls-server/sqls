@@ -459,10 +459,10 @@ func parseJoin(reader *nodeReader) ast.Node {
 		nodes = append(nodes, reader.curNode)
 		if reader.peekNodeIs(false, JoinCloseMatcher) {
 			fmt.Println(reader.peekNode(false))
-			return &ast.Join{Toks: nodes}
+			return &ast.JoinClause{Toks: nodes}
 		}
 	}
-	return &ast.Join{Toks: nodes}
+	return &ast.JoinClause{Toks: nodes}
 }
 
 var FromPrefixMatcher = nodeMatcher{
