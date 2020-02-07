@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/lighttiger2505/sqls/ast"
+	"github.com/lighttiger2505/sqls/ast/astutil"
 	"golang.org/x/xerrors"
 )
 
@@ -30,8 +31,8 @@ func ExtractTable(stmt ast.TokenList) []*TableInfo {
 	return res
 }
 
-var fromJoinMatcher = nodeMatcher{
-	nodeTypeMatcherFunc: func(node interface{}) bool {
+var fromJoinMatcher = astutil.NodeMatcher{
+	NodeTypeMatcherFunc: func(node interface{}) bool {
 		if _, ok := node.(*ast.FromClause); ok {
 			return true
 		}
@@ -42,8 +43,8 @@ var fromJoinMatcher = nodeMatcher{
 	},
 }
 
-var identifierMatcher = nodeMatcher{
-	nodeTypeMatcherFunc: func(node interface{}) bool {
+var identifierMatcher = astutil.NodeMatcher{
+	NodeTypeMatcherFunc: func(node interface{}) bool {
 		if _, ok := node.(*ast.Identifer); ok {
 			return true
 		}
@@ -60,7 +61,7 @@ var identifierMatcher = nodeMatcher{
 	},
 }
 
-func filterTokenList(reader *nodeReader, matcher nodeMatcher) ast.TokenList {
+func filterTokenList(reader *nodeReader, matcher astutil.NodeMatcher) ast.TokenList {
 	var res []ast.Node
 	for reader.nextNode(false) {
 		if reader.curNodeIs(matcher) {
@@ -73,10 +74,10 @@ func filterTokenList(reader *nodeReader, matcher nodeMatcher) ast.TokenList {
 	return &ast.Statement{Toks: res}
 }
 
-func filterTokens(toks []ast.Node, matcher nodeMatcher) []ast.Node {
+func filterTokens(toks []ast.Node, matcher astutil.NodeMatcher) []ast.Node {
 	res := []ast.Node{}
 	for _, tok := range toks {
-		if matcher.isMatch(tok) {
+		if matcher.IsMatch(tok) {
 			res = append(res, tok)
 		}
 	}

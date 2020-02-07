@@ -5,79 +5,11 @@ import (
 	"io"
 
 	"github.com/lighttiger2505/sqls/ast"
+	"github.com/lighttiger2505/sqls/ast/astutil"
 	"github.com/lighttiger2505/sqls/dialect"
 	"github.com/lighttiger2505/sqls/token"
 	"github.com/pkg/errors"
 )
-
-type nodeMatcher struct {
-	nodeTypeMatcherFunc func(node interface{}) bool
-	expectTokens        []token.Kind
-	expectSQLType       []dialect.KeywordKind
-	expectKeyword       []string
-}
-
-func (f *nodeMatcher) isMatchNodeType(node interface{}) bool {
-	if f.nodeTypeMatcherFunc != nil {
-		if f.nodeTypeMatcherFunc(node) {
-			return true
-		}
-	}
-	return false
-}
-
-func (f *nodeMatcher) isMatchTokens(tok *ast.SQLToken) bool {
-	if f.expectTokens != nil {
-		for _, expect := range f.expectTokens {
-			if tok.MatchKind(expect) {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-func (f *nodeMatcher) isMatchSQLType(tok *ast.SQLToken) bool {
-	if f.expectSQLType != nil {
-		for _, expect := range f.expectSQLType {
-			if tok.MatchSQLKind(expect) {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-func (f *nodeMatcher) isMatchKeyword(tok *ast.SQLToken) bool {
-	if f.expectKeyword != nil {
-		for _, expect := range f.expectKeyword {
-			if tok.MatchSQLKeyword(expect) {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-func (f *nodeMatcher) isMatch(node ast.Node) bool {
-	// For node object
-	if f.isMatchNodeType(node) {
-		return true
-	}
-	if _, ok := node.(ast.TokenList); ok {
-		return false
-	}
-	// For token object
-	tok, ok := node.(ast.Token)
-	if !ok {
-		panic(fmt.Sprintf("invalid type. not has Token, got=(type: %T, value: %#v)", node, node.String()))
-	}
-	sqlTok := tok.GetToken()
-	if f.isMatchTokens(sqlTok) || f.isMatchSQLType(sqlTok) || f.isMatchKeyword(sqlTok) {
-		return true
-	}
-	return false
-}
 
 func isWhitespace(node ast.Node) bool {
 	tok, ok := node.(ast.Token)
@@ -130,9 +62,9 @@ func (nr *nodeReader) nextNode(ignoreWhiteSpace bool) bool {
 	return true
 }
 
-func (nr *nodeReader) curNodeIs(fd nodeMatcher) bool {
+func (nr *nodeReader) curNodeIs(nm astutil.NodeMatcher) bool {
 	if nr.curNode != nil {
-		if fd.isMatch(nr.curNode) {
+		if nm.IsMatch(nr.curNode) {
 			return true
 		}
 	}
@@ -157,33 +89,33 @@ func (nr *nodeReader) peekNode(ignoreWhiteSpace bool) (uint, ast.Node) {
 	return 0, nil
 }
 
-func (nr *nodeReader) peekNodeIs(ignoreWhiteSpace bool, fd nodeMatcher) bool {
+func (nr *nodeReader) peekNodeIs(ignoreWhiteSpace bool, nm astutil.NodeMatcher) bool {
 	_, node := nr.peekNode(ignoreWhiteSpace)
 	if node != nil {
-		if fd.isMatch(node) {
+		if nm.IsMatch(node) {
 			return true
 		}
 	}
 	return false
 }
 
-func (nr *nodeReader) matchedPeekNode(ignoreWhiteSpace bool, fd nodeMatcher) (uint, ast.Node) {
+func (nr *nodeReader) matchedPeekNode(ignoreWhiteSpace bool, nm astutil.NodeMatcher) (uint, ast.Node) {
 	index, node := nr.peekNode(ignoreWhiteSpace)
 	if node != nil {
-		if fd.isMatch(node) {
+		if nm.IsMatch(node) {
 			return index, node
 		}
 	}
 	return 0, nil
 }
 
-func (nr *nodeReader) findNode(ignoreWhiteSpace bool, fd nodeMatcher) (*nodeReader, ast.Node) {
+func (nr *nodeReader) findNode(ignoreWhiteSpace bool, nm astutil.NodeMatcher) (*nodeReader, ast.Node) {
 	tmpReader := nr.copyReader()
 	for tmpReader.hasNext() {
 		node := tmpReader.node.GetTokens()[tmpReader.index]
 
 		// For node object
-		if fd.isMatchNodeType(node) {
+		if nm.IsMatchNodeType(node) {
 			return tmpReader, node
 		}
 		if tmpReader.hasTokenList() {
@@ -192,7 +124,7 @@ func (nr *nodeReader) findNode(ignoreWhiteSpace bool, fd nodeMatcher) (*nodeRead
 		// For token object
 		tok, _ := nr.curNode.(ast.Token)
 		sqlTok := tok.GetToken()
-		if fd.isMatchTokens(sqlTok) || fd.isMatchSQLType(sqlTok) || fd.isMatchKeyword(sqlTok) {
+		if nm.IsMatchTokens(sqlTok) || nm.IsMatchSQLType(sqlTok) || nm.IsMatchKeyword(sqlTok) {
 			return tmpReader, node
 		}
 		tmpReader.nextNode(ignoreWhiteSpace)
@@ -223,7 +155,7 @@ type (
 	infixParseFn  func(reader *nodeReader) ast.Node
 )
 
-func parsePrefixGroup(reader *nodeReader, matcher nodeMatcher, fn prefixParseFn) ast.TokenList {
+func parsePrefixGroup(reader *nodeReader, matcher astutil.NodeMatcher, fn prefixParseFn) ast.TokenList {
 	var replaceNodes []ast.Node
 	for reader.nextNode(false) {
 		if reader.curNodeIs(matcher) {
@@ -239,7 +171,7 @@ func parsePrefixGroup(reader *nodeReader, matcher nodeMatcher, fn prefixParseFn)
 	return reader.node
 }
 
-func parseInfixGroup(reader *nodeReader, matcher nodeMatcher, ignoreWhiteSpace bool, fn infixParseFn) ast.TokenList {
+func parseInfixGroup(reader *nodeReader, matcher astutil.NodeMatcher, ignoreWhiteSpace bool, fn infixParseFn) ast.TokenList {
 	var replaceNodes []ast.Node
 	for reader.nextNode(false) {
 		if reader.peekNodeIs(ignoreWhiteSpace, matcher) {
@@ -295,8 +227,8 @@ func (p *Parser) Parse() (ast.TokenList, error) {
 	return root, nil
 }
 
-var statementMatcher = nodeMatcher{
-	expectTokens: []token.Kind{
+var statementMatcher = astutil.NodeMatcher{
+	ExpectTokens: []token.Kind{
 		token.Semicolon,
 	},
 }
@@ -330,13 +262,13 @@ func parseStatement(reader *nodeReader) ast.TokenList {
 // parseComments
 // parseBrackets
 
-var parenthesisPrefixMatcher = nodeMatcher{
-	expectTokens: []token.Kind{
+var parenthesisPrefixMatcher = astutil.NodeMatcher{
+	ExpectTokens: []token.Kind{
 		token.LParen,
 	},
 }
-var parenthesisCloseMatcher = nodeMatcher{
-	expectTokens: []token.Kind{
+var parenthesisCloseMatcher = astutil.NodeMatcher{
+	ExpectTokens: []token.Kind{
 		token.RParen,
 	},
 }
@@ -368,14 +300,14 @@ func parseParenthesis(reader *nodeReader) ast.Node {
 // parseFor
 // parseBegin
 
-var functionPrefixMatcher = nodeMatcher{
-	expectSQLType: []dialect.KeywordKind{
+var functionPrefixMatcher = astutil.NodeMatcher{
+	ExpectSQLType: []dialect.KeywordKind{
 		dialect.Matched,
 		dialect.Unmatched,
 	},
 }
-var functionArgsMatcher = nodeMatcher{
-	nodeTypeMatcherFunc: func(node interface{}) bool {
+var functionArgsMatcher = astutil.NodeMatcher{
+	NodeTypeMatcherFunc: func(node interface{}) bool {
 		if _, ok := node.(*ast.Parenthesis); ok {
 			return true
 		}
@@ -393,16 +325,16 @@ func parseFunctions(reader *nodeReader) ast.Node {
 	return reader.curNode
 }
 
-var wherePrefixMatcher = nodeMatcher{
-	expectKeyword: []string{
+var wherePrefixMatcher = astutil.NodeMatcher{
+	ExpectKeyword: []string{
 		"WHERE",
 	},
 }
-var whereCloseMatcher = nodeMatcher{
-	expectTokens: []token.Kind{
+var whereCloseMatcher = astutil.NodeMatcher{
+	ExpectTokens: []token.Kind{
 		token.RParen,
 	},
-	expectKeyword: []string{
+	ExpectKeyword: []string{
 		"ORDER",
 		"GROUP",
 		"LIMIT",
@@ -428,16 +360,16 @@ func parseWhere(reader *nodeReader) ast.Node {
 	return &ast.WhereClause{Toks: nodes}
 }
 
-var JoinPrefixMatcher = nodeMatcher{
-	expectKeyword: []string{
+var JoinPrefixMatcher = astutil.NodeMatcher{
+	ExpectKeyword: []string{
 		"JOIN",
 	},
 }
-var JoinCloseMatcher = nodeMatcher{
-	expectTokens: []token.Kind{
+var JoinCloseMatcher = astutil.NodeMatcher{
+	ExpectTokens: []token.Kind{
 		token.RParen,
 	},
-	expectKeyword: []string{
+	ExpectKeyword: []string{
 		"ON",
 		"WHERE",
 		"ORDER",
@@ -465,16 +397,16 @@ func parseJoin(reader *nodeReader) ast.Node {
 	return &ast.JoinClause{Toks: nodes}
 }
 
-var FromPrefixMatcher = nodeMatcher{
-	expectKeyword: []string{
+var FromPrefixMatcher = astutil.NodeMatcher{
+	ExpectKeyword: []string{
 		"FROM",
 	},
 }
-var FromCloseMatcher = nodeMatcher{
-	expectTokens: []token.Kind{
+var FromCloseMatcher = astutil.NodeMatcher{
+	ExpectTokens: []token.Kind{
 		token.RParen,
 	},
-	expectKeyword: []string{
+	ExpectKeyword: []string{
 		// for join prefix
 		"LEFT",
 		"RIGHT",
@@ -509,16 +441,16 @@ func parseFrom(reader *nodeReader) ast.Node {
 	return &ast.FromClause{Toks: nodes}
 }
 
-var memberIdentifierInfixMatcher = nodeMatcher{
-	expectTokens: []token.Kind{
+var memberIdentifierInfixMatcher = astutil.NodeMatcher{
+	ExpectTokens: []token.Kind{
 		token.Period,
 	},
 }
-var memberIdentifierTargetMatcher = nodeMatcher{
-	expectTokens: []token.Kind{
+var memberIdentifierTargetMatcher = astutil.NodeMatcher{
+	ExpectTokens: []token.Kind{
 		token.Mult,
 	},
-	expectSQLType: []dialect.KeywordKind{
+	ExpectSQLType: []dialect.KeywordKind{
 		dialect.Unmatched,
 	},
 }
@@ -548,8 +480,8 @@ func parseMemberIdentifier(reader *nodeReader) ast.Node {
 
 // parseArrays
 
-var identifierPrefixMatcher = nodeMatcher{
-	expectSQLType: []dialect.KeywordKind{
+var identifierPrefixMatcher = astutil.NodeMatcher{
+	ExpectSQLType: []dialect.KeywordKind{
 		dialect.Unmatched,
 	},
 }
@@ -564,8 +496,8 @@ func parseIdentifier(reader *nodeReader) ast.Node {
 // parseTzcasts
 // parseTyped_literal
 
-var operatorInfixMatcher = nodeMatcher{
-	expectTokens: []token.Kind{
+var operatorInfixMatcher = astutil.NodeMatcher{
+	ExpectTokens: []token.Kind{
 		token.Plus,
 		token.Minus,
 		token.Mult,
@@ -573,8 +505,8 @@ var operatorInfixMatcher = nodeMatcher{
 		token.Mod,
 	},
 }
-var operatorTargetMatcher = nodeMatcher{
-	nodeTypeMatcherFunc: func(node interface{}) bool {
+var operatorTargetMatcher = astutil.NodeMatcher{
+	NodeTypeMatcherFunc: func(node interface{}) bool {
 		if _, ok := node.(*ast.Identifer); ok {
 			return true
 		}
@@ -592,7 +524,7 @@ var operatorTargetMatcher = nodeMatcher{
 		}
 		return false
 	},
-	expectTokens: []token.Kind{
+	ExpectTokens: []token.Kind{
 		token.Number,
 		token.Char,
 		token.SingleQuotedString,
@@ -619,8 +551,8 @@ func parseOperator(reader *nodeReader) ast.Node {
 	return &ast.Operator{Toks: reader.nodesWithRange(startIndex, endIndex+1)}
 }
 
-var comparisonInfixMatcher = nodeMatcher{
-	expectTokens: []token.Kind{
+var comparisonInfixMatcher = astutil.NodeMatcher{
+	ExpectTokens: []token.Kind{
 		token.Eq,
 		token.Neq,
 		token.Lt,
@@ -629,8 +561,8 @@ var comparisonInfixMatcher = nodeMatcher{
 		token.GtEq,
 	},
 }
-var comparisonTargetMatcher = nodeMatcher{
-	nodeTypeMatcherFunc: func(node interface{}) bool {
+var comparisonTargetMatcher = astutil.NodeMatcher{
+	NodeTypeMatcherFunc: func(node interface{}) bool {
 		if _, ok := node.(*ast.Parenthesis); ok {
 			return true
 		}
@@ -648,7 +580,7 @@ var comparisonTargetMatcher = nodeMatcher{
 		}
 		return false
 	},
-	expectTokens: []token.Kind{
+	ExpectTokens: []token.Kind{
 		token.Number,
 		token.Char,
 		token.SingleQuotedString,
@@ -679,14 +611,14 @@ func parseComparison(reader *nodeReader) ast.Node {
 // ast.MemberIdentifer,
 // ast.Parenthesis,
 
-var aliasInfixMatcher = nodeMatcher{
-	expectKeyword: []string{
+var aliasInfixMatcher = astutil.NodeMatcher{
+	ExpectKeyword: []string{
 		"AS",
 	},
 }
 
-var aliasTargetMatcher = nodeMatcher{
-	nodeTypeMatcherFunc: func(node interface{}) bool {
+var aliasTargetMatcher = astutil.NodeMatcher{
+	NodeTypeMatcherFunc: func(node interface{}) bool {
 		if _, ok := node.(*ast.Parenthesis); ok {
 			return true
 		}
@@ -733,13 +665,13 @@ func parseAliased(reader *nodeReader) ast.Node {
 // parseAssignment
 // alignComments
 
-var identifierListInfixMatcher = nodeMatcher{
-	expectTokens: []token.Kind{
+var identifierListInfixMatcher = astutil.NodeMatcher{
+	ExpectTokens: []token.Kind{
 		token.Comma,
 	},
 }
-var identifierListTargetMatcher = nodeMatcher{
-	nodeTypeMatcherFunc: func(node interface{}) bool {
+var identifierListTargetMatcher = astutil.NodeMatcher{
+	NodeTypeMatcherFunc: func(node interface{}) bool {
 		if _, ok := node.(*ast.FunctionLiteral); ok {
 			return true
 		}

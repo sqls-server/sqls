@@ -6,7 +6,6 @@ import (
 
 	"github.com/lighttiger2505/sqls/ast"
 	"github.com/lighttiger2505/sqls/dialect"
-	"github.com/lighttiger2505/sqls/token"
 )
 
 func TestParseStatement(t *testing.T) {
@@ -654,38 +653,5 @@ func testIdentifierList(t *testing.T, node ast.Node, expect string) {
 	}
 	if expect != node.String() {
 		t.Errorf("expected %q, got %q", expect, node.String())
-	}
-}
-
-func Test_nodeMatcher_isMatchNodeType(t *testing.T) {
-	type fields struct {
-		nodeTypeMatcherFunc func(node interface{}) bool
-		expectTokens        []token.Kind
-		expectSQLType       []dialect.KeywordKind
-		expectKeyword       []string
-	}
-	type args struct {
-		node interface{}
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		args   args
-		want   bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			f := &nodeMatcher{
-				nodeTypeMatcherFunc: tt.fields.nodeTypeMatcherFunc,
-				expectTokens:        tt.fields.expectTokens,
-				expectSQLType:       tt.fields.expectSQLType,
-				expectKeyword:       tt.fields.expectKeyword,
-			}
-			if got := f.isMatchNodeType(tt.args.node); got != tt.want {
-				t.Errorf("nodeMatcher.isMatchNodeType() = %v, want %v", got, tt.want)
-			}
-		})
 	}
 }
