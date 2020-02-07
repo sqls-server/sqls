@@ -11,180 +11,41 @@ import (
 	"github.com/pkg/errors"
 )
 
-func isWhitespace(node ast.Node) bool {
-	tok, ok := node.(ast.Token)
-	if !ok {
-		return false
-	}
-	if tok.GetToken().MatchKind(token.Whitespace) {
-		return true
-	}
-	return false
-}
-
-type nodeReader struct {
-	node    ast.TokenList
-	curNode ast.Node
-	index   uint
-}
-
-func newNodeReader(list ast.TokenList) *nodeReader {
-	return &nodeReader{
-		node: list,
-	}
-}
-
-func (nr *nodeReader) copyReader() *nodeReader {
-	return &nodeReader{
-		node:  nr.node,
-		index: nr.index,
-	}
-}
-
-func (nr *nodeReader) nodesWithRange(startIndex, endIndex uint) []ast.Node {
-	return nr.node.GetTokens()[startIndex:endIndex]
-}
-
-func (nr *nodeReader) hasNext() bool {
-	return nr.index < uint(len(nr.node.GetTokens()))
-}
-
-func (nr *nodeReader) nextNode(ignoreWhiteSpace bool) bool {
-	if !nr.hasNext() {
-		return false
-	}
-	nr.curNode = nr.node.GetTokens()[nr.index]
-	nr.index++
-
-	if ignoreWhiteSpace && isWhitespace(nr.curNode) {
-		return nr.nextNode(ignoreWhiteSpace)
-	}
-	return true
-}
-
-func (nr *nodeReader) curNodeIs(nm astutil.NodeMatcher) bool {
-	if nr.curNode != nil {
-		if nm.IsMatch(nr.curNode) {
-			return true
-		}
-	}
-	return false
-}
-
-func (nr *nodeReader) peekNode(ignoreWhiteSpace bool) (uint, ast.Node) {
-	tmpReader := nr.copyReader()
-	for tmpReader.hasNext() {
-		index := tmpReader.index
-		node := tmpReader.node.GetTokens()[index]
-
-		if ignoreWhiteSpace {
-			if !isWhitespace(node) {
-				return index, node
-			}
-		} else {
-			return index, node
-		}
-		tmpReader.nextNode(false)
-	}
-	return 0, nil
-}
-
-func (nr *nodeReader) peekNodeIs(ignoreWhiteSpace bool, nm astutil.NodeMatcher) bool {
-	_, node := nr.peekNode(ignoreWhiteSpace)
-	if node != nil {
-		if nm.IsMatch(node) {
-			return true
-		}
-	}
-	return false
-}
-
-func (nr *nodeReader) matchedPeekNode(ignoreWhiteSpace bool, nm astutil.NodeMatcher) (uint, ast.Node) {
-	index, node := nr.peekNode(ignoreWhiteSpace)
-	if node != nil {
-		if nm.IsMatch(node) {
-			return index, node
-		}
-	}
-	return 0, nil
-}
-
-func (nr *nodeReader) findNode(ignoreWhiteSpace bool, nm astutil.NodeMatcher) (*nodeReader, ast.Node) {
-	tmpReader := nr.copyReader()
-	for tmpReader.hasNext() {
-		node := tmpReader.node.GetTokens()[tmpReader.index]
-
-		// For node object
-		if nm.IsMatchNodeType(node) {
-			return tmpReader, node
-		}
-		if tmpReader.hasTokenList() {
-			continue
-		}
-		// For token object
-		tok, _ := nr.curNode.(ast.Token)
-		sqlTok := tok.GetToken()
-		if nm.IsMatchTokens(sqlTok) || nm.IsMatchSQLType(sqlTok) || nm.IsMatchKeyword(sqlTok) {
-			return tmpReader, node
-		}
-		tmpReader.nextNode(ignoreWhiteSpace)
-	}
-	return nil, nil
-}
-
-func (nr *nodeReader) hasTokenList() bool {
-	_, ok := nr.curNode.(ast.TokenList)
-	return ok
-}
-
-func (nr *nodeReader) getTokenList() (ast.TokenList, error) {
-	if !nr.hasTokenList() {
-		return nil, errors.Errorf("want TokenList got %T", nr.curNode)
-	}
-	children, _ := nr.curNode.(ast.TokenList)
-	return children, nil
-}
-
-func (nr *nodeReader) mustTokenList() ast.TokenList {
-	children, _ := nr.getTokenList()
-	return children
-}
-
 type (
-	prefixParseFn func(reader *nodeReader) ast.Node
-	infixParseFn  func(reader *nodeReader) ast.Node
+	prefixParseFn func(reader *astutil.NodeReader) ast.Node
+	infixParseFn  func(reader *astutil.NodeReader) ast.Node
 )
 
-func parsePrefixGroup(reader *nodeReader, matcher astutil.NodeMatcher, fn prefixParseFn) ast.TokenList {
+func parsePrefixGroup(reader *astutil.NodeReader, matcher astutil.NodeMatcher, fn prefixParseFn) ast.TokenList {
 	var replaceNodes []ast.Node
-	for reader.nextNode(false) {
-		if reader.curNodeIs(matcher) {
+	for reader.NextNode(false) {
+		if reader.CurNodeIs(matcher) {
 			replaceNodes = append(replaceNodes, fn(reader))
-		} else if list, ok := reader.curNode.(ast.TokenList); ok {
-			newReader := newNodeReader(list)
+		} else if list, ok := reader.CurNode.(ast.TokenList); ok {
+			newReader := astutil.NewNodeReader(list)
 			replaceNodes = append(replaceNodes, parsePrefixGroup(newReader, matcher, fn))
 		} else {
-			replaceNodes = append(replaceNodes, reader.curNode)
+			replaceNodes = append(replaceNodes, reader.CurNode)
 		}
 	}
-	reader.node.SetTokens(replaceNodes)
-	return reader.node
+	reader.Node.SetTokens(replaceNodes)
+	return reader.Node
 }
 
-func parseInfixGroup(reader *nodeReader, matcher astutil.NodeMatcher, ignoreWhiteSpace bool, fn infixParseFn) ast.TokenList {
+func parseInfixGroup(reader *astutil.NodeReader, matcher astutil.NodeMatcher, ignoreWhiteSpace bool, fn infixParseFn) ast.TokenList {
 	var replaceNodes []ast.Node
-	for reader.nextNode(false) {
-		if reader.peekNodeIs(ignoreWhiteSpace, matcher) {
+	for reader.NextNode(false) {
+		if reader.PeekNodeIs(ignoreWhiteSpace, matcher) {
 			replaceNodes = append(replaceNodes, fn(reader))
-		} else if list, ok := reader.curNode.(ast.TokenList); ok {
-			newReader := newNodeReader(list)
+		} else if list, ok := reader.CurNode.(ast.TokenList); ok {
+			newReader := astutil.NewNodeReader(list)
 			replaceNodes = append(replaceNodes, parseInfixGroup(newReader, matcher, ignoreWhiteSpace, fn))
 		} else {
-			replaceNodes = append(replaceNodes, reader.curNode)
+			replaceNodes = append(replaceNodes, reader.CurNode)
 		}
 	}
-	reader.node.SetTokens(replaceNodes)
-	return reader.node
+	reader.Node.SetTokens(replaceNodes)
+	return reader.Node
 }
 
 type Parser struct {
@@ -212,18 +73,18 @@ func NewParser(src io.Reader, d dialect.Dialect) (*Parser, error) {
 
 func (p *Parser) Parse() (ast.TokenList, error) {
 	root := p.root
-	root = parseStatement(newNodeReader(root))
-	root = parsePrefixGroup(newNodeReader(root), parenthesisPrefixMatcher, parseParenthesis)
-	root = parsePrefixGroup(newNodeReader(root), functionPrefixMatcher, parseFunctions)
-	root = parsePrefixGroup(newNodeReader(root), FromPrefixMatcher, parseFrom)
-	root = parsePrefixGroup(newNodeReader(root), JoinPrefixMatcher, parseJoin)
-	root = parsePrefixGroup(newNodeReader(root), wherePrefixMatcher, parseWhere)
-	root = parseInfixGroup(newNodeReader(root), memberIdentifierInfixMatcher, false, parseMemberIdentifier)
-	root = parsePrefixGroup(newNodeReader(root), identifierPrefixMatcher, parseIdentifier)
-	root = parseInfixGroup(newNodeReader(root), operatorInfixMatcher, true, parseOperator)
-	root = parseInfixGroup(newNodeReader(root), comparisonInfixMatcher, true, parseComparison)
-	root = parseInfixGroup(newNodeReader(root), aliasInfixMatcher, true, parseAliased)
-	root = parseInfixGroup(newNodeReader(root), identifierListInfixMatcher, true, parseIdentifierList)
+	root = parseStatement(astutil.NewNodeReader(root))
+	root = parsePrefixGroup(astutil.NewNodeReader(root), parenthesisPrefixMatcher, parseParenthesis)
+	root = parsePrefixGroup(astutil.NewNodeReader(root), functionPrefixMatcher, parseFunctions)
+	root = parsePrefixGroup(astutil.NewNodeReader(root), FromPrefixMatcher, parseFrom)
+	root = parsePrefixGroup(astutil.NewNodeReader(root), JoinPrefixMatcher, parseJoin)
+	root = parsePrefixGroup(astutil.NewNodeReader(root), wherePrefixMatcher, parseWhere)
+	root = parseInfixGroup(astutil.NewNodeReader(root), memberIdentifierInfixMatcher, false, parseMemberIdentifier)
+	root = parsePrefixGroup(astutil.NewNodeReader(root), identifierPrefixMatcher, parseIdentifier)
+	root = parseInfixGroup(astutil.NewNodeReader(root), operatorInfixMatcher, true, parseOperator)
+	root = parseInfixGroup(astutil.NewNodeReader(root), comparisonInfixMatcher, true, parseComparison)
+	root = parseInfixGroup(astutil.NewNodeReader(root), aliasInfixMatcher, true, parseAliased)
+	root = parseInfixGroup(astutil.NewNodeReader(root), identifierListInfixMatcher, true, parseIdentifierList)
 	return root, nil
 }
 
@@ -233,30 +94,29 @@ var statementMatcher = astutil.NodeMatcher{
 	},
 }
 
-func parseStatement(reader *nodeReader) ast.TokenList {
+func parseStatement(reader *astutil.NodeReader) ast.TokenList {
 	var replaceNodes []ast.Node
 	var startIndex uint
-	for reader.nextNode(false) {
-		if reader.hasTokenList() {
-			list := reader.mustTokenList()
-			replaceNodes = append(replaceNodes, parseStatement(newNodeReader(list)))
+	for reader.NextNode(false) {
+		if list, ok := reader.CurNode.(ast.TokenList); ok {
+			replaceNodes = append(replaceNodes, parseStatement(astutil.NewNodeReader(list)))
 			continue
 		}
 
-		tmpReader, node := reader.findNode(true, statementMatcher)
+		tmpReader, node := reader.FindNode(true, statementMatcher)
 		if node != nil {
-			stmt := &ast.Statement{Toks: reader.nodesWithRange(startIndex, tmpReader.index)}
+			stmt := &ast.Statement{Toks: reader.NodesWithRange(startIndex, tmpReader.Index)}
 			replaceNodes = append(replaceNodes, stmt)
 			reader = tmpReader
-			startIndex = reader.index
+			startIndex = reader.Index
 		}
 	}
-	if reader.index != startIndex {
-		stmt := &ast.Statement{Toks: reader.nodesWithRange(startIndex, reader.index)}
+	if reader.Index != startIndex {
+		stmt := &ast.Statement{Toks: reader.NodesWithRange(startIndex, reader.Index)}
 		replaceNodes = append(replaceNodes, stmt)
 	}
-	reader.node.SetTokens(replaceNodes)
-	return reader.node
+	reader.Node.SetTokens(replaceNodes)
+	return reader.Node
 }
 
 // parseComments
@@ -273,26 +133,26 @@ var parenthesisCloseMatcher = astutil.NodeMatcher{
 	},
 }
 
-func parseParenthesis(reader *nodeReader) ast.Node {
-	nodes := []ast.Node{reader.curNode}
-	tmpReader := reader.copyReader()
-	for tmpReader.nextNode(false) {
-		if tmpReader.hasTokenList() {
+func parseParenthesis(reader *astutil.NodeReader) ast.Node {
+	nodes := []ast.Node{reader.CurNode}
+	tmpReader := reader.CopyReader()
+	for tmpReader.NextNode(false) {
+		if _, ok := reader.CurNode.(ast.TokenList); ok {
 			continue
 		}
 
-		if tmpReader.curNodeIs(parenthesisPrefixMatcher) {
+		if tmpReader.CurNodeIs(parenthesisPrefixMatcher) {
 			parenthesis := parseParenthesis(tmpReader)
 			nodes = append(nodes, parenthesis)
-		} else if tmpReader.curNodeIs(parenthesisCloseMatcher) {
-			reader.index = tmpReader.index
-			reader.curNode = tmpReader.curNode
-			return &ast.Parenthesis{Toks: append(nodes, tmpReader.curNode)}
+		} else if tmpReader.CurNodeIs(parenthesisCloseMatcher) {
+			reader.Index = tmpReader.Index
+			reader.CurNode = tmpReader.CurNode
+			return &ast.Parenthesis{Toks: append(nodes, tmpReader.CurNode)}
 		} else {
-			nodes = append(nodes, tmpReader.curNode)
+			nodes = append(nodes, tmpReader.CurNode)
 		}
 	}
-	return reader.curNode
+	return reader.CurNode
 }
 
 // parseCase
@@ -315,14 +175,15 @@ var functionArgsMatcher = astutil.NodeMatcher{
 	},
 }
 
-func parseFunctions(reader *nodeReader) ast.Node {
-	funcName := reader.curNode
-	if _, funcArgs := reader.matchedPeekNode(false, functionArgsMatcher); funcArgs != nil {
+func parseFunctions(reader *astutil.NodeReader) ast.Node {
+	funcName := reader.CurNode
+	if reader.PeekNodeIs(false, functionArgsMatcher) {
+		_, funcArgs := reader.PeekNode(false)
 		function := &ast.FunctionLiteral{Toks: []ast.Node{funcName, funcArgs}}
-		reader.nextNode(false)
+		reader.NextNode(false)
 		return function
 	}
-	return reader.curNode
+	return reader.CurNode
 }
 
 var wherePrefixMatcher = astutil.NodeMatcher{
@@ -346,14 +207,14 @@ var whereCloseMatcher = astutil.NodeMatcher{
 	},
 }
 
-func parseWhere(reader *nodeReader) ast.Node {
-	whereExpr := reader.curNode
+func parseWhere(reader *astutil.NodeReader) ast.Node {
+	whereExpr := reader.CurNode
 	nodes := []ast.Node{whereExpr}
 
-	for reader.nextNode(false) {
-		nodes = append(nodes, reader.curNode)
-		if reader.peekNodeIs(false, whereCloseMatcher) {
-			fmt.Println(reader.peekNode(false))
+	for reader.NextNode(false) {
+		nodes = append(nodes, reader.CurNode)
+		if reader.PeekNodeIs(false, whereCloseMatcher) {
+			fmt.Println(reader.PeekNode(false))
 			return &ast.WhereClause{Toks: nodes}
 		}
 	}
@@ -383,14 +244,14 @@ var JoinCloseMatcher = astutil.NodeMatcher{
 	},
 }
 
-func parseJoin(reader *nodeReader) ast.Node {
-	fromExpr := reader.curNode
+func parseJoin(reader *astutil.NodeReader) ast.Node {
+	fromExpr := reader.CurNode
 	nodes := []ast.Node{fromExpr}
 
-	for reader.nextNode(false) {
-		nodes = append(nodes, reader.curNode)
-		if reader.peekNodeIs(false, JoinCloseMatcher) {
-			fmt.Println(reader.peekNode(false))
+	for reader.NextNode(false) {
+		nodes = append(nodes, reader.CurNode)
+		if reader.PeekNodeIs(false, JoinCloseMatcher) {
+			fmt.Println(reader.PeekNode(false))
 			return &ast.JoinClause{Toks: nodes}
 		}
 	}
@@ -427,14 +288,14 @@ var FromCloseMatcher = astutil.NodeMatcher{
 	},
 }
 
-func parseFrom(reader *nodeReader) ast.Node {
-	fromExpr := reader.curNode
+func parseFrom(reader *astutil.NodeReader) ast.Node {
+	fromExpr := reader.CurNode
 	nodes := []ast.Node{fromExpr}
 
-	for reader.nextNode(false) {
-		nodes = append(nodes, reader.curNode)
-		if reader.peekNodeIs(false, FromCloseMatcher) {
-			fmt.Println(reader.peekNode(false))
+	for reader.NextNode(false) {
+		nodes = append(nodes, reader.CurNode)
+		if reader.PeekNodeIs(false, FromCloseMatcher) {
+			fmt.Println(reader.PeekNode(false))
 			return &ast.FromClause{Toks: nodes}
 		}
 	}
@@ -455,26 +316,27 @@ var memberIdentifierTargetMatcher = astutil.NodeMatcher{
 	},
 }
 
-func parseMemberIdentifier(reader *nodeReader) ast.Node {
-	if !reader.curNodeIs(memberIdentifierTargetMatcher) {
-		return reader.curNode
+func parseMemberIdentifier(reader *astutil.NodeReader) ast.Node {
+	if !reader.CurNodeIs(memberIdentifierTargetMatcher) {
+		return reader.CurNode
 	}
-	parent := reader.curNode
-	startIndex := reader.index - 1
-	memberIdentifier := &ast.MemberIdentifer{Toks: reader.nodesWithRange(startIndex, reader.index+1)}
-	reader.nextNode(false)
+	parent := reader.CurNode
+	startIndex := reader.Index - 1
+	memberIdentifier := &ast.MemberIdentifer{Toks: reader.NodesWithRange(startIndex, reader.Index+1)}
 
-	endIndex, child := reader.matchedPeekNode(true, memberIdentifierTargetMatcher)
-	if child == nil {
+	reader.NextNode(false)
+	// endIndex, child := reader.matchedPeekNode(true, memberIdentifierTargetMatcher)
+	if !reader.PeekNodeIs(true, memberIdentifierTargetMatcher) {
 		return memberIdentifier
 	}
-	reader.nextNode(false)
-
+	endIndex, child := reader.PeekNode(true)
 	memberIdentifier = &ast.MemberIdentifer{
-		Toks:   reader.nodesWithRange(startIndex, endIndex+1),
+		Toks:   reader.NodesWithRange(startIndex, endIndex+1),
 		Parent: parent,
 		Child:  child,
 	}
+
+	reader.NextNode(false)
 	return memberIdentifier
 }
 
@@ -486,8 +348,8 @@ var identifierPrefixMatcher = astutil.NodeMatcher{
 	},
 }
 
-func parseIdentifier(reader *nodeReader) ast.Node {
-	token, _ := reader.curNode.(ast.Token)
+func parseIdentifier(reader *astutil.NodeReader) ast.Node {
+	token, _ := reader.CurNode.(ast.Token)
 	return &ast.Identifer{Tok: token.GetToken()}
 }
 
@@ -532,23 +394,23 @@ var operatorTargetMatcher = astutil.NodeMatcher{
 	},
 }
 
-func parseOperator(reader *nodeReader) ast.Node {
-	if !reader.curNodeIs(operatorTargetMatcher) {
-		return reader.curNode
+func parseOperator(reader *astutil.NodeReader) ast.Node {
+	if !reader.CurNodeIs(operatorTargetMatcher) {
+		return reader.CurNode
 	}
-	startIndex := reader.index - 1
-	tmpReader := reader.copyReader()
-	tmpReader.nextNode(true)
+	startIndex := reader.Index - 1
+	tmpReader := reader.CopyReader()
+	tmpReader.NextNode(true)
 
-	endIndex, right := tmpReader.matchedPeekNode(true, operatorTargetMatcher)
-	if right == nil {
-		return reader.curNode
+	if !tmpReader.PeekNodeIs(true, operatorTargetMatcher) {
+		return reader.CurNode
 	}
-	tmpReader.nextNode(true)
-	reader.index = tmpReader.index
-	reader.curNode = tmpReader.curNode
+	endIndex, _ := tmpReader.PeekNode(true)
 
-	return &ast.Operator{Toks: reader.nodesWithRange(startIndex, endIndex+1)}
+	tmpReader.NextNode(true)
+	reader.Index = tmpReader.Index
+	reader.CurNode = tmpReader.CurNode
+	return &ast.Operator{Toks: reader.NodesWithRange(startIndex, endIndex+1)}
 }
 
 var comparisonInfixMatcher = astutil.NodeMatcher{
@@ -588,23 +450,23 @@ var comparisonTargetMatcher = astutil.NodeMatcher{
 	},
 }
 
-func parseComparison(reader *nodeReader) ast.Node {
-	if !reader.curNodeIs(comparisonTargetMatcher) {
-		return reader.curNode
+func parseComparison(reader *astutil.NodeReader) ast.Node {
+	if !reader.CurNodeIs(comparisonTargetMatcher) {
+		return reader.CurNode
 	}
-	startIndex := reader.index - 1
-	tmpReader := reader.copyReader()
-	tmpReader.nextNode(true)
+	startIndex := reader.Index - 1
+	tmpReader := reader.CopyReader()
+	tmpReader.NextNode(true)
 
-	endIndex, right := tmpReader.matchedPeekNode(true, comparisonTargetMatcher)
-	if right == nil {
-		return reader.curNode
+	if !tmpReader.PeekNodeIs(true, comparisonTargetMatcher) {
+		return reader.CurNode
 	}
-	tmpReader.nextNode(true)
-	reader.index = tmpReader.index
-	reader.curNode = tmpReader.curNode
+	endIndex, _ := tmpReader.PeekNode(true)
 
-	return &ast.Comparison{Toks: reader.nodesWithRange(startIndex, endIndex+1)}
+	tmpReader.NextNode(true)
+	reader.Index = tmpReader.Index
+	reader.CurNode = tmpReader.CurNode
+	return &ast.Comparison{Toks: reader.NodesWithRange(startIndex, endIndex+1)}
 }
 
 // ast.Identifer,
@@ -638,25 +500,25 @@ var aliasTargetMatcher = astutil.NodeMatcher{
 	},
 }
 
-func parseAliased(reader *nodeReader) ast.Node {
-	if !reader.curNodeIs(aliasTargetMatcher) {
-		return reader.curNode
+func parseAliased(reader *astutil.NodeReader) ast.Node {
+	if !reader.CurNodeIs(aliasTargetMatcher) {
+		return reader.CurNode
 	}
-	realName := reader.curNode
-	startIndex := reader.index - 1
-	tmpReader := reader.copyReader()
-	tmpReader.nextNode(true)
+	realName := reader.CurNode
+	startIndex := reader.Index - 1
+	tmpReader := reader.CopyReader()
+	tmpReader.NextNode(true)
 
-	endIndex, aliasedName := tmpReader.matchedPeekNode(true, aliasTargetMatcher)
-	if aliasedName == nil {
-		return reader.curNode
+	if !tmpReader.PeekNodeIs(true, aliasTargetMatcher) {
+		return reader.CurNode
 	}
-	tmpReader.nextNode(true)
-	reader.index = tmpReader.index
-	reader.curNode = tmpReader.curNode
+	endIndex, aliasedName := tmpReader.PeekNode(true)
 
+	tmpReader.NextNode(true)
+	reader.Index = tmpReader.Index
+	reader.CurNode = tmpReader.CurNode
 	return &ast.Aliased{
-		Toks:        reader.nodesWithRange(startIndex, endIndex+1),
+		Toks:        reader.NodesWithRange(startIndex, endIndex+1),
 		RealName:    realName,
 		AliasedName: aliasedName,
 	}
@@ -694,38 +556,38 @@ var identifierListTargetMatcher = astutil.NodeMatcher{
 	},
 }
 
-func parseIdentifierList(reader *nodeReader) ast.Node {
-	if !reader.curNodeIs(identifierListTargetMatcher) {
-		return reader.curNode
+func parseIdentifierList(reader *astutil.NodeReader) ast.Node {
+	if !reader.CurNodeIs(identifierListTargetMatcher) {
+		return reader.CurNode
 	}
-	startIndex := reader.index - 1
-	tmpReader := reader.copyReader()
-	tmpReader.nextNode(true)
+	startIndex := reader.Index - 1
+	tmpReader := reader.CopyReader()
+	tmpReader.NextNode(true)
 
 	var endIndex uint
 	var count uint
 	for {
-		tmpIndex, ident := tmpReader.matchedPeekNode(true, identifierListTargetMatcher)
-		if ident == nil {
+		if !tmpReader.PeekNodeIs(true, identifierListTargetMatcher) {
 			if count > 0 {
 				break
 			}
-			return tmpReader.curNode
+			return tmpReader.CurNode
 		}
 		count++
-		tmpReader.nextNode(true)
-		endIndex = tmpIndex
 
-		_, nextIdent := tmpReader.matchedPeekNode(true, identifierListInfixMatcher)
-		if nextIdent == nil {
+		peekIndex, _ := tmpReader.PeekNode(true)
+		endIndex = peekIndex
+
+		tmpReader.NextNode(true)
+		if !tmpReader.PeekNodeIs(true, identifierListInfixMatcher) {
 			break
 		}
-		tmpReader.nextNode(true)
+		tmpReader.NextNode(true)
 	}
 
-	reader.index = tmpReader.index
-	reader.curNode = tmpReader.curNode
-	return &ast.IdentiferList{Toks: reader.nodesWithRange(startIndex, endIndex+1)}
+	reader.Index = tmpReader.Index
+	reader.CurNode = tmpReader.CurNode
+	return &ast.IdentiferList{Toks: reader.NodesWithRange(startIndex, endIndex+1)}
 }
 
 // parseValues

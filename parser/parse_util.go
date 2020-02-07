@@ -16,8 +16,8 @@ type TableInfo struct {
 
 func ExtractTable(stmt ast.TokenList) []*TableInfo {
 	list := stmt.GetTokens()[0].(ast.TokenList)
-	fromJoinExpr := filterTokenList(newNodeReader(list), fromJoinMatcher)
-	identifiers := filterTokenList(newNodeReader(fromJoinExpr), identifierMatcher)
+	fromJoinExpr := filterTokenList(astutil.NewNodeReader(list), fromJoinMatcher)
+	identifiers := filterTokenList(astutil.NewNodeReader(fromJoinExpr), identifierMatcher)
 
 	res := []*TableInfo{}
 	for _, ident := range identifiers.GetTokens() {
@@ -61,13 +61,13 @@ var identifierMatcher = astutil.NodeMatcher{
 	},
 }
 
-func filterTokenList(reader *nodeReader, matcher astutil.NodeMatcher) ast.TokenList {
+func filterTokenList(reader *astutil.NodeReader, matcher astutil.NodeMatcher) ast.TokenList {
 	var res []ast.Node
-	for reader.nextNode(false) {
-		if reader.curNodeIs(matcher) {
-			res = append(res, reader.curNode)
-		} else if list, ok := reader.curNode.(ast.TokenList); ok {
-			newReader := newNodeReader(list)
+	for reader.NextNode(false) {
+		if reader.CurNodeIs(matcher) {
+			res = append(res, reader.CurNode)
+		} else if list, ok := reader.CurNode.(ast.TokenList); ok {
+			newReader := astutil.NewNodeReader(list)
 			res = append(res, filterTokenList(newReader, matcher).GetTokens()...)
 		}
 	}
