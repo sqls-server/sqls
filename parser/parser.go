@@ -503,10 +503,10 @@ func parseFrom(reader *nodeReader) ast.Node {
 		nodes = append(nodes, reader.curNode)
 		if reader.peekNodeIs(false, FromCloseMatcher) {
 			fmt.Println(reader.peekNode(false))
-			return &ast.From{Toks: nodes}
+			return &ast.FromClause{Toks: nodes}
 		}
 	}
-	return &ast.From{Toks: nodes}
+	return &ast.FromClause{Toks: nodes}
 }
 
 var memberIdentifierInfixMatcher = nodeMatcher{

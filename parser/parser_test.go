@@ -615,7 +615,7 @@ func testWhere(t *testing.T, node ast.Node, expect string) {
 
 func testFrom(t *testing.T, node ast.Node, expect string) {
 	t.Helper()
-	_, ok := node.(*ast.From)
+	_, ok := node.(*ast.FromClause)
 	if !ok {
 		t.Errorf("invalid type want From got %T", node)
 	}

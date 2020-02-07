@@ -32,7 +32,7 @@ func ExtractTable(stmt ast.TokenList) []*TableInfo {
 
 var fromJoinMatcher = nodeMatcher{
 	nodeTypeMatcherFunc: func(node interface{}) bool {
-		if _, ok := node.(*ast.From); ok {
+		if _, ok := node.(*ast.FromClause); ok {
 			return true
 		}
 		if _, ok := node.(*ast.Join); ok {
