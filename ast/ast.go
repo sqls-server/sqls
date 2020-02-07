@@ -145,21 +145,21 @@ func (fl *FunctionLiteral) SetTokens(toks []Node) { fl.Toks = toks }
 func (fl *FunctionLiteral) From() token.Pos       { return findFrom(fl) }
 func (fl *FunctionLiteral) To() token.Pos         { return findTo(fl) }
 
-type Where struct {
+type WhereClause struct {
 	Toks []Node
 }
 
-func (w *Where) String() string {
+func (w *WhereClause) String() string {
 	var strs []string
 	for _, t := range w.Toks {
 		strs = append(strs, t.String())
 	}
 	return strings.Join(strs, "")
 }
-func (w *Where) GetTokens() []Node     { return w.Toks }
-func (w *Where) SetTokens(toks []Node) { w.Toks = toks }
-func (w *Where) From() token.Pos       { return findFrom(w) }
-func (w *Where) To() token.Pos         { return findTo(w) }
+func (w *WhereClause) GetTokens() []Node     { return w.Toks }
+func (w *WhereClause) SetTokens(toks []Node) { w.Toks = toks }
+func (w *WhereClause) From() token.Pos       { return findFrom(w) }
+func (w *WhereClause) To() token.Pos         { return findTo(w) }
 
 type FromClause struct {
 	Toks []Node

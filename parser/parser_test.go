@@ -604,7 +604,7 @@ func testFunction(t *testing.T, node ast.Node, expect string) {
 
 func testWhere(t *testing.T, node ast.Node, expect string) {
 	t.Helper()
-	_, ok := node.(*ast.Where)
+	_, ok := node.(*ast.WhereClause)
 	if !ok {
 		t.Errorf("invalid type want Where got %T", node)
 	}

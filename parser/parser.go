@@ -422,10 +422,10 @@ func parseWhere(reader *nodeReader) ast.Node {
 		nodes = append(nodes, reader.curNode)
 		if reader.peekNodeIs(false, whereCloseMatcher) {
 			fmt.Println(reader.peekNode(false))
-			return &ast.Where{Toks: nodes}
+			return &ast.WhereClause{Toks: nodes}
 		}
 	}
-	return &ast.Where{Toks: nodes}
+	return &ast.WhereClause{Toks: nodes}
 }
 
 var JoinPrefixMatcher = nodeMatcher{
