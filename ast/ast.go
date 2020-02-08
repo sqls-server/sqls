@@ -9,8 +9,8 @@ import (
 
 type Node interface {
 	String() string
-	From() token.Pos
-	To() token.Pos
+	Pos() token.Pos
+	End() token.Pos
 }
 
 type Token interface {
@@ -33,8 +33,8 @@ func NewItem(tok *token.Token) Node {
 }
 func (i *Item) String() string      { return i.Tok.String() }
 func (i *Item) GetToken() *SQLToken { return i.Tok }
-func (i *Item) From() token.Pos     { return i.Tok.From }
-func (i *Item) To() token.Pos       { return i.Tok.To }
+func (i *Item) Pos() token.Pos      { return i.Tok.From }
+func (i *Item) End() token.Pos      { return i.Tok.To }
 
 type MemberIdentifer struct {
 	Toks   []Node
@@ -51,8 +51,8 @@ func (mi *MemberIdentifer) String() string {
 }
 func (mi *MemberIdentifer) GetTokens() []Node     { return mi.Toks }
 func (mi *MemberIdentifer) SetTokens(toks []Node) { mi.Toks = toks }
-func (mi *MemberIdentifer) From() token.Pos       { return findFrom(mi) }
-func (mi *MemberIdentifer) To() token.Pos         { return findTo(mi) }
+func (mi *MemberIdentifer) Pos() token.Pos        { return findFrom(mi) }
+func (mi *MemberIdentifer) End() token.Pos        { return findTo(mi) }
 
 type Aliased struct {
 	Toks        []Node
@@ -69,8 +69,8 @@ func (a *Aliased) String() string {
 }
 func (a *Aliased) GetTokens() []Node     { return a.Toks }
 func (a *Aliased) SetTokens(toks []Node) { a.Toks = toks }
-func (a *Aliased) From() token.Pos       { return findFrom(a) }
-func (a *Aliased) To() token.Pos         { return findTo(a) }
+func (a *Aliased) Pos() token.Pos        { return findFrom(a) }
+func (a *Aliased) End() token.Pos        { return findTo(a) }
 
 type Identifer struct {
 	Tok *SQLToken
@@ -78,8 +78,8 @@ type Identifer struct {
 
 func (i *Identifer) String() string      { return i.Tok.String() }
 func (i *Identifer) GetToken() *SQLToken { return i.Tok }
-func (i *Identifer) From() token.Pos     { return findFrom(i) }
-func (i *Identifer) To() token.Pos       { return findTo(i) }
+func (i *Identifer) Pos() token.Pos      { return findFrom(i) }
+func (i *Identifer) End() token.Pos      { return findTo(i) }
 
 type Operator struct {
 	Toks []Node
@@ -94,8 +94,8 @@ func (o *Operator) String() string {
 }
 func (o *Operator) GetTokens() []Node     { return o.Toks }
 func (o *Operator) SetTokens(toks []Node) { o.Toks = toks }
-func (o *Operator) From() token.Pos       { return findFrom(o) }
-func (o *Operator) To() token.Pos         { return findTo(o) }
+func (o *Operator) Pos() token.Pos        { return findFrom(o) }
+func (o *Operator) End() token.Pos        { return findTo(o) }
 
 type Comparison struct {
 	Toks []Node
@@ -110,8 +110,8 @@ func (c *Comparison) String() string {
 }
 func (c *Comparison) GetTokens() []Node     { return c.Toks }
 func (c *Comparison) SetTokens(toks []Node) { c.Toks = toks }
-func (c *Comparison) From() token.Pos       { return findFrom(c) }
-func (c *Comparison) To() token.Pos         { return findTo(c) }
+func (c *Comparison) Pos() token.Pos        { return findFrom(c) }
+func (c *Comparison) End() token.Pos        { return findTo(c) }
 
 type Parenthesis struct {
 	Toks []Node
@@ -126,8 +126,8 @@ func (p *Parenthesis) String() string {
 }
 func (p *Parenthesis) GetTokens() []Node     { return p.Toks }
 func (p *Parenthesis) SetTokens(toks []Node) { p.Toks = toks }
-func (p *Parenthesis) From() token.Pos       { return findFrom(p) }
-func (p *Parenthesis) To() token.Pos         { return findTo(p) }
+func (p *Parenthesis) Pos() token.Pos        { return findFrom(p) }
+func (p *Parenthesis) End() token.Pos        { return findTo(p) }
 
 type FunctionLiteral struct {
 	Toks []Node
@@ -142,8 +142,8 @@ func (fl *FunctionLiteral) String() string {
 }
 func (fl *FunctionLiteral) GetTokens() []Node     { return fl.Toks }
 func (fl *FunctionLiteral) SetTokens(toks []Node) { fl.Toks = toks }
-func (fl *FunctionLiteral) From() token.Pos       { return findFrom(fl) }
-func (fl *FunctionLiteral) To() token.Pos         { return findTo(fl) }
+func (fl *FunctionLiteral) Pos() token.Pos        { return findFrom(fl) }
+func (fl *FunctionLiteral) End() token.Pos        { return findTo(fl) }
 
 type WhereClause struct {
 	Toks []Node
@@ -158,8 +158,8 @@ func (w *WhereClause) String() string {
 }
 func (w *WhereClause) GetTokens() []Node     { return w.Toks }
 func (w *WhereClause) SetTokens(toks []Node) { w.Toks = toks }
-func (w *WhereClause) From() token.Pos       { return findFrom(w) }
-func (w *WhereClause) To() token.Pos         { return findTo(w) }
+func (w *WhereClause) Pos() token.Pos        { return findFrom(w) }
+func (w *WhereClause) End() token.Pos        { return findTo(w) }
 
 type FromClause struct {
 	Toks []Node
@@ -174,8 +174,8 @@ func (f *FromClause) String() string {
 }
 func (f *FromClause) GetTokens() []Node     { return f.Toks }
 func (f *FromClause) SetTokens(toks []Node) { f.Toks = toks }
-func (f *FromClause) From() token.Pos       { return findFrom(f) }
-func (f *FromClause) To() token.Pos         { return findTo(f) }
+func (f *FromClause) Pos() token.Pos        { return findFrom(f) }
+func (f *FromClause) End() token.Pos        { return findTo(f) }
 
 type JoinClause struct {
 	Toks []Node
@@ -190,8 +190,8 @@ func (j *JoinClause) String() string {
 }
 func (j *JoinClause) GetTokens() []Node     { return j.Toks }
 func (j *JoinClause) SetTokens(toks []Node) { j.Toks = toks }
-func (j *JoinClause) From() token.Pos       { return findFrom(j) }
-func (j *JoinClause) To() token.Pos         { return findTo(j) }
+func (j *JoinClause) Pos() token.Pos        { return findFrom(j) }
+func (j *JoinClause) End() token.Pos        { return findTo(j) }
 
 type Query struct {
 	Toks []Node
@@ -206,8 +206,8 @@ func (q *Query) String() string {
 }
 func (q *Query) GetTokens() []Node     { return q.Toks }
 func (q *Query) SetTokens(toks []Node) { q.Toks = toks }
-func (q *Query) From() token.Pos       { return findFrom(q) }
-func (q *Query) To() token.Pos         { return findTo(q) }
+func (q *Query) Pos() token.Pos        { return findFrom(q) }
+func (q *Query) End() token.Pos        { return findTo(q) }
 
 type Statement struct {
 	Toks []Node
@@ -222,8 +222,8 @@ func (s *Statement) String() string {
 }
 func (s *Statement) GetTokens() []Node     { return s.Toks }
 func (s *Statement) SetTokens(toks []Node) { s.Toks = toks }
-func (s *Statement) From() token.Pos       { return findFrom(s) }
-func (s *Statement) To() token.Pos         { return findTo(s) }
+func (s *Statement) Pos() token.Pos        { return findFrom(s) }
+func (s *Statement) End() token.Pos        { return findTo(s) }
 
 type IdentiferList struct {
 	Toks []Node
@@ -238,8 +238,8 @@ func (il *IdentiferList) String() string {
 }
 func (il *IdentiferList) GetTokens() []Node     { return il.Toks }
 func (il *IdentiferList) SetTokens(toks []Node) { il.Toks = toks }
-func (il *IdentiferList) From() token.Pos       { return findFrom(il) }
-func (il *IdentiferList) To() token.Pos         { return findTo(il) }
+func (il *IdentiferList) Pos() token.Pos        { return findFrom(il) }
+func (il *IdentiferList) End() token.Pos        { return findTo(il) }
 
 type SQLToken struct {
 	Node
@@ -303,7 +303,7 @@ func findFrom(node Node) token.Pos {
 		nodes := list.GetTokens()
 		return findFrom(nodes[0])
 	}
-	return node.From()
+	return node.Pos()
 }
 
 func findTo(node Node) token.Pos {
@@ -311,5 +311,5 @@ func findTo(node Node) token.Pos {
 		nodes := list.GetTokens()
 		return findFrom(nodes[len(nodes)-1])
 	}
-	return node.From()
+	return node.Pos()
 }

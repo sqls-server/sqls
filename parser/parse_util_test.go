@@ -2,11 +2,13 @@ package parser
 
 import (
 	"bytes"
+	"reflect"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/lighttiger2505/sqls/ast"
 	"github.com/lighttiger2505/sqls/dialect"
+	"github.com/lighttiger2505/sqls/token"
 )
 
 func TestExtractTable(t *testing.T) {
@@ -84,3 +86,74 @@ func initExtractTable(t *testing.T, input string) ast.TokenList {
 	}
 	return parsed
 }
+
+// func TestPathEnclosingInterval(t *testing.T) {
+// 	tests := []struct {
+// 		name      string
+// 		input     string
+// 		start     token.Pos
+// 		end       token.Pos
+// 		wantPath  []ast.Node
+// 		wantExact bool
+// 	}{
+// 		{
+// 			name:      "",
+// 			input:     "SELECT  FROM tabl",
+// 			start:     genPosOneline(7),
+// 			end:       genPosOneline(7),
+// 			wantPath:  nil,
+// 			wantExact: false,
+// 		},
+// 		{
+// 			name:      "",
+// 			input:     "SELECT  FROM sch.tabl",
+// 			start:     genPosOneline(7),
+// 			end:       genPosOneline(7),
+// 			wantPath:  nil,
+// 			wantExact: false,
+// 		},
+// 		{
+// 			name:      "",
+// 			input:     "SELECT * FROM tabl WHERE ",
+// 			start:     genPosOneline(7),
+// 			end:       genPosOneline(7),
+// 			wantPath:  nil,
+// 			wantExact: false,
+// 		},
+// 		{
+// 			name:      "",
+// 			input:     "select 1;select 2;select",
+// 			start:     genPosOneline(7),
+// 			end:       genPosOneline(7),
+// 			wantPath:  nil,
+// 			wantExact: false,
+// 		},
+// 	}
+// 	for _, tt := range tests {
+// 		t.Run(tt.name, func(t *testing.T) {
+// 			// initialize
+// 			src := bytes.NewBuffer([]byte(tt.input))
+// 			parser, err := NewParser(src, &dialect.GenericSQLDialect{})
+// 			if err != nil {
+// 				t.Fatalf("error %+v\n", err)
+// 			}
+// 			parsed, err := parser.Parse()
+// 			if err != nil {
+// 				t.Fatalf("error %+v\n", err)
+// 			}
+//
+// 			// execute
+// 			gotPath, gotExact := PathEnclosingInterval(parsed, tt.start, tt.end)
+// 			if !reflect.DeepEqual(gotPath, tt.wantPath) {
+// 				t.Errorf("PathEnclosingInterval() gotPath = %v, want %v", gotPath, tt.wantPath)
+// 			}
+// 			if gotExact != tt.wantExact {
+// 				t.Errorf("PathEnclosingInterval() gotExact = %v, want %v", gotExact, tt.wantExact)
+// 			}
+// 		})
+// 	}
+// }
+//
+// func genPosOneline(char int) token.Pos {
+// 	return token.Pos{Line: 0, Col: char}
+// }

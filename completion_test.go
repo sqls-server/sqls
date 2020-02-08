@@ -5,21 +5,7 @@ import (
 	"testing"
 )
 
-func TestSimple(t *testing.T) {
-	input := "SELECT * FROM hogehoge WHERE a = 'abc'"
-	parser := &Parser{}
-	got, err := parser.parse(input)
-	if err != nil {
-		t.Fatalf("error, %s", err.Error())
-	}
-
-	want := "select"
-	if got != want {
-		t.Fatalf("want %v, but %v:", want, got)
-	}
-}
-
-func TestParse(t *testing.T) {
+func Test_Parse(t *testing.T) {
 	tests := []struct {
 		name  string
 		input string
@@ -93,8 +79,7 @@ func TestParse(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			parser := &Parser{}
-			got, err := parser.parse(tt.input, tt.line, tt.char)
+			got, err := parse(tt.input, tt.line, tt.char)
 			if err != nil {
 				t.Fatalf("error, %s", err.Error())
 			}
