@@ -18,6 +18,15 @@ func TestExtractTable(t *testing.T) {
 		want  []*TableInfo
 	}{
 		{
+			name:  "from only",
+			input: "from abc",
+			want: []*TableInfo{
+				&TableInfo{
+					Name: "abc",
+				},
+			},
+		},
+		{
 			name:  "one table",
 			input: "select * from abc",
 			want: []*TableInfo{
