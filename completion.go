@@ -15,11 +15,16 @@ import (
 type CompletionType int
 
 const (
-	_ int = iota
+	_ CompletionType = iota
 	CompletionTypeKeyword
 	CompletionTypeFunction
 	CompletionTypeAlias
 	CompletionTypeColumn
+	CompletionTypeTable
+	CompletionTypeView
+	CompletionTypeChange
+	CompletionTypeUser
+	CompletionTypeDatabase
 )
 
 var keywords = []string{
@@ -68,70 +73,58 @@ func (c *Completer) complete(text string, params CompletionParams) ([]Completion
 	return completionItems, nil
 }
 
-// func getCompletionTypes(tokens []*sqltoken.Token, curIndex int, curToken *sqltoken.Token) []CompletionType {
-// 	log.Println(fmt.Sprintf("current token. idx %d, token `%s`", curIndex, getTokenString(curToken)))
-// 	var beforeToken *sqltoken.Token
-// 	if curIndex != 0 {
-// 		beforeToken = tokens[curIndex-1]
-// 	}
-//
-// 	if beforeToken == nil {
-// 		return []CompletionType{CompletionTypeKeyword}
-// 	}
-//
-// 	beforeTokenValue := getTokenString(beforeToken)
-// 	log.Println(fmt.Sprintf("current token. idx %d, token `%s`", curIndex-1, beforeTokenValue))
-//
-// 	var res []CompletionType
-// 	switch strings.ToUpper(beforeTokenValue) {
-// 	case "SET", "ORDER BY", "DISTINCT":
-// 		res = []CompletionType{
-// 			CompletionTypeColumn,
-// 			CompletionTypeTable,
-// 		}
-// 	case "AS":
-// 		res = []CompletionType{}
-// 	case "TO":
-// 		res = []CompletionType{
-// 			CompletionTypeChange,
-// 		}
-// 	case "USER", "FOR":
-// 		res = []CompletionType{
-// 			CompletionTypeUser,
-// 		}
-// 	case "SELECT", "WHERE", "HAVING":
-// 		res = []CompletionType{
-// 			CompletionTypeColumn,
-// 			CompletionTypeTable,
-// 			CompletionTypeView,
-// 			CompletionTypeFunction,
-// 		}
-// 	case "JOIN", "COPY", "FROM", "UPDATE", "INTO", "DESCRIBE", "TRUNCATE", "DESC", "EXPLAIN":
-// 		res = []CompletionType{
-// 			CompletionTypeColumn,
-// 			CompletionTypeTable,
-// 			CompletionTypeView,
-// 			CompletionTypeFunction,
-// 		}
-// 	case "ON":
-// 		res = []CompletionType{
-// 			CompletionTypeColumn,
-// 			CompletionTypeTable,
-// 			CompletionTypeView,
-// 			CompletionTypeFunction,
-// 		}
-// 	case "USE", "DATABASE", "TEMPLATE", "CONNECT":
-// 		res = []CompletionType{
-// 			CompletionTypeDatabase,
-// 		}
-// 	default:
-// 		log.Printf("unknown token, got %s", beforeTokenValue)
-// 		res = []CompletionType{
-// 			CompletionTypeKeyword,
-// 		}
-// 	}
-// 	return res
-// }
+func getCompletionTypes(beforeTokenValue string) []CompletionType {
+	var res []CompletionType
+	switch strings.ToUpper(beforeTokenValue) {
+	case "SET", "ORDER BY", "DISTINCT":
+		res = []CompletionType{
+			CompletionTypeColumn,
+			CompletionTypeTable,
+		}
+	case "AS":
+		res = []CompletionType{}
+	case "TO":
+		res = []CompletionType{
+			CompletionTypeChange,
+		}
+	case "USER", "FOR":
+		res = []CompletionType{
+			CompletionTypeUser,
+		}
+	case "SELECT", "WHERE", "HAVING":
+		res = []CompletionType{
+			CompletionTypeColumn,
+			CompletionTypeTable,
+			CompletionTypeView,
+			CompletionTypeFunction,
+		}
+	case "JOIN", "COPY", "FROM", "UPDATE", "INTO", "DESCRIBE", "TRUNCATE", "DESC", "EXPLAIN":
+		res = []CompletionType{
+			CompletionTypeColumn,
+			CompletionTypeTable,
+			CompletionTypeView,
+			CompletionTypeFunction,
+		}
+	case "ON":
+		res = []CompletionType{
+			CompletionTypeColumn,
+			CompletionTypeTable,
+			CompletionTypeView,
+			CompletionTypeFunction,
+		}
+	case "USE", "DATABASE", "TEMPLATE", "CONNECT":
+		res = []CompletionType{
+			CompletionTypeDatabase,
+		}
+	default:
+		log.Printf("unknown token, got %s", beforeTokenValue)
+		res = []CompletionType{
+			CompletionTypeKeyword,
+		}
+	}
+	return res
+}
+
 //
 // func getTokenString(token *sqltoken.Token) string {
 // 	log.Println(token.Kind.String())
