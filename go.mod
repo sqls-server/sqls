@@ -4,6 +4,7 @@ go 1.13
 
 require (
 	github.com/akito0107/xsqlparser v1.0.0-alpha.5
+	github.com/go-sql-driver/mysql v1.5.0
 	github.com/google/go-cmp v0.3.1
 	github.com/k0kubun/pp v3.0.1+incompatible
 	github.com/pkg/errors v0.8.1
