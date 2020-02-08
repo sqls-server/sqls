@@ -56,11 +56,7 @@ func (s *Server) handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.
 	case "textDocument/didClose":
 		return s.handleTextDocumentDidClose(ctx, conn, req)
 	case "textDocument/completion":
-		res, err := s.handleTextDocumentCompletion(ctx, conn, req)
-		if err != nil {
-			log.Printf("error completion, %+v", err)
-		}
-		return res, err
+		return s.handleTextDocumentCompletion(ctx, conn, req)
 		// case "textDocument/formatting":
 		// 	return h.handleTextDocumentFormatting(ctx, conn, req)
 		// case "textDocument/documentSymbol":
@@ -169,7 +165,7 @@ func (s *Server) handleTextDocumentDidClose(ctx context.Context, conn *jsonrpc2.
 	return nil, nil
 }
 
-func (s *Server) handleTextDocumentCompletion(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (interface{}, error) {
+func (s *Server) handleTextDocumentCompletion(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
 	if req.Params == nil {
 		return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeInvalidParams}
 	}
