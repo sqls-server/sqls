@@ -163,17 +163,27 @@ func TestParseWhere(t *testing.T) {
 }
 
 func TestParseFrom(t *testing.T) {
-	input := "select * from abc"
+	var input string
+	var stmts []*ast.Statement
+	var list []ast.Node
 
-	stmts := parseInit(t, input)
+	input = "select * from abc"
+	stmts = parseInit(t, input)
 	testStatement(t, stmts[0], 5, input)
-
-	list := stmts[0].GetTokens()
+	list = stmts[0].GetTokens()
 	testItem(t, list[0], "select")
 	testItem(t, list[1], " ")
 	testItem(t, list[2], "*")
 	testItem(t, list[3], " ")
 	testFrom(t, list[4], "from abc")
+
+	input = "select from abc"
+	stmts = parseInit(t, input)
+	testStatement(t, stmts[0], 3, input)
+	list = stmts[0].GetTokens()
+	testItem(t, list[0], "select")
+	testItem(t, list[1], " ")
+	testFrom(t, list[2], "from abc")
 }
 
 func TestParseJoin(t *testing.T) {

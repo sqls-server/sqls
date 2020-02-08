@@ -96,20 +96,20 @@ func TestNodeWalker_PrevNodesIs(t *testing.T) {
 		want    bool
 	}{
 		{
-			name:  "",
-			input: "SELECT * FROM ",
-			pos:   token.Pos{Line: 1, Col: 14},
-			matcher: astutil.NodeMatcher{
-				ExpectKeyword: []string{"From"},
-			},
-			want: true,
-		},
-		{
-			name:  "",
+			name:  "prev select",
 			input: "SELECT  FROM def",
 			pos:   token.Pos{Line: 1, Col: 7},
 			matcher: astutil.NodeMatcher{
 				ExpectKeyword: []string{"SELECT"},
+			},
+			want: true,
+		},
+		{
+			name:  "prev FROM",
+			input: "SELECT * FROM ",
+			pos:   token.Pos{Line: 1, Col: 14},
+			matcher: astutil.NodeMatcher{
+				ExpectKeyword: []string{"From"},
 			},
 			want: true,
 		},
@@ -130,7 +130,7 @@ func TestNodeWalker_PrevNodesIs(t *testing.T) {
 
 			// execute
 			if got := nodeWalker.PrevNodesIs(true, tt.matcher); got != tt.want {
-				t.Errorf("astPaths() = %v, want %v", got, tt.want)
+				t.Errorf("nodeWalker.PrevNodesIs() = %v, want %v", got, tt.want)
 			}
 		})
 	}

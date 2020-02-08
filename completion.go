@@ -4,12 +4,14 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"log"
 	"regexp"
 	"strings"
 
+	"github.com/lighttiger2505/sqls/ast"
+	"github.com/lighttiger2505/sqls/ast/astutil"
 	"github.com/lighttiger2505/sqls/dialect"
 	"github.com/lighttiger2505/sqls/parser"
+	"github.com/lighttiger2505/sqls/token"
 )
 
 type CompletionType int
@@ -86,7 +88,6 @@ type Completer struct {
 
 func (c *Completer) complete(text string, params CompletionParams) ([]CompletionItem, error) {
 	completionItems := []CompletionItem{}
-	log.Println(text)
 
 	for _, k := range keywords {
 		completionItems = append(completionItems, CompletionItem{
@@ -108,59 +109,66 @@ func parse(text string, line, char int) ([]CompletionType, error) {
 	if err != nil {
 		return nil, err
 	}
-	return []CompletionType{}, nil
+	return getCompletionTypes(parsed, token.Pos{Line: line, Col: char}), nil
 }
 
-func getCompletionTypes(beforeTokenValue string) []CompletionType {
+func getCompletionTypes(root ast.TokenList, pos token.Pos) []CompletionType {
 	var res []CompletionType
-	switch strings.ToUpper(beforeTokenValue) {
-	case "SET", "ORDER BY", "DISTINCT":
+
+	nodeWalker := parser.NewNodeWalker(root, pos)
+	switch {
+	case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"SET", "ORDER BY", "DISTINCT"})):
 		res = []CompletionType{
 			CompletionTypeColumn,
 			CompletionTypeTable,
 		}
-	case "AS":
+	case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"AS"})):
 		res = []CompletionType{}
-	case "TO":
+	case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"TO"})):
 		res = []CompletionType{
 			CompletionTypeChange,
 		}
-	case "USER", "FOR":
+	case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"USER", "FOR"})):
 		res = []CompletionType{
 			CompletionTypeUser,
 		}
-	case "SELECT", "WHERE", "HAVING":
+	case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"SELECT", "WHERE", "HAVING"})):
 		res = []CompletionType{
 			CompletionTypeColumn,
 			CompletionTypeTable,
 			CompletionTypeView,
 			CompletionTypeFunction,
 		}
-	case "JOIN", "COPY", "FROM", "UPDATE", "INTO", "DESCRIBE", "TRUNCATE", "DESC", "EXPLAIN":
+	case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"JOIN", "COPY", "FROM", "UPDATE", "INTO", "DESCRIBE", "TRUNCATE", "DESC", "EXPLAIN"})):
 		res = []CompletionType{
 			CompletionTypeColumn,
 			CompletionTypeTable,
 			CompletionTypeView,
 			CompletionTypeFunction,
 		}
-	case "ON":
+	case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"ON"})):
 		res = []CompletionType{
 			CompletionTypeColumn,
 			CompletionTypeTable,
 			CompletionTypeView,
 			CompletionTypeFunction,
 		}
-	case "USE", "DATABASE", "TEMPLATE", "CONNECT":
+	case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"USE", "DATABASE", "TEMPLATE", "CONNECT"})):
 		res = []CompletionType{
 			CompletionTypeDatabase,
 		}
 	default:
-		log.Printf("unknown token, got %s", beforeTokenValue)
 		res = []CompletionType{
 			CompletionTypeKeyword,
 		}
 	}
 	return res
+}
+
+func genKeywordMatcher(keywords []string) astutil.NodeMatcher {
+	return astutil.NodeMatcher{
+		ExpectKeyword: keywords,
+	}
 }
 
 // func getLastToken(tokens []*sqltoken.Token, line, char int) (int, *sqltoken.Token) {

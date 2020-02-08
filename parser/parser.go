@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"fmt"
 	"io"
 
 	"github.com/lighttiger2505/sqls/ast"
@@ -96,7 +95,7 @@ var statementMatcher = astutil.NodeMatcher{
 
 func parseStatement(reader *astutil.NodeReader) ast.TokenList {
 	var replaceNodes []ast.Node
-	var startIndex uint
+	var startIndex int
 	for reader.NextNode(false) {
 		if list, ok := reader.CurNode.(ast.TokenList); ok {
 			replaceNodes = append(replaceNodes, parseStatement(astutil.NewNodeReader(list)))
@@ -214,7 +213,6 @@ func parseWhere(reader *astutil.NodeReader) ast.Node {
 	for reader.NextNode(false) {
 		nodes = append(nodes, reader.CurNode)
 		if reader.PeekNodeIs(false, whereCloseMatcher) {
-			fmt.Println(reader.PeekNode(false))
 			return &ast.WhereClause{Toks: nodes}
 		}
 	}
@@ -251,7 +249,6 @@ func parseJoin(reader *astutil.NodeReader) ast.Node {
 	for reader.NextNode(false) {
 		nodes = append(nodes, reader.CurNode)
 		if reader.PeekNodeIs(false, JoinCloseMatcher) {
-			fmt.Println(reader.PeekNode(false))
 			return &ast.JoinClause{Toks: nodes}
 		}
 	}
@@ -295,7 +292,6 @@ func parseFrom(reader *astutil.NodeReader) ast.Node {
 	for reader.NextNode(false) {
 		nodes = append(nodes, reader.CurNode)
 		if reader.PeekNodeIs(false, FromCloseMatcher) {
-			fmt.Println(reader.PeekNode(false))
 			return &ast.FromClause{Toks: nodes}
 		}
 	}
@@ -564,8 +560,8 @@ func parseIdentifierList(reader *astutil.NodeReader) ast.Node {
 	tmpReader := reader.CopyReader()
 	tmpReader.NextNode(true)
 
-	var endIndex uint
-	var count uint
+	var endIndex int
+	var count int
 	for {
 		if !tmpReader.PeekNodeIs(true, identifierListTargetMatcher) {
 			if count > 0 {

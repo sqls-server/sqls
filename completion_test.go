@@ -15,9 +15,9 @@ func Test_Parse(t *testing.T) {
 	}{
 		{
 			name:  "SELECT | FROM `city`",
-			input: "SELECT  FROM `city`",
+			input: "SELECT  FROM def",
 			line:  1,
-			char:  8,
+			char:  7,
 			want: []CompletionType{
 				CompletionTypeColumn,
 				CompletionTypeTable,
@@ -25,18 +25,6 @@ func Test_Parse(t *testing.T) {
 				CompletionTypeFunction,
 			},
 		},
-		// {
-		// 	name:  "SELECT `city`.| FROM `city`",
-		// 	input: "SELECT `city`.  FROM `city`",
-		// 	line:  1,
-		// 	char:  15,
-		// 	want: []CompletionType{
-		// 		CompletionTypeColumn,
-		// 		CompletionTypeTable,
-		// 		CompletionTypeView,
-		// 		CompletionTypeFunction,
-		// 	},
-		// },
 		{
 			name:  "SELECT * FROM | ",
 			input: "SELECT * FROM   ",
@@ -48,32 +36,6 @@ func Test_Parse(t *testing.T) {
 				CompletionTypeView,
 				CompletionTypeFunction,
 			},
-		},
-		{
-			name:  "SELECT * FROM `city` WHERE | ",
-			input: "SELECT * FROM `city` WHERE   ",
-			line:  1,
-			char:  28,
-			want: []CompletionType{
-				CompletionTypeColumn,
-				CompletionTypeTable,
-				CompletionTypeView,
-				CompletionTypeFunction,
-			},
-		},
-		{
-			name:  "SELECT col as | FROM `city`",
-			input: "SELECT col as  FROM `city`",
-			line:  1,
-			char:  15,
-			want:  []CompletionType{},
-		},
-		{
-			name:  "SELECT * FROM `city` as | ",
-			input: "SELECT * FROM `city` as  ",
-			line:  1,
-			char:  25,
-			want:  []CompletionType{},
 		},
 	}
 

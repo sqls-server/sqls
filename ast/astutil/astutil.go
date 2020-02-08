@@ -91,7 +91,7 @@ func isWhitespace(node ast.Node) bool {
 type NodeReader struct {
 	Node    ast.TokenList
 	CurNode ast.Node
-	Index   uint
+	Index   int
 }
 
 func NewNodeReader(list ast.TokenList) *NodeReader {
@@ -107,16 +107,16 @@ func (nr *NodeReader) CopyReader() *NodeReader {
 	}
 }
 
-func (nr *NodeReader) NodesWithRange(startIndex, endIndex uint) []ast.Node {
+func (nr *NodeReader) NodesWithRange(startIndex, endIndex int) []ast.Node {
 	return nr.Node.GetTokens()[startIndex:endIndex]
 }
 
 func (nr *NodeReader) hasNext() bool {
-	return nr.Index < uint(len(nr.Node.GetTokens()))
+	return nr.Index < len(nr.Node.GetTokens())
 }
 
 func (nr *NodeReader) hasPrev() bool {
-	return 0 < nr.Index-2
+	return 0 <= nr.Index
 }
 
 func (nr *NodeReader) NextNode(ignoreWhiteSpace bool) bool {
@@ -150,7 +150,7 @@ func (nr *NodeReader) CurNodeEncloseIs(pos token.Pos) bool {
 	return false
 }
 
-func (nr *NodeReader) PeekNode(ignoreWhiteSpace bool) (uint, ast.Node) {
+func (nr *NodeReader) PeekNode(ignoreWhiteSpace bool) (int, ast.Node) {
 	tmpReader := nr.CopyReader()
 	for tmpReader.hasNext() {
 		index := tmpReader.Index
@@ -213,14 +213,14 @@ func (nr *NodeReader) FindNode(ignoreWhiteSpace bool, nm NodeMatcher) (*NodeRead
 	return nil, nil
 }
 
-func (nr *NodeReader) PrevNode(ignoreWhiteSpace bool) (uint, ast.Node) {
+func (nr *NodeReader) PrevNode(ignoreWhiteSpace bool) (int, ast.Node) {
 	if !nr.hasPrev() {
 		return 0, nil
 	}
-	nr.prev(ignoreWhiteSpace)
 
 	tmpReader := nr.CopyReader()
-	for tmpReader.hasPrev() {
+	tmpReader.prev(ignoreWhiteSpace)
+	for {
 		index := tmpReader.Index
 		node := tmpReader.Node.GetTokens()[index]
 
@@ -231,7 +231,11 @@ func (nr *NodeReader) PrevNode(ignoreWhiteSpace bool) (uint, ast.Node) {
 		} else {
 			return index, node
 		}
-		tmpReader.prev(false)
+
+		if !tmpReader.hasPrev() {
+			break
+		}
+		tmpReader.prev(ignoreWhiteSpace)
 	}
 	return 0, nil
 }
