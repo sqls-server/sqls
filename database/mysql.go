@@ -1,41 +1,12 @@
-package main
+package database
 
 import (
 	"database/sql"
 	"log"
+	"strings"
 
 	_ "github.com/go-sql-driver/mysql"
 )
-
-// func main() {
-// 	db := NewMysqlDB("root:root@tcp(127.0.0.1:13306)/world")
-// 	db.Open()
-// 	defer db.Close()
-//
-// 	tables, err := db.Tables()
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-// 	for _, table := range tables {
-// 		fmt.Println(table)
-// 	}
-//
-// 	databases, err := db.Databases()
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-// 	for _, database := range databases {
-// 		fmt.Println(database)
-// 	}
-//
-// 	desc, err := db.DescribeTable("city")
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-// 	for _, field := range desc {
-// 		fmt.Println(fmt.Sprintf("%+v", field))
-// 	}
-// }
 
 const (
 	DefaultMaxIdleConns = 10
@@ -92,7 +63,6 @@ func (db *MySQLDB) Close() error {
 
 func (db *MySQLDB) Databases() ([]string, error) {
 	rows, err := db.Conn.Query("SHOW DATABASES")
-	defer rows.Close()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -107,9 +77,24 @@ func (db *MySQLDB) Databases() ([]string, error) {
 	return databases, nil
 }
 
+func (db *MySQLDB) TableColumns() (map[string][]*TableInfo, error) {
+	tableMap := map[string][]*TableInfo{}
+	tables, err := db.Tables()
+	if err != nil {
+		return nil, err
+	}
+	for _, table := range tables {
+		infos, err := db.DescribeTable(table)
+		if err != nil {
+			return nil, err
+		}
+		tableMap[strings.ToUpper(table)] = infos
+	}
+	return tableMap, nil
+}
+
 func (db *MySQLDB) Tables() ([]string, error) {
 	rows, err := db.Conn.Query("SHOW TABLES")
-	defer rows.Close()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -126,7 +111,6 @@ func (db *MySQLDB) Tables() ([]string, error) {
 
 func (db *MySQLDB) DescribeTable(tableName string) ([]*TableInfo, error) {
 	rows, err := db.Conn.Query("DESC " + tableName)
-	defer rows.Close()
 	if err != nil {
 		log.Fatal(err)
 	}

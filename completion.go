@@ -4,11 +4,13 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"log"
 	"regexp"
 	"strings"
 
 	"github.com/lighttiger2505/sqls/ast"
 	"github.com/lighttiger2505/sqls/ast/astutil"
+	"github.com/lighttiger2505/sqls/database"
 	"github.com/lighttiger2505/sqls/dialect"
 	"github.com/lighttiger2505/sqls/parser"
 	"github.com/lighttiger2505/sqls/token"
@@ -81,57 +83,115 @@ var keywords = []string{
 }
 
 type Completer struct {
-	// dbconn
-	// tables
-	// columns
+	Conn         *database.MySQLDB
+	TableColumns map[string][]*database.TableInfo
+}
+
+func NewCompleter() *Completer {
+	db := database.NewMysqlDB("root:root@tcp(127.0.0.1:13306)/world")
+	return &Completer{
+		Conn:         db,
+		TableColumns: map[string][]*database.TableInfo{},
+	}
+}
+
+func (c *Completer) Init() error {
+	if err := c.Conn.Open(); err != nil {
+		return err
+	}
+	defer c.Conn.Close()
+	tableColumns, err := c.Conn.TableColumns()
+	if err != nil {
+		return err
+	}
+	c.TableColumns = tableColumns
+	return nil
+}
+
+func completionTypeIs(completionTypes []CompletionType, expect CompletionType) bool {
+	for _, t := range completionTypes {
+		if t == expect {
+			return true
+		}
+	}
+	return false
 }
 
 func (c *Completer) complete(text string, params CompletionParams) ([]CompletionItem, error) {
-	completionItems := []CompletionItem{}
+	// parse query
+	src := bytes.NewBuffer([]byte(text))
+	p, err := parser.NewParser(src, &dialect.GenericSQLDialect{})
+	if err != nil {
+		return nil, err
+	}
+	parsed, err := p.Parse()
+	if err != nil {
+		return nil, err
+	}
 
-	for _, k := range keywords {
-		completionItems = append(completionItems, CompletionItem{
-			Label: k,
-			Kind:  KeywordCompletion,
-		},
-		)
+	targetTables := parser.ExtractTable(parsed)
+
+	// fetch database infomation
+	columnCandinates := []CompletionItem{}
+	for _, info := range targetTables {
+		if info.Name != "" {
+			if columns, ok := c.TableColumns[strings.ToUpper(info.Name)]; ok {
+				for _, column := range columns {
+					candinate := CompletionItem{
+						Label:      column.Name,
+						InsertText: column.Name,
+						// Kind:       FieldCompletion,
+					}
+					columnCandinates = append(columnCandinates, candinate)
+				}
+			}
+		}
+	}
+
+	// create completion items
+	completionItems := []CompletionItem{}
+	pos := token.Pos{Line: params.Position.Line + 1, Col: params.Position.Character}
+	cTypes := getCompletionTypes(parsed, pos)
+	log.Printf("completion types, %s", cTypes)
+	switch {
+	case completionTypeIs(cTypes, CompletionTypeKeyword):
+		for _, k := range keywords {
+			item := CompletionItem{
+				Label:      k,
+				InsertText: k,
+				// Kind:       KeywordCompletion,
+			}
+			completionItems = append(completionItems, item)
+		}
+	case completionTypeIs(cTypes, CompletionTypeColumn):
+		completionItems = append(completionItems, columnCandinates...)
 	}
 	return completionItems, nil
 }
 
-func parse(text string, line, char int) ([]CompletionType, error) {
-	src := bytes.NewBuffer([]byte(text))
-	parser, err := parser.NewParser(src, &dialect.GenericSQLDialect{})
-	if err != nil {
-		return nil, err
-	}
-	parsed, err := parser.Parse()
-	if err != nil {
-		return nil, err
-	}
-	return getCompletionTypes(parsed, token.Pos{Line: line, Col: char}), nil
-}
-
 func getCompletionTypes(root ast.TokenList, pos token.Pos) []CompletionType {
 	var res []CompletionType
+	log.Printf("getCompletionTypes pos %+v", pos)
 
 	nodeWalker := parser.NewNodeWalker(root, pos)
+	log.Printf("cur node %s", nodeWalker.CurPath.CurNode)
+
 	switch {
-	case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"SET", "ORDER BY", "DISTINCT"})):
-		res = []CompletionType{
-			CompletionTypeColumn,
-			CompletionTypeTable,
-		}
-	case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"AS"})):
-		res = []CompletionType{}
-	case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"TO"})):
-		res = []CompletionType{
-			CompletionTypeChange,
-		}
-	case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"USER", "FOR"})):
-		res = []CompletionType{
-			CompletionTypeUser,
-		}
+	// case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"SET", "ORDER BY", "DISTINCT"})):
+	// 	res = []CompletionType{
+	// 		CompletionTypeColumn,
+	// 		CompletionTypeTable,
+	// 	}
+	// case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"AS"})):
+	// 	res = []CompletionType{}
+	// case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"TO"})):
+	// 	res = []CompletionType{
+	// 		CompletionTypeChange,
+	// 	}
+	// case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"USER", "FOR"})):
+	// 	res = []CompletionType{
+	// 		CompletionTypeUser,
+	// 	}
 	case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"SELECT", "WHERE", "HAVING"})):
 		res = []CompletionType{
 			CompletionTypeColumn,
@@ -139,24 +199,24 @@ func getCompletionTypes(root ast.TokenList, pos token.Pos) []CompletionType {
 			CompletionTypeView,
 			CompletionTypeFunction,
 		}
-	case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"JOIN", "COPY", "FROM", "UPDATE", "INTO", "DESCRIBE", "TRUNCATE", "DESC", "EXPLAIN"})):
-		res = []CompletionType{
-			CompletionTypeColumn,
-			CompletionTypeTable,
-			CompletionTypeView,
-			CompletionTypeFunction,
-		}
-	case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"ON"})):
-		res = []CompletionType{
-			CompletionTypeColumn,
-			CompletionTypeTable,
-			CompletionTypeView,
-			CompletionTypeFunction,
-		}
-	case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"USE", "DATABASE", "TEMPLATE", "CONNECT"})):
-		res = []CompletionType{
-			CompletionTypeDatabase,
-		}
+	// case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"JOIN", "COPY", "FROM", "UPDATE", "INTO", "DESCRIBE", "TRUNCATE", "DESC", "EXPLAIN"})):
+	// 	res = []CompletionType{
+	// 		CompletionTypeColumn,
+	// 		CompletionTypeTable,
+	// 		CompletionTypeView,
+	// 		CompletionTypeFunction,
+	// 	}
+	// case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"ON"})):
+	// 	res = []CompletionType{
+	// 		CompletionTypeColumn,
+	// 		CompletionTypeTable,
+	// 		CompletionTypeView,
+	// 		CompletionTypeFunction,
+	// 	}
+	// case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"USE", "DATABASE", "TEMPLATE", "CONNECT"})):
+	// 	res = []CompletionType{
+	// 		CompletionTypeDatabase,
+	// 	}
 	default:
 		res = []CompletionType{
 			CompletionTypeKeyword,

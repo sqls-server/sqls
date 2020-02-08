@@ -30,7 +30,6 @@ func main() {
 		flag.Usage()
 		os.Exit(1)
 	}
-	log.Println("sqls: reading on stdin, writing on stdout")
 
 	if logfile != "" {
 		f, err := os.OpenFile(logfile, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0660)
@@ -40,8 +39,14 @@ func main() {
 		defer f.Close()
 	}
 
+	log.Println("sqls: start service")
 	server := NewServer()
+	if err := server.init(); err != nil {
+		log.Fatal("sqls: failed database connection, ", err)
+	}
 	handler := jsonrpc2.HandlerWithError(server.handle)
+
+	log.Println("sqls: reading on stdin, writing on stdout")
 	var connOpt []jsonrpc2.ConnOpt
 	<-jsonrpc2.NewConn(
 		context.Background(),

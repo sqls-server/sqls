@@ -2,39 +2,35 @@ package parser
 
 import (
 	"bytes"
+	"reflect"
 	"testing"
 
 	"github.com/lighttiger2505/sqls/ast"
 	"github.com/lighttiger2505/sqls/dialect"
+	"github.com/lighttiger2505/sqls/token"
 )
 
 func TestParseStatement(t *testing.T) {
-	input := `select 1;select 2;select`
-	src := bytes.NewBuffer([]byte(input))
-	parser, err := NewParser(src, &dialect.GenericSQLDialect{})
-	if err != nil {
-		t.Fatalf("error %+v\n", err)
-	}
-
-	got, err := parser.Parse()
-	if err != nil {
-		t.Fatalf("error %+v\n", err)
-	}
-	wantStmtLen := 3
-	if wantStmtLen != len(got.GetTokens()) {
-		t.Errorf("Statements does not contain %d statements, got %d", wantStmtLen, len(got.GetTokens()))
-	}
+	var input string
 	var stmts []*ast.Statement
-	for _, node := range got.GetTokens() {
-		stmt, ok := node.(*ast.Statement)
-		if !ok {
-			t.Fatalf("invalid type want Statement got %T", stmt)
-		}
-		stmts = append(stmts, stmt)
-	}
+
+	input = "select 1;select 2;select 3;"
+	stmts = parseInit(t, input)
 	testStatement(t, stmts[0], 4, "select 1;")
+	testPos(t, stmts[0], genPosOneline(1), genPosOneline(9))
 	testStatement(t, stmts[1], 4, "select 2;")
-	testStatement(t, stmts[2], 1, "select")
+	testPos(t, stmts[1], genPosOneline(10), genPosOneline(18))
+	testStatement(t, stmts[2], 4, "select 3;")
+	testPos(t, stmts[2], genPosOneline(19), genPosOneline(27))
+
+	input = "select 1;select 2;select 3"
+	stmts = parseInit(t, input)
+	testStatement(t, stmts[0], 4, "select 1;")
+	testPos(t, stmts[0], genPosOneline(1), genPosOneline(9))
+	testStatement(t, stmts[1], 4, "select 2;")
+	testPos(t, stmts[1], genPosOneline(10), genPosOneline(18))
+	testStatement(t, stmts[2], 3, "select 3")
+	testPos(t, stmts[2], genPosOneline(19), genPosOneline(26))
 }
 
 func TestParseParenthesis(t *testing.T) {
@@ -51,6 +47,7 @@ func TestParseParenthesis(t *testing.T) {
 				testStatement(t, stmts[0], 1, input)
 				list := stmts[0].GetTokens()
 				testParenthesis(t, list[0], input)
+				testPos(t, stmts[0], genPosOneline(1), genPosOneline(3))
 			},
 		},
 		{
@@ -61,6 +58,7 @@ func TestParseParenthesis(t *testing.T) {
 				testStatement(t, stmts[0], 1, input)
 				list := stmts[0].GetTokens()
 				testParenthesis(t, list[0], input)
+				testPos(t, stmts[0], genPosOneline(1), genPosOneline(7))
 			},
 		},
 		{
@@ -71,6 +69,7 @@ func TestParseParenthesis(t *testing.T) {
 				testStatement(t, stmts[0], 1, input)
 				list := stmts[0].GetTokens()
 				testParenthesis(t, list[0], input)
+				testPos(t, stmts[0], genPosOneline(1), genPosOneline(17))
 			},
 		},
 		{
@@ -172,10 +171,15 @@ func TestParseFrom(t *testing.T) {
 	testStatement(t, stmts[0], 5, input)
 	list = stmts[0].GetTokens()
 	testItem(t, list[0], "select")
+	testPos(t, list[0], genPosOneline(1), genPosOneline(7))
 	testItem(t, list[1], " ")
+	testPos(t, list[1], genPosOneline(7), genPosOneline(8))
 	testItem(t, list[2], "*")
+	testPos(t, list[2], genPosOneline(8), genPosOneline(9))
 	testItem(t, list[3], " ")
+	testPos(t, list[3], genPosOneline(9), genPosOneline(10))
 	testFrom(t, list[4], "from abc")
+	testPos(t, list[4], genPosOneline(10), genPosOneline(15))
 
 	input = "select from abc"
 	stmts = parseInit(t, input)
@@ -184,6 +188,23 @@ func TestParseFrom(t *testing.T) {
 	testItem(t, list[0], "select")
 	testItem(t, list[1], " ")
 	testFrom(t, list[2], "from abc")
+
+	input = "select * from "
+	stmts = parseInit(t, input)
+	testStatement(t, stmts[0], 5, input)
+	list = stmts[0].GetTokens()
+	testItem(t, list[0], "select")
+	testItem(t, list[1], " ")
+	testItem(t, list[2], "*")
+	testItem(t, list[3], " ")
+	testFrom(t, list[4], "from ")
+	testPos(t, list[4], genPosOneline(10), genPosOneline(14))
+
+	list = testTokenList(t, list[4], 2).GetTokens()
+	testItem(t, list[0], "from")
+	testPos(t, list[0], genPosOneline(10), genPosOneline(14))
+	testItem(t, list[1], " ")
+	testPos(t, list[1], genPosOneline(14), genPosOneline(15))
 }
 
 func TestParseJoin(t *testing.T) {
@@ -664,4 +685,18 @@ func testIdentifierList(t *testing.T, node ast.Node, expect string) {
 	if expect != node.String() {
 		t.Errorf("expected %q, got %q", expect, node.String())
 	}
+}
+
+func testPos(t *testing.T, node ast.Node, pos, end token.Pos) {
+	t.Helper()
+	if !reflect.DeepEqual(pos, node.Pos()) {
+		t.Errorf("PosExpected %+v, got %+v", pos, node.Pos())
+	}
+	if !reflect.DeepEqual(end, node.End()) {
+		t.Errorf("EndExpected %+v, got %+v", end, node.End())
+	}
+}
+
+func genPosOneline(col int) token.Pos {
+	return token.Pos{Line: 1, Col: col}
 }

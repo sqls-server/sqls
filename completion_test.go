@@ -1,58 +1,8 @@
 package main
 
 import (
-	"reflect"
 	"testing"
 )
-
-func Test_Parse(t *testing.T) {
-	tests := []struct {
-		name  string
-		input string
-		line  int
-		char  int
-		want  []CompletionType
-	}{
-		{
-			name:  "SELECT | FROM `city`",
-			input: "SELECT  FROM def",
-			line:  1,
-			char:  7,
-			want: []CompletionType{
-				CompletionTypeColumn,
-				CompletionTypeTable,
-				CompletionTypeView,
-				CompletionTypeFunction,
-			},
-		},
-		{
-			name:  "SELECT * FROM | ",
-			input: "SELECT * FROM   ",
-			line:  1,
-			char:  15,
-			want: []CompletionType{
-				CompletionTypeColumn,
-				CompletionTypeTable,
-				CompletionTypeView,
-				CompletionTypeFunction,
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := parse(tt.input, tt.line, tt.char)
-			if err != nil {
-				t.Fatalf("error, %s", err.Error())
-			}
-
-			want := tt.want
-			if !reflect.DeepEqual(got, want) {
-				t.Fatalf("want %v, but %v:", want, got)
-			}
-		})
-	}
-}
 
 func TestGetBeforeCursorText(t *testing.T) {
 	input := `SELECT
@@ -101,5 +51,50 @@ FROM
 		if tt.out != got {
 			t.Errorf("want %#v, got %#v", tt.out, got)
 		}
+	}
+}
+
+func Test_completionTypeIs(t *testing.T) {
+	type args struct {
+	}
+	tests := []struct {
+		name            string
+		completionTypes []CompletionType
+		expect          CompletionType
+		want            bool
+	}{
+		{
+			completionTypes: []CompletionType{
+				CompletionTypeColumn,
+			},
+			expect: CompletionTypeColumn,
+			want:   true,
+		},
+		{
+			completionTypes: []CompletionType{
+				CompletionTypeTable,
+				CompletionTypeView,
+				CompletionTypeFunction,
+				CompletionTypeColumn,
+			},
+			expect: CompletionTypeColumn,
+			want:   true,
+		},
+		{
+			completionTypes: []CompletionType{
+				CompletionTypeTable,
+				CompletionTypeView,
+				CompletionTypeFunction,
+			},
+			expect: CompletionTypeColumn,
+			want:   false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := completionTypeIs(tt.completionTypes, tt.expect); got != tt.want {
+				t.Errorf("completionTypeIs() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }

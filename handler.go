@@ -16,7 +16,8 @@ const (
 )
 
 type Server struct {
-	files map[string]*File
+	files     map[string]*File
+	completer *Completer
 }
 
 type File struct {
@@ -26,8 +27,16 @@ type File struct {
 
 func NewServer() *Server {
 	return &Server{
-		files: make(map[string]*File),
+		files:     make(map[string]*File),
+		completer: NewCompleter(),
 	}
+}
+
+func (s *Server) init() error {
+	if err := s.completer.Init(); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *Server) handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
@@ -47,7 +56,11 @@ func (s *Server) handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.
 	case "textDocument/didClose":
 		return s.handleTextDocumentDidClose(ctx, conn, req)
 	case "textDocument/completion":
-		return s.handleTextDocumentCompletion(ctx, conn, req)
+		res, err := s.handleTextDocumentCompletion(ctx, conn, req)
+		if err != nil {
+			log.Printf("error completion, %+v", err)
+		}
+		return res, err
 		// case "textDocument/formatting":
 		// 	return h.handleTextDocumentFormatting(ctx, conn, req)
 		// case "textDocument/documentSymbol":
@@ -89,7 +102,6 @@ func (s *Server) handleShutdown(ctx context.Context, conn *jsonrpc2.Conn, req *j
 }
 
 func (s *Server) handleTextDocumentDidOpen(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
-	log.Println("handle textdocument/didOpen")
 	if req.Params == nil {
 		return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeInvalidParams}
 	}
@@ -107,7 +119,6 @@ func (s *Server) handleTextDocumentDidOpen(ctx context.Context, conn *jsonrpc2.C
 }
 
 func (s *Server) handleTextDocumentDidChange(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
-	log.Println("handle textdocument/didChange")
 	if req.Params == nil {
 		return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeInvalidParams}
 	}
@@ -124,7 +135,6 @@ func (s *Server) handleTextDocumentDidChange(ctx context.Context, conn *jsonrpc2
 }
 
 func (s *Server) handleTextDocumentDidSave(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
-	log.Println("handle textdocument/didSave")
 	if req.Params == nil {
 		return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeInvalidParams}
 	}
@@ -146,7 +156,6 @@ func (s *Server) handleTextDocumentDidSave(ctx context.Context, conn *jsonrpc2.C
 }
 
 func (s *Server) handleTextDocumentDidClose(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
-	log.Println("handle textdocument/didClose")
 	if req.Params == nil {
 		return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeInvalidParams}
 	}
@@ -160,8 +169,7 @@ func (s *Server) handleTextDocumentDidClose(ctx context.Context, conn *jsonrpc2.
 	return nil, nil
 }
 
-func (s *Server) handleTextDocumentCompletion(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
-	log.Println("handle textDocument/completion")
+func (s *Server) handleTextDocumentCompletion(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (interface{}, error) {
 	if req.Params == nil {
 		return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeInvalidParams}
 	}
@@ -176,13 +184,14 @@ func (s *Server) handleTextDocumentCompletion(ctx context.Context, conn *jsonrpc
 		return nil, fmt.Errorf("document not found: %s", params.TextDocument.URI)
 	}
 
-	completer := &Completer{}
-	completionItems, err := completer.complete(f.Text, params)
+	completionItems, err := s.completer.complete(f.Text, params)
 	if err != nil {
 		return nil, err
 	}
-	result = completionItems
-	return
+	for _, i := range completionItems {
+		log.Printf("completion item %+v", i)
+	}
+	return completionItems, nil
 }
 
 func (s *Server) openFile(uri string, languageID string) error {
