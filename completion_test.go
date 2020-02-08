@@ -3,8 +3,6 @@ package main
 import (
 	"reflect"
 	"testing"
-
-	"github.com/google/go-cmp/cmp"
 )
 
 func TestSimple(t *testing.T) {

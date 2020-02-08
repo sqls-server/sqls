@@ -1,7 +1,12 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
+	"fmt"
 	"log"
+	"regexp"
+	"strings"
 
 	"github.com/akito0107/xsqlparser/sqlast"
 	"github.com/akito0107/xsqlparser/sqltoken"
@@ -140,66 +145,66 @@ func (c *Completer) complete(text string, params CompletionParams) ([]Completion
 // 		return " "
 // 	}
 // }
-//
-// func getLastToken(tokens []*sqltoken.Token, line, char int) (int, *sqltoken.Token) {
-// 	pos := sqltoken.Pos{
-// 		Line: line,
-// 		Col:  char,
-// 	}
-// 	var curIndex int
-// 	var curToken *sqltoken.Token
-// 	for i, token := range tokens {
-// 		if 0 <= sqltoken.ComparePos(pos, token.From) {
-// 			curToken = token
-// 			curIndex = i
-// 			if 0 >= sqltoken.ComparePos(pos, token.To) {
-// 				return curIndex, curToken
-// 			}
-// 		}
-// 	}
-// 	return curIndex, curToken
-// }
-//
-// func getLine(text string, line int) string {
-// 	scanner := bufio.NewScanner(strings.NewReader(text))
-// 	i := 1
-// 	for scanner.Scan() {
-// 		if i == line {
-// 			return scanner.Text()
-// 		}
-// 		i++
-// 	}
-// 	return ""
-// }
-//
-// func getLastWord(text string, line, char int) string {
-// 	t := getBeforeCursorText(text, line, char)
-// 	s := getLine(t, line)
-//
-// 	reg := regexp.MustCompile(`\w+`)
-// 	ss := reg.FindAllString(s, -1)
-// 	if len(ss) == 0 {
-// 		return ""
-// 	}
-// 	return ss[len(ss)-1]
-// }
-//
-// func getBeforeCursorText(text string, line, char int) string {
-// 	writer := bytes.NewBufferString("")
-// 	scanner := bufio.NewScanner(strings.NewReader(text))
-//
-// 	i := 1
-// 	for scanner.Scan() {
-// 		if i == line {
-// 			t := scanner.Text()
-// 			writer.Write([]byte(t[:char]))
-// 			break
-// 		}
-// 		writer.Write([]byte(fmt.Sprintln(scanner.Text())))
-// 		i++
-// 	}
-// 	return writer.String()
-// }
+
+func getLastToken(tokens []*sqltoken.Token, line, char int) (int, *sqltoken.Token) {
+	pos := sqltoken.Pos{
+		Line: line,
+		Col:  char,
+	}
+	var curIndex int
+	var curToken *sqltoken.Token
+	for i, token := range tokens {
+		if 0 <= sqltoken.ComparePos(pos, token.From) {
+			curToken = token
+			curIndex = i
+			if 0 >= sqltoken.ComparePos(pos, token.To) {
+				return curIndex, curToken
+			}
+		}
+	}
+	return curIndex, curToken
+}
+
+func getLine(text string, line int) string {
+	scanner := bufio.NewScanner(strings.NewReader(text))
+	i := 1
+	for scanner.Scan() {
+		if i == line {
+			return scanner.Text()
+		}
+		i++
+	}
+	return ""
+}
+
+func getLastWord(text string, line, char int) string {
+	t := getBeforeCursorText(text, line, char)
+	s := getLine(t, line)
+
+	reg := regexp.MustCompile(`\w+`)
+	ss := reg.FindAllString(s, -1)
+	if len(ss) == 0 {
+		return ""
+	}
+	return ss[len(ss)-1]
+}
+
+func getBeforeCursorText(text string, line, char int) string {
+	writer := bytes.NewBufferString("")
+	scanner := bufio.NewScanner(strings.NewReader(text))
+
+	i := 1
+	for scanner.Scan() {
+		if i == line {
+			t := scanner.Text()
+			writer.Write([]byte(t[:char]))
+			break
+		}
+		writer.Write([]byte(fmt.Sprintln(scanner.Text())))
+		i++
+	}
+	return writer.String()
+}
 
 func PathEnclosingInterval(root sqlast.Node, start, end sqltoken.Pos) (path []sqlast.Node, exact bool) {
 	// fmt.Printf("EnclosingInterval %d %d\n", start, end) // debugging
