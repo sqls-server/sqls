@@ -171,8 +171,13 @@ func (s *Server) handleTextDocumentCompletion(ctx context.Context, conn *jsonrpc
 		return nil, err
 	}
 
+	f, ok := s.files[params.TextDocument.URI]
+	if !ok {
+		return nil, fmt.Errorf("document not found: %s", params.TextDocument.URI)
+	}
+
 	completer := &Completer{}
-	completionItems, err := completer.complete(params)
+	completionItems, err := completer.complete(f.Text, params)
 	if err != nil {
 		return nil, err
 	}
