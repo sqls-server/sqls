@@ -115,6 +115,10 @@ func (nr *NodeReader) hasNext() bool {
 	return nr.Index < uint(len(nr.Node.GetTokens()))
 }
 
+func (nr *NodeReader) hasPrev() bool {
+	return 0 < nr.Index-2
+}
+
 func (nr *NodeReader) NextNode(ignoreWhiteSpace bool) bool {
 	if !nr.hasNext() {
 		return false
@@ -131,6 +135,15 @@ func (nr *NodeReader) NextNode(ignoreWhiteSpace bool) bool {
 func (nr *NodeReader) CurNodeIs(nm NodeMatcher) bool {
 	if nr.CurNode != nil {
 		if nm.IsMatch(nr.CurNode) {
+			return true
+		}
+	}
+	return false
+}
+
+func (nr *NodeReader) CurNodeEncloseIs(pos token.Pos) bool {
+	if nr.CurNode != nil {
+		if 0 <= token.ComparePos(pos, nr.CurNode.Pos()) && 0 >= token.ComparePos(pos, nr.CurNode.End()) {
 			return true
 		}
 	}
@@ -165,6 +178,18 @@ func (nr *NodeReader) PeekNodeIs(ignoreWhiteSpace bool, nm NodeMatcher) bool {
 	return false
 }
 
+func (nr *NodeReader) prev(ignoreWhiteSpace bool) bool {
+	if !nr.hasPrev() {
+		return false
+	}
+	nr.Index--
+
+	if ignoreWhiteSpace && isWhitespace(nr.CurNode) {
+		return nr.prev(ignoreWhiteSpace)
+	}
+	return true
+}
+
 func (nr *NodeReader) FindNode(ignoreWhiteSpace bool, nm NodeMatcher) (*NodeReader, ast.Node) {
 	tmpReader := nr.CopyReader()
 	for tmpReader.hasNext() {
@@ -186,4 +211,37 @@ func (nr *NodeReader) FindNode(ignoreWhiteSpace bool, nm NodeMatcher) (*NodeRead
 		tmpReader.NextNode(ignoreWhiteSpace)
 	}
 	return nil, nil
+}
+
+func (nr *NodeReader) PrevNode(ignoreWhiteSpace bool) (uint, ast.Node) {
+	if !nr.hasPrev() {
+		return 0, nil
+	}
+	nr.prev(ignoreWhiteSpace)
+
+	tmpReader := nr.CopyReader()
+	for tmpReader.hasPrev() {
+		index := tmpReader.Index
+		node := tmpReader.Node.GetTokens()[index]
+
+		if ignoreWhiteSpace {
+			if !isWhitespace(node) {
+				return index, node
+			}
+		} else {
+			return index, node
+		}
+		tmpReader.prev(false)
+	}
+	return 0, nil
+}
+
+func (nr *NodeReader) PrevNodeIs(ignoreWhiteSpace bool, nm NodeMatcher) bool {
+	_, node := nr.PrevNode(ignoreWhiteSpace)
+	if node != nil {
+		if nm.IsMatch(node) {
+			return true
+		}
+	}
+	return false
 }

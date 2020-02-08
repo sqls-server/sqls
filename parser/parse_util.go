@@ -269,3 +269,61 @@ func childrenOf(n ast.Node) []ast.Node {
 	var children []ast.Node
 	return children
 }
+
+type NodeWalker struct {
+	Paths   []*astutil.NodeReader
+	CurPath *astutil.NodeReader
+	Index   uint
+}
+
+func astPaths(reader *astutil.NodeReader, pos token.Pos) []*astutil.NodeReader {
+	paths := []*astutil.NodeReader{}
+	paths = append(paths, reader)
+
+	for reader.NextNode(false) {
+		if reader.CurNodeEncloseIs(pos) {
+			// fmt.Println(fmt.Printf(
+			// 	"CurNode Enclose, type: %T, value: %q, start: %+v, end: %+v, pos: %+v",
+			// 	reader.CurNode,
+			// 	reader.CurNode,
+			// 	reader.CurNode.Pos(),
+			// 	reader.CurNode.End(),
+			// 	pos,
+			// )) // debugging
+			if list, ok := reader.CurNode.(ast.TokenList); ok {
+				newReader := astutil.NewNodeReader(list)
+				paths = append(paths, astPaths(newReader, pos)...)
+			} else {
+				return paths
+			}
+		}
+		// fmt.Println(fmt.Printf(
+		// 	"CurNode Not Enclose, type: %T, value: %q, start: %+v, end: %+v, pos: %+v",
+		// 	reader.CurNode,
+		// 	reader.CurNode,
+		// 	reader.CurNode.Pos(),
+		// 	reader.CurNode.End(),
+		// 	pos,
+		// )) // debugging
+	}
+	return paths
+}
+
+func NewNodeWalker(root ast.TokenList, pos token.Pos) *NodeWalker {
+	paths := astPaths(astutil.NewNodeReader(root), pos)
+	index := uint(len(paths) - 1)
+	return &NodeWalker{
+		Paths:   paths,
+		CurPath: paths[index],
+		Index:   index,
+	}
+}
+
+func (nw *NodeWalker) PrevNodesIs(ignoreWitespace bool, matcher astutil.NodeMatcher) bool {
+	for _, reader := range nw.Paths {
+		if reader.PrevNodeIs(ignoreWitespace, matcher) {
+			return true
+		}
+	}
+	return false
+}

@@ -78,8 +78,8 @@ type Identifer struct {
 
 func (i *Identifer) String() string      { return i.Tok.String() }
 func (i *Identifer) GetToken() *SQLToken { return i.Tok }
-func (i *Identifer) Pos() token.Pos      { return findFrom(i) }
-func (i *Identifer) End() token.Pos      { return findTo(i) }
+func (i *Identifer) Pos() token.Pos      { return i.Tok.From }
+func (i *Identifer) End() token.Pos      { return i.Tok.To }
 
 type Operator struct {
 	Toks []Node
@@ -309,7 +309,7 @@ func findFrom(node Node) token.Pos {
 func findTo(node Node) token.Pos {
 	if list, ok := node.(TokenList); ok {
 		nodes := list.GetTokens()
-		return findFrom(nodes[len(nodes)-1])
+		return findTo(nodes[len(nodes)-1])
 	}
 	return node.Pos()
 }
