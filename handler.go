@@ -184,9 +184,6 @@ func (s *Server) handleTextDocumentCompletion(ctx context.Context, conn *jsonrpc
 	if err != nil {
 		return nil, err
 	}
-	for _, i := range completionItems {
-		log.Printf("completion item %+v", i)
-	}
 	return completionItems, nil
 }
 
