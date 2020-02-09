@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"log"
 	"regexp"
 	"strings"
 
@@ -131,78 +130,26 @@ func parse(text string) (ast.TokenList, error) {
 }
 
 func (c *Completer) complete(text string, params CompletionParams) ([]CompletionItem, error) {
-	// // create completion items
-	// completionItems := []CompletionItem{}
-	// pos := token.Pos{Line: params.Position.Line + 1, Col: params.Position.Character}
-	// cTypes := getCompletionTypes(parsed, pos)
-	// if completionTypeIs(cTypes, CompletionTypeKeyword) {
-	// 	for _, k := range keywords {
-	// 		item := CompletionItem{
-	// 			Label: k,
-	// 			Kind:  KeywordCompletion,
-	// 		}
-	// 		completionItems = append(completionItems, item)
-	// 	}
-	// }
-	// if completionTypeIs(cTypes, CompletionTypeColumn) {
-	// 	targetTables := parser.ExtractTable(parsed)
-	// 	for _, info := range targetTables {
-	// 		if info.Name != "" {
-	// 			if columns, ok := c.TableColumns[strings.ToUpper(info.Name)]; ok {
-	// 				for _, column := range columns {
-	// 					candinate := CompletionItem{
-	// 						Label:      column.Name,
-	// 						InsertText: column.Name,
-	// 						// Kind:       FieldCompletion,
-	// 					}
-	// 					completionItems = append(completionItems, candinate)
-	// 				}
-	// 			}
-	// 		}
-	// 	}
-	// }
+	parsed, err := parse(text)
+	if err != nil {
+		return nil, err
+	}
 
-	completionItems := []CompletionItem{}
 	pos := token.Pos{Line: params.Position.Line + 1, Col: params.Position.Character}
 	cTypes, err := getCompletionTypes(text, pos)
 	if err != nil {
 		return nil, err
 	}
-	log.Println(cTypes)
 
-	// res := completionTypeIs(cTypes, CompletionTypeColumn)
-	if true {
-		parsed, err := parse(text)
-		if err != nil {
-			return nil, err
-		}
+	completionItems := []CompletionItem{}
+	switch {
+	case completionTypeIs(cTypes, CompletionTypeKeyword):
+		completionItems = c.keywordCandinates()
+	case completionTypeIs(cTypes, CompletionTypeColumn):
 		targetTables := parser.ExtractTable(parsed)
-		for _, info := range targetTables {
-			if info.Name != "" {
-				if columns, ok := c.TableColumns[strings.ToUpper(info.Name)]; ok {
-					for _, column := range columns {
-						candinate := CompletionItem{
-							Label:      column.Name,
-							InsertText: column.Name,
-							// Kind:       FieldCompletion,
-						}
-						completionItems = append(completionItems, candinate)
-					}
-				}
-			}
-		}
+		completionItems = c.columnCandinates(targetTables)
 	}
 	return completionItems, nil
-
-	// completionItems := []CompletionItem{}
-	// for _, k := range keywords {
-	// 	item := CompletionItem{
-	// 		Label: k,
-	// 		Kind:  KeywordCompletion,
-	// 	}
-	// 	completionItems = append(completionItems, item)
-	// }
-	// return completionItems, nil
 }
 
 func getCompletionTypes(text string, pos token.Pos) ([]CompletionType, error) {
@@ -210,7 +157,7 @@ func getCompletionTypes(text string, pos token.Pos) ([]CompletionType, error) {
 	if err != nil {
 		return nil, err
 	}
-	parser.NewNodeWalker(parsed, pos).PrevNodesIs(true, genKeywordMatcher([]string{"SELECT", "WHERE", "HAVING"}))
+	nodeWalker := parser.NewNodeWalker(parsed, pos)
 
 	switch {
 	// case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"SET", "ORDER BY", "DISTINCT"})):
@@ -228,13 +175,13 @@ func getCompletionTypes(text string, pos token.Pos) ([]CompletionType, error) {
 	// 	res = []CompletionType{
 	// 		CompletionTypeUser,
 	// 	}
-	// case parser.NewNodeWalker(parsed, pos).PrevNodesIs(true, genKeywordMatcher([]string{"SELECT", "WHERE", "HAVING"})):
-	// 	return []CompletionType{
-	// 		CompletionTypeColumn,
-	// 		CompletionTypeTable,
-	// 		CompletionTypeView,
-	// 		CompletionTypeFunction,
-	// 	}, nil
+	case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"SELECT", "WHERE", "HAVING"})):
+		return []CompletionType{
+			CompletionTypeColumn,
+			CompletionTypeTable,
+			CompletionTypeView,
+			CompletionTypeFunction,
+		}, nil
 	// case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"JOIN", "COPY", "FROM", "UPDATE", "INTO", "DESCRIBE", "TRUNCATE", "DESC", "EXPLAIN"})):
 	// 	res = []CompletionType{
 	// 		CompletionTypeColumn,
@@ -264,6 +211,37 @@ func genKeywordMatcher(keywords []string) astutil.NodeMatcher {
 	return astutil.NodeMatcher{
 		ExpectKeyword: keywords,
 	}
+}
+
+func (c *Completer) keywordCandinates() []CompletionItem {
+	candinates := []CompletionItem{}
+	for _, k := range keywords {
+		candinate := CompletionItem{
+			Label: k,
+		}
+		candinates = append(candinates, candinate)
+	}
+	return candinates
+}
+
+func (c *Completer) columnCandinates(targetTables []*parser.TableInfo) []CompletionItem {
+	candinates := []CompletionItem{}
+	for _, info := range targetTables {
+		if info.Name == "" {
+			continue
+		}
+		columns, ok := c.TableColumns[strings.ToUpper(info.Name)]
+		if !ok {
+			continue
+		}
+		for _, column := range columns {
+			candinate := CompletionItem{
+				Label: column.Name,
+			}
+			candinates = append(candinates, candinate)
+		}
+	}
+	return candinates
 }
 
 // func getLastToken(tokens []*sqltoken.Token, line, char int) (int, *sqltoken.Token) {
