@@ -141,15 +141,18 @@ func (c *Completer) complete(text string, params CompletionParams) ([]Completion
 		return nil, err
 	}
 
-	completionItems := []CompletionItem{}
-	switch {
-	case completionTypeIs(cTypes, CompletionTypeKeyword):
-		completionItems = c.keywordCandinates()
-	case completionTypeIs(cTypes, CompletionTypeColumn):
-		targetTables := parser.ExtractTable(parsed)
-		completionItems = c.columnCandinates(targetTables)
+	definedTables := parser.ExtractTable(parsed)
+	items := []CompletionItem{}
+	if completionTypeIs(cTypes, CompletionTypeKeyword) {
+		items = append(items, c.keywordCandinates()...)
 	}
-	return completionItems, nil
+	if completionTypeIs(cTypes, CompletionTypeColumn) {
+		items = append(items, c.columnCandinates(definedTables)...)
+	}
+	if completionTypeIs(cTypes, CompletionTypeTable) {
+		items = append(items, c.TableCandinates()...)
+	}
+	return items, nil
 }
 
 func getCompletionTypes(text string, pos token.Pos) ([]CompletionType, error) {
@@ -182,13 +185,13 @@ func getCompletionTypes(text string, pos token.Pos) ([]CompletionType, error) {
 			CompletionTypeView,
 			CompletionTypeFunction,
 		}, nil
-	// case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"JOIN", "COPY", "FROM", "UPDATE", "INTO", "DESCRIBE", "TRUNCATE", "DESC", "EXPLAIN"})):
-	// 	res = []CompletionType{
-	// 		CompletionTypeColumn,
-	// 		CompletionTypeTable,
-	// 		CompletionTypeView,
-	// 		CompletionTypeFunction,
-	// 	}
+	case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"JOIN", "COPY", "FROM", "UPDATE", "INTO", "DESCRIBE", "TRUNCATE", "DESC", "EXPLAIN"})):
+		return []CompletionType{
+			CompletionTypeColumn,
+			CompletionTypeTable,
+			CompletionTypeView,
+			CompletionTypeFunction,
+		}, nil
 	// case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"ON"})):
 	// 	res = []CompletionType{
 	// 		CompletionTypeColumn,
@@ -240,6 +243,18 @@ func (c *Completer) columnCandinates(targetTables []*parser.TableInfo) []Complet
 			}
 			candinates = append(candinates, candinate)
 		}
+	}
+	return candinates
+}
+
+func (c *Completer) TableCandinates() []CompletionItem {
+	candinates := []CompletionItem{}
+	for tableName, _ := range c.TableColumns {
+		candinate := CompletionItem{
+			Label: tableName,
+		}
+		candinates = append(candinates, candinate)
+
 	}
 	return candinates
 }
