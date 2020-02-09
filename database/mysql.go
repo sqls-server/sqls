@@ -18,7 +18,7 @@ type DBOption struct {
 	MaxOpenConns int
 }
 
-type TableInfo struct {
+type ColumnDesc struct {
 	Name    string
 	Type    string
 	Null    string
@@ -77,8 +77,8 @@ func (db *MySQLDB) Databases() ([]string, error) {
 	return databases, nil
 }
 
-func (db *MySQLDB) TableColumns() (map[string][]*TableInfo, error) {
-	tableMap := map[string][]*TableInfo{}
+func (db *MySQLDB) TableColumns() (map[string][]*ColumnDesc, error) {
+	tableMap := map[string][]*ColumnDesc{}
 	tables, err := db.Tables()
 	if err != nil {
 		return nil, err
@@ -109,14 +109,14 @@ func (db *MySQLDB) Tables() ([]string, error) {
 	return tables, nil
 }
 
-func (db *MySQLDB) DescribeTable(tableName string) ([]*TableInfo, error) {
+func (db *MySQLDB) DescribeTable(tableName string) ([]*ColumnDesc, error) {
 	rows, err := db.Conn.Query("DESC " + tableName)
 	if err != nil {
 		log.Fatal(err)
 	}
-	tableInfos := []*TableInfo{}
+	tableInfos := []*ColumnDesc{}
 	for rows.Next() {
-		var tableInfo TableInfo
+		var tableInfo ColumnDesc
 		if err := rows.Scan(&tableInfo.Name, &tableInfo.Type, &tableInfo.Null, &tableInfo.Key, &tableInfo.Default, &tableInfo.Extra); err != nil {
 			return nil, err
 		}
