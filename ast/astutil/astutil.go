@@ -228,7 +228,6 @@ func (nr *NodeReader) PrevNode(ignoreWhiteSpace bool) (int, ast.Node) {
 
 	for tmpReader.prev(ignoreWhiteSpace) {
 		index := tmpReader.Index
-		// fmt.Println(index)
 		node := tmpReader.Node.GetTokens()[index]
 
 		if ignoreWhiteSpace {
@@ -247,7 +246,6 @@ func (nr *NodeReader) PrevNode(ignoreWhiteSpace bool) (int, ast.Node) {
 }
 
 func (nr *NodeReader) PrevNodeIs(ignoreWhiteSpace bool, nm NodeMatcher) bool {
-	// fmt.Printf("prev node is, idx:%d, value:%q, type:%T\n", nr.Index, nr.CurNode, nr.CurNode)
 	_, node := nr.PrevNode(ignoreWhiteSpace)
 	if node != nil {
 		if nm.IsMatch(node) {

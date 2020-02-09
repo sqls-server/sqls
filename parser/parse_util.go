@@ -277,12 +277,10 @@ type NodeWalker struct {
 }
 
 func astPaths(reader *astutil.NodeReader, pos token.Pos) []*astutil.NodeReader {
-	fmt.Printf("astPaths, %s, %T\n", reader.Node, reader.Node)
 	paths := []*astutil.NodeReader{}
 	paths = append(paths, reader)
 
 	for reader.NextNode(false) {
-		fmt.Printf("astPaths next, pos:%+v type:%T, tpos:%+v, tend:%+v\n", pos, reader.CurNode, reader.CurNode.Pos(), reader.CurNode.End())
 		if reader.CurNodeEncloseIs(pos) {
 			if list, ok := reader.CurNode.(ast.TokenList); ok {
 				newReader := astutil.NewNodeReader(list)
