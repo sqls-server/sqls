@@ -220,7 +220,8 @@ func (c *Completer) keywordCandinates() []CompletionItem {
 	candinates := []CompletionItem{}
 	for _, k := range keywords {
 		candinate := CompletionItem{
-			Label: k,
+			Label:  k,
+			Detail: "Keyword",
 		}
 		candinates = append(candinates, candinate)
 	}
@@ -239,7 +240,8 @@ func (c *Completer) columnCandinates(targetTables []*parser.TableInfo) []Complet
 		}
 		for _, column := range columns {
 			candinate := CompletionItem{
-				Label: column.Name,
+				Label:  column.Name,
+				Detail: "Column",
 			}
 			candinates = append(candinates, candinate)
 		}
@@ -251,7 +253,8 @@ func (c *Completer) TableCandinates() []CompletionItem {
 	candinates := []CompletionItem{}
 	for tableName, _ := range c.TableColumns {
 		candinate := CompletionItem{
-			Label: tableName,
+			Label:  tableName,
+			Detail: "Table",
 		}
 		candinates = append(candinates, candinate)
 
