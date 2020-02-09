@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/lighttiger2505/sqls/ast"
@@ -81,16 +82,56 @@ var keywords = []string{
 	"USING", "VALUES", "VARCHAR", "VIEW", "WHEN", "WHERE", "WITH",
 }
 
+type DatabaseInfo struct {
+	Databases map[string]string
+	Tables    map[string]string
+	Columns   map[string][]*database.ColumnDesc
+}
+
+func (di *DatabaseInfo) Database(databaseName string) (db string, ok bool) {
+	db, ok = di.Databases[strings.ToUpper(databaseName)]
+	return
+}
+
+func (di *DatabaseInfo) SortedDatabases() []string {
+	dbs := make([]string, len(di.Databases))
+	for _, db := range di.Databases {
+		dbs = append(dbs, db)
+	}
+	sort.Strings(dbs)
+	return dbs
+}
+
+func (di *DatabaseInfo) Table(databaseName string) (tbl string, ok bool) {
+	tbl, ok = di.Tables[strings.ToUpper(databaseName)]
+	return
+}
+
+func (di *DatabaseInfo) SortedTables() []string {
+	tbls := make([]string, len(di.Tables))
+	for _, db := range di.Tables {
+		tbls = append(tbls, db)
+	}
+	sort.Strings(tbls)
+	return tbls
+}
+
+func (di *DatabaseInfo) ColumnDescs(databaseName string) (cols []*database.ColumnDesc, ok bool) {
+	cols, ok = di.Columns[strings.ToUpper(databaseName)]
+	return
+}
+
 type Completer struct {
-	Conn         *database.MySQLDB
-	TableColumns map[string][]*database.TableInfo
+	Conn   *database.MySQLDB
+	DBInfo *DatabaseInfo
+	// TableColumns map[string][]*database.ColumnDesc
 }
 
 func NewCompleter() *Completer {
 	db := database.NewMysqlDB("root:root@tcp(127.0.0.1:13306)/world")
 	return &Completer{
-		Conn:         db,
-		TableColumns: map[string][]*database.TableInfo{},
+		Conn:   db,
+		DBInfo: &DatabaseInfo{},
 	}
 }
 
@@ -99,11 +140,37 @@ func (c *Completer) Init() error {
 		return err
 	}
 	defer c.Conn.Close()
-	tableColumns, err := c.Conn.TableColumns()
+
+	dbs, err := c.Conn.Databases()
 	if err != nil {
 		return err
 	}
-	c.TableColumns = tableColumns
+	databaseMap := map[string]string{}
+	for _, db := range dbs {
+		databaseMap[strings.ToUpper(db)] = db
+	}
+	c.DBInfo.Databases = databaseMap
+
+	tbls, err := c.Conn.Tables()
+	if err != nil {
+		return err
+	}
+	tableMap := map[string]string{}
+	for _, tbl := range tbls {
+		tableMap[strings.ToUpper(tbl)] = tbl
+	}
+	c.DBInfo.Tables = tableMap
+
+	columnMap := map[string][]*database.ColumnDesc{}
+	for _, tbl := range tbls {
+		columnDescs, err := c.Conn.DescribeTable(tbl)
+		if err != nil {
+			return err
+		}
+		columnMap[strings.ToUpper(tbl)] = columnDescs
+	}
+	c.DBInfo.Columns = columnMap
+
 	return nil
 }
 
@@ -235,7 +302,7 @@ func (c *Completer) columnCandinates(targetTables []*parser.TableInfo) []Complet
 		if info.Name == "" {
 			continue
 		}
-		columns, ok := c.TableColumns[strings.ToUpper(info.Name)]
+		columns, ok := c.DBInfo.ColumnDescs(info.Name)
 		if !ok {
 			continue
 		}
@@ -253,11 +320,25 @@ func (c *Completer) columnCandinates(targetTables []*parser.TableInfo) []Complet
 
 func (c *Completer) TableCandinates() []CompletionItem {
 	candinates := []CompletionItem{}
-	for tableName, _ := range c.TableColumns {
+	for _, tableName := range c.DBInfo.SortedTables() {
 		candinate := CompletionItem{
 			Label:  tableName,
 			Kind:   FieldCompletion,
 			Detail: "Table",
+		}
+		candinates = append(candinates, candinate)
+
+	}
+	return candinates
+}
+
+func (c *Completer) DatabaseCandinates() []CompletionItem {
+	candinates := []CompletionItem{}
+	for _, databaseName := range c.DBInfo.SortedDatabases() {
+		candinate := CompletionItem{
+			Label:  databaseName,
+			Kind:   FieldCompletion,
+			Detail: "Database",
 		}
 		candinates = append(candinates, candinate)
 

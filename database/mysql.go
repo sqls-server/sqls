@@ -117,7 +117,15 @@ func (db *MySQLDB) DescribeTable(tableName string) ([]*ColumnDesc, error) {
 	tableInfos := []*ColumnDesc{}
 	for rows.Next() {
 		var tableInfo ColumnDesc
-		if err := rows.Scan(&tableInfo.Name, &tableInfo.Type, &tableInfo.Null, &tableInfo.Key, &tableInfo.Default, &tableInfo.Extra); err != nil {
+		err := rows.Scan(
+			&tableInfo.Name,
+			&tableInfo.Type,
+			&tableInfo.Null,
+			&tableInfo.Key,
+			&tableInfo.Default,
+			&tableInfo.Extra,
+		)
+		if err != nil {
 			return nil, err
 		}
 		tableInfos = append(tableInfos, &tableInfo)
