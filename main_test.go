@@ -20,6 +20,10 @@ type TestContext struct {
 
 func newTestContext() *TestContext {
 	server := NewServer()
+	if err := server.init(); err != nil {
+		log.Fatal("sqls: failed database connection, ", err)
+	}
+
 	handler := jsonrpc2.HandlerWithError(server.handle)
 	ctx := context.Background()
 	return &TestContext{
@@ -157,6 +161,55 @@ func TestFileWatch(t *testing.T) {
 }
 
 func TestComplete(t *testing.T) {
+	tx := newTestContext()
+	tx.initServer(t)
+
+	uri := "file:///Users/octref/Code/css-test/test.sql"
+	openText := "select Cou from city"
+
+	didOpenParams := DidOpenTextDocumentParams{
+		TextDocument: TextDocumentItem{
+			URI:        uri,
+			LanguageID: "sql",
+			Version:    0,
+			Text:       openText,
+		},
+	}
+	if err := tx.conn.Call(tx.ctx, "textDocument/didOpen", didOpenParams, nil); err != nil {
+		t.Fatal("conn.Call textDocument/didOpen:", err)
+	}
+	tx.testFile(t, didOpenParams.TextDocument.URI, didOpenParams.TextDocument.Text)
+
+	commpletionParams := CompletionParams{
+		TextDocumentPositionParams: TextDocumentPositionParams{
+			TextDocument: TextDocumentIdentifier{
+				URI: uri,
+			},
+			Position: Position{
+				Line:      0,
+				Character: 10,
+			},
+		},
+		CompletionContext: CompletionContext{
+			TriggerKind:      0,
+			TriggerCharacter: nil,
+		},
+	}
+
+	var got []CompletionItem
+	if err := tx.conn.Call(tx.ctx, "textDocument/completion", commpletionParams, &got); err != nil {
+		t.Fatal("conn.Call textDocument/completion:", err)
+	}
+	want := []CompletionItem{
+		{Label: "ID"},
+		{Label: "Name"},
+		{Label: "CountryCode"},
+		{Label: "District"},
+		{Label: "Population"},
+	}
+	if !reflect.DeepEqual(want, got) {
+		t.Errorf("completion result not match, expect=%+v got=%+v", want, got)
+	}
 }
 
 func (tx *TestContext) testFile(t *testing.T, uri, text string) {
