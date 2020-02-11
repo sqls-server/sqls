@@ -17,20 +17,20 @@ func TestParseStatement(t *testing.T) {
 	input = "select 1;select 2;select 3;"
 	stmts = parseInit(t, input)
 	testStatement(t, stmts[0], 4, "select 1;")
-	testPos(t, stmts[0], genPosOneline(1), genPosOneline(9))
+	testPos(t, stmts[0], genPosOneline(1), genPosOneline(10))
 	testStatement(t, stmts[1], 4, "select 2;")
-	testPos(t, stmts[1], genPosOneline(10), genPosOneline(18))
+	testPos(t, stmts[1], genPosOneline(10), genPosOneline(19))
 	testStatement(t, stmts[2], 4, "select 3;")
-	testPos(t, stmts[2], genPosOneline(19), genPosOneline(27))
+	testPos(t, stmts[2], genPosOneline(19), genPosOneline(28))
 
 	input = "select 1;select 2;select 3"
 	stmts = parseInit(t, input)
 	testStatement(t, stmts[0], 4, "select 1;")
-	testPos(t, stmts[0], genPosOneline(1), genPosOneline(9))
+	testPos(t, stmts[0], genPosOneline(1), genPosOneline(10))
 	testStatement(t, stmts[1], 4, "select 2;")
-	testPos(t, stmts[1], genPosOneline(10), genPosOneline(18))
+	testPos(t, stmts[1], genPosOneline(10), genPosOneline(19))
 	testStatement(t, stmts[2], 3, "select 3")
-	testPos(t, stmts[2], genPosOneline(19), genPosOneline(26))
+	testPos(t, stmts[2], genPosOneline(19), genPosOneline(27))
 }
 
 func TestParseParenthesis(t *testing.T) {
@@ -43,40 +43,36 @@ func TestParseParenthesis(t *testing.T) {
 			name:  "single",
 			input: "(3)",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
-				t.Helper()
 				testStatement(t, stmts[0], 1, input)
 				list := stmts[0].GetTokens()
 				testParenthesis(t, list[0], input)
-				testPos(t, stmts[0], genPosOneline(1), genPosOneline(3))
+				testPos(t, stmts[0], genPosOneline(1), genPosOneline(4))
 			},
 		},
 		{
 			name:  "with operator",
 			input: "(3 - 4)",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
-				t.Helper()
 				testStatement(t, stmts[0], 1, input)
 				list := stmts[0].GetTokens()
 				testParenthesis(t, list[0], input)
-				testPos(t, stmts[0], genPosOneline(1), genPosOneline(7))
+				testPos(t, stmts[0], genPosOneline(1), genPosOneline(8))
 			},
 		},
 		{
 			name:  "inner parenthesis",
 			input: "(1 * 2 + (3 - 4))",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
-				t.Helper()
 				testStatement(t, stmts[0], 1, input)
 				list := stmts[0].GetTokens()
 				testParenthesis(t, list[0], input)
-				testPos(t, stmts[0], genPosOneline(1), genPosOneline(17))
+				testPos(t, stmts[0], genPosOneline(1), genPosOneline(18))
 			},
 		},
 		{
 			name:  "with select",
 			input: "select (select (x3) x2) and (y2) bar",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
-				t.Helper()
 				testStatement(t, stmts[0], 9, input)
 
 				list := stmts[0].GetTokens()
@@ -104,8 +100,6 @@ func TestParseParenthesis(t *testing.T) {
 			name:  "not close parenthesis",
 			input: "select (select (x3) x2 and (y2) bar",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
-				t.Helper()
-
 				list := stmts[0].GetTokens()
 				testItem(t, list[0], "select")
 				testItem(t, list[1], " ")
@@ -179,7 +173,7 @@ func TestParseFrom(t *testing.T) {
 	testItem(t, list[3], " ")
 	testPos(t, list[3], genPosOneline(9), genPosOneline(10))
 	testFrom(t, list[4], "from abc")
-	testPos(t, list[4], genPosOneline(10), genPosOneline(15))
+	testPos(t, list[4], genPosOneline(10), genPosOneline(18))
 
 	input = "select from abc"
 	stmts = parseInit(t, input)
@@ -198,7 +192,7 @@ func TestParseFrom(t *testing.T) {
 	testItem(t, list[2], "*")
 	testItem(t, list[3], " ")
 	testFrom(t, list[4], "from ")
-	testPos(t, list[4], genPosOneline(10), genPosOneline(14))
+	testPos(t, list[4], genPosOneline(10), genPosOneline(15))
 
 	list = testTokenList(t, list[4], 2).GetTokens()
 	testItem(t, list[0], "from")
@@ -367,37 +361,164 @@ func TestParsePeriod_InvalidWithSelect(t *testing.T) {
 }
 
 func TestParseIdentifier(t *testing.T) {
-	input := `select foo.bar from "myschema"."table"`
-	src := bytes.NewBuffer([]byte(input))
-	parser, err := NewParser(src, &dialect.GenericSQLDialect{})
-	if err != nil {
-		t.Fatalf("error %+v\n", err)
+	testcases := []struct {
+		name    string
+		input   string
+		checkFn func(t *testing.T, stmts []*ast.Statement, input string)
+	}{
+		{
+			name:  "identifier",
+			input: "abc",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testIdentifier(t, list[0], "abc")
+			},
+		},
+		{
+			name:  "double quate identifier",
+			input: `"abc"`,
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testIdentifier(t, list[0], `"abc"`)
+			},
+		},
+		{
+			name:  "select identifier",
+			input: "select abc",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 3, input)
+				list := stmts[0].GetTokens()
+				testItem(t, list[0], "select")
+				testItem(t, list[1], " ")
+				testIdentifier(t, list[2], "abc")
+			},
+		},
+		{
+			name:  "from identifier",
+			input: "select abc from def",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 5, input)
+				list := stmts[0].GetTokens()
+				testItem(t, list[0], "select")
+				testItem(t, list[1], " ")
+				testIdentifier(t, list[2], "abc")
+				testItem(t, list[3], " ")
+				testFrom(t, list[4], "from def")
+				from := testTokenList(t, list[4], 3).GetTokens()
+				testItem(t, from[0], "from")
+				testItem(t, from[1], " ")
+				testIdentifier(t, from[2], "def")
+			},
+		},
 	}
+	for _, tt := range testcases {
+		t.Run(tt.name, func(t *testing.T) {
+			stmts := parseInit(t, tt.input)
+			tt.checkFn(t, stmts, tt.input)
+		})
+	}
+}
 
-	got, err := parser.Parse()
-	if err != nil {
-		t.Fatalf("error %+v\n", err)
-	}
-	wantStmtLen := 1
-	if wantStmtLen != len(got.GetTokens()) {
-		t.Errorf("Statements does not contain %d statements, got %d", wantStmtLen, len(got.GetTokens()))
-	}
-	var stmts []*ast.Statement
-	for _, node := range got.GetTokens() {
-		stmt, ok := node.(*ast.Statement)
-		if !ok {
-			t.Fatalf("invalid type want Statement got %T", stmt)
-		}
-		stmts = append(stmts, stmt)
-	}
-	testStatement(t, stmts[0], 5, input)
+func TestMemberIdentifier(t *testing.T) {
+	testcases := []struct {
+		name    string
+		input   string
+		checkFn func(t *testing.T, stmts []*ast.Statement, input string)
+	}{
+		{
+			name:  "member identifier",
+			input: "a.b",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testMemberIdentifier(t, list[0], input)
+			},
+		},
+		{
+			name:  "double quate member identifier",
+			input: `"abc"."def"`,
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testMemberIdentifier(t, list[0], input)
+			},
+		},
+		{
+			name:  "invalid member identifier",
+			input: "a.",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testMemberIdentifier(t, list[0], input)
+			},
+		},
+		{
+			name:  "member identifier wildcard",
+			input: "a.*",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testMemberIdentifier(t, list[0], input)
+			},
+		},
+		{
+			name:  "member identifier select",
+			input: "select foo.bar from table",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 5, input)
+				list := stmts[0].GetTokens()
+				testItem(t, list[0], "select")
+				testItem(t, list[1], " ")
+				testMemberIdentifier(t, list[2], "foo.bar")
+				testItem(t, list[3], " ")
+				testFrom(t, list[4], `from table`)
+			},
+		},
+		{
+			name:  "invalid member identifier select",
+			input: "select foo. from table",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 5, input)
+				list := stmts[0].GetTokens()
 
-	list := stmts[0].GetTokens()
-	testItem(t, list[0], "select")
-	testItem(t, list[1], " ")
-	testMemberIdentifier(t, list[2], "foo.bar")
-	testItem(t, list[3], " ")
-	testFrom(t, list[4], `from "myschema"."table"`)
+				testItem(t, list[0], "select")
+				testPos(t, list[0], genPosOneline(1), genPosOneline(7))
+
+				testItem(t, list[1], " ")
+				testPos(t, list[1], genPosOneline(7), genPosOneline(8))
+
+				testMemberIdentifier(t, list[2], "foo.")
+				testPos(t, list[2], genPosOneline(8), genPosOneline(12))
+
+				testItem(t, list[3], " ")
+				testPos(t, list[3], genPosOneline(12), genPosOneline(13))
+
+				testFrom(t, list[4], `from table`)
+				testPos(t, list[4], genPosOneline(13), genPosOneline(23))
+			},
+		},
+		{
+			name:  "member identifier from",
+			input: "select foo from myschema.table",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 5, input)
+				list := stmts[0].GetTokens()
+				testItem(t, list[0], "select")
+				testItem(t, list[1], " ")
+				testIdentifier(t, list[2], "foo")
+				testItem(t, list[3], " ")
+				testFrom(t, list[4], `from myschema.table`)
+			},
+		},
+	}
+	for _, tt := range testcases {
+		t.Run(tt.name, func(t *testing.T) {
+			stmts := parseInit(t, tt.input)
+			tt.checkFn(t, stmts, tt.input)
+		})
+	}
 }
 
 func TestParseOperator(t *testing.T) {
@@ -480,33 +601,54 @@ func TestParseAliased(t *testing.T) {
 }
 
 func TestParseIdentifierList(t *testing.T) {
-	var input string
-	var stmts []*ast.Statement
-	var list []ast.Node
-
-	input = `foo, bar`
-	stmts = parseInit(t, input)
-	testStatement(t, stmts[0], 1, input)
-	list = stmts[0].GetTokens()
-	testIdentifierList(t, list[0], input)
-
-	input = `sum(a), sum(b)`
-	stmts = parseInit(t, input)
-	testStatement(t, stmts[0], 1, input)
-	list = stmts[0].GetTokens()
-	testIdentifierList(t, list[0], input)
-
-	input = `sum(a) as x, b as y`
-	stmts = parseInit(t, input)
-	testStatement(t, stmts[0], 1, input)
-	list = stmts[0].GetTokens()
-	testIdentifierList(t, list[0], input)
-
-	input = `foo, bar, hoge`
-	stmts = parseInit(t, input)
-	testStatement(t, stmts[0], 1, input)
-	list = stmts[0].GetTokens()
-	testIdentifierList(t, list[0], input)
+	testcases := []struct {
+		name    string
+		input   string
+		checkFn func(t *testing.T, stmts []*ast.Statement, input string)
+	}{
+		{
+			name:  "",
+			input: "foo, bar",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testIdentifierList(t, list[0], input)
+			},
+		},
+		{
+			name:  "",
+			input: "sum(a), sum(b)",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testIdentifierList(t, list[0], input)
+			},
+		},
+		{
+			name:  "",
+			input: "sum(a) as x, b as y",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testIdentifierList(t, list[0], input)
+			},
+		},
+		{
+			name:  "",
+			input: "foo, bar, hoge",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testIdentifierList(t, list[0], input)
+			},
+		},
+	}
+	for _, tt := range testcases {
+		t.Run(tt.name, func(t *testing.T) {
+			stmts := parseInit(t, tt.input)
+			tt.checkFn(t, stmts, tt.input)
+		})
+	}
 }
 
 func parseInit(t *testing.T, input string) []*ast.Statement {
