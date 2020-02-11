@@ -3,7 +3,7 @@ LDFLAGS := -ldflags="-s -w -X \"main.version=$(VERSION)\" -X \"main.revision=$(R
 
 .PHONY: test
 test:
-	go test github.com/lighttiger2505/lab/...
+	go test ./...
 
 .PHONY: build
 build: $(SRCS)
