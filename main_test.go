@@ -401,15 +401,10 @@ func TestComplete(t *testing.T) {
 		},
 		{
 			name:  "from identifier filterd",
-			input: "select CountryCode from c",
+			input: "select CountryCode from co",
 			line:  0,
-			col:   25,
+			col:   26,
 			want: []CompletionItem{
-				{
-					Label:  "city",
-					Kind:   FieldCompletion,
-					Detail: TableDetailTemplate,
-				},
 				{
 					Label:  "country",
 					Kind:   FieldCompletion,
@@ -472,19 +467,14 @@ func TestComplete(t *testing.T) {
 		},
 		{
 			name:  "join identifier filterd",
-			input: "select CountryCode from city left join c",
+			input: "select CountryCode from city left join co",
 			line:  0,
-			col:   40,
+			col:   41,
 			want: []CompletionItem{
 				{
 					Label:  "CountryCode",
 					Kind:   FieldCompletion,
 					Detail: ColumnDetailTemplate,
-				},
-				{
-					Label:  "city",
-					Kind:   FieldCompletion,
-					Detail: TableDetailTemplate,
 				},
 				{
 					Label:  "country",
