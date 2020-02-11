@@ -196,7 +196,6 @@ func parse(text string) (ast.TokenList, error) {
 }
 
 func (c *Completer) complete(text string, params CompletionParams) ([]CompletionItem, error) {
-	log.Println(params.CompletionContext.TriggerCharacter)
 	parsed, err := parse(text)
 	if err != nil {
 		return nil, err
@@ -221,7 +220,6 @@ func (c *Completer) complete(text string, params CompletionParams) ([]Completion
 	}
 
 	lastWord := getLastWord(text, params.Position.Line+1, params.Position.Character)
-	log.Println(lastWord)
 	items = filterCandinates(items, lastWord)
 
 	return items, nil
@@ -348,7 +346,6 @@ func (c *Completer) TableCandinates() []CompletionItem {
 		}
 		candinates = append(candinates, candinate)
 	}
-	// pp.Println(candinates)
 	return candinates
 }
 
