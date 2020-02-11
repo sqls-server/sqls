@@ -32,25 +32,30 @@ hogetable
 func TestGetLastWord(t *testing.T) {
 	input := `SELECT
     a, b, c
-FROM
+FROM  
     hogetable
 `
 	tests := []struct {
+		name string
 		in   string
 		line int
 		char int
 		out  string
 	}{
-		{input, 1, 2, "SE"},
-		{input, 2, 3, ""},
-		{input, 3, 4, "FROM"},
-		{input, 4, 5, "h"},
+		{"", "SELECT  FROM def", 1, 7, ""},
+		{"", input, 1, 2, "SE"},
+		{"", input, 2, 3, ""},
+		{"", input, 3, 4, "FROM"},
+		{"", input, 3, 6, ""},
+		{"", input, 4, 5, "h"},
 	}
 	for _, tt := range tests {
-		got := getLastWord(tt.in, tt.line, tt.char)
-		if tt.out != got {
-			t.Errorf("want %#v, got %#v", tt.out, got)
-		}
+		t.Run(tt.name, func(t *testing.T) {
+			got := getLastWord(tt.in, tt.line, tt.char)
+			if tt.out != got {
+				t.Errorf("want %#v, got %#v", tt.out, got)
+			}
+		})
 	}
 }
 

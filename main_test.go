@@ -258,10 +258,10 @@ func TestComplete(t *testing.T) {
 		want  []CompletionItem
 	}{
 		{
-			name:  "",
-			input: "select Cou from city",
+			name:  "select identifier",
+			input: "select  from city",
 			line:  0,
-			col:   10,
+			col:   7,
 			want: []CompletionItem{
 				{
 					Label:  "ID",
@@ -292,6 +292,29 @@ func TestComplete(t *testing.T) {
 					Label:  "city",
 					Kind:   FieldCompletion,
 					Detail: TableDetailTemplate,
+				},
+				{
+					Label:  "country",
+					Kind:   FieldCompletion,
+					Detail: TableDetailTemplate,
+				},
+				{
+					Label:  "countrylanguage",
+					Kind:   FieldCompletion,
+					Detail: TableDetailTemplate,
+				},
+			},
+		},
+		{
+			name:  "select identifier filterd",
+			input: "select Cou from city",
+			line:  0,
+			col:   10,
+			want: []CompletionItem{
+				{
+					Label:  "CountryCode",
+					Kind:   FieldCompletion,
+					Detail: ColumnDetailTemplate,
 				},
 				{
 					Label:  "country",

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"log"
 	"regexp"
 	"sort"
 	"strings"
@@ -195,6 +196,7 @@ func parse(text string) (ast.TokenList, error) {
 }
 
 func (c *Completer) complete(text string, params CompletionParams) ([]CompletionItem, error) {
+	log.Println(params.CompletionContext.TriggerCharacter)
 	parsed, err := parse(text)
 	if err != nil {
 		return nil, err
@@ -217,6 +219,11 @@ func (c *Completer) complete(text string, params CompletionParams) ([]Completion
 	if completionTypeIs(cTypes, CompletionTypeTable) {
 		items = append(items, c.TableCandinates()...)
 	}
+
+	lastWord := getLastWord(text, params.Position.Line+1, params.Position.Character)
+	log.Println(lastWord)
+	items = filterCandinates(items, lastWord)
+
 	return items, nil
 }
 
@@ -279,6 +286,16 @@ func genKeywordMatcher(keywords []string) astutil.NodeMatcher {
 	return astutil.NodeMatcher{
 		ExpectKeyword: keywords,
 	}
+}
+
+func filterCandinates(candinates []CompletionItem, lastWord string) []CompletionItem {
+	filterd := []CompletionItem{}
+	for _, candinate := range candinates {
+		if strings.HasPrefix(strings.ToUpper(candinate.Label), strings.ToUpper(lastWord)) {
+			filterd = append(filterd, candinate)
+		}
+	}
+	return filterd
 }
 
 func (c *Completer) keywordCandinates() []CompletionItem {
@@ -384,7 +401,7 @@ func getLastWord(text string, line, char int) string {
 	t := getBeforeCursorText(text, line, char)
 	s := getLine(t, line)
 
-	reg := regexp.MustCompile(`\w+`)
+	reg := regexp.MustCompile(`\w+$`)
 	ss := reg.FindAllString(s, -1)
 	if len(ss) == 0 {
 		return ""
