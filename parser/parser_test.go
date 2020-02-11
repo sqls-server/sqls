@@ -607,7 +607,7 @@ func TestParseIdentifierList(t *testing.T) {
 		checkFn func(t *testing.T, stmts []*ast.Statement, input string)
 	}{
 		{
-			name:  "",
+			name:  "indentifier list",
 			input: "foo, bar",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, input)
@@ -616,7 +616,16 @@ func TestParseIdentifierList(t *testing.T) {
 			},
 		},
 		{
-			name:  "",
+			name:  "indentifier list invalid",
+			input: "foo, bar,",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testIdentifierList(t, list[0], input)
+			},
+		},
+		{
+			name:  "indentifier list function",
 			input: "sum(a), sum(b)",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, input)
@@ -625,17 +634,8 @@ func TestParseIdentifierList(t *testing.T) {
 			},
 		},
 		{
-			name:  "",
+			name:  "indentifier list aliased",
 			input: "sum(a) as x, b as y",
-			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
-				testStatement(t, stmts[0], 1, input)
-				list := stmts[0].GetTokens()
-				testIdentifierList(t, list[0], input)
-			},
-		},
-		{
-			name:  "",
-			input: "foo, bar, hoge",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, input)
 				list := stmts[0].GetTokens()
