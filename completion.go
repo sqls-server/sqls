@@ -122,13 +122,12 @@ func (di *DatabaseInfo) ColumnDescs(databaseName string) (cols []*database.Colum
 }
 
 type Completer struct {
-	Conn   *database.MySQLDB
+	Conn   database.Database
 	DBInfo *DatabaseInfo
-	// TableColumns map[string][]*database.ColumnDesc
 }
 
 func NewCompleter() *Completer {
-	db := database.NewMysqlDB("root:root@tcp(127.0.0.1:13306)/world")
+	db := database.NewMySQLDB("root:root@tcp(127.0.0.1:13306)/world")
 	return &Completer{
 		Conn:   db,
 		DBInfo: &DatabaseInfo{},
