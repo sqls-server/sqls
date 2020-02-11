@@ -250,86 +250,104 @@ func TestComplete(t *testing.T) {
 	defer tx.tearDown()
 
 	uri := "file:///Users/octref/Code/css-test/test.sql"
-	openText := "select Cou from city"
-
-	didOpenParams := DidOpenTextDocumentParams{
-		TextDocument: TextDocumentItem{
-			URI:        uri,
-			LanguageID: "sql",
-			Version:    0,
-			Text:       openText,
-		},
-	}
-	if err := tx.conn.Call(tx.ctx, "textDocument/didOpen", didOpenParams, nil); err != nil {
-		t.Fatal("conn.Call textDocument/didOpen:", err)
-	}
-	tx.testFile(t, didOpenParams.TextDocument.URI, didOpenParams.TextDocument.Text)
-
-	commpletionParams := CompletionParams{
-		TextDocumentPositionParams: TextDocumentPositionParams{
-			TextDocument: TextDocumentIdentifier{
-				URI: uri,
+	testcases := []struct {
+		name  string
+		input string
+		line  int
+		col   int
+		want  []CompletionItem
+	}{
+		{
+			name:  "",
+			input: "select Cou from city",
+			line:  0,
+			col:   10,
+			want: []CompletionItem{
+				{
+					Label:  "ID",
+					Kind:   FieldCompletion,
+					Detail: ColumnDetailTemplate,
+				},
+				{
+					Label:  "Name",
+					Kind:   FieldCompletion,
+					Detail: ColumnDetailTemplate,
+				},
+				{
+					Label:  "CountryCode",
+					Kind:   FieldCompletion,
+					Detail: ColumnDetailTemplate,
+				},
+				{
+					Label:  "District",
+					Kind:   FieldCompletion,
+					Detail: ColumnDetailTemplate,
+				},
+				{
+					Label:  "Population",
+					Kind:   FieldCompletion,
+					Detail: ColumnDetailTemplate,
+				},
+				{
+					Label:  "city",
+					Kind:   FieldCompletion,
+					Detail: TableDetailTemplate,
+				},
+				{
+					Label:  "country",
+					Kind:   FieldCompletion,
+					Detail: TableDetailTemplate,
+				},
+				{
+					Label:  "countrylanguage",
+					Kind:   FieldCompletion,
+					Detail: TableDetailTemplate,
+				},
 			},
-			Position: Position{
-				Line:      0,
-				Character: 10,
-			},
-		},
-		CompletionContext: CompletionContext{
-			TriggerKind:      0,
-			TriggerCharacter: nil,
 		},
 	}
 
-	var got []CompletionItem
-	if err := tx.conn.Call(tx.ctx, "textDocument/completion", commpletionParams, &got); err != nil {
-		t.Fatal("conn.Call textDocument/completion:", err)
-	}
-	want := []CompletionItem{
-		{
-			Label:  "ID",
-			Kind:   FieldCompletion,
-			Detail: ColumnDetailTemplate,
-		},
-		{
-			Label:  "Name",
-			Kind:   FieldCompletion,
-			Detail: ColumnDetailTemplate,
-		},
-		{
-			Label:  "CountryCode",
-			Kind:   FieldCompletion,
-			Detail: ColumnDetailTemplate,
-		},
-		{
-			Label:  "District",
-			Kind:   FieldCompletion,
-			Detail: ColumnDetailTemplate,
-		},
-		{
-			Label:  "Population",
-			Kind:   FieldCompletion,
-			Detail: ColumnDetailTemplate,
-		},
-		{
-			Label:  "city",
-			Kind:   FieldCompletion,
-			Detail: TableDetailTemplate,
-		},
-		{
-			Label:  "country",
-			Kind:   FieldCompletion,
-			Detail: TableDetailTemplate,
-		},
-		{
-			Label:  "countrylanguage",
-			Kind:   FieldCompletion,
-			Detail: TableDetailTemplate,
-		},
-	}
+	for _, tt := range testcases {
+		t.Run(tt.name, func(t *testing.T) {
+			// Open dummy file
+			didOpenParams := DidOpenTextDocumentParams{
+				TextDocument: TextDocumentItem{
+					URI:        uri,
+					LanguageID: "sql",
+					Version:    0,
+					Text:       tt.input,
+				},
+			}
+			if err := tx.conn.Call(tx.ctx, "textDocument/didOpen", didOpenParams, nil); err != nil {
+				t.Fatal("conn.Call textDocument/didOpen:", err)
+			}
+			tx.testFile(t, didOpenParams.TextDocument.URI, didOpenParams.TextDocument.Text)
+			// Create completion params
+			commpletionParams := CompletionParams{
+				TextDocumentPositionParams: TextDocumentPositionParams{
+					TextDocument: TextDocumentIdentifier{
+						URI: uri,
+					},
+					Position: Position{
+						Line:      tt.line,
+						Character: tt.col,
+					},
+				},
+				CompletionContext: CompletionContext{
+					TriggerKind:      0,
+					TriggerCharacter: nil,
+				},
+			}
 
-	if d := cmp.Diff(want, got); d != "" {
-		t.Errorf("must be same but diff: %s", d)
+			var got []CompletionItem
+			if err := tx.conn.Call(tx.ctx, "textDocument/completion", commpletionParams, &got); err != nil {
+				t.Fatal("conn.Call textDocument/completion:", err)
+			}
+
+			if d := cmp.Diff(tt.want, got); d != "" {
+				t.Errorf("completion item diff: %s", d)
+			}
+		})
 	}
 }
 
