@@ -2,11 +2,13 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"log"
 	"net"
 	"reflect"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/lighttiger2505/sqls/database"
 	"github.com/sourcegraph/jsonrpc2"
 )
@@ -20,12 +22,82 @@ type TestContext struct {
 }
 
 func newTestContext() *TestContext {
+	dummyDatabases := []string{
+		"information_schema",
+		"mysql",
+		"performance_schema",
+		"sys",
+		"world",
+	}
+	dummyTables := []string{
+		"city",
+		"country",
+		"countrylanguage",
+	}
+	dummyColumns := []*database.ColumnDesc{
+		&database.ColumnDesc{
+			Name: "ID",
+			Type: "int(11)",
+			Null: "NO",
+			Key:  "PRI",
+			Default: sql.NullString{
+				String: "<null>",
+				Valid:  false,
+			},
+			Extra: "auto_increment",
+		},
+		&database.ColumnDesc{
+			Name: "Name",
+			Type: "char(35)",
+			Null: "NO",
+			Key:  "",
+			Default: sql.NullString{
+				String: "",
+				Valid:  false,
+			},
+			Extra: "",
+		},
+		&database.ColumnDesc{
+			Name: "CountryCode",
+			Type: "char(3)",
+			Null: "NO",
+			Key:  "MUL",
+			Default: sql.NullString{
+				String: "",
+				Valid:  false,
+			},
+			Extra: "",
+		},
+		&database.ColumnDesc{
+			Name: "District",
+			Type: "char(20)",
+			Null: "NO",
+			Key:  "",
+			Default: sql.NullString{
+				String: "",
+				Valid:  false,
+			},
+			Extra: "",
+		},
+		&database.ColumnDesc{
+			Name: "Population",
+			Type: "int(11)",
+			Null: "NO",
+			Key:  "",
+			Default: sql.NullString{
+				String: "",
+				Valid:  false,
+			},
+			Extra: "",
+		},
+	}
+
 	mockDB := &database.MockDB{
 		MockOpen:          func() error { return nil },
 		MockClose:         func() error { return nil },
-		MockDatabases:     func() ([]string, error) { return []string{}, nil },
-		MockTables:        func() ([]string, error) { return []string{}, nil },
-		MockDescribeTable: func(string) ([]*database.ColumnDesc, error) { return []*database.ColumnDesc{}, nil },
+		MockDatabases:     func() ([]string, error) { return dummyDatabases, nil },
+		MockTables:        func() ([]string, error) { return dummyTables, nil },
+		MockDescribeTable: func(string) ([]*database.ColumnDesc, error) { return dummyColumns, nil },
 	}
 	completer := NewCompleter(mockDB)
 
@@ -214,14 +286,50 @@ func TestComplete(t *testing.T) {
 		t.Fatal("conn.Call textDocument/completion:", err)
 	}
 	want := []CompletionItem{
-		{Label: "ID"},
-		{Label: "Name"},
-		{Label: "CountryCode"},
-		{Label: "District"},
-		{Label: "Population"},
+		{
+			Label:  "ID",
+			Kind:   FieldCompletion,
+			Detail: ColumnDetailTemplate,
+		},
+		{
+			Label:  "Name",
+			Kind:   FieldCompletion,
+			Detail: ColumnDetailTemplate,
+		},
+		{
+			Label:  "CountryCode",
+			Kind:   FieldCompletion,
+			Detail: ColumnDetailTemplate,
+		},
+		{
+			Label:  "District",
+			Kind:   FieldCompletion,
+			Detail: ColumnDetailTemplate,
+		},
+		{
+			Label:  "Population",
+			Kind:   FieldCompletion,
+			Detail: ColumnDetailTemplate,
+		},
+		{
+			Label:  "city",
+			Kind:   FieldCompletion,
+			Detail: TableDetailTemplate,
+		},
+		{
+			Label:  "country",
+			Kind:   FieldCompletion,
+			Detail: TableDetailTemplate,
+		},
+		{
+			Label:  "countrylanguage",
+			Kind:   FieldCompletion,
+			Detail: TableDetailTemplate,
+		},
 	}
-	if !reflect.DeepEqual(want, got) {
-		t.Errorf("completion result not match, expect=%+v got=%+v", want, got)
+
+	if d := cmp.Diff(want, got); d != "" {
+		t.Errorf("must be same but diff: %s", d)
 	}
 }
 

@@ -94,7 +94,7 @@ func (di *DatabaseInfo) Database(databaseName string) (db string, ok bool) {
 }
 
 func (di *DatabaseInfo) SortedDatabases() []string {
-	dbs := make([]string, len(di.Databases))
+	dbs := []string{}
 	for _, db := range di.Databases {
 		dbs = append(dbs, db)
 	}
@@ -108,9 +108,9 @@ func (di *DatabaseInfo) Table(databaseName string) (tbl string, ok bool) {
 }
 
 func (di *DatabaseInfo) SortedTables() []string {
-	tbls := make([]string, len(di.Tables))
-	for _, db := range di.Tables {
-		tbls = append(tbls, db)
+	tbls := []string{}
+	for _, tbl := range di.Tables {
+		tbls = append(tbls, tbl)
 	}
 	sort.Strings(tbls)
 	return tbls
@@ -294,6 +294,8 @@ func (c *Completer) keywordCandinates() []CompletionItem {
 	return candinates
 }
 
+var ColumnDetailTemplate = "Column"
+
 func (c *Completer) columnCandinates(targetTables []*parser.TableInfo) []CompletionItem {
 	candinates := []CompletionItem{}
 	for _, info := range targetTables {
@@ -308,7 +310,7 @@ func (c *Completer) columnCandinates(targetTables []*parser.TableInfo) []Complet
 			candinate := CompletionItem{
 				Label:  column.Name,
 				Kind:   FieldCompletion,
-				Detail: "Column",
+				Detail: ColumnDetailTemplate,
 			}
 			candinates = append(candinates, candinate)
 		}
@@ -316,17 +318,20 @@ func (c *Completer) columnCandinates(targetTables []*parser.TableInfo) []Complet
 	return candinates
 }
 
+var TableDetailTemplate = "Table"
+
 func (c *Completer) TableCandinates() []CompletionItem {
 	candinates := []CompletionItem{}
-	for _, tableName := range c.DBInfo.SortedTables() {
+	tables := c.DBInfo.SortedTables()
+	for _, tableName := range tables {
 		candinate := CompletionItem{
 			Label:  tableName,
 			Kind:   FieldCompletion,
-			Detail: "Table",
+			Detail: TableDetailTemplate,
 		}
 		candinates = append(candinates, candinate)
-
 	}
+	// pp.Println(candinates)
 	return candinates
 }
 
