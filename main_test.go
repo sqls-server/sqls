@@ -374,6 +374,82 @@ func TestComplete(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:  "join identifier",
+			input: "select CountryCode from city left join ",
+			line:  0,
+			col:   39,
+			want: []CompletionItem{
+				{
+					Label:  "ID",
+					Kind:   FieldCompletion,
+					Detail: ColumnDetailTemplate,
+				},
+				{
+					Label:  "Name",
+					Kind:   FieldCompletion,
+					Detail: ColumnDetailTemplate,
+				},
+				{
+					Label:  "CountryCode",
+					Kind:   FieldCompletion,
+					Detail: ColumnDetailTemplate,
+				},
+				{
+					Label:  "District",
+					Kind:   FieldCompletion,
+					Detail: ColumnDetailTemplate,
+				},
+				{
+					Label:  "Population",
+					Kind:   FieldCompletion,
+					Detail: ColumnDetailTemplate,
+				},
+				{
+					Label:  "city",
+					Kind:   FieldCompletion,
+					Detail: TableDetailTemplate,
+				},
+				{
+					Label:  "country",
+					Kind:   FieldCompletion,
+					Detail: TableDetailTemplate,
+				},
+				{
+					Label:  "countrylanguage",
+					Kind:   FieldCompletion,
+					Detail: TableDetailTemplate,
+				},
+			},
+		},
+		{
+			name:  "join identifier filterd",
+			input: "select CountryCode from city left join c",
+			line:  0,
+			col:   40,
+			want: []CompletionItem{
+				{
+					Label:  "CountryCode",
+					Kind:   FieldCompletion,
+					Detail: ColumnDetailTemplate,
+				},
+				{
+					Label:  "city",
+					Kind:   FieldCompletion,
+					Detail: TableDetailTemplate,
+				},
+				{
+					Label:  "country",
+					Kind:   FieldCompletion,
+					Detail: TableDetailTemplate,
+				},
+				{
+					Label:  "countrylanguage",
+					Kind:   FieldCompletion,
+					Detail: TableDetailTemplate,
+				},
+			},
+		},
 	}
 
 	for _, tt := range testcases {
