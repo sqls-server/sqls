@@ -328,6 +328,52 @@ func TestComplete(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:  "from identifier",
+			input: "select CountryCode from ",
+			line:  0,
+			col:   24,
+			want: []CompletionItem{
+				{
+					Label:  "city",
+					Kind:   FieldCompletion,
+					Detail: TableDetailTemplate,
+				},
+				{
+					Label:  "country",
+					Kind:   FieldCompletion,
+					Detail: TableDetailTemplate,
+				},
+				{
+					Label:  "countrylanguage",
+					Kind:   FieldCompletion,
+					Detail: TableDetailTemplate,
+				},
+			},
+		},
+		{
+			name:  "from identifier filterd",
+			input: "select CountryCode from c",
+			line:  0,
+			col:   25,
+			want: []CompletionItem{
+				{
+					Label:  "city",
+					Kind:   FieldCompletion,
+					Detail: TableDetailTemplate,
+				},
+				{
+					Label:  "country",
+					Kind:   FieldCompletion,
+					Detail: TableDetailTemplate,
+				},
+				{
+					Label:  "countrylanguage",
+					Kind:   FieldCompletion,
+					Detail: TableDetailTemplate,
+				},
+			},
+		},
 	}
 
 	for _, tt := range testcases {
