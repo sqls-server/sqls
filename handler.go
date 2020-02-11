@@ -24,10 +24,10 @@ type File struct {
 	Text       string
 }
 
-func NewServer() *Server {
+func NewServer(completer *Completer) *Server {
 	return &Server{
 		files:     make(map[string]*File),
-		completer: NewCompleter(),
+		completer: completer,
 	}
 }
 

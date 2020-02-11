@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/lighttiger2505/sqls/database"
 	"github.com/sourcegraph/jsonrpc2"
 )
 
@@ -19,7 +20,16 @@ type TestContext struct {
 }
 
 func newTestContext() *TestContext {
-	server := NewServer()
+	mockDB := &database.MockDB{
+		MockOpen:          func() error { return nil },
+		MockClose:         func() error { return nil },
+		MockDatabases:     func() ([]string, error) { return []string{}, nil },
+		MockTables:        func() ([]string, error) { return []string{}, nil },
+		MockDescribeTable: func(string) ([]*database.ColumnDesc, error) { return []*database.ColumnDesc{}, nil },
+	}
+	completer := NewCompleter(mockDB)
+
+	server := NewServer(completer)
 	if err := server.init(); err != nil {
 		log.Fatal("sqls: failed database connection, ", err)
 	}
@@ -69,7 +79,8 @@ func (tx *TestContext) initServer(t *testing.T) {
 
 func TestInitialized(t *testing.T) {
 	tx := newTestContext()
-	tx.initServer(t)
+	tx.setup(t)
+	defer tx.tearDown()
 
 	want := InitializeResult{
 		ServerCapabilities{
@@ -95,7 +106,8 @@ func TestInitialized(t *testing.T) {
 
 func TestFileWatch(t *testing.T) {
 	tx := newTestContext()
-	tx.initServer(t)
+	tx.setup(t)
+	defer tx.tearDown()
 
 	uri := "file:///Users/octref/Code/css-test/test.sql"
 	openText := "SELECT * FROM todo ORDER BY id ASC"
@@ -162,7 +174,8 @@ func TestFileWatch(t *testing.T) {
 
 func TestComplete(t *testing.T) {
 	tx := newTestContext()
-	tx.initServer(t)
+	tx.setup(t)
+	defer tx.tearDown()
 
 	uri := "file:///Users/octref/Code/css-test/test.sql"
 	openText := "select Cou from city"

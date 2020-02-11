@@ -126,8 +126,7 @@ type Completer struct {
 	DBInfo *DatabaseInfo
 }
 
-func NewCompleter() *Completer {
-	db := database.NewMySQLDB("root:root@tcp(127.0.0.1:13306)/world")
+func NewCompleter(db database.Database) *Completer {
 	return &Completer{
 		Conn:   db,
 		DBInfo: &DatabaseInfo{},
