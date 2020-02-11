@@ -278,13 +278,12 @@ type NodeWalker struct {
 
 func astPaths(reader *astutil.NodeReader, pos token.Pos) []*astutil.NodeReader {
 	paths := []*astutil.NodeReader{}
-	paths = append(paths, reader)
-
 	for reader.NextNode(false) {
 		if reader.CurNodeEncloseIs(pos) {
+			paths = append(paths, reader)
 			if list, ok := reader.CurNode.(ast.TokenList); ok {
 				newReader := astutil.NewNodeReader(list)
-				paths = append(paths, astPaths(newReader, pos)...)
+				return append(paths, astPaths(newReader, pos)...)
 			} else {
 				return paths
 			}
@@ -294,12 +293,8 @@ func astPaths(reader *astutil.NodeReader, pos token.Pos) []*astutil.NodeReader {
 }
 
 func NewNodeWalker(root ast.TokenList, pos token.Pos) *NodeWalker {
-	paths := astPaths(astutil.NewNodeReader(root), pos)
-	index := int(len(paths) - 1)
 	return &NodeWalker{
-		Paths:   paths,
-		CurPath: paths[index],
-		Index:   index,
+		Paths: astPaths(astutil.NewNodeReader(root), pos),
 	}
 }
 

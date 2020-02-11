@@ -311,5 +311,5 @@ func findTo(node Node) token.Pos {
 		nodes := list.GetTokens()
 		return findTo(nodes[len(nodes)-1])
 	}
-	return node.Pos()
+	return node.End()
 }

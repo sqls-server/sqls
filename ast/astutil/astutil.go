@@ -137,6 +137,7 @@ func (nr *NodeReader) prev(ignoreWhiteSpace bool) bool {
 		return false
 	}
 	nr.Index--
+	nr.CurNode = nr.Node.GetTokens()[nr.Index]
 
 	if ignoreWhiteSpace && isWhitespace(nr.CurNode) {
 		return nr.prev(ignoreWhiteSpace)
@@ -224,11 +225,11 @@ func (nr *NodeReader) PrevNode(ignoreWhiteSpace bool) (int, ast.Node) {
 		return 0, nil
 	}
 	tmpReader := nr.CopyReader()
-	tmpReader.prev(ignoreWhiteSpace)
+	tmpReader.prev(false)
 
 	for tmpReader.prev(ignoreWhiteSpace) {
 		index := tmpReader.Index
-		node := tmpReader.Node.GetTokens()[index]
+		node := tmpReader.CurNode
 
 		if ignoreWhiteSpace {
 			if !isWhitespace(node) {

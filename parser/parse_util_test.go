@@ -123,6 +123,24 @@ func TestNodeWalker_PrevNodesIs(t *testing.T) {
 			want: true,
 		},
 		{
+			name:  "prev select on member identifier",
+			input: "SELECT abc.xxx FROM def",
+			pos:   token.Pos{Line: 1, Col: 13},
+			matcher: astutil.NodeMatcher{
+				ExpectKeyword: []string{"SELECT"},
+			},
+			want: true,
+		},
+		{
+			name:  "prev select on invalid identifier",
+			input: "SELECT abc. FROM def",
+			pos:   token.Pos{Line: 1, Col: 11},
+			matcher: astutil.NodeMatcher{
+				ExpectKeyword: []string{"SELECT"},
+			},
+			want: true,
+		},
+		{
 			name:  "prev from",
 			input: "SELECT * FROM ",
 			pos:   token.Pos{Line: 1, Col: 14},
