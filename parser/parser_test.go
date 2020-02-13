@@ -607,7 +607,7 @@ func TestParseIdentifierList(t *testing.T) {
 		checkFn func(t *testing.T, stmts []*ast.Statement, input string)
 	}{
 		{
-			name:  "indentifier list",
+			name:  "IndentifierList",
 			input: "foo, bar",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, input)
@@ -616,7 +616,7 @@ func TestParseIdentifierList(t *testing.T) {
 			},
 		},
 		{
-			name:  "indentifier list invalid",
+			name:  "invalid IndentifierList",
 			input: "foo, bar,",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, input)
@@ -625,7 +625,31 @@ func TestParseIdentifierList(t *testing.T) {
 			},
 		},
 		{
-			name:  "indentifier list function",
+			name:  "invalid single IndentifierList in select statement",
+			input: "select foo,  from table",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 4, input)
+				list := stmts[0].GetTokens()
+				testItem(t, list[0], "select")
+				testItem(t, list[1], " ")
+				testIdentifierList(t, list[2], "foo,  ")
+				testFrom(t, list[3], "from table")
+			},
+		},
+		{
+			name:  "invalid multiplue IndentifierList in select statement",
+			input: "select foo, bar, from table",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 4, input)
+				list := stmts[0].GetTokens()
+				testItem(t, list[0], "select")
+				testItem(t, list[1], " ")
+				testIdentifierList(t, list[2], "foo, bar, ")
+				testFrom(t, list[3], "from table")
+			},
+		},
+		{
+			name:  "IndentifierList function",
 			input: "sum(a), sum(b)",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, input)
@@ -634,7 +658,7 @@ func TestParseIdentifierList(t *testing.T) {
 			},
 		},
 		{
-			name:  "indentifier list aliased",
+			name:  "IndentifierList Aliased",
 			input: "sum(a) as x, b as y",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, input)

@@ -560,15 +560,16 @@ func parseIdentifierList(reader *astutil.NodeReader) ast.Node {
 	tmpReader.NextNode(true)
 
 	var endIndex, peekIndex int
-	var count int
 	for {
 		if !tmpReader.PeekNodeIs(true, identifierListTargetMatcher) {
-			if count > 0 {
-				break
+			// Include white space after the comma
+			peekIndex, peekNode := tmpReader.PeekNode(true)
+			if peekNode != nil {
+				endIndex = peekIndex - 1
+				tmpReader.Index = endIndex + 1
 			}
-			return tmpReader.CurNode
+			break
 		}
-		count++
 
 		peekIndex, _ = tmpReader.PeekNode(true)
 		endIndex = peekIndex

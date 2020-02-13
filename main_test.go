@@ -34,7 +34,7 @@ func newTestContext() *TestContext {
 		"country",
 		"countrylanguage",
 	}
-	dummyColumns := []*database.ColumnDesc{
+	dummyCityColumns := []*database.ColumnDesc{
 		&database.ColumnDesc{
 			Name: "ID",
 			Type: "int(11)",
@@ -91,13 +91,244 @@ func newTestContext() *TestContext {
 			Extra: "",
 		},
 	}
+	dummyCountryColumns := []*database.ColumnDesc{
+		&database.ColumnDesc{
+			Name: "Code",
+			Type: "char(3)",
+			Null: "NO",
+			Key:  "PRI",
+			Default: sql.NullString{
+				String: "<null>",
+				Valid:  false,
+			},
+			Extra: "auto_increment",
+		},
+		&database.ColumnDesc{
+			Name: "Name",
+			Type: "char(52)",
+			Null: "NO",
+			Key:  "",
+			Default: sql.NullString{
+				String: "",
+				Valid:  false,
+			},
+			Extra: "",
+		},
+		&database.ColumnDesc{
+			Name: "CountryCode",
+			Type: "char(3)",
+			Null: "NO",
+			Key:  "",
+			Default: sql.NullString{
+				String: "",
+				Valid:  false,
+			},
+			Extra: "",
+		},
+		&database.ColumnDesc{
+			Name: "Continent",
+			Type: "enum('Asia','Europe','North America','Africa','Oceania','Antarctica','South America')",
+			Null: "NO",
+			Key:  "",
+			Default: sql.NullString{
+				String: "Asia",
+				Valid:  false,
+			},
+			Extra: "",
+		},
+		&database.ColumnDesc{
+			Name: "Region",
+			Type: "char(26)",
+			Null: "NO",
+			Key:  "",
+			Default: sql.NullString{
+				String: "",
+				Valid:  false,
+			},
+			Extra: "",
+		},
+		&database.ColumnDesc{
+			Name: "SurfaceArea",
+			Type: "decimal(10,2)",
+			Null: "NO",
+			Key:  "",
+			Default: sql.NullString{
+				String: "0.00",
+				Valid:  false,
+			},
+			Extra: "auto_increment",
+		},
+		&database.ColumnDesc{
+			Name: "IndepYear",
+			Type: "smallint(6)",
+			Null: "YES",
+			Key:  "",
+			Default: sql.NullString{
+				String: "0",
+				Valid:  false,
+			},
+			Extra: "",
+		},
+		&database.ColumnDesc{
+			Name: "LifeExpectancy",
+			Type: "decimal(3,1)",
+			Null: "YES",
+			Key:  "",
+			Default: sql.NullString{
+				String: "<null>",
+				Valid:  false,
+			},
+			Extra: "",
+		},
+		&database.ColumnDesc{
+			Name: "GNP",
+			Type: "decimal(10,2)",
+			Null: "YES",
+			Key:  "",
+			Default: sql.NullString{
+				String: "<null>",
+				Valid:  false,
+			},
+			Extra: "",
+		},
+		&database.ColumnDesc{
+			Name: "GNPOld",
+			Type: "decimal(10,2)",
+			Null: "YES",
+			Key:  "",
+			Default: sql.NullString{
+				String: "<null>",
+				Valid:  false,
+			},
+			Extra: "",
+		},
+		&database.ColumnDesc{
+			Name: "LocalName",
+			Type: "char(45)",
+			Null: "NO",
+			Key:  "",
+			Default: sql.NullString{
+				String: "",
+				Valid:  false,
+			},
+			Extra: "",
+		},
+		&database.ColumnDesc{
+			Name: "GovernmentForm",
+			Type: "char(45)",
+			Null: "NO",
+			Key:  "",
+			Default: sql.NullString{
+				String: "",
+				Valid:  false,
+			},
+			Extra: "",
+		},
+		&database.ColumnDesc{
+			Name: "HeadOfState",
+			Type: "char(60)",
+			Null: "YES",
+			Key:  "",
+			Default: sql.NullString{
+				String: "<null>",
+				Valid:  false,
+			},
+			Extra: "",
+		},
+		&database.ColumnDesc{
+			Name: "Capital",
+			Type: "int(11)",
+			Null: "YES",
+			Key:  "",
+			Default: sql.NullString{
+				String: "<null>",
+				Valid:  false,
+			},
+			Extra: "",
+		},
+		&database.ColumnDesc{
+			Name: "Code2",
+			Type: "char(2)",
+			Null: "NO",
+			Key:  "",
+			Default: sql.NullString{
+				String: "",
+				Valid:  false,
+			},
+			Extra: "",
+		},
+	}
+	// +-------------+---------------+------+-----+---------+-------+
+	// | Field       | Type          | Null | Key | Default | Extra |
+	// +-------------+---------------+------+-----+---------+-------+
+	// | CountryCode | char(3)       | NO   | PRI |         |       |
+	// | Language    | char(30)      | NO   | PRI |         |       |
+	// | IsOfficial  | enum('T','F') | NO   |     | F       |       |
+	// | Percentage  | decimal(4,1)  | NO   |     | 0.0     |       |
+	// +-------------+---------------+------+-----+---------+-------+
+	dummyCountryLanguageColumns := []*database.ColumnDesc{
+		&database.ColumnDesc{
+			Name: "CountryCode",
+			Type: "char(3)",
+			Null: "NO",
+			Key:  "PRI",
+			Default: sql.NullString{
+				String: "",
+				Valid:  false,
+			},
+			Extra: "",
+		},
+		&database.ColumnDesc{
+			Name: "Language",
+			Type: "char(30)",
+			Null: "NO",
+			Key:  "PRI",
+			Default: sql.NullString{
+				String: "",
+				Valid:  false,
+			},
+			Extra: "",
+		},
+		&database.ColumnDesc{
+			Name: "IsOfficial",
+			Type: "enum('T','F')",
+			Null: "NO",
+			Key:  "F",
+			Default: sql.NullString{
+				String: "",
+				Valid:  false,
+			},
+			Extra: "",
+		},
+		&database.ColumnDesc{
+			Name: "Percentage",
+			Type: "decimal(4,1)",
+			Null: "NO",
+			Key:  "",
+			Default: sql.NullString{
+				String: "0.0",
+				Valid:  false,
+			},
+			Extra: "",
+		},
+	}
 
 	mockDB := &database.MockDB{
-		MockOpen:          func() error { return nil },
-		MockClose:         func() error { return nil },
-		MockDatabases:     func() ([]string, error) { return dummyDatabases, nil },
-		MockTables:        func() ([]string, error) { return dummyTables, nil },
-		MockDescribeTable: func(string) ([]*database.ColumnDesc, error) { return dummyColumns, nil },
+		MockOpen:      func() error { return nil },
+		MockClose:     func() error { return nil },
+		MockDatabases: func() ([]string, error) { return dummyDatabases, nil },
+		MockTables:    func() ([]string, error) { return dummyTables, nil },
+		MockDescribeTable: func(tableName string) ([]*database.ColumnDesc, error) {
+			switch tableName {
+			case "city":
+				return dummyCityColumns, nil
+			case "country":
+				return dummyCountryColumns, nil
+			case "countrylanguage":
+				return dummyCountryLanguageColumns, nil
+			}
+			return nil, nil
+		},
 	}
 	completer := NewCompleter(mockDB)
 
@@ -363,6 +594,29 @@ func TestComplete(t *testing.T) {
 					Label:  "city",
 					Kind:   FieldCompletion,
 					Detail: TableDetailTemplate,
+				},
+				{
+					Label:  "country",
+					Kind:   FieldCompletion,
+					Detail: TableDetailTemplate,
+				},
+				{
+					Label:  "countrylanguage",
+					Kind:   FieldCompletion,
+					Detail: TableDetailTemplate,
+				},
+			},
+		},
+		{
+			name:  "select has parent identifier",
+			input: "select id, cou from city",
+			line:  0,
+			col:   14,
+			want: []CompletionItem{
+				{
+					Label:  "CountryCode",
+					Kind:   FieldCompletion,
+					Detail: ColumnDetailTemplate,
 				},
 				{
 					Label:  "country",
