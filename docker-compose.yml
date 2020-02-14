@@ -16,3 +16,16 @@ services:
     - ./docker/mysql/sql:/docker-entrypoint-initdb.d
     ports:
     - 13306:3306
+  db:
+    image: postgres:12-alpine
+    container_name: sqls_postgres
+    ports: 
+      - "15432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=mysecretpassword1234
+      - PGPASSWORD=mysecretpassword1234
+      - POSTGRES_DB=dvdrental
+      - DATABASE_HOST=localhost
+    volumes:
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d
