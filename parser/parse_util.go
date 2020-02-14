@@ -94,11 +94,13 @@ func parseTableInfo(idents ast.Node) ([]*TableInfo, error) {
 	case *ast.IdentiferList:
 		res = append(res, identifierListToTableInfo(v)...)
 	case *ast.MemberIdentifer:
-		ti := &TableInfo{
-			DatabaseSchema: v.Parent.String(),
-			Name:           v.Child.String(),
+		if v.Parent != nil {
+			ti := &TableInfo{
+				DatabaseSchema: v.Parent.String(),
+				Name:           v.Child.String(),
+			}
+			res = append(res, ti)
 		}
-		res = append(res, ti)
 	case *ast.Aliased:
 		res = append(res, aliasedToTableInfo(v))
 	default:

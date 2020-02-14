@@ -49,6 +49,8 @@ func (db *PostgreSQLDB) Databases() ([]string, error) {
 	  schema_name 
 	FROM
 	  information_schema.schemata
+	WHERE
+	  schema_name NOT IN ('pg_catalog', 'information_schema') 
 	`)
 	if err != nil {
 		log.Fatal(err)
