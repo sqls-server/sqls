@@ -11,11 +11,9 @@ import (
 
 var (
 	logfile string
-	dbtype  string
 )
 
 func main() {
-	flag.StringVar(&dbtype, "dbtype", "mysql", "database type (mysql,postgresql)")
 	flag.StringVar(&logfile, "log", "", "logfile")
 	flag.Parse()
 
