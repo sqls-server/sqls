@@ -99,7 +99,7 @@ func (db *PostgreSQLDB) DescribeTable(tableName string) ([]*ColumnDesc, error) {
 	  , c.data_type
 	  , c.is_nullable
 	  , CASE tc.constraint_type 
-		when 'PRIMARY KEY' THEN 'YES' 
+		WHEN 'PRIMARY KEY' THEN 'YES' 
 		ELSE 'NO' 
 		END
 	  , c.column_default
