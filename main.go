@@ -6,15 +6,16 @@ import (
 	"log"
 	"os"
 
-	"github.com/lighttiger2505/sqls/database"
 	"github.com/sourcegraph/jsonrpc2"
 )
 
 var (
 	logfile string
+	dbtype  string
 )
 
 func main() {
+	flag.StringVar(&dbtype, "dbtype", "mysql", "database type (mysql,postgresql)")
 	flag.StringVar(&logfile, "log", "", "logfile")
 	flag.Parse()
 
@@ -40,16 +41,9 @@ func main() {
 		defer f.Close()
 	}
 
-	// Create database connection
-	db := database.NewMySQLDB("root:root@tcp(127.0.0.1:13306)/world")
-	completer := NewCompleter(db)
-
 	// Initialize language server
 	log.Println("sqls: start service")
-	server := NewServer(completer)
-	if err := server.init(); err != nil {
-		log.Fatal("sqls: failed database connection, ", err)
-	}
+	server := NewServer()
 	handler := jsonrpc2.HandlerWithError(server.handle)
 
 	// Start language server

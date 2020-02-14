@@ -12,6 +12,8 @@ type InitializeParams struct {
 }
 
 type InitializeOptions struct {
+	Driver         string `json:"driver"`
+	DataSourceName string `json:"data_source_name"`
 }
 
 type ClientCapabilities struct {

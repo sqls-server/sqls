@@ -1,6 +1,9 @@
 package database
 
-import "database/sql"
+import (
+	"database/sql"
+	"errors"
+)
 
 type Database interface {
 	Open() error
@@ -27,4 +30,20 @@ type ColumnDesc struct {
 	Key     string
 	Default sql.NullString
 	Extra   string
+}
+
+type Opener func(string) Database
+
+var drivers = make(map[string]Opener)
+
+func Register(name string, f Opener) {
+	drivers[name] = f
+}
+
+func Open(driver string, dataSourceName string) (Database, error) {
+	d, ok := drivers[driver]
+	if !ok {
+		return nil, errors.New("driver not found")
+	}
+	return d(dataSourceName), nil
 }
