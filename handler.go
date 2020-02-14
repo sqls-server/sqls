@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 
+	"github.com/lighttiger2505/sqls/database"
 	"github.com/sourcegraph/jsonrpc2"
 )
 
@@ -15,6 +17,7 @@ const (
 )
 
 type Server struct {
+	db        database.Database
 	files     map[string]*File
 	completer *Completer
 }
@@ -24,14 +27,14 @@ type File struct {
 	Text       string
 }
 
-func NewServer(completer *Completer) *Server {
+func NewServer() *Server {
 	return &Server{
-		files:     make(map[string]*File),
-		completer: completer,
+		files: make(map[string]*File),
 	}
 }
 
 func (s *Server) init() error {
+	s.completer = NewCompleter(s.db)
 	if err := s.completer.Init(); err != nil {
 		return err
 	}
@@ -75,6 +78,21 @@ func (s *Server) handleInitialize(ctx context.Context, conn *jsonrpc2.Conn, req 
 		return nil, err
 	}
 
+	if s.db != nil {
+		s.db.Close()
+	}
+	s.db, err = database.Open(
+		params.InitializationOptions.Driver,
+		params.InitializationOptions.DataSourceName,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.init(); err != nil {
+		log.Fatal("sqls: failed database connection, ", err)
+	}
+
 	return InitializeResult{
 		Capabilities: ServerCapabilities{
 			TextDocumentSync: TDSKFull,
@@ -92,6 +110,10 @@ func (s *Server) handleInitialize(ctx context.Context, conn *jsonrpc2.Conn, req 
 func (s *Server) handleShutdown(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
 	if req.Params == nil {
 		return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeInvalidParams}
+	}
+
+	if s.db != nil {
+		s.db.Close()
 	}
 	return nil, nil
 }

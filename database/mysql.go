@@ -13,11 +13,13 @@ type MySQLDB struct {
 	Conn       *sql.DB
 }
 
-func NewMySQLDB(connString string) Database {
-	return &MySQLDB{
-		ConnString: connString,
-		Option:     &DBOption{},
-	}
+func init() {
+	Register("mysql", func(connString string) Database {
+		return &MySQLDB{
+			ConnString: connString,
+			Option:     &DBOption{},
+		}
+	})
 }
 
 func (db *MySQLDB) Open() error {
