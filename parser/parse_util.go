@@ -300,6 +300,24 @@ func NewNodeWalker(root ast.TokenList, pos token.Pos) *NodeWalker {
 	}
 }
 
+func (nw *NodeWalker) CurNodeIs(matcher astutil.NodeMatcher) bool {
+	for _, reader := range nw.Paths {
+		if reader.CurNodeIs(matcher) {
+			return true
+		}
+	}
+	return false
+}
+
+func (nw *NodeWalker) CurNodeMatched(matcher astutil.NodeMatcher) ast.Node {
+	for _, reader := range nw.Paths {
+		if reader.CurNodeIs(matcher) {
+			return reader.CurNode
+		}
+	}
+	return nil
+}
+
 func (nw *NodeWalker) PrevNodesIs(ignoreWitespace bool, matcher astutil.NodeMatcher) bool {
 	for _, reader := range nw.Paths {
 		if reader.PrevNodeIs(ignoreWitespace, matcher) {

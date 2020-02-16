@@ -254,7 +254,7 @@ func TestComplete(t *testing.T) {
 			},
 		},
 		{
-			name:  "select has parent identifier",
+			name:  "select has parent table identifier",
 			input: "select city. from city",
 			line:  0,
 			col:   12,
@@ -284,25 +284,10 @@ func TestComplete(t *testing.T) {
 					Kind:   FieldCompletion,
 					Detail: ColumnDetailTemplate,
 				},
-				{
-					Label:  "city",
-					Kind:   FieldCompletion,
-					Detail: TableDetailTemplate,
-				},
-				{
-					Label:  "country",
-					Kind:   FieldCompletion,
-					Detail: TableDetailTemplate,
-				},
-				{
-					Label:  "countrylanguage",
-					Kind:   FieldCompletion,
-					Detail: TableDetailTemplate,
-				},
 			},
 		},
 		{
-			name:  "select has parent identifier",
+			name:  "select identifier list",
 			input: "select id, cou from city",
 			line:  0,
 			col:   14,
@@ -321,6 +306,39 @@ func TestComplete(t *testing.T) {
 					Label:  "countrylanguage",
 					Kind:   FieldCompletion,
 					Detail: TableDetailTemplate,
+				},
+			},
+		},
+		{
+			name:  "select has aliased table identifier",
+			input: "select c. from city as c",
+			line:  0,
+			col:   9,
+			want: []CompletionItem{
+				{
+					Label:  "ID",
+					Kind:   FieldCompletion,
+					Detail: ColumnDetailTemplate,
+				},
+				{
+					Label:  "Name",
+					Kind:   FieldCompletion,
+					Detail: ColumnDetailTemplate,
+				},
+				{
+					Label:  "CountryCode",
+					Kind:   FieldCompletion,
+					Detail: ColumnDetailTemplate,
+				},
+				{
+					Label:  "District",
+					Kind:   FieldCompletion,
+					Detail: ColumnDetailTemplate,
+				},
+				{
+					Label:  "Population",
+					Kind:   FieldCompletion,
+					Detail: ColumnDetailTemplate,
 				},
 			},
 		},

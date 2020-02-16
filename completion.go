@@ -201,7 +201,7 @@ func (c *Completer) complete(text string, params CompletionParams) ([]Completion
 	}
 
 	pos := token.Pos{Line: params.Position.Line + 1, Col: params.Position.Character}
-	cTypes, err := getCompletionTypes(text, pos)
+	cTypes, pare, err := getCompletionTypes(text, pos)
 	if err != nil {
 		return nil, err
 	}
@@ -212,7 +212,7 @@ func (c *Completer) complete(text string, params CompletionParams) ([]Completion
 		items = append(items, c.keywordCandinates()...)
 	}
 	if completionTypeIs(cTypes, CompletionTypeColumn) {
-		items = append(items, c.columnCandinates(definedTables)...)
+		items = append(items, c.columnCandinates(definedTables, pare)...)
 	}
 	if completionTypeIs(cTypes, CompletionTypeTable) {
 		items = append(items, c.TableCandinates()...)
@@ -224,10 +224,35 @@ func (c *Completer) complete(text string, params CompletionParams) ([]Completion
 	return items, nil
 }
 
-func getCompletionTypes(text string, pos token.Pos) ([]CompletionType, error) {
+type ParentType int
+
+const (
+	_ ParentType = iota
+	ParentTypeNone
+	ParentTypeSchema
+	ParentTypeTable
+)
+
+type parent struct {
+	Type ParentType
+	Name string
+}
+
+var noneParent = &parent{Type: ParentTypeNone}
+
+var memberIdentifierMatcher = astutil.NodeMatcher{
+	NodeTypeMatcherFunc: func(node interface{}) bool {
+		if _, ok := node.(*ast.MemberIdentifer); ok {
+			return true
+		}
+		return false
+	},
+}
+
+func getCompletionTypes(text string, pos token.Pos) ([]CompletionType, *parent, error) {
 	parsed, err := parse(text)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	nodeWalker := parser.NewNodeWalker(parsed, pos)
 
@@ -248,19 +273,34 @@ func getCompletionTypes(text string, pos token.Pos) ([]CompletionType, error) {
 	// 		CompletionTypeUser,
 	// 	}
 	case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"SELECT", "WHERE", "HAVING"})):
+		if nodeWalker.CurNodeIs(memberIdentifierMatcher) {
+			// has parent
+			mi := nodeWalker.CurNodeMatched(memberIdentifierMatcher).(*ast.MemberIdentifer)
+			cType := []CompletionType{
+				CompletionTypeColumn,
+				CompletionTypeView,
+				CompletionTypeFunction,
+			}
+			tableParent := &parent{
+				Type: ParentTypeTable,
+				Name: mi.Parent.String(),
+			}
+			return cType, tableParent, nil
+		}
 		return []CompletionType{
 			CompletionTypeColumn,
 			CompletionTypeTable,
+			CompletionTypeAlias,
 			CompletionTypeView,
 			CompletionTypeFunction,
-		}, nil
+		}, noneParent, nil
 	case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"JOIN", "COPY", "FROM", "UPDATE", "INTO", "DESCRIBE", "TRUNCATE", "DESC", "EXPLAIN"})):
 		return []CompletionType{
 			CompletionTypeColumn,
 			CompletionTypeTable,
 			CompletionTypeView,
 			CompletionTypeFunction,
-		}, nil
+		}, noneParent, nil
 	// case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"ON"})):
 	// 	res = []CompletionType{
 	// 		CompletionTypeColumn,
@@ -275,7 +315,7 @@ func getCompletionTypes(text string, pos token.Pos) ([]CompletionType, error) {
 	default:
 		return []CompletionType{
 			CompletionTypeKeyword,
-		}, nil
+		}, noneParent, nil
 	}
 }
 
@@ -310,23 +350,47 @@ func (c *Completer) keywordCandinates() []CompletionItem {
 
 var ColumnDetailTemplate = "Column"
 
-func (c *Completer) columnCandinates(targetTables []*parser.TableInfo) []CompletionItem {
+func (c *Completer) columnCandinates(targetTables []*parser.TableInfo, pare *parent) []CompletionItem {
 	candinates := []CompletionItem{}
-	for _, info := range targetTables {
-		if info.Name == "" {
-			continue
-		}
-		columns, ok := c.DBInfo.ColumnDescs(info.Name)
-		if !ok {
-			continue
-		}
-		for _, column := range columns {
-			candinate := CompletionItem{
-				Label:  column.Name,
-				Kind:   FieldCompletion,
-				Detail: ColumnDetailTemplate,
+
+	switch pare.Type {
+	case ParentTypeNone:
+		for _, info := range targetTables {
+			if info.Name == "" {
+				continue
 			}
-			candinates = append(candinates, candinate)
+			columns, ok := c.DBInfo.ColumnDescs(info.Name)
+			if !ok {
+				continue
+			}
+			for _, column := range columns {
+				candinate := CompletionItem{
+					Label:  column.Name,
+					Kind:   FieldCompletion,
+					Detail: ColumnDetailTemplate,
+				}
+				candinates = append(candinates, candinate)
+			}
+		}
+	case ParentTypeSchema:
+	case ParentTypeTable:
+		fmt.Println("parent name", pare.Name)
+		for _, info := range targetTables {
+			if info.Name != pare.Name && info.Alias != pare.Name {
+				continue
+			}
+			columns, ok := c.DBInfo.ColumnDescs(info.Name)
+			if !ok {
+				continue
+			}
+			for _, column := range columns {
+				candinate := CompletionItem{
+					Label:  column.Name,
+					Kind:   FieldCompletion,
+					Detail: ColumnDetailTemplate,
+				}
+				candinates = append(candinates, candinate)
+			}
 		}
 	}
 	return candinates
