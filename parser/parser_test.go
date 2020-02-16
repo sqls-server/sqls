@@ -320,10 +320,10 @@ func TestParsePeriod_Double(t *testing.T) {
 	testIdentifierList(t, list[0], input)
 
 	il := testTokenList(t, list[0], 4).GetTokens()
-	testMemberIdentifier(t, il[0], "a.*")
+	testMemberIdentifier(t, il[0], "a.*", "a", "*")
 	testItem(t, il[1], ",")
 	testItem(t, il[2], " ")
-	testMemberIdentifier(t, il[3], "b.id")
+	testMemberIdentifier(t, il[3], "b.id", "b", "id")
 }
 
 func TestParsePeriod_WithWildcard(t *testing.T) {
@@ -333,7 +333,7 @@ func TestParsePeriod_WithWildcard(t *testing.T) {
 	testStatement(t, stmts[0], 1, input)
 
 	list := stmts[0].GetTokens()
-	testMemberIdentifier(t, list[0], "a.*")
+	testMemberIdentifier(t, list[0], "a.*", "a", "*")
 }
 
 func TestParsePeriod_Invalid(t *testing.T) {
@@ -343,7 +343,7 @@ func TestParsePeriod_Invalid(t *testing.T) {
 	testStatement(t, stmts[0], 1, input)
 
 	list := stmts[0].GetTokens()
-	testMemberIdentifier(t, list[0], "a.")
+	testMemberIdentifier(t, list[0], "a.", "a", "")
 }
 
 func TestParsePeriod_InvalidWithSelect(t *testing.T) {
@@ -355,7 +355,7 @@ func TestParsePeriod_InvalidWithSelect(t *testing.T) {
 	list := stmts[0].GetTokens()
 	testItem(t, list[0], "SELECT")
 	testItem(t, list[1], " ")
-	testMemberIdentifier(t, list[2], "foo.")
+	testMemberIdentifier(t, list[2], "foo.", "foo", "")
 	testItem(t, list[3], " ")
 	testFrom(t, list[4], "FROM foo")
 }
@@ -433,7 +433,7 @@ func TestMemberIdentifier(t *testing.T) {
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, input)
 				list := stmts[0].GetTokens()
-				testMemberIdentifier(t, list[0], input)
+				testMemberIdentifier(t, list[0], input, "a", "b")
 			},
 		},
 		{
@@ -442,7 +442,7 @@ func TestMemberIdentifier(t *testing.T) {
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, input)
 				list := stmts[0].GetTokens()
-				testMemberIdentifier(t, list[0], input)
+				testMemberIdentifier(t, list[0], input, `"abc"`, `"def"`)
 			},
 		},
 		{
@@ -451,7 +451,7 @@ func TestMemberIdentifier(t *testing.T) {
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, input)
 				list := stmts[0].GetTokens()
-				testMemberIdentifier(t, list[0], input)
+				testMemberIdentifier(t, list[0], input, "a", "")
 			},
 		},
 		{
@@ -460,7 +460,7 @@ func TestMemberIdentifier(t *testing.T) {
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, input)
 				list := stmts[0].GetTokens()
-				testMemberIdentifier(t, list[0], input)
+				testMemberIdentifier(t, list[0], input, "a", "*")
 			},
 		},
 		{
@@ -471,7 +471,7 @@ func TestMemberIdentifier(t *testing.T) {
 				list := stmts[0].GetTokens()
 				testItem(t, list[0], "select")
 				testItem(t, list[1], " ")
-				testMemberIdentifier(t, list[2], "foo.bar")
+				testMemberIdentifier(t, list[2], "foo.bar", "foo", "bar")
 				testItem(t, list[3], " ")
 				testFrom(t, list[4], `from table`)
 			},
@@ -489,7 +489,7 @@ func TestMemberIdentifier(t *testing.T) {
 				testItem(t, list[1], " ")
 				testPos(t, list[1], genPosOneline(7), genPosOneline(8))
 
-				testMemberIdentifier(t, list[2], "foo.")
+				testMemberIdentifier(t, list[2], "foo.", "foo", "")
 				testPos(t, list[2], genPosOneline(8), genPosOneline(12))
 
 				testItem(t, list[3], " ")
@@ -732,14 +732,32 @@ func testItem(t *testing.T, node ast.Node, expect string) {
 	}
 }
 
-func testMemberIdentifier(t *testing.T, node ast.Node, expect string) {
+func testMemberIdentifier(t *testing.T, node ast.Node, expect, parent, child string) {
 	t.Helper()
-	_, ok := node.(*ast.MemberIdentifer)
+	mi, ok := node.(*ast.MemberIdentifer)
 	if !ok {
 		t.Errorf("invalid type want MemberIdentifer got %T", node)
 	}
 	if expect != node.String() {
 		t.Errorf("expected %q, got %q", expect, node.String())
+	}
+	if parent != "" {
+		if mi.Parent != nil {
+			if parent != mi.Parent.String() {
+				t.Errorf("parent expected %q , got %q", parent, mi.Parent.String())
+			}
+		} else {
+			t.Errorf("parent is nil , got %q", parent)
+		}
+	}
+	if child != "" {
+		if mi.Child != nil {
+			if child != mi.Child.String() {
+				t.Errorf("child expected %q , got %q", child, mi.Parent.String())
+			}
+		} else {
+			t.Errorf("child is nil , got %q", child)
+		}
 	}
 }
 

@@ -318,7 +318,10 @@ func parseMemberIdentifier(reader *astutil.NodeReader) ast.Node {
 	}
 	parent := reader.CurNode
 	startIndex := reader.Index - 1
-	memberIdentifier := &ast.MemberIdentifer{Toks: reader.NodesWithRange(startIndex, reader.Index+1)}
+	memberIdentifier := &ast.MemberIdentifer{
+		Toks:   reader.NodesWithRange(startIndex, reader.Index+1),
+		Parent: parent,
+	}
 
 	reader.NextNode(false)
 	if !reader.PeekNodeIs(true, memberIdentifierTargetMatcher) {
