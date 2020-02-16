@@ -214,6 +214,9 @@ func (c *Completer) complete(text string, params CompletionParams) ([]Completion
 	if completionTypeIs(cTypes, CompletionTypeColumn) {
 		items = append(items, c.columnCandinates(definedTables, pare)...)
 	}
+	if completionTypeIs(cTypes, CompletionTypeAlias) {
+		items = append(items, c.aliasCandinates(definedTables)...)
+	}
 	if completionTypeIs(cTypes, CompletionTypeTable) {
 		items = append(items, c.TableCandinates()...)
 	}
@@ -374,7 +377,6 @@ func (c *Completer) columnCandinates(targetTables []*parser.TableInfo, pare *par
 		}
 	case ParentTypeSchema:
 	case ParentTypeTable:
-		fmt.Println("parent name", pare.Name)
 		for _, info := range targetTables {
 			if info.Name != pare.Name && info.Alias != pare.Name {
 				continue
@@ -406,6 +408,24 @@ func (c *Completer) TableCandinates() []CompletionItem {
 			Label:  tableName,
 			Kind:   FieldCompletion,
 			Detail: TableDetailTemplate,
+		}
+		candinates = append(candinates, candinate)
+	}
+	return candinates
+}
+
+var AliasDetailTemplate = "Alias"
+
+func (c *Completer) aliasCandinates(targetTables []*parser.TableInfo) []CompletionItem {
+	candinates := []CompletionItem{}
+	for _, info := range targetTables {
+		if info.Alias == "" {
+			continue
+		}
+		candinate := CompletionItem{
+			Label:  info.Alias,
+			Kind:   FieldCompletion,
+			Detail: AliasDetailTemplate,
 		}
 		candinates = append(candinates, candinate)
 	}

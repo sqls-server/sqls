@@ -231,6 +231,59 @@ func TestComplete(t *testing.T) {
 			},
 		},
 		{
+			name:  "select identifier with table alias",
+			input: "select  from city as c",
+			line:  0,
+			col:   7,
+			want: []CompletionItem{
+				{
+					Label:  "ID",
+					Kind:   FieldCompletion,
+					Detail: ColumnDetailTemplate,
+				},
+				{
+					Label:  "Name",
+					Kind:   FieldCompletion,
+					Detail: ColumnDetailTemplate,
+				},
+				{
+					Label:  "CountryCode",
+					Kind:   FieldCompletion,
+					Detail: ColumnDetailTemplate,
+				},
+				{
+					Label:  "District",
+					Kind:   FieldCompletion,
+					Detail: ColumnDetailTemplate,
+				},
+				{
+					Label:  "Population",
+					Kind:   FieldCompletion,
+					Detail: ColumnDetailTemplate,
+				},
+				{
+					Label:  "c",
+					Kind:   FieldCompletion,
+					Detail: AliasDetailTemplate,
+				},
+				{
+					Label:  "city",
+					Kind:   FieldCompletion,
+					Detail: TableDetailTemplate,
+				},
+				{
+					Label:  "country",
+					Kind:   FieldCompletion,
+					Detail: TableDetailTemplate,
+				},
+				{
+					Label:  "countrylanguage",
+					Kind:   FieldCompletion,
+					Detail: TableDetailTemplate,
+				},
+			},
+		},
+		{
 			name:  "select identifier filterd",
 			input: "select Cou from city",
 			line:  0,
