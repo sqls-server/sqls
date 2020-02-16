@@ -209,20 +209,20 @@ func (c *Completer) complete(text string, params CompletionParams) ([]Completion
 	definedTables := parser.ExtractTable(parsed)
 	items := []CompletionItem{}
 	if completionTypeIs(cTypes, CompletionTypeKeyword) {
-		items = append(items, c.keywordCandinates()...)
+		items = append(items, c.keywordCandidates()...)
 	}
 	if completionTypeIs(cTypes, CompletionTypeColumn) {
-		items = append(items, c.columnCandinates(definedTables, pare)...)
+		items = append(items, c.columnCandidates(definedTables, pare)...)
 	}
 	if completionTypeIs(cTypes, CompletionTypeAlias) {
-		items = append(items, c.aliasCandinates(definedTables)...)
+		items = append(items, c.aliasCandidates(definedTables)...)
 	}
 	if completionTypeIs(cTypes, CompletionTypeTable) {
-		items = append(items, c.TableCandinates()...)
+		items = append(items, c.TableCandidates()...)
 	}
 
 	lastWord := getLastWord(text, params.Position.Line+1, params.Position.Character)
-	items = filterCandinates(items, lastWord)
+	items = filterCandidates(items, lastWord)
 
 	return items, nil
 }
@@ -328,33 +328,33 @@ func genKeywordMatcher(keywords []string) astutil.NodeMatcher {
 	}
 }
 
-func filterCandinates(candinates []CompletionItem, lastWord string) []CompletionItem {
+func filterCandidates(candidates []CompletionItem, lastWord string) []CompletionItem {
 	filterd := []CompletionItem{}
-	for _, candinate := range candinates {
-		if strings.HasPrefix(strings.ToUpper(candinate.Label), strings.ToUpper(lastWord)) {
-			filterd = append(filterd, candinate)
+	for _, candidate := range candidates {
+		if strings.HasPrefix(strings.ToUpper(candidate.Label), strings.ToUpper(lastWord)) {
+			filterd = append(filterd, candidate)
 		}
 	}
 	return filterd
 }
 
-func (c *Completer) keywordCandinates() []CompletionItem {
-	candinates := []CompletionItem{}
+func (c *Completer) keywordCandidates() []CompletionItem {
+	candidates := []CompletionItem{}
 	for _, k := range keywords {
-		candinate := CompletionItem{
+		candidate := CompletionItem{
 			Label:  k,
 			Kind:   KeywordCompletion,
 			Detail: "Keyword",
 		}
-		candinates = append(candinates, candinate)
+		candidates = append(candidates, candidate)
 	}
-	return candinates
+	return candidates
 }
 
 var ColumnDetailTemplate = "Column"
 
-func (c *Completer) columnCandinates(targetTables []*parser.TableInfo, pare *parent) []CompletionItem {
-	candinates := []CompletionItem{}
+func (c *Completer) columnCandidates(targetTables []*parser.TableInfo, pare *parent) []CompletionItem {
+	candidates := []CompletionItem{}
 
 	switch pare.Type {
 	case ParentTypeNone:
@@ -367,12 +367,12 @@ func (c *Completer) columnCandinates(targetTables []*parser.TableInfo, pare *par
 				continue
 			}
 			for _, column := range columns {
-				candinate := CompletionItem{
+				candidate := CompletionItem{
 					Label:  column.Name,
 					Kind:   FieldCompletion,
 					Detail: ColumnDetailTemplate,
 				}
-				candinates = append(candinates, candinate)
+				candidates = append(candidates, candidate)
 			}
 		}
 	case ParentTypeSchema:
@@ -386,64 +386,64 @@ func (c *Completer) columnCandinates(targetTables []*parser.TableInfo, pare *par
 				continue
 			}
 			for _, column := range columns {
-				candinate := CompletionItem{
+				candidate := CompletionItem{
 					Label:  column.Name,
 					Kind:   FieldCompletion,
 					Detail: ColumnDetailTemplate,
 				}
-				candinates = append(candinates, candinate)
+				candidates = append(candidates, candidate)
 			}
 		}
 	}
-	return candinates
+	return candidates
 }
 
 var TableDetailTemplate = "Table"
 
-func (c *Completer) TableCandinates() []CompletionItem {
-	candinates := []CompletionItem{}
+func (c *Completer) TableCandidates() []CompletionItem {
+	candidates := []CompletionItem{}
 	tables := c.DBInfo.SortedTables()
 	for _, tableName := range tables {
-		candinate := CompletionItem{
+		candidate := CompletionItem{
 			Label:  tableName,
 			Kind:   FieldCompletion,
 			Detail: TableDetailTemplate,
 		}
-		candinates = append(candinates, candinate)
+		candidates = append(candidates, candidate)
 	}
-	return candinates
+	return candidates
 }
 
 var AliasDetailTemplate = "Alias"
 
-func (c *Completer) aliasCandinates(targetTables []*parser.TableInfo) []CompletionItem {
-	candinates := []CompletionItem{}
+func (c *Completer) aliasCandidates(targetTables []*parser.TableInfo) []CompletionItem {
+	candidates := []CompletionItem{}
 	for _, info := range targetTables {
 		if info.Alias == "" {
 			continue
 		}
-		candinate := CompletionItem{
+		candidate := CompletionItem{
 			Label:  info.Alias,
 			Kind:   FieldCompletion,
 			Detail: AliasDetailTemplate,
 		}
-		candinates = append(candinates, candinate)
+		candidates = append(candidates, candidate)
 	}
-	return candinates
+	return candidates
 }
 
-func (c *Completer) DatabaseCandinates() []CompletionItem {
-	candinates := []CompletionItem{}
+func (c *Completer) DatabaseCandidates() []CompletionItem {
+	candidates := []CompletionItem{}
 	for _, databaseName := range c.DBInfo.SortedDatabases() {
-		candinate := CompletionItem{
+		candidate := CompletionItem{
 			Label:  databaseName,
 			Kind:   FieldCompletion,
 			Detail: "Database",
 		}
-		candinates = append(candinates, candinate)
+		candidates = append(candidates, candidate)
 
 	}
-	return candinates
+	return candidates
 }
 
 // func getLastToken(tokens []*sqltoken.Token, line, char int) (int, *sqltoken.Token) {
