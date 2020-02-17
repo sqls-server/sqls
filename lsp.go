@@ -45,7 +45,7 @@ type ServerCapabilities struct {
 	RenameProvider                   bool                             `json:"renameProvider,omitempty"`
 	DocumentLinkProvider             *DocumentLinkOptions             `json:"documentLinkProvider,omitempty"`
 	ColorProvider                    bool                             `json:"colorProvider,omitempty"`
-	FoldingRangeProvider             bool                             `json:"foldingRangeProvider",omitempty`
+	FoldingRangeProvider             bool                             `json:"foldingRangeProvider,omitempty"`
 	DeclarationProvider              bool                             `json:"declarationProvider,omitempty"`
 	ExecuteCommandProvider           *ExecuteCommandOptions           `json:"executeCommandProvider,omitempty"`
 }

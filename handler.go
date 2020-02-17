@@ -12,8 +12,8 @@ import (
 
 const (
 	TDSKNone        TextDocumentSyncKind = 0
-	TDSKFull                             = 1
-	TDSKIncremental                      = 2
+	TDSKFull        TextDocumentSyncKind = 1
+	TDSKIncremental TextDocumentSyncKind = 2
 )
 
 type Server struct {
@@ -128,7 +128,9 @@ func (s *Server) handleTextDocumentDidOpen(ctx context.Context, conn *jsonrpc2.C
 		return nil, err
 	}
 
-	s.openFile(params.TextDocument.URI, params.TextDocument.LanguageID)
+	if err := s.openFile(params.TextDocument.URI, params.TextDocument.LanguageID); err != nil {
+		return nil, err
+	}
 	if err := s.updateFile(params.TextDocument.URI, params.TextDocument.Text); err != nil {
 		return nil, err
 	}
@@ -182,7 +184,9 @@ func (s *Server) handleTextDocumentDidClose(ctx context.Context, conn *jsonrpc2.
 		return nil, err
 	}
 
-	s.closeFile(params.TextDocument.URI)
+	if err := s.closeFile(params.TextDocument.URI); err != nil {
+		return nil, err
+	}
 	return nil, nil
 }
 
