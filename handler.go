@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 
 	"github.com/lighttiger2505/sqls/database"
 	"github.com/sourcegraph/jsonrpc2"
@@ -245,7 +244,7 @@ func (s *Server) handleWorkspaceDidChangeConfiguration(ctx context.Context, conn
 	}
 
 	if err := s.init(); err != nil {
-		log.Fatal("sqls: failed database connection, ", err)
+		return nil, fmt.Errorf("sqls: failed database connection: %v", err)
 	}
 	return nil, nil
 }
