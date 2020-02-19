@@ -12,8 +12,6 @@ type InitializeParams struct {
 }
 
 type InitializeOptions struct {
-	Driver         string `json:"driver"`
-	DataSourceName string `json:"data_source_name"`
 }
 
 type ClientCapabilities struct {
@@ -45,7 +43,7 @@ type ServerCapabilities struct {
 	RenameProvider                   bool                             `json:"renameProvider,omitempty"`
 	DocumentLinkProvider             *DocumentLinkOptions             `json:"documentLinkProvider,omitempty"`
 	ColorProvider                    bool                             `json:"colorProvider,omitempty"`
-	FoldingRangeProvider             bool                             `json:"foldingRangeProvider",omitempty`
+	FoldingRangeProvider             bool                             `json:"foldingRangeProvider,omitempty"`
 	DeclarationProvider              bool                             `json:"declarationProvider,omitempty"`
 	ExecuteCommandProvider           *ExecuteCommandOptions           `json:"executeCommandProvider,omitempty"`
 }
@@ -218,4 +216,15 @@ type Position struct {
 type TextDocumentPositionParams struct {
 	TextDocument TextDocumentIdentifier `json:"textDocument"`
 	Position     Position               `json:"position"`
+}
+
+// https://microsoft.github.io/language-server-protocol/specifications/specification-3-14/#workspace_didChangeConfiguration
+
+type DidChangeConfigurationParams struct {
+	Settings struct {
+		SQLS struct {
+			Driver         string `json:"driver"`
+			DataSourceName string `json:"data_source_name"`
+		} `json:"sqls"`
+	} `json:settings`
 }

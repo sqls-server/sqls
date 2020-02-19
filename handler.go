@@ -63,6 +63,9 @@ func (s *Server) handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.
 		// 	return h.handleTextDocumentFormatting(ctx, conn, req)
 		// case "textDocument/documentSymbol":
 		// 	return h.handleTextDocumentSymbol(ctx, conn, req)
+	case "workspace/didChangeConfiguration":
+		return s.handleWorkspaceDidChangeConfiguration(ctx, conn, req)
+
 	}
 
 	return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeMethodNotFound, Message: fmt.Sprintf("method not supported: %s", req.Method)}
@@ -76,21 +79,6 @@ func (s *Server) handleInitialize(ctx context.Context, conn *jsonrpc2.Conn, req 
 	var params InitializeParams
 	if err := json.Unmarshal(*req.Params, &params); err != nil {
 		return nil, err
-	}
-
-	if s.db != nil {
-		s.db.Close()
-	}
-	s.db, err = database.Open(
-		params.InitializationOptions.Driver,
-		params.InitializationOptions.DataSourceName,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := s.init(); err != nil {
-		log.Fatal("sqls: failed database connection, ", err)
 	}
 
 	return InitializeResult{
@@ -233,4 +221,31 @@ func (s *Server) updateFile(uri string, text string) error {
 
 func (s *Server) saveFile(uri string) error {
 	return nil
+}
+
+func (s *Server) handleWorkspaceDidChangeConfiguration(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
+	if req.Params == nil {
+		return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeInvalidParams}
+	}
+
+	var params DidChangeConfigurationParams
+	if err := json.Unmarshal(*req.Params, &params); err != nil {
+		return nil, err
+	}
+
+	if s.db != nil {
+		s.db.Close()
+	}
+	s.db, err = database.Open(
+		params.Settings.SQLS.Driver,
+		params.Settings.SQLS.DataSourceName,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.init(); err != nil {
+		log.Fatal("sqls: failed database connection, ", err)
+	}
+	return nil, nil
 }
