@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"log"
 
@@ -97,4 +98,8 @@ func (db *MySQLDB) DescribeTable(tableName string) ([]*ColumnDesc, error) {
 		tableInfos = append(tableInfos, &tableInfo)
 	}
 	return tableInfos, nil
+}
+
+func (db *MySQLDB) ExecuteQuery(ctx context.Context, query string) (interface{}, error) {
+	return db.Conn.ExecContext(ctx, query)
 }

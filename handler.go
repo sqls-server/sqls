@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 
@@ -63,6 +64,10 @@ func (s *Server) handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.
 		// 	return h.handleTextDocumentFormatting(ctx, conn, req)
 		// case "textDocument/documentSymbol":
 		// 	return h.handleTextDocumentSymbol(ctx, conn, req)
+	case "textDocument/codeAction":
+		return s.handleTextDocumentCodeAction(ctx, conn, req)
+	case "workspace/executeCommand":
+		return s.handleWorkspaceExecuteCommand(ctx, conn, req)
 	}
 
 	return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeMethodNotFound, Message: fmt.Sprintf("method not supported: %s", req.Method)}
@@ -95,8 +100,9 @@ func (s *Server) handleInitialize(ctx context.Context, conn *jsonrpc2.Conn, req 
 
 	return InitializeResult{
 		Capabilities: ServerCapabilities{
-			TextDocumentSync: TDSKFull,
-			HoverProvider:    false,
+			TextDocumentSync:   TDSKFull,
+			HoverProvider:      false,
+			CodeActionProvider: true,
 			CompletionProvider: &CompletionOptions{
 				TriggerCharacters: []string{"."},
 			},
@@ -233,4 +239,60 @@ func (s *Server) updateFile(uri string, text string) error {
 
 func (s *Server) saveFile(uri string) error {
 	return nil
+}
+
+func (h *Server) handleTextDocumentCodeAction(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
+	if req.Params == nil {
+		return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeInvalidParams}
+	}
+
+	var params CodeActionParams
+	if err := json.Unmarshal(*req.Params, &params); err != nil {
+		return nil, err
+	}
+
+	commands := []Command{
+		{
+			Title:     "Execute Query",
+			Command:   "executeQuery",
+			Arguments: []interface{}{params.TextDocument.URI},
+		},
+	}
+	return commands, nil
+
+}
+
+func (s *Server) executeQuery(params ExecuteCommandParams) (result interface{}, err error) {
+	if s.db == nil {
+		return nil, errors.New("connection is closed")
+	}
+	if len(params.Arguments) != 1 {
+		return nil, fmt.Errorf("invalid arguments for %s", params.Command)
+	}
+	uri, ok := params.Arguments[0].(string)
+	if !ok {
+		return nil, fmt.Errorf("invalid arguments for %s", params.Command)
+	}
+	f, ok := s.files[uri]
+	if !ok {
+		return nil, fmt.Errorf("document not found: %s", uri)
+	}
+	return s.db.ExecuteQuery(context.Background(), f.Text)
+}
+
+func (s *Server) handleWorkspaceExecuteCommand(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
+	if req.Params == nil {
+		return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeInvalidParams}
+	}
+
+	var params ExecuteCommandParams
+	if err := json.Unmarshal(*req.Params, &params); err != nil {
+		return nil, err
+	}
+
+	switch params.Command {
+	case "executeQuery":
+		return s.executeQuery(params)
+	}
+	return nil, fmt.Errorf("unsupported command: %v", params.Command)
 }

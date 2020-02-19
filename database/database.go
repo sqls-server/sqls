@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 )
@@ -11,6 +12,7 @@ type Database interface {
 	Databases() ([]string, error)
 	Tables() ([]string, error)
 	DescribeTable(tableName string) ([]*ColumnDesc, error)
+	ExecuteQuery(context.Context, string) (interface{}, error) // TODO result rows?
 }
 
 const (

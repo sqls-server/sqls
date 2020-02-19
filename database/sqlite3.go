@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log"
@@ -104,4 +105,8 @@ func (db *SQLite3DB) DescribeTable(tableName string) ([]*ColumnDesc, error) {
 		tableInfos = append(tableInfos, &tableInfo)
 	}
 	return tableInfos, nil
+}
+
+func (db *SQLite3DB) ExecuteQuery(ctx context.Context, query string) (interface{}, error) {
+	return db.Conn.ExecContext(ctx, query)
 }

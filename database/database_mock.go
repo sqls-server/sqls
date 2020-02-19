@@ -1,6 +1,9 @@
 package database
 
-import "database/sql"
+import (
+	"context"
+	"database/sql"
+)
 
 type MockDB struct {
 	MockOpen          func() error
@@ -8,6 +11,7 @@ type MockDB struct {
 	MockDatabases     func() ([]string, error)
 	MockTables        func() ([]string, error)
 	MockDescribeTable func(tableName string) ([]*ColumnDesc, error)
+	MockExecuteQuery  func(context.Context, string) (interface{}, error)
 }
 
 func (m *MockDB) Open() error {
@@ -28,6 +32,10 @@ func (m *MockDB) Tables() ([]string, error) {
 
 func (m *MockDB) DescribeTable(tableName string) ([]*ColumnDesc, error) {
 	return m.MockDescribeTable(tableName)
+}
+
+func (m *MockDB) ExecuteQuery(ctx context.Context, query string) (interface{}, error) {
+	return m.MockExecuteQuery(ctx, query)
 }
 
 var dummyDatabases = []string{
@@ -330,6 +338,9 @@ func init() {
 					return dummyCountryLanguageColumns, nil
 				}
 				return nil, nil
+			},
+			MockExecuteQuery: func(ctx context.Context, query string) (interface{}, error) {
+				return "dummy result", nil
 			},
 		}
 	})
