@@ -1,5 +1,7 @@
 # sqls
 
+![test](https://github.com/lighttiger2505/sqls/workflows/test/badge.svg)
+
 An implementation of the Language Server Protocol for SQL.
 
 ## Note
