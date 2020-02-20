@@ -224,7 +224,7 @@ type DidChangeConfigurationParams struct {
 	Settings struct {
 		SQLS struct {
 			Driver         string `json:"driver"`
-			DataSourceName string `json:"data_source_name"`
+			DataSourceName string `json:"dataSourceName"`
 		} `json:"sqls"`
 	} `json:"settings"`
 }
