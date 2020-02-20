@@ -69,9 +69,11 @@ if executable('sqls')
         \   'name': 'sqls',
         \   'cmd': {server_info->['sqls']},
         \   'whitelist': ['sql'],
-        \   'initialization_options': {
-        \     'driver': 'mysql',
-        \     'data_source_name': 'root:root@tcp(127.0.0.1:3306)/world',
+        \   'workspace_config': {
+        \     'sqls': {
+        \       'driver': 'mysql',
+        \       'data_source_name': 'root:root@tcp(127.0.0.1:3306)/world',
+        \     },
         \   },
         \ })
     augroup END
