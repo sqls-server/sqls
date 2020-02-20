@@ -59,10 +59,7 @@ func (tx *TestContext) initServer(t *testing.T) {
 
 	// Initialize Langage Server
 	params := InitializeParams{
-		InitializationOptions: InitializeOptions{
-			Driver:         "mock",
-			DataSourceName: "",
-		},
+		InitializationOptions: InitializeOptions{},
 	}
 	if err := tx.conn.Call(tx.ctx, "initialize", params, nil); err != nil {
 		t.Fatal("conn.Call initialize:", err)
@@ -88,10 +85,7 @@ func TestInitialized(t *testing.T) {
 	}
 	var got InitializeResult
 	params := InitializeParams{
-		InitializationOptions: InitializeOptions{
-			Driver:         "mock",
-			DataSourceName: "",
-		},
+		InitializationOptions: InitializeOptions{},
 	}
 	if err := tx.conn.Call(tx.ctx, "initialize", params, &got); err != nil {
 		t.Fatal("conn.Call initialize:", err)
@@ -173,6 +167,26 @@ func TestComplete(t *testing.T) {
 	tx := newTestContext()
 	tx.setup(t)
 	defer tx.tearDown()
+
+	didChangeConfigurationParams := DidChangeConfigurationParams{
+		Settings: struct {
+			SQLS struct {
+				Driver         string "json:\"driver\""
+				DataSourceName string "json:\"data_source_name\""
+			} "json:\"sqls\""
+		}{
+			SQLS: struct {
+				Driver         string "json:\"driver\""
+				DataSourceName string "json:\"data_source_name\""
+			}{
+				Driver:         "mock",
+				DataSourceName: "",
+			},
+		},
+	}
+	if err := tx.conn.Call(tx.ctx, "workspace/didChangeConfiguration", didChangeConfigurationParams, nil); err != nil {
+		t.Fatal("conn.Call workspace/didChangeConfiguration:", err)
+	}
 
 	uri := "file:///Users/octref/Code/css-test/test.sql"
 	testcases := []struct {
