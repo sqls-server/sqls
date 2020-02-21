@@ -55,7 +55,7 @@ func NewParser(src io.Reader, d dialect.Dialect) (*Parser, error) {
 	tokenizer := token.NewTokenizer(src, d)
 	tokens, err := tokenizer.Tokenize()
 	if err != nil {
-		return nil, errors.Errorf("tokenize err failed: %w", err)
+		return nil, errors.Errorf("tokenize err failed: %+v", err)
 	}
 
 	parsed := []ast.Node{}

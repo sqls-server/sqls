@@ -362,6 +362,9 @@ func (c *Completer) columnCandidates(targetTables []*parser.TableInfo, pare *par
 			if info.Name == "" {
 				continue
 			}
+			if c.DBInfo == nil {
+				continue
+			}
 			columns, ok := c.DBInfo.ColumnDescs(info.Name)
 			if !ok {
 				continue
@@ -379,6 +382,9 @@ func (c *Completer) columnCandidates(targetTables []*parser.TableInfo, pare *par
 	case ParentTypeTable:
 		for _, info := range targetTables {
 			if info.Name != pare.Name && info.Alias != pare.Name {
+				continue
+			}
+			if c.DBInfo == nil {
 				continue
 			}
 			columns, ok := c.DBInfo.ColumnDescs(info.Name)

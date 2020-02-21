@@ -12,3 +12,7 @@ build: $(SRCS)
 .PHONY: install
 install: $(SRCS)
 	go install $(LDFLAGS) ./...
+
+.PHONY: lint
+lint: $(SRCS)
+	golangci-lint run

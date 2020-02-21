@@ -1,0 +1,11 @@
+run:
+  tests: false
+linters:
+  disable:
+    - maligned
+    - prealloc
+    - rowserrcheck
+  disable-all: false
+  presets:
+    - bugs
+  fast: false

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 
 	"github.com/lighttiger2505/sqls/database"
 	"github.com/sourcegraph/jsonrpc2"
@@ -13,8 +12,8 @@ import (
 
 const (
 	TDSKNone        TextDocumentSyncKind = 0
-	TDSKFull                             = 1
-	TDSKIncremental                      = 2
+	TDSKFull        TextDocumentSyncKind = 1
+	TDSKIncremental TextDocumentSyncKind = 2
 )
 
 type Server struct {
@@ -68,6 +67,8 @@ func (s *Server) handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.
 		return s.handleTextDocumentCodeAction(ctx, conn, req)
 	case "workspace/executeCommand":
 		return s.handleWorkspaceExecuteCommand(ctx, conn, req)
+	case "workspace/didChangeConfiguration":
+		return s.handleWorkspaceDidChangeConfiguration(ctx, conn, req)
 	}
 
 	return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeMethodNotFound, Message: fmt.Sprintf("method not supported: %s", req.Method)}
@@ -81,21 +82,6 @@ func (s *Server) handleInitialize(ctx context.Context, conn *jsonrpc2.Conn, req 
 	var params InitializeParams
 	if err := json.Unmarshal(*req.Params, &params); err != nil {
 		return nil, err
-	}
-
-	if s.db != nil {
-		s.db.Close()
-	}
-	s.db, err = database.Open(
-		params.InitializationOptions.Driver,
-		params.InitializationOptions.DataSourceName,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := s.init(); err != nil {
-		log.Fatal("sqls: failed database connection, ", err)
 	}
 
 	return InitializeResult{
@@ -134,7 +120,9 @@ func (s *Server) handleTextDocumentDidOpen(ctx context.Context, conn *jsonrpc2.C
 		return nil, err
 	}
 
-	s.openFile(params.TextDocument.URI, params.TextDocument.LanguageID)
+	if err := s.openFile(params.TextDocument.URI, params.TextDocument.LanguageID); err != nil {
+		return nil, err
+	}
 	if err := s.updateFile(params.TextDocument.URI, params.TextDocument.Text); err != nil {
 		return nil, err
 	}
@@ -188,7 +176,9 @@ func (s *Server) handleTextDocumentDidClose(ctx context.Context, conn *jsonrpc2.
 		return nil, err
 	}
 
-	s.closeFile(params.TextDocument.URI)
+	if err := s.closeFile(params.TextDocument.URI); err != nil {
+		return nil, err
+	}
 	return nil, nil
 }
 
@@ -259,7 +249,29 @@ func (h *Server) handleTextDocumentCodeAction(ctx context.Context, conn *jsonrpc
 		},
 	}
 	return commands, nil
+}
 
+func (s *Server) handleWorkspaceDidChangeConfiguration(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
+	var params DidChangeConfigurationParams
+	if err := json.Unmarshal(*req.Params, &params); err != nil {
+		return nil, err
+	}
+
+	if s.db != nil {
+		s.db.Close()
+	}
+	s.db, err = database.Open(
+		params.Settings.SQLS.Driver,
+		params.Settings.SQLS.DataSourceName,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.init(); err != nil {
+		return nil, fmt.Errorf("sqls: failed database connection: %v", err)
+	}
+	return nil, nil
 }
 
 func (s *Server) executeQuery(params ExecuteCommandParams) (result interface{}, err error) {
