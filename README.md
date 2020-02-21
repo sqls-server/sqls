@@ -72,7 +72,7 @@ if executable('sqls')
         \   'workspace_config': {
         \     'sqls': {
         \       'driver': 'mysql',
-        \       'data_source_name': 'root:root@tcp(127.0.0.1:3306)/world',
+        \       'dataSourceName': 'root:root@tcp(127.0.0.1:3306)/world',
         \     },
         \   },
         \ })
@@ -80,12 +80,12 @@ if executable('sqls')
 endif
 ```
 
-`data_source_name` 
+`dataSourceName` 
 
 #### MySQL
 
 ```vim
-{'driver': 'mysql', 'data_source_name': 'mysql:mysqlpassword@tcp(127.0.0.1:3306)/world'}
+{'driver': 'mysql', 'dataSourceName': 'mysql:mysqlpassword@tcp(127.0.0.1:3306)/world'}
 ```
 
 See also. https://github.com/go-sql-driver/mysql#dsn-data-source-name
@@ -93,7 +93,7 @@ See also. https://github.com/go-sql-driver/mysql#dsn-data-source-name
 #### PostgreSQL
 
 ```vim
-{'driver': 'postgresql', 'data_source_name': 'host=127.0.0.1 port=5432 user=postgres password=postgrespassword dbname=world sslmode=disable'}
+{'driver': 'postgresql', 'dataSourceName': 'host=127.0.0.1 port=5432 user=postgres password=postgrespassword dbname=world sslmode=disable'}
 ```
 
 See also. https://godoc.org/github.com/lib/pq
@@ -101,7 +101,7 @@ See also. https://godoc.org/github.com/lib/pq
 #### SQLite3
 
 ```vim
-{'driver': 'sqlite3', 'data_source_name': 'file:chinook.db'}
+{'driver': 'sqlite3', 'dataSourceName': 'file:chinook.db'}
 ```
 
 See also. https://github.com/mattn/go-sqlite3#connection-string
