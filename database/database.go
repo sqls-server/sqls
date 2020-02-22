@@ -2,7 +2,7 @@ package database
 
 import (
 	"database/sql"
-	"errors"
+	"fmt"
 )
 
 type Database interface {
@@ -43,7 +43,7 @@ func Register(name string, f Opener) {
 func Open(driver string, dataSourceName string) (Database, error) {
 	d, ok := drivers[driver]
 	if !ok {
-		return nil, errors.New("driver not found")
+		return nil, fmt.Errorf("driver not found: %v", driver)
 	}
 	return d(dataSourceName), nil
 }

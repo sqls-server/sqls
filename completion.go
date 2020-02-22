@@ -408,6 +408,9 @@ var TableDetailTemplate = "Table"
 
 func (c *Completer) TableCandidates() []CompletionItem {
 	candidates := []CompletionItem{}
+	if c.DBInfo == nil {
+		return candidates
+	}
 	tables := c.DBInfo.SortedTables()
 	for _, tableName := range tables {
 		candidate := CompletionItem{
