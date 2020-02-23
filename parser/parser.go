@@ -79,6 +79,7 @@ func (p *Parser) Parse() (ast.TokenList, error) {
 	root = parsePrefixGroup(astutil.NewNodeReader(root), JoinPrefixMatcher, parseJoin)
 	root = parsePrefixGroup(astutil.NewNodeReader(root), wherePrefixMatcher, parseWhere)
 	root = parseInfixGroup(astutil.NewNodeReader(root), memberIdentifierInfixMatcher, false, parseMemberIdentifier)
+	root = parseInfixGroup(astutil.NewNodeReader(root), multiKeywordInfixMatcher, true, parseMultiKeyword)
 	root = parsePrefixGroup(astutil.NewNodeReader(root), identifierPrefixMatcher, parseIdentifier)
 	root = parseInfixGroup(astutil.NewNodeReader(root), operatorInfixMatcher, true, parseOperator)
 	root = parseInfixGroup(astutil.NewNodeReader(root), comparisonInfixMatcher, true, parseComparison)
@@ -335,6 +336,30 @@ func parseMemberIdentifier(reader *astutil.NodeReader) ast.Node {
 	}
 
 	reader.NextNode(false)
+	return memberIdentifier
+}
+
+var multiKeywordInfixMatcher = astutil.NodeMatcher{
+	ExpectKeyword: []string{
+		"BY",
+	},
+}
+var multiKeywordTargetMatcher = astutil.NodeMatcher{
+	ExpectKeyword: []string{
+		"ORDER",
+		"GROUP",
+	},
+}
+
+func parseMultiKeyword(reader *astutil.NodeReader) ast.Node {
+	if !reader.CurNodeIs(multiKeywordTargetMatcher) {
+		return reader.CurNode
+	}
+	startIndex := reader.Index - 1
+	reader.NextNode(true)
+	memberIdentifier := &ast.MultiKeyword{
+		Toks: reader.NodesWithRange(startIndex, reader.Index),
+	}
 	return memberIdentifier
 }
 

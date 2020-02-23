@@ -36,6 +36,22 @@ func (i *Item) GetToken() *SQLToken { return i.Tok }
 func (i *Item) Pos() token.Pos      { return i.Tok.From }
 func (i *Item) End() token.Pos      { return i.Tok.To }
 
+type MultiKeyword struct {
+	Toks []Node
+}
+
+func (mk *MultiKeyword) String() string {
+	var strs []string
+	for _, t := range mk.Toks {
+		strs = append(strs, t.String())
+	}
+	return strings.Join(strs, "")
+}
+func (mk *MultiKeyword) GetTokens() []Node     { return mk.Toks }
+func (mk *MultiKeyword) SetTokens(toks []Node) { mk.Toks = toks }
+func (mk *MultiKeyword) Pos() token.Pos        { return findFrom(mk) }
+func (mk *MultiKeyword) End() token.Pos        { return findTo(mk) }
+
 type MemberIdentifer struct {
 	Toks   []Node
 	Parent Node

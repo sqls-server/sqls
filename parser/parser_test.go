@@ -521,6 +521,39 @@ func TestMemberIdentifier(t *testing.T) {
 	}
 }
 
+func TestParseMultiKeyword(t *testing.T) {
+	testcases := []struct {
+		name    string
+		input   string
+		checkFn func(t *testing.T, stmts []*ast.Statement, input string)
+	}{
+		{
+			name:  "order keyword",
+			input: "order by",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testMultiKeyword(t, list[0], input)
+			},
+		},
+		{
+			name:  "group keyword",
+			input: "group by",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testMultiKeyword(t, list[0], input)
+			},
+		},
+	}
+	for _, tt := range testcases {
+		t.Run(tt.name, func(t *testing.T) {
+			stmts := parseInit(t, tt.input)
+			tt.checkFn(t, stmts, tt.input)
+		})
+	}
+}
+
 func TestParseOperator(t *testing.T) {
 	var input string
 	var stmts []*ast.Statement
@@ -766,6 +799,17 @@ func testIdentifier(t *testing.T, node ast.Node, expect string) {
 	_, ok := node.(*ast.Identifer)
 	if !ok {
 		t.Errorf("invalid type want Identifier got %T", node)
+	}
+	if expect != node.String() {
+		t.Errorf("expected %q, got %q", expect, node.String())
+	}
+}
+
+func testMultiKeyword(t *testing.T, node ast.Node, expect string) {
+	t.Helper()
+	_, ok := node.(*ast.MultiKeyword)
+	if !ok {
+		t.Errorf("invalid type want MultiKeyword got %T", node)
 	}
 	if expect != node.String() {
 		t.Errorf("expected %q, got %q", expect, node.String())
