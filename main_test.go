@@ -2,12 +2,12 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net"
 	"reflect"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/sourcegraph/jsonrpc2"
 )
 
@@ -194,54 +194,22 @@ func TestComplete(t *testing.T) {
 		input string
 		line  int
 		col   int
-		want  []CompletionItem
+		want  []string
 	}{
 		{
 			name:  "select identifier",
 			input: "select  from city",
 			line:  0,
 			col:   7,
-			want: []CompletionItem{
-				{
-					Label:  "ID",
-					Kind:   FieldCompletion,
-					Detail: ColumnDetailTemplate,
-				},
-				{
-					Label:  "Name",
-					Kind:   FieldCompletion,
-					Detail: ColumnDetailTemplate,
-				},
-				{
-					Label:  "CountryCode",
-					Kind:   FieldCompletion,
-					Detail: ColumnDetailTemplate,
-				},
-				{
-					Label:  "District",
-					Kind:   FieldCompletion,
-					Detail: ColumnDetailTemplate,
-				},
-				{
-					Label:  "Population",
-					Kind:   FieldCompletion,
-					Detail: ColumnDetailTemplate,
-				},
-				{
-					Label:  "city",
-					Kind:   FieldCompletion,
-					Detail: TableDetailTemplate,
-				},
-				{
-					Label:  "country",
-					Kind:   FieldCompletion,
-					Detail: TableDetailTemplate,
-				},
-				{
-					Label:  "countrylanguage",
-					Kind:   FieldCompletion,
-					Detail: TableDetailTemplate,
-				},
+			want: []string{
+				"ID",
+				"Name",
+				"CountryCode",
+				"District",
+				"Population",
+				"city",
+				"country",
+				"countrylanguage",
 			},
 		},
 		{
@@ -249,52 +217,16 @@ func TestComplete(t *testing.T) {
 			input: "select  from city as c",
 			line:  0,
 			col:   7,
-			want: []CompletionItem{
-				{
-					Label:  "ID",
-					Kind:   FieldCompletion,
-					Detail: ColumnDetailTemplate,
-				},
-				{
-					Label:  "Name",
-					Kind:   FieldCompletion,
-					Detail: ColumnDetailTemplate,
-				},
-				{
-					Label:  "CountryCode",
-					Kind:   FieldCompletion,
-					Detail: ColumnDetailTemplate,
-				},
-				{
-					Label:  "District",
-					Kind:   FieldCompletion,
-					Detail: ColumnDetailTemplate,
-				},
-				{
-					Label:  "Population",
-					Kind:   FieldCompletion,
-					Detail: ColumnDetailTemplate,
-				},
-				{
-					Label:  "c",
-					Kind:   FieldCompletion,
-					Detail: AliasDetailTemplate,
-				},
-				{
-					Label:  "city",
-					Kind:   FieldCompletion,
-					Detail: TableDetailTemplate,
-				},
-				{
-					Label:  "country",
-					Kind:   FieldCompletion,
-					Detail: TableDetailTemplate,
-				},
-				{
-					Label:  "countrylanguage",
-					Kind:   FieldCompletion,
-					Detail: TableDetailTemplate,
-				},
+			want: []string{
+				"ID",
+				"Name",
+				"CountryCode",
+				"District",
+				"Population",
+				"c",
+				"city",
+				"country",
+				"countrylanguage",
 			},
 		},
 		{
@@ -302,55 +234,10 @@ func TestComplete(t *testing.T) {
 			input: "select Cou from city",
 			line:  0,
 			col:   10,
-			want: []CompletionItem{
-				{
-					Label:  "CountryCode",
-					Kind:   FieldCompletion,
-					Detail: ColumnDetailTemplate,
-				},
-				{
-					Label:  "country",
-					Kind:   FieldCompletion,
-					Detail: TableDetailTemplate,
-				},
-				{
-					Label:  "countrylanguage",
-					Kind:   FieldCompletion,
-					Detail: TableDetailTemplate,
-				},
-			},
-		},
-		{
-			name:  "select has parent table identifier",
-			input: "select city. from city",
-			line:  0,
-			col:   12,
-			want: []CompletionItem{
-				{
-					Label:  "ID",
-					Kind:   FieldCompletion,
-					Detail: ColumnDetailTemplate,
-				},
-				{
-					Label:  "Name",
-					Kind:   FieldCompletion,
-					Detail: ColumnDetailTemplate,
-				},
-				{
-					Label:  "CountryCode",
-					Kind:   FieldCompletion,
-					Detail: ColumnDetailTemplate,
-				},
-				{
-					Label:  "District",
-					Kind:   FieldCompletion,
-					Detail: ColumnDetailTemplate,
-				},
-				{
-					Label:  "Population",
-					Kind:   FieldCompletion,
-					Detail: ColumnDetailTemplate,
-				},
+			want: []string{
+				"CountryCode",
+				"country",
+				"countrylanguage",
 			},
 		},
 		{
@@ -358,22 +245,10 @@ func TestComplete(t *testing.T) {
 			input: "select id, cou from city",
 			line:  0,
 			col:   14,
-			want: []CompletionItem{
-				{
-					Label:  "CountryCode",
-					Kind:   FieldCompletion,
-					Detail: ColumnDetailTemplate,
-				},
-				{
-					Label:  "country",
-					Kind:   FieldCompletion,
-					Detail: TableDetailTemplate,
-				},
-				{
-					Label:  "countrylanguage",
-					Kind:   FieldCompletion,
-					Detail: TableDetailTemplate,
-				},
+			want: []string{
+				"CountryCode",
+				"country",
+				"countrylanguage",
 			},
 		},
 		{
@@ -381,32 +256,12 @@ func TestComplete(t *testing.T) {
 			input: "select c. from city as c",
 			line:  0,
 			col:   9,
-			want: []CompletionItem{
-				{
-					Label:  "ID",
-					Kind:   FieldCompletion,
-					Detail: ColumnDetailTemplate,
-				},
-				{
-					Label:  "Name",
-					Kind:   FieldCompletion,
-					Detail: ColumnDetailTemplate,
-				},
-				{
-					Label:  "CountryCode",
-					Kind:   FieldCompletion,
-					Detail: ColumnDetailTemplate,
-				},
-				{
-					Label:  "District",
-					Kind:   FieldCompletion,
-					Detail: ColumnDetailTemplate,
-				},
-				{
-					Label:  "Population",
-					Kind:   FieldCompletion,
-					Detail: ColumnDetailTemplate,
-				},
+			want: []string{
+				"ID",
+				"Name",
+				"CountryCode",
+				"District",
+				"Population",
 			},
 		},
 		{
@@ -414,22 +269,10 @@ func TestComplete(t *testing.T) {
 			input: "select CountryCode from ",
 			line:  0,
 			col:   24,
-			want: []CompletionItem{
-				{
-					Label:  "city",
-					Kind:   FieldCompletion,
-					Detail: TableDetailTemplate,
-				},
-				{
-					Label:  "country",
-					Kind:   FieldCompletion,
-					Detail: TableDetailTemplate,
-				},
-				{
-					Label:  "countrylanguage",
-					Kind:   FieldCompletion,
-					Detail: TableDetailTemplate,
-				},
+			want: []string{
+				"city",
+				"country",
+				"countrylanguage",
 			},
 		},
 		{
@@ -437,17 +280,9 @@ func TestComplete(t *testing.T) {
 			input: "select CountryCode from co",
 			line:  0,
 			col:   26,
-			want: []CompletionItem{
-				{
-					Label:  "country",
-					Kind:   FieldCompletion,
-					Detail: TableDetailTemplate,
-				},
-				{
-					Label:  "countrylanguage",
-					Kind:   FieldCompletion,
-					Detail: TableDetailTemplate,
-				},
+			want: []string{
+				"country",
+				"countrylanguage",
 			},
 		},
 		{
@@ -455,47 +290,15 @@ func TestComplete(t *testing.T) {
 			input: "select CountryCode from city left join ",
 			line:  0,
 			col:   39,
-			want: []CompletionItem{
-				{
-					Label:  "ID",
-					Kind:   FieldCompletion,
-					Detail: ColumnDetailTemplate,
-				},
-				{
-					Label:  "Name",
-					Kind:   FieldCompletion,
-					Detail: ColumnDetailTemplate,
-				},
-				{
-					Label:  "CountryCode",
-					Kind:   FieldCompletion,
-					Detail: ColumnDetailTemplate,
-				},
-				{
-					Label:  "District",
-					Kind:   FieldCompletion,
-					Detail: ColumnDetailTemplate,
-				},
-				{
-					Label:  "Population",
-					Kind:   FieldCompletion,
-					Detail: ColumnDetailTemplate,
-				},
-				{
-					Label:  "city",
-					Kind:   FieldCompletion,
-					Detail: TableDetailTemplate,
-				},
-				{
-					Label:  "country",
-					Kind:   FieldCompletion,
-					Detail: TableDetailTemplate,
-				},
-				{
-					Label:  "countrylanguage",
-					Kind:   FieldCompletion,
-					Detail: TableDetailTemplate,
-				},
+			want: []string{
+				"ID",
+				"Name",
+				"CountryCode",
+				"District",
+				"Population",
+				"city",
+				"country",
+				"countrylanguage",
 			},
 		},
 		{
@@ -503,22 +306,10 @@ func TestComplete(t *testing.T) {
 			input: "select CountryCode from city left join co",
 			line:  0,
 			col:   41,
-			want: []CompletionItem{
-				{
-					Label:  "CountryCode",
-					Kind:   FieldCompletion,
-					Detail: ColumnDetailTemplate,
-				},
-				{
-					Label:  "country",
-					Kind:   FieldCompletion,
-					Detail: TableDetailTemplate,
-				},
-				{
-					Label:  "countrylanguage",
-					Kind:   FieldCompletion,
-					Detail: TableDetailTemplate,
-				},
+			want: []string{
+				"CountryCode",
+				"country",
+				"countrylanguage",
 			},
 		},
 	}
@@ -559,11 +350,24 @@ func TestComplete(t *testing.T) {
 			if err := tx.conn.Call(tx.ctx, "textDocument/completion", commpletionParams, &got); err != nil {
 				t.Fatal("conn.Call textDocument/completion:", err)
 			}
-
-			if d := cmp.Diff(tt.want, got); d != "" {
-				t.Errorf("completion item diff: %s", d)
-			}
+			testCompletionItem(t, tt.want, got)
 		})
+	}
+}
+
+func testCompletionItem(t *testing.T, expectLabels []string, gotItems []CompletionItem) {
+	t.Helper()
+
+	itemMap := map[string]struct{}{}
+	for _, item := range gotItems {
+		itemMap[item.Label] = struct{}{}
+	}
+
+	for _, el := range expectLabels {
+		_, ok := itemMap[el]
+		if !ok {
+			t.Errorf("not included label, expect %q", el)
+		}
 	}
 }
 
