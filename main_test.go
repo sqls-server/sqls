@@ -78,6 +78,7 @@ func TestInitialized(t *testing.T) {
 			CompletionProvider: &CompletionOptions{
 				TriggerCharacters: []string{"."},
 			},
+			CodeActionProvider:              true,
 			DefinitionProvider:              false,
 			DocumentFormattingProvider:      false,
 			DocumentRangeFormattingProvider: false,
@@ -91,7 +92,7 @@ func TestInitialized(t *testing.T) {
 		t.Fatal("conn.Call initialize:", err)
 	}
 	if !reflect.DeepEqual(want, got) {
-		t.Errorf("not match \n%v\n%v", want, got)
+		t.Errorf("not match \n%+v\n%+v", want, got)
 	}
 }
 
