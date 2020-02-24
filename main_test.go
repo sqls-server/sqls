@@ -312,6 +312,38 @@ func TestComplete(t *testing.T) {
 				"countrylanguage",
 			},
 		},
+		{
+			name:  "ORDER BY identifier",
+			input: "SELECT ID, Name FROM city ORDER BY ",
+			line:  0,
+			col:   35,
+			want: []string{
+				"ID",
+				"Name",
+				"CountryCode",
+				"District",
+				"Population",
+				"city",
+				"country",
+				"countrylanguage",
+			},
+		},
+		{
+			name:  "GROUP BY identifier",
+			input: "SELECT CountryCode, COUNT(*) FROM city GROUP BY ",
+			line:  0,
+			col:   48,
+			want: []string{
+				"ID",
+				"Name",
+				"CountryCode",
+				"District",
+				"Population",
+				"city",
+				"country",
+				"countrylanguage",
+			},
+		},
 	}
 
 	for _, tt := range testcases {

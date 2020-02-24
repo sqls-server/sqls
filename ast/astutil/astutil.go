@@ -2,6 +2,7 @@ package astutil
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/lighttiger2505/sqls/ast"
 	"github.com/lighttiger2505/sqls/dialect"
@@ -46,10 +47,10 @@ func (nm *NodeMatcher) IsMatchSQLType(tok *ast.SQLToken) bool {
 	return false
 }
 
-func (nm *NodeMatcher) IsMatchKeyword(tok *ast.SQLToken) bool {
+func (nm *NodeMatcher) IsMatchKeyword(node ast.Node) bool {
 	if nm.ExpectKeyword != nil {
 		for _, expect := range nm.ExpectKeyword {
-			if tok.MatchSQLKeyword(expect) {
+			if strings.ToUpper(expect) == strings.ToUpper(node.String()) {
 				return true
 			}
 		}
@@ -62,6 +63,9 @@ func (nm *NodeMatcher) IsMatch(node ast.Node) bool {
 	if nm.IsMatchNodeType(node) {
 		return true
 	}
+	if nm.IsMatchKeyword(node) {
+		return true
+	}
 	if _, ok := node.(ast.TokenList); ok {
 		return false
 	}
@@ -71,7 +75,7 @@ func (nm *NodeMatcher) IsMatch(node ast.Node) bool {
 		panic(fmt.Sprintf("invalid type. not has Token, got=(type: %T, value: %#v)", node, node.String()))
 	}
 	sqlTok := tok.GetToken()
-	if nm.IsMatchTokens(sqlTok) || nm.IsMatchSQLType(sqlTok) || nm.IsMatchKeyword(sqlTok) {
+	if nm.IsMatchTokens(sqlTok) || nm.IsMatchSQLType(sqlTok) {
 		return true
 	}
 	return false
@@ -156,7 +160,9 @@ func (nr *NodeReader) CurNodeIs(nm NodeMatcher) bool {
 
 func (nr *NodeReader) CurNodeEncloseIs(pos token.Pos) bool {
 	if nr.CurNode != nil {
-		if _, ok := nr.CurNode.(ast.TokenList); ok {
+		_, isList := nr.CurNode.(ast.TokenList)
+		_, isMultiKeyword := nr.CurNode.(ast.TokenList)
+		if isList && !isMultiKeyword {
 			if 0 <= token.ComparePos(pos, nr.CurNode.Pos()) && 0 >= token.ComparePos(pos, nr.CurNode.End()) {
 				return true
 			}

@@ -260,11 +260,28 @@ func getCompletionTypes(text string, pos token.Pos) ([]CompletionType, *parent, 
 	nodeWalker := parser.NewNodeWalker(parsed, pos)
 
 	switch {
-	// case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"SET", "ORDER BY", "DISTINCT"})):
-	// 	res = []CompletionType{
-	// 		CompletionTypeColumn,
-	// 		CompletionTypeTable,
-	// 	}
+	case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"SET", "ORDER BY", "GROUP BY", "DISTINCT"})):
+		if nodeWalker.CurNodeIs(memberIdentifierMatcher) {
+			// has parent
+			mi := nodeWalker.CurNodeMatched(memberIdentifierMatcher).(*ast.MemberIdentifer)
+			cType := []CompletionType{
+				CompletionTypeColumn,
+				CompletionTypeView,
+				CompletionTypeFunction,
+			}
+			tableParent := &parent{
+				Type: ParentTypeTable,
+				Name: mi.Parent.String(),
+			}
+			return cType, tableParent, nil
+		}
+		return []CompletionType{
+			CompletionTypeColumn,
+			CompletionTypeTable,
+			CompletionTypeAlias,
+			CompletionTypeView,
+			CompletionTypeFunction,
+		}, noneParent, nil
 	// case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"AS"})):
 	// 	res = []CompletionType{}
 	// case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"TO"})):

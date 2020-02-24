@@ -167,6 +167,15 @@ func TestNodeWalker_PrevNodesIs(t *testing.T) {
 			},
 			want: true,
 		},
+		{
+			name:  "prev order by",
+			input: "SELECT * FROM abc ORDER BY ",
+			pos:   token.Pos{Line: 1, Col: 27},
+			matcher: astutil.NodeMatcher{
+				ExpectKeyword: []string{"ORDER BY"},
+			},
+			want: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

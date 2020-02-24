@@ -171,11 +171,11 @@ func TestParseFrom(t *testing.T) {
 	}{
 		{
 			name:  "from",
-			input: "from",
+			input: "from ",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, input)
 				list := stmts[0].GetTokens()
-				testFrom(t, list[0], "from")
+				testFrom(t, list[0], "from ")
 			},
 		},
 		{
@@ -579,6 +579,7 @@ func TestParseMultiKeyword(t *testing.T) {
 				testStatement(t, stmts[0], 1, input)
 				list := stmts[0].GetTokens()
 				testMultiKeyword(t, list[0], input)
+				testPos(t, stmts[0], genPosOneline(1), genPosOneline(9))
 			},
 		},
 		{
@@ -588,6 +589,7 @@ func TestParseMultiKeyword(t *testing.T) {
 				testStatement(t, stmts[0], 1, input)
 				list := stmts[0].GetTokens()
 				testMultiKeyword(t, list[0], input)
+				testPos(t, stmts[0], genPosOneline(1), genPosOneline(9))
 			},
 		},
 		{
