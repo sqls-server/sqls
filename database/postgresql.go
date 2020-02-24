@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"log"
 
@@ -140,4 +141,8 @@ func (db *PostgreSQLDB) DescribeTable(tableName string) ([]*ColumnDesc, error) {
 		tableInfos = append(tableInfos, &tableInfo)
 	}
 	return tableInfos, nil
+}
+
+func (db *PostgreSQLDB) ExecuteQuery(ctx context.Context, query string) (interface{}, error) {
+	return db.Conn.ExecContext(ctx, query)
 }

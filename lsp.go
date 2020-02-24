@@ -35,7 +35,7 @@ type ServerCapabilities struct {
 	DocumentHighlightProvider        bool                             `json:"documentHighlightProvider,omitempty"`
 	DocumentSymbolProvider           bool                             `json:"documentSymbolProvider,omitempty"`
 	WorkspaceSymbolProvider          bool                             `json:"workspaceSymbolProvider,omitempty"`
-	CodeActionProvider               *CodeActionOptions               `json:"codeActionProvider,omitempty"`
+	CodeActionProvider               interface{}                      `json:"codeActionProvider,omitempty"`
 	CodeLensProvider                 *CodeLensOptions                 `json:"codeLensProvider,omitempty"`
 	DocumentFormattingProvider       bool                             `json:"documentFormattingProvider,omitempty"`
 	DocumentRangeFormattingProvider  bool                             `json:"documentRangeFormattingProvider,omitempty"`
@@ -55,7 +55,9 @@ type CompletionOptions struct {
 
 type SignatureHelpOptions struct{}
 
-type CodeActionOptions struct{}
+type CodeActionOptions struct {
+	CodeActionKinds []CodeActionKind
+}
 
 type CodeLensOptions struct{}
 
@@ -216,6 +218,56 @@ type Position struct {
 type TextDocumentPositionParams struct {
 	TextDocument TextDocumentIdentifier `json:"textDocument"`
 	Position     Position               `json:"position"`
+}
+
+type CodeActionKind string
+
+type Location struct {
+	URI   string `json:"uri"`
+	Range Range  `json:"range"`
+}
+
+type DiagnosticRelatedInformation struct {
+	Location Location `json:"location"`
+	Message  string   `json:"message"`
+}
+
+type Diagnostic struct {
+	Range              Range                          `json:"range"`
+	Severity           int                            `json:"severity,omitempty"`
+	Code               *string                        `json:"code,omitempty"`
+	Source             *string                        `json:"source,omitempty"`
+	Message            string                         `json:"message"`
+	RelatedInformation []DiagnosticRelatedInformation `json:"relatedInformation,omitempty"`
+}
+
+type WorkDoneProgressParams struct {
+	WorkDoneToken interface{} `json:"workDoneToken"`
+}
+
+type CodeActionContext struct {
+	Diagnostics []Diagnostic     `json:"diagnostics"`
+	Only        []CodeActionKind `json:"only,omitempty"`
+}
+
+type PartialResultParams struct {
+	PartialResultToken interface{} `json:"partialResultToken"`
+}
+
+type CodeActionParams struct {
+	WorkDoneProgressParams
+	PartialResultParams
+
+	TextDocument TextDocumentIdentifier `json:"textDocument"`
+	Range        Range                  `json:"range"`
+	Context      CodeActionContext      `json:"context"`
+}
+
+type ExecuteCommandParams struct {
+	WorkDoneProgressParams
+
+	Command   string        `json:"command"`
+	Arguments []interface{} `json:"arguments,omitempty"`
 }
 
 // https://microsoft.github.io/language-server-protocol/specifications/specification-3-14/#workspace_didChangeConfiguration

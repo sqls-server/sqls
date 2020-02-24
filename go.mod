@@ -10,6 +10,7 @@ require (
 	github.com/lib/pq v1.3.0
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/pkg/errors v0.8.1
+	github.com/reviewdog/errorformat v0.0.0-20200131115011-f81d8fd336b8 // indirect
 	github.com/sourcegraph/jsonrpc2 v0.0.0-20191222043438-96c4efab7ee2
 	github.com/xwb1989/sqlparser v0.0.0-20180606152119-120387863bf2
 	golang.org/x/tools v0.0.0-20200110213125-a7a6caa82ab2 // indirect
