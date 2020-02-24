@@ -128,77 +128,122 @@ func TestParseParenthesis(t *testing.T) {
 }
 
 func TestParseWhere(t *testing.T) {
-	input := "select * from foo where bar = 1 order by id desc"
-	stmts := parseInit(t, input)
-	testStatement(t, stmts[0], 13, input)
+	testcases := []struct {
+		name    string
+		input   string
+		checkFn func(t *testing.T, stmts []*ast.Statement, input string)
+	}{
+		{
+			name:  "select with where",
+			input: "select * from foo where bar = 1",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 6, input)
 
-	list := stmts[0].GetTokens()
-	testItem(t, list[0], "select")
-	testItem(t, list[1], " ")
-	testItem(t, list[2], "*")
-	testItem(t, list[3], " ")
-	testFrom(t, list[4], "from foo ")
+				list := stmts[0].GetTokens()
+				testItem(t, list[0], "select")
+				testItem(t, list[1], " ")
+				testItem(t, list[2], "*")
+				testItem(t, list[3], " ")
+				testFrom(t, list[4], "from foo ")
+				testWhere(t, list[5], "where bar = 1")
 
-	testWhere(t, list[5], "where bar = 1 ")
-	testItem(t, list[6], "order")
-	testItem(t, list[7], " ")
-	testItem(t, list[8], "by")
-	testItem(t, list[9], " ")
-	testIdentifier(t, list[10], "id")
-	testItem(t, list[11], " ")
-	testItem(t, list[12], "desc")
+				where := testTokenList(t, list[5], 3).GetTokens()
+				testItem(t, where[0], "where")
+				testItem(t, where[1], " ")
+				testComparison(t, where[2], "bar = 1")
+			},
+		},
+	}
 
-	where := testTokenList(t, list[5], 4).GetTokens()
-	testItem(t, where[0], "where")
-	testItem(t, where[1], " ")
-	testComparison(t, where[2], "bar = 1")
-	testItem(t, where[3], " ")
+	for _, tt := range testcases {
+		t.Run(tt.name, func(t *testing.T) {
+			stmts := parseInit(t, tt.input)
+			tt.checkFn(t, stmts, tt.input)
+		})
+	}
 }
 
 func TestParseFrom(t *testing.T) {
-	var input string
-	var stmts []*ast.Statement
-	var list []ast.Node
+	testcases := []struct {
+		name    string
+		input   string
+		checkFn func(t *testing.T, stmts []*ast.Statement, input string)
+	}{
+		{
+			name:  "from",
+			input: "from",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testFrom(t, list[0], "from")
+			},
+		},
+		{
+			name:  "from with identifier",
+			input: "from abc",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testFrom(t, list[0], "from abc")
+			},
+		},
+		{
+			name:  "simple select",
+			input: "select * from abc",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 5, input)
+				list := stmts[0].GetTokens()
+				testItem(t, list[0], "select")
+				testPos(t, list[0], genPosOneline(1), genPosOneline(7))
+				testItem(t, list[1], " ")
+				testPos(t, list[1], genPosOneline(7), genPosOneline(8))
+				testItem(t, list[2], "*")
+				testPos(t, list[2], genPosOneline(8), genPosOneline(9))
+				testItem(t, list[3], " ")
+				testPos(t, list[3], genPosOneline(9), genPosOneline(10))
+				testFrom(t, list[4], "from abc")
+				testPos(t, list[4], genPosOneline(10), genPosOneline(18))
+			},
+		},
+		{
+			name:  "invalid select none select identifier",
+			input: "select from abc",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 3, input)
+				list := stmts[0].GetTokens()
+				testItem(t, list[0], "select")
+				testItem(t, list[1], " ")
+				testFrom(t, list[2], "from abc")
+			},
+		},
+		{
+			name:  "invalid select none from identifier",
+			input: "select * from ",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 5, input)
+				list := stmts[0].GetTokens()
+				testItem(t, list[0], "select")
+				testItem(t, list[1], " ")
+				testItem(t, list[2], "*")
+				testItem(t, list[3], " ")
+				testFrom(t, list[4], "from ")
+				testPos(t, list[4], genPosOneline(10), genPosOneline(15))
 
-	input = "select * from abc"
-	stmts = parseInit(t, input)
-	testStatement(t, stmts[0], 5, input)
-	list = stmts[0].GetTokens()
-	testItem(t, list[0], "select")
-	testPos(t, list[0], genPosOneline(1), genPosOneline(7))
-	testItem(t, list[1], " ")
-	testPos(t, list[1], genPosOneline(7), genPosOneline(8))
-	testItem(t, list[2], "*")
-	testPos(t, list[2], genPosOneline(8), genPosOneline(9))
-	testItem(t, list[3], " ")
-	testPos(t, list[3], genPosOneline(9), genPosOneline(10))
-	testFrom(t, list[4], "from abc")
-	testPos(t, list[4], genPosOneline(10), genPosOneline(18))
+				where := testTokenList(t, list[4], 2).GetTokens()
+				testItem(t, where[0], "from")
+				testPos(t, where[0], genPosOneline(10), genPosOneline(14))
+				testItem(t, where[1], " ")
+				testPos(t, where[1], genPosOneline(14), genPosOneline(15))
+			},
+		},
+	}
 
-	input = "select from abc"
-	stmts = parseInit(t, input)
-	testStatement(t, stmts[0], 3, input)
-	list = stmts[0].GetTokens()
-	testItem(t, list[0], "select")
-	testItem(t, list[1], " ")
-	testFrom(t, list[2], "from abc")
-
-	input = "select * from "
-	stmts = parseInit(t, input)
-	testStatement(t, stmts[0], 5, input)
-	list = stmts[0].GetTokens()
-	testItem(t, list[0], "select")
-	testItem(t, list[1], " ")
-	testItem(t, list[2], "*")
-	testItem(t, list[3], " ")
-	testFrom(t, list[4], "from ")
-	testPos(t, list[4], genPosOneline(10), genPosOneline(15))
-
-	list = testTokenList(t, list[4], 2).GetTokens()
-	testItem(t, list[0], "from")
-	testPos(t, list[0], genPosOneline(10), genPosOneline(14))
-	testItem(t, list[1], " ")
-	testPos(t, list[1], genPosOneline(14), genPosOneline(15))
+	for _, tt := range testcases {
+		t.Run(tt.name, func(t *testing.T) {
+			stmts := parseInit(t, tt.input)
+			tt.checkFn(t, stmts, tt.input)
+		})
+	}
 }
 
 func TestParseJoin(t *testing.T) {
@@ -543,6 +588,22 @@ func TestParseMultiKeyword(t *testing.T) {
 				testStatement(t, stmts[0], 1, input)
 				list := stmts[0].GetTokens()
 				testMultiKeyword(t, list[0], input)
+			},
+		},
+		{
+			name:  "select with group keyword",
+			input: "select a, b, c from abc group by d, e, f",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 8, input)
+				list := stmts[0].GetTokens()
+				testItem(t, list[0], "select")
+				testItem(t, list[1], " ")
+				testIdentifierList(t, list[2], "a, b, c")
+				testItem(t, list[3], " ")
+				testFrom(t, list[4], "from abc ")
+				testMultiKeyword(t, list[5], "group by")
+				testItem(t, list[6], " ")
+				testIdentifierList(t, list[7], "d, e, f")
 			},
 		},
 	}
