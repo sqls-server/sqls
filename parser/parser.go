@@ -285,17 +285,45 @@ var FromCloseMatcher = astutil.NodeMatcher{
 		"INTO",
 	},
 }
+var FromRecursionMatcher = astutil.NodeMatcher{
+	NodeTypeMatcherFunc: func(node interface{}) bool {
+		if _, ok := node.(*ast.Parenthesis); ok {
+			return true
+		}
+		return false
+	},
+}
 
 func parseFrom(reader *astutil.NodeReader) ast.Node {
-	fromExpr := reader.CurNode
-	nodes := []ast.Node{fromExpr}
+	nodes := []ast.Node{reader.CurNode}
+	tmpReader := reader.CopyReader()
+	for tmpReader.NextNode(false) {
+		if _, ok := reader.CurNode.(ast.TokenList); ok {
+			continue
+		}
 
-	for reader.NextNode(false) {
-		nodes = append(nodes, reader.CurNode)
-		if reader.PeekNodeIs(false, FromCloseMatcher) {
-			return &ast.FromClause{Toks: nodes}
+		if tmpReader.CurNodeIs(FromRecursionMatcher) {
+			// For sub query
+			// Like a "select * from (select * from abc) as t"
+			if list, ok := tmpReader.CurNode.(ast.TokenList); ok {
+				parenthesis := parsePrefixGroup(astutil.NewNodeReader(list), FromPrefixMatcher, parseFrom)
+				nodes = append(nodes, parenthesis)
+			} else {
+				nodes = append(nodes, tmpReader.CurNode)
+			}
+		} else if tmpReader.CurNodeIs(FromPrefixMatcher) {
+			from := parseFrom(tmpReader)
+			nodes = append(nodes, from)
+		} else if tmpReader.PeekNodeIs(false, FromCloseMatcher) {
+			reader.Index = tmpReader.Index
+			reader.CurNode = tmpReader.CurNode
+			return &ast.FromClause{Toks: append(nodes, tmpReader.CurNode)}
+		} else {
+			nodes = append(nodes, tmpReader.CurNode)
 		}
 	}
+	reader.Index = tmpReader.Index
+	reader.CurNode = tmpReader.CurNode
 	return &ast.FromClause{Toks: nodes}
 }
 

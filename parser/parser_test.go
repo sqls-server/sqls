@@ -100,6 +100,8 @@ func TestParseParenthesis(t *testing.T) {
 			name:  "not close parenthesis",
 			input: "select (select (x3) x2 and (y2) bar",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 14, input)
+
 				list := stmts[0].GetTokens()
 				testItem(t, list[0], "select")
 				testItem(t, list[1], " ")
@@ -236,6 +238,40 @@ func TestParseFrom(t *testing.T) {
 				testPos(t, where[1], genPosOneline(14), genPosOneline(15))
 			},
 		},
+		{
+			name:  "sub query",
+			input: "select * from (select * from abc) as t",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 5, input)
+				list := stmts[0].GetTokens()
+				testItem(t, list[0], "select")
+				testItem(t, list[1], " ")
+				testItem(t, list[2], "*")
+				testItem(t, list[3], " ")
+				testFrom(t, list[4], "from (select * from abc) as t")
+
+				from := testTokenList(t, list[4], 3).GetTokens()
+				testItem(t, from[0], "from")
+				testItem(t, from[1], " ")
+				testAliased(t, from[2], "(select * from abc) as t")
+
+				aliased := testTokenList(t, from[2], 5).GetTokens()
+				testParenthesis(t, aliased[0], "(select * from abc)")
+				testItem(t, aliased[1], " ")
+				testItem(t, aliased[2], "as")
+				testItem(t, aliased[3], " ")
+				testIdentifier(t, aliased[4], "t")
+
+				fromInParenthesis := testTokenList(t, aliased[0], 7).GetTokens()
+				testItem(t, fromInParenthesis[0], "(")
+				testItem(t, fromInParenthesis[1], "select")
+				testItem(t, fromInParenthesis[2], " ")
+				testItem(t, fromInParenthesis[3], "*")
+				testItem(t, fromInParenthesis[4], " ")
+				testFrom(t, fromInParenthesis[5], "from abc")
+				testItem(t, fromInParenthesis[6], ")")
+			},
+		},
 	}
 
 	for _, tt := range testcases {
@@ -332,18 +368,15 @@ func TestParseWhere_WithParenthesis(t *testing.T) {
 	testFrom(t, list[4], "from (select y from foo where bar = 1) z")
 
 	from := testTokenList(t, list[4], 5).GetTokens()
-	parenthesis := testTokenList(t, from[2], 11).GetTokens()
+	parenthesis := testTokenList(t, from[2], 8).GetTokens()
 	testItem(t, parenthesis[0], "(")
 	testItem(t, parenthesis[1], "select")
 	testItem(t, parenthesis[2], " ")
 	testIdentifier(t, parenthesis[3], "y")
 	testItem(t, parenthesis[4], " ")
-	testItem(t, parenthesis[5], "from")
-	testItem(t, parenthesis[6], " ")
-	testIdentifier(t, parenthesis[7], "foo")
-	testItem(t, parenthesis[8], " ")
-	testWhere(t, parenthesis[9], "where bar = 1")
-	testItem(t, parenthesis[10], ")")
+	testFrom(t, parenthesis[5], "from foo ")
+	testWhere(t, parenthesis[6], "where bar = 1")
+	testItem(t, parenthesis[7], ")")
 }
 
 func TestParseFunction(t *testing.T) {
@@ -823,8 +856,12 @@ func testItem(t *testing.T, node ast.Node, expect string) {
 	if !ok {
 		t.Errorf("invalid type want Item got %T", node)
 	}
-	if expect != item.String() {
-		t.Errorf("expected %q, got %q", expect, item.String())
+	if item != nil {
+		if expect != item.String() {
+			t.Errorf("expected %q, got %q", expect, item.String())
+		}
+	} else {
+		t.Errorf("item is null")
 	}
 }
 
