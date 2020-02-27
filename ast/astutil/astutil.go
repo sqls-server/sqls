@@ -50,7 +50,7 @@ func (nm *NodeMatcher) IsMatchSQLType(tok *ast.SQLToken) bool {
 func (nm *NodeMatcher) IsMatchKeyword(node ast.Node) bool {
 	if nm.ExpectKeyword != nil {
 		for _, expect := range nm.ExpectKeyword {
-			if strings.ToUpper(expect) == strings.ToUpper(node.String()) {
+			if strings.EqualFold(expect, node.String()) {
 				return true
 			}
 		}
