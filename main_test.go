@@ -313,6 +313,17 @@ func TestComplete(t *testing.T) {
 			},
 		},
 		{
+			name:  "join on identifier filterd",
+			input: "select CountryCode from city left join country on co",
+			line:  0,
+			col:   52,
+			want: []string{
+				"Code",
+				"Continent",
+				"Code2",
+			},
+		},
+		{
 			name:  "ORDER BY identifier",
 			input: "SELECT ID, Name FROM city ORDER BY ",
 			line:  0,

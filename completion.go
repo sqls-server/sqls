@@ -292,7 +292,7 @@ func getCompletionTypes(text string, pos token.Pos) ([]CompletionType, *parent, 
 	// 	res = []CompletionType{
 	// 		CompletionTypeUser,
 	// 	}
-	case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"SELECT", "WHERE", "HAVING"})):
+	case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"SELECT", "WHERE", "HAVING", "ON"})):
 		if nodeWalker.CurNodeIs(memberIdentifierMatcher) {
 			// has parent
 			mi := nodeWalker.CurNodeMatched(memberIdentifierMatcher).(*ast.MemberIdentifer)
