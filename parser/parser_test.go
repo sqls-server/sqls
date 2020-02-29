@@ -662,7 +662,7 @@ func TestParseOperator(t *testing.T) {
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, input)
 				list := stmts[0].GetTokens()
-				testOperator(t, list[0], input, "foo", "100")
+				testOperator(t, list[0], input, "foo", "+", "100")
 			},
 		},
 		{
@@ -671,7 +671,7 @@ func TestParseOperator(t *testing.T) {
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, input)
 				list := stmts[0].GetTokens()
-				testOperator(t, list[0], input, "foo", "100")
+				testOperator(t, list[0], input, "foo", "-", "100")
 			},
 		},
 		{
@@ -680,7 +680,7 @@ func TestParseOperator(t *testing.T) {
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, input)
 				list := stmts[0].GetTokens()
-				testOperator(t, list[0], input, "foo", "100")
+				testOperator(t, list[0], input, "foo", "*", "100")
 			},
 		},
 		{
@@ -689,7 +689,7 @@ func TestParseOperator(t *testing.T) {
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, input)
 				list := stmts[0].GetTokens()
-				testOperator(t, list[0], input, "foo", "100")
+				testOperator(t, list[0], input, "foo", "/", "100")
 			},
 		},
 		{
@@ -698,7 +698,7 @@ func TestParseOperator(t *testing.T) {
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, input)
 				list := stmts[0].GetTokens()
-				testOperator(t, list[0], input, "foo", "100")
+				testOperator(t, list[0], input, "foo", "%", "100")
 			},
 		},
 		{
@@ -707,7 +707,7 @@ func TestParseOperator(t *testing.T) {
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, input)
 				list := stmts[0].GetTokens()
-				testOperator(t, list[0], input, "foo", "100")
+				testOperator(t, list[0], input, "foo", "%", "100")
 			},
 		},
 		{
@@ -716,7 +716,7 @@ func TestParseOperator(t *testing.T) {
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, input)
 				list := stmts[0].GetTokens()
-				testOperator(t, list[0], input, "foo", "100")
+				testOperator(t, list[0], input, "foo", "+", "100")
 			},
 		},
 		{
@@ -725,9 +725,9 @@ func TestParseOperator(t *testing.T) {
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, input)
 				list := stmts[0].GetTokens()
-				operator := testOperator(t, list[0], input, "(100+foo)", "100")
-				parenthesis := testTokenList(t, operator.Left(), 3).GetTokens()
-				testOperator(t, parenthesis[1], "100+foo", "100", "foo")
+				operator := testOperator(t, list[0], input, "(100+foo)", "/", "100")
+				parenthesis := testTokenList(t, operator.Left, 3).GetTokens()
+				testOperator(t, parenthesis[1], "100+foo", "100", "+", "foo")
 			},
 		},
 		{
@@ -736,9 +736,9 @@ func TestParseOperator(t *testing.T) {
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, input)
 				list := stmts[0].GetTokens()
-				operator := testOperator(t, list[0], input, "100", "(100+foo)")
-				parenthesis := testTokenList(t, operator.Right(), 3).GetTokens()
-				testOperator(t, parenthesis[1], "100+foo", "100", "foo")
+				operator := testOperator(t, list[0], input, "100", "/", "(100+foo)")
+				parenthesis := testTokenList(t, operator.Right, 3).GetTokens()
+				testOperator(t, parenthesis[1], "100+foo", "100", "+", "foo")
 			},
 		},
 	}
@@ -1063,7 +1063,7 @@ func testMultiKeyword(t *testing.T, node ast.Node, expect string) {
 	}
 }
 
-func testOperator(t *testing.T, node ast.Node, expect string, left, right string) *ast.Operator {
+func testOperator(t *testing.T, node ast.Node, expect string, left, ope, right string) *ast.Operator {
 	t.Helper()
 	operator, ok := node.(*ast.Operator)
 	if !ok {
@@ -1073,11 +1073,14 @@ func testOperator(t *testing.T, node ast.Node, expect string, left, right string
 		t.Errorf("expected %q, got %q", expect, node.String())
 	}
 	if ok {
-		if left != operator.Left().String() {
-			t.Errorf("expected left %q, got %q", left, operator.Left().String())
+		if left != operator.Left.String() {
+			t.Errorf("expected left %q, got %q", left, operator.Left.String())
 		}
-		if right != operator.Right().String() {
-			t.Errorf("expected right %q, got %q", right, operator.Right().String())
+		if ope != operator.Operator.String() {
+			t.Errorf("expected operator %q, got %q", ope, operator.Operator.String())
+		}
+		if right != operator.Right.String() {
+			t.Errorf("expected right %q, got %q", right, operator.Right.String())
 		}
 	}
 	return operator

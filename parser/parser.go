@@ -455,6 +455,7 @@ var operatorRecursionMatcher = astutil.NodeMatcher{
 }
 
 func parseOperator(reader *astutil.NodeReader) ast.Node {
+	operator := &ast.Operator{Left: reader.CurNode}
 	if !reader.CurNodeIs(operatorTargetMatcher) {
 		return reader.CurNode
 	}
@@ -468,6 +469,7 @@ func parseOperator(reader *astutil.NodeReader) ast.Node {
 	startIndex := reader.Index - 1
 	tmpReader := reader.CopyReader()
 	tmpReader.NextNode(true)
+	operator.Operator = tmpReader.CurNode
 
 	if !tmpReader.PeekNodeIs(true, operatorTargetMatcher) {
 		return reader.CurNode
@@ -480,11 +482,14 @@ func parseOperator(reader *astutil.NodeReader) ast.Node {
 			reader.Replace(parenthesis, endIndex)
 		}
 	}
+	operator.Right = right
 
 	tmpReader.NextNode(true)
 	reader.Index = tmpReader.Index
 	reader.CurNode = tmpReader.CurNode
-	return &ast.Operator{Toks: reader.NodesWithRange(startIndex, endIndex+1)}
+
+	operator.Toks = reader.NodesWithRange(startIndex, endIndex+1)
+	return operator
 }
 
 var comparisonInfixMatcher = astutil.NodeMatcher{

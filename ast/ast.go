@@ -98,7 +98,10 @@ func (i *Identifer) Pos() token.Pos      { return i.Tok.From }
 func (i *Identifer) End() token.Pos      { return i.Tok.To }
 
 type Operator struct {
-	Toks []Node
+	Toks     []Node
+	Left     Node
+	Operator Node
+	Right    Node
 }
 
 func (o *Operator) String() string {
@@ -112,8 +115,6 @@ func (o *Operator) GetTokens() []Node     { return o.Toks }
 func (o *Operator) SetTokens(toks []Node) { o.Toks = toks }
 func (o *Operator) Pos() token.Pos        { return findFrom(o) }
 func (o *Operator) End() token.Pos        { return findTo(o) }
-func (o *Operator) Left() Node            { return o.Toks[0] }
-func (o *Operator) Right() Node           { return o.Toks[len(o.Toks)-1] }
 
 type Comparison struct {
 	Toks []Node
