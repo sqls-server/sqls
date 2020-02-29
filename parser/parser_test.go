@@ -774,23 +774,23 @@ func TestParseAliased(t *testing.T) {
 				testAliased(t, join[2], "def as d", "def", "d")
 			},
 		},
-		// {
-		// 	name:  "aliase sub query",
-		// 	input: "select * from (ci.ID, ci.Name from city as ci) as t",
-		// 	checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
-		// 		testStatement(t, stmts[0], 5, input)
-		// 		list := stmts[0].GetTokens()
-		// 		testFrom(t, list[4], "from (ci.ID, ci.Name from city as ci) as t")
-		// 		from := testTokenList(t, list[4], 3).GetTokens()
-		// 		testAliased(t, from[2], "(ci.ID, ci.Name from city as ci) as t", "(ci.ID, ci.Name from city as ci)", "t")
-		// 		aliased := testTokenList(t, from[2], 5).GetTokens()
-		// 		testParenthesis(t, aliased[0], "(ci.ID, ci.Name from city as ci)")
-		// 		parenthesis := testTokenList(t, aliased[0], 5).GetTokens()
-		// 		testFrom(t, parenthesis[3], "from city as ci")
-		// 		from2 := testTokenList(t, parenthesis[3], 3).GetTokens()
-		// 		testAliased(t, from2[2], "city as ci", "city", "ci")
-		// 	},
-		// },
+		{
+			name:  "aliase sub query",
+			input: "select * from (ci.ID, ci.Name from city as ci) as t",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 5, input)
+				list := stmts[0].GetTokens()
+				testFrom(t, list[4], "from (ci.ID, ci.Name from city as ci) as t")
+				from := testTokenList(t, list[4], 3).GetTokens()
+				testAliased(t, from[2], "(ci.ID, ci.Name from city as ci) as t", "(ci.ID, ci.Name from city as ci)", "t")
+				aliased := testTokenList(t, from[2], 5).GetTokens()
+				testParenthesis(t, aliased[0], "(ci.ID, ci.Name from city as ci)")
+				parenthesis := testTokenList(t, aliased[0], 5).GetTokens()
+				testFrom(t, parenthesis[3], "from city as ci")
+				from2 := testTokenList(t, parenthesis[3], 3).GetTokens()
+				testAliased(t, from2[2], "city as ci", "city", "ci")
+			},
+		},
 	}
 	for _, tt := range testcases {
 		t.Run(tt.name, func(t *testing.T) {

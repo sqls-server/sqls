@@ -73,14 +73,16 @@ func NewParser(src io.Reader, d dialect.Dialect) (*Parser, error) {
 func (p *Parser) Parse() (ast.TokenList, error) {
 	root := p.root
 	root = parseStatement(astutil.NewNodeReader(root))
+
 	root = parsePrefixGroup(astutil.NewNodeReader(root), parenthesisPrefixMatcher, parseParenthesis)
 	root = parsePrefixGroup(astutil.NewNodeReader(root), functionPrefixMatcher, parseFunctions)
 	root = parsePrefixGroup(astutil.NewNodeReader(root), FromPrefixMatcher, parseFrom)
 	root = parsePrefixGroup(astutil.NewNodeReader(root), JoinPrefixMatcher, parseJoin)
 	root = parsePrefixGroup(astutil.NewNodeReader(root), wherePrefixMatcher, parseWhere)
+	root = parsePrefixGroup(astutil.NewNodeReader(root), identifierPrefixMatcher, parseIdentifier)
+
 	root = parseInfixGroup(astutil.NewNodeReader(root), memberIdentifierInfixMatcher, false, parseMemberIdentifier)
 	root = parseInfixGroup(astutil.NewNodeReader(root), multiKeywordInfixMatcher, true, parseMultiKeyword)
-	root = parsePrefixGroup(astutil.NewNodeReader(root), identifierPrefixMatcher, parseIdentifier)
 	root = parseInfixGroup(astutil.NewNodeReader(root), operatorInfixMatcher, true, parseOperator)
 	root = parseInfixGroup(astutil.NewNodeReader(root), comparisonInfixMatcher, true, parseComparison)
 	root = parseInfixGroup(astutil.NewNodeReader(root), aliasInfixMatcher, true, parseAliased)
@@ -304,7 +306,6 @@ func parseFrom(reader *astutil.NodeReader) ast.Node {
 
 		if tmpReader.CurNodeIs(FromRecursionMatcher) {
 			// For sub query
-			// Like a "select * from (select * from abc) as t"
 			if list, ok := tmpReader.CurNode.(ast.TokenList); ok {
 				parenthesis := parsePrefixGroup(astutil.NewNodeReader(list), FromPrefixMatcher, parseFrom)
 				nodes = append(nodes, parenthesis)
@@ -520,10 +521,6 @@ func parseComparison(reader *astutil.NodeReader) ast.Node {
 	return &ast.Comparison{Toks: reader.NodesWithRange(startIndex, endIndex+1)}
 }
 
-// ast.Identifer,
-// ast.MemberIdentifer,
-// ast.Parenthesis,
-
 var aliasInfixMatcher = astutil.NodeMatcher{
 	ExpectKeyword: []string{
 		"AS",
@@ -544,6 +541,12 @@ var aliasTargetMatcher = astutil.NodeMatcher{
 		if _, ok := node.(*ast.MemberIdentifer); ok {
 			return true
 		}
+		return false
+	},
+}
+
+var aliasRecursionMatcher = astutil.NodeMatcher{
+	NodeTypeMatcherFunc: func(node interface{}) bool {
 		if _, ok := node.(*ast.Parenthesis); ok {
 			return true
 		}
@@ -555,6 +558,15 @@ func parseAliased(reader *astutil.NodeReader) ast.Node {
 	if !reader.CurNodeIs(aliasTargetMatcher) {
 		return reader.CurNode
 	}
+
+	if reader.CurNodeIs(aliasRecursionMatcher) {
+		if list, ok := reader.CurNode.(ast.TokenList); ok {
+			// For sub query
+			parenthesis := parseInfixGroup(astutil.NewNodeReader(list), aliasInfixMatcher, true, parseAliased)
+			reader.Replace(parenthesis, reader.Index-1)
+		}
+	}
+
 	realName := reader.CurNode
 	startIndex := reader.Index - 1
 	tmpReader := reader.CopyReader()

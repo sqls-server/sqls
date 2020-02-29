@@ -111,6 +111,13 @@ func (nr *NodeReader) CopyReader() *NodeReader {
 	}
 }
 
+func (nr *NodeReader) Replace(add ast.Node, index int) {
+	list := nr.Node.GetTokens()
+	list = append(list[:index], list[index:]...)
+	list[index] = add
+	nr.Node.SetTokens(list)
+}
+
 func (nr *NodeReader) NodesWithRange(startIndex, endIndex int) []ast.Node {
 	return nr.Node.GetTokens()[startIndex:endIndex]
 }
