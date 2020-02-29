@@ -15,6 +15,115 @@ type TableInfo struct {
 	Alias          string
 }
 
+type SubQueryInfo struct {
+	Tables  []TableInfo
+	Columns []*SubQueryColumnIdentifier
+}
+
+// select t.ID, t.Name from (select * from city) as t
+// select t.ID, t.Name from (select city.ID, city.Name from city) as t
+// select t.ID, t.Name from (select city.ID, city.Name from city) as t
+// select city_id, city_name from (select city.ID as city_id, city.Name as city_name from city) as t
+
+// extract sub query
+type SubQueryColumnIdentifier struct {
+	Parent      string
+	RealName    string
+	AliasedName string
+}
+
+var statementTypeMatcher = astutil.NodeMatcher{
+	NodeTypeMatcherFunc: func(node interface{}) bool {
+		if _, ok := node.(*ast.Statement); ok {
+			return true
+		}
+		return false
+	},
+}
+
+func extractFocusedStatement(parsed ast.TokenList, pos token.Pos) (ast.TokenList, error) {
+	nodeWalker := NewNodeWalker(parsed, pos)
+	if !nodeWalker.CurNodeIs(statementTypeMatcher) {
+		return nil, xerrors.Errorf("Not found statement, Node: %q, Position: (%d, %d)", parsed.String(), pos.Line, pos.Col)
+	}
+	stmt := nodeWalker.CurNodeMatched(statementTypeMatcher).(ast.TokenList)
+	return stmt, nil
+}
+
+var parenthesisTypeMatcher = astutil.NodeMatcher{
+	NodeTypeMatcherFunc: func(node interface{}) bool {
+		if _, ok := node.(*ast.Parenthesis); ok {
+			return true
+		}
+		return false
+	},
+}
+var selectMatcher = astutil.NodeMatcher{
+	ExpectKeyword: []string{
+		"SELECT",
+	},
+}
+
+func encloseIsSubQuery(stmt ast.TokenList, pos token.Pos) bool {
+	nodeWalker := NewNodeWalker(stmt, pos)
+	if !nodeWalker.CurNodeIs(parenthesisTypeMatcher) {
+		return false
+	}
+	parenthesis := nodeWalker.CurNodeMatchedButtomUp(parenthesisTypeMatcher)
+	tokenList, ok := parenthesis.(ast.TokenList)
+	if !ok {
+		return false
+	}
+	reader := astutil.NewNodeReader(tokenList)
+	if !reader.NextNode(false) {
+		return false
+	}
+	if !reader.NextNode(false) {
+		return false
+	}
+	if !reader.CurNodeIs(selectMatcher) {
+		fmt.Println(reader.Index, reader.CurNode)
+		return false
+	}
+	return true
+}
+
+func extractFocusedSubQuery(stmt ast.TokenList, pos token.Pos) ast.TokenList {
+	nodeWalker := NewNodeWalker(stmt, pos)
+	if !nodeWalker.CurNodeIs(parenthesisTypeMatcher) {
+		return nil
+	}
+	parenthesis := nodeWalker.CurNodeMatchedButtomUp(parenthesisTypeMatcher)
+	return parenthesis.(ast.TokenList)
+}
+
+func ExtractTable2(parsed ast.TokenList, pos token.Pos) ([]*TableInfo, error) {
+	stmt, err := extractFocusedStatement(parsed, pos)
+	if err != nil {
+		return nil, err
+	}
+	list := stmt
+	if encloseIsSubQuery(stmt, pos) {
+		list = extractFocusedSubQuery(stmt, pos)
+	} else {
+		// TODO get subquery info
+	}
+	fmt.Println(list)
+	fromJoinExpr := filterTokenList(astutil.NewNodeReader(list), fromJoinMatcher)
+	fmt.Println(fromJoinExpr)
+	identifiers := filterTokenList(astutil.NewNodeReader(fromJoinExpr), identifierMatcher)
+
+	res := []*TableInfo{}
+	for _, ident := range identifiers.GetTokens() {
+		infos, err := parseTableInfo(ident)
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, infos...)
+	}
+	return res, nil
+}
+
 func ExtractTable(stmt ast.TokenList) []*TableInfo {
 	list := stmt.GetTokens()[0].(ast.TokenList)
 	fromJoinExpr := filterTokenList(astutil.NewNodeReader(list), fromJoinMatcher)
@@ -198,6 +307,18 @@ func (nw *NodeWalker) CurNodeMatched(matcher astutil.NodeMatcher) ast.Node {
 		if reader.CurNodeIs(matcher) {
 			return reader.CurNode
 		}
+	}
+	return nil
+}
+
+func (nw *NodeWalker) CurNodeMatchedButtomUp(matcher astutil.NodeMatcher) ast.Node {
+	var i = len(nw.Paths) - 1
+	for i > 0 {
+		reader := nw.Paths[i]
+		if reader.CurNodeIs(matcher) {
+			return reader.CurNode
+		}
+		i--
 	}
 	return nil
 }

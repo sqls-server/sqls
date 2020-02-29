@@ -11,6 +11,181 @@ import (
 	"github.com/lighttiger2505/sqls/token"
 )
 
+func Test_focusedStatement(t *testing.T) {
+	testcases := []struct {
+		name  string
+		input string
+		pos   token.Pos
+		want  string
+	}{
+		{
+			name:  "",
+			input: "select 1;select 2;select 3;",
+			pos:   token.Pos{Line: 1, Col: 9},
+			want:  "select 1;",
+		},
+		{
+			name:  "",
+			input: "select 1;select 2;select 3;",
+			pos:   token.Pos{Line: 1, Col: 10},
+			want:  "select 2;",
+		},
+	}
+	for _, tt := range testcases {
+		t.Run(tt.name, func(t *testing.T) {
+			stmt := initExtractTable(t, tt.input)
+			got, err := extractFocusedStatement(stmt, tt.pos)
+			if err != nil {
+				t.Fatalf("error: %+v", err)
+			}
+			if d := cmp.Diff(tt.want, got.String()); d != "" {
+				t.Errorf("unmatched value: %s", d)
+			}
+		})
+	}
+}
+
+func Test_encloseIsSubQuery(t *testing.T) {
+	testcases := []struct {
+		name  string
+		input string
+		pos   token.Pos
+		want  bool
+	}{
+		{
+			name:  "outer sub query",
+			input: "select * from (select * from abc) as t",
+			pos:   token.Pos{Line: 1, Col: 14},
+			want:  false,
+		},
+		{
+			name:  "inner sub query",
+			input: "select * from (select * from abc) as t",
+			pos:   token.Pos{Line: 1, Col: 15},
+			want:  true,
+		},
+		{
+			name:  "operator",
+			input: "select (1 + 1)",
+			pos:   token.Pos{Line: 1, Col: 11},
+			want:  false,
+		},
+	}
+	for _, tt := range testcases {
+		t.Run(tt.name, func(t *testing.T) {
+			stmt := initExtractTable(t, tt.input)
+			list := stmt.GetTokens()[0].(ast.TokenList)
+			got := encloseIsSubQuery(list, tt.pos)
+			if tt.want != got {
+				t.Errorf("want %v, got %v", tt.want, got)
+			}
+		})
+	}
+}
+
+func TestExtractTable2(t *testing.T) {
+	testcases := []struct {
+		name  string
+		input string
+		pos   token.Pos
+		want  []*TableInfo
+	}{
+		{
+			name:  "from only",
+			input: "from abc",
+			pos:   token.Pos{Line: 1, Col: 1},
+			want: []*TableInfo{
+				&TableInfo{
+					Name: "abc",
+				},
+			},
+		},
+		{
+			name:  "one table",
+			input: "select * from abc",
+			pos:   token.Pos{Line: 1, Col: 1},
+			want: []*TableInfo{
+				&TableInfo{
+					Name: "abc",
+				},
+			},
+		},
+		{
+			name:  "multiple table",
+			input: "select * from abc, def",
+			pos:   token.Pos{Line: 1, Col: 1},
+			want: []*TableInfo{
+				&TableInfo{
+					Name: "abc",
+				},
+				&TableInfo{
+					Name: "def",
+				},
+			},
+		},
+		{
+			name:  "with database schema",
+			input: "select * from abc.def",
+			pos:   token.Pos{Line: 1, Col: 1},
+			want: []*TableInfo{
+				&TableInfo{
+					DatabaseSchema: "abc",
+					Name:           "def",
+				},
+			},
+		},
+		{
+			name:  "with database schema and alias",
+			input: "select * from abc.def as ghi",
+			pos:   token.Pos{Line: 1, Col: 1},
+			want: []*TableInfo{
+				&TableInfo{
+					DatabaseSchema: "abc",
+					Name:           "def",
+					Alias:          "ghi",
+				},
+			},
+		},
+		// {
+		// 	name:  "focus inner deep sub query",
+		// 	input: "select t.* from (select city_id, city_name from (select ci.ID as city_id, ci.Name as city_name from city as ci) as t) as t",
+		// 	pos:   token.Pos{Line: 1, Col: 55},
+		// 	want: []*TableInfo{
+		// 		&TableInfo{
+		// 			DatabaseSchema: "",
+		// 			Name:           "city",
+		// 			Alias:          "ci",
+		// 		},
+		// 	},
+		// },
+		// {
+		// 	name:  "focus outer sub query before",
+		// 	input: "select t.* from (select city_id, city_name from (select city.ID as city_id, city.Name as city_name from city) as t) as t",
+		// 	pos:   token.Pos{Line: 1, Col: 1},
+		// 	want: []*TableInfo{
+		// 		&TableInfo{
+		// 			DatabaseSchema: "",
+		// 			Name:           "abc",
+		// 			Alias:          "",
+		// 		},
+		// 	},
+		// },
+	}
+
+	for _, tt := range testcases {
+		t.Run(tt.name, func(t *testing.T) {
+			stmt := initExtractTable(t, tt.input)
+			got, err := ExtractTable2(stmt, tt.pos)
+			if err != nil {
+				t.Fatalf("error: %+v", err)
+			}
+			if d := cmp.Diff(tt.want, got); d != "" {
+				t.Errorf("unmatched value: %s", d)
+			}
+		})
+	}
+}
+
 func TestExtractTable(t *testing.T) {
 	testcases := []struct {
 		name  string
@@ -68,6 +243,17 @@ func TestExtractTable(t *testing.T) {
 				},
 			},
 		},
+		// {
+		// 	name:  "",
+		// 	input: "SELECT  FROM (SELECT ID as city_id, Name as city_name FROM city) as v",
+		// 	want: []*TableInfo{
+		// 		&TableInfo{
+		// 			DatabaseSchema: "",
+		// 			Name:           "v",
+		// 			Alias:          "",
+		// 		},
+		// 	},
+		// },
 	}
 
 	for _, tt := range testcases {
