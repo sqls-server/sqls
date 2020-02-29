@@ -253,7 +253,7 @@ func TestParseFrom(t *testing.T) {
 				from := testTokenList(t, list[4], 3).GetTokens()
 				testItem(t, from[0], "from")
 				testItem(t, from[1], " ")
-				testAliased(t, from[2], "(select * from abc) as t")
+				testAliased(t, from[2], "(select * from abc) as t", "(select * from abc)", "t")
 
 				aliased := testTokenList(t, from[2], 5).GetTokens()
 				testParenthesis(t, aliased[0], "(select * from abc)")
@@ -717,16 +717,87 @@ func TestParseComparison(t *testing.T) {
 }
 
 func TestParseAliased(t *testing.T) {
-	input := `select foo as bar from mytable`
-	stmts := parseInit(t, input)
-	testStatement(t, stmts[0], 5, input)
+	testcases := []struct {
+		name    string
+		input   string
+		checkFn func(t *testing.T, stmts []*ast.Statement, input string)
+	}{
+		{
+			name:  "aliase select identifier",
+			input: "select foo as bar from mytable",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 5, input)
+				list := stmts[0].GetTokens()
+				testItem(t, list[0], "select")
+				testItem(t, list[1], " ")
+				testAliased(t, list[2], "foo as bar", "foo", "bar")
+				testItem(t, list[3], " ")
+				testFrom(t, list[4], "from mytable")
+			},
+		},
+		{
+			name:  "aliase from identifier",
+			input: "select foo from mytable as mt",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 5, input)
+				list := stmts[0].GetTokens()
+				testItem(t, list[0], "select")
+				testItem(t, list[1], " ")
+				testIdentifier(t, list[2], "foo")
+				testItem(t, list[3], " ")
+				testFrom(t, list[4], "from mytable as mt")
 
-	list := stmts[0].GetTokens()
-	testItem(t, list[0], "select")
-	testItem(t, list[1], " ")
-	testAliased(t, list[2], "foo as bar")
-	testItem(t, list[3], " ")
-	testFrom(t, list[4], "from mytable")
+				from := testTokenList(t, list[4], 3).GetTokens()
+				testItem(t, from[0], "from")
+				testItem(t, from[1], " ")
+				testAliased(t, from[2], "mytable as mt", "mytable", "mt")
+			},
+		},
+		{
+			name:  "aliase join identifier",
+			input: "select foo from abc inner join def as d",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 8, input)
+				list := stmts[0].GetTokens()
+				testItem(t, list[0], "select")
+				testItem(t, list[1], " ")
+				testIdentifier(t, list[2], "foo")
+				testItem(t, list[3], " ")
+				testFrom(t, list[4], "from abc ")
+				testItem(t, list[5], "inner")
+				testItem(t, list[6], " ")
+				testJoin(t, list[7], "join def as d")
+
+				join := testTokenList(t, list[7], 3).GetTokens()
+				testItem(t, join[0], "join")
+				testItem(t, join[1], " ")
+				testAliased(t, join[2], "def as d", "def", "d")
+			},
+		},
+		// {
+		// 	name:  "aliase sub query",
+		// 	input: "select * from (ci.ID, ci.Name from city as ci) as t",
+		// 	checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+		// 		testStatement(t, stmts[0], 5, input)
+		// 		list := stmts[0].GetTokens()
+		// 		testFrom(t, list[4], "from (ci.ID, ci.Name from city as ci) as t")
+		// 		from := testTokenList(t, list[4], 3).GetTokens()
+		// 		testAliased(t, from[2], "(ci.ID, ci.Name from city as ci) as t", "(ci.ID, ci.Name from city as ci)", "t")
+		// 		aliased := testTokenList(t, from[2], 5).GetTokens()
+		// 		testParenthesis(t, aliased[0], "(ci.ID, ci.Name from city as ci)")
+		// 		parenthesis := testTokenList(t, aliased[0], 5).GetTokens()
+		// 		testFrom(t, parenthesis[3], "from city as ci")
+		// 		from2 := testTokenList(t, parenthesis[3], 3).GetTokens()
+		// 		testAliased(t, from2[2], "city as ci", "city", "ci")
+		// 	},
+		// },
+	}
+	for _, tt := range testcases {
+		t.Run(tt.name, func(t *testing.T) {
+			stmts := parseInit(t, tt.input)
+			tt.checkFn(t, stmts, tt.input)
+		})
+	}
 }
 
 func TestParseIdentifierList(t *testing.T) {
@@ -993,14 +1064,29 @@ func testJoin(t *testing.T, node ast.Node, expect string) {
 	}
 }
 
-func testAliased(t *testing.T, node ast.Node, expect string) {
+func testAliased(t *testing.T, node ast.Node, expect string, realName, aliasedName string) {
 	t.Helper()
-	_, ok := node.(*ast.Aliased)
+	aliased, ok := node.(*ast.Aliased)
 	if !ok {
 		t.Errorf("invalid type want Identifier got %T", node)
+		return
 	}
 	if expect != node.String() {
 		t.Errorf("expected %q, got %q", expect, node.String())
+	}
+	if aliased.RealName != nil {
+		if realName != aliased.RealName.String() {
+			t.Errorf("expected %q, got %q", realName, aliased.RealName.String())
+		}
+	} else {
+		t.Errorf("RealName is null")
+	}
+	if aliased.AliasedName != nil {
+		if aliasedName != aliased.AliasedName.String() {
+			t.Errorf("expected %q, got %q", aliasedName, aliased.AliasedName.String())
+		}
+	} else {
+		t.Errorf("AliasedName is null")
 	}
 }
 
