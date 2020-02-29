@@ -651,27 +651,103 @@ func TestParseMultiKeyword(t *testing.T) {
 }
 
 func TestParseOperator(t *testing.T) {
-	var input string
-	var stmts []*ast.Statement
-	var list []ast.Node
-
-	input = "foo+100"
-	stmts = parseInit(t, input)
-	testStatement(t, stmts[0], 1, input)
-	list = stmts[0].GetTokens()
-	testOperator(t, list[0], input)
-
-	input = "foo + 100"
-	stmts = parseInit(t, input)
-	testStatement(t, stmts[0], 1, input)
-	list = stmts[0].GetTokens()
-	testOperator(t, list[0], input)
-
-	input = "foo*100"
-	stmts = parseInit(t, input)
-	testStatement(t, stmts[0], 1, input)
-	list = stmts[0].GetTokens()
-	testOperator(t, list[0], input)
+	testcases := []struct {
+		name    string
+		input   string
+		checkFn func(t *testing.T, stmts []*ast.Statement, input string)
+	}{
+		{
+			name:  "plus operator",
+			input: "foo+100",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testOperator(t, list[0], input, "foo", "100")
+			},
+		},
+		{
+			name:  "minus operator",
+			input: "foo-100",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testOperator(t, list[0], input, "foo", "100")
+			},
+		},
+		{
+			name:  "mult operator",
+			input: "foo*100",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testOperator(t, list[0], input, "foo", "100")
+			},
+		},
+		{
+			name:  "div operator",
+			input: "foo/100",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testOperator(t, list[0], input, "foo", "100")
+			},
+		},
+		{
+			name:  "mod operator",
+			input: "foo%100",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testOperator(t, list[0], input, "foo", "100")
+			},
+		},
+		{
+			name:  "mod operator",
+			input: "foo%100",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testOperator(t, list[0], input, "foo", "100")
+			},
+		},
+		{
+			name:  "operator with whitespace",
+			input: "foo + 100",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testOperator(t, list[0], input, "foo", "100")
+			},
+		},
+		{
+			name:  "left parenthesis",
+			input: "(100+foo)/100",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				operator := testOperator(t, list[0], input, "(100+foo)", "100")
+				parenthesis := testTokenList(t, operator.Left(), 3).GetTokens()
+				testOperator(t, parenthesis[1], "100+foo", "100", "foo")
+			},
+		},
+		{
+			name:  "right parenthesis",
+			input: "100/(100+foo)",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				operator := testOperator(t, list[0], input, "100", "(100+foo)")
+				parenthesis := testTokenList(t, operator.Right(), 3).GetTokens()
+				testOperator(t, parenthesis[1], "100+foo", "100", "foo")
+			},
+		},
+	}
+	for _, tt := range testcases {
+		t.Run(tt.name, func(t *testing.T) {
+			stmts := parseInit(t, tt.input)
+			tt.checkFn(t, stmts, tt.input)
+		})
+	}
 }
 
 func TestParseComparison(t *testing.T) {
@@ -987,15 +1063,24 @@ func testMultiKeyword(t *testing.T, node ast.Node, expect string) {
 	}
 }
 
-func testOperator(t *testing.T, node ast.Node, expect string) {
+func testOperator(t *testing.T, node ast.Node, expect string, left, right string) *ast.Operator {
 	t.Helper()
-	_, ok := node.(*ast.Operator)
+	operator, ok := node.(*ast.Operator)
 	if !ok {
 		t.Errorf("invalid type want Operator got %T", node)
 	}
 	if expect != node.String() {
 		t.Errorf("expected %q, got %q", expect, node.String())
 	}
+	if ok {
+		if left != operator.Left().String() {
+			t.Errorf("expected left %q, got %q", left, operator.Left().String())
+		}
+		if right != operator.Right().String() {
+			t.Errorf("expected right %q, got %q", right, operator.Right().String())
+		}
+	}
+	return operator
 }
 
 func testComparison(t *testing.T, node ast.Node, expect string) {

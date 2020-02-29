@@ -445,10 +445,25 @@ var operatorTargetMatcher = astutil.NodeMatcher{
 		token.NationalStringLiteral,
 	},
 }
+var operatorRecursionMatcher = astutil.NodeMatcher{
+	NodeTypeMatcherFunc: func(node interface{}) bool {
+		if _, ok := node.(*ast.Parenthesis); ok {
+			return true
+		}
+		return false
+	},
+}
 
 func parseOperator(reader *astutil.NodeReader) ast.Node {
 	if !reader.CurNodeIs(operatorTargetMatcher) {
 		return reader.CurNode
+	}
+	if reader.CurNodeIs(operatorRecursionMatcher) {
+		if list, ok := reader.CurNode.(ast.TokenList); ok {
+			// For sub query
+			parenthesis := parseInfixGroup(astutil.NewNodeReader(list), operatorInfixMatcher, true, parseOperator)
+			reader.Replace(parenthesis, reader.Index-1)
+		}
 	}
 	startIndex := reader.Index - 1
 	tmpReader := reader.CopyReader()
@@ -457,7 +472,14 @@ func parseOperator(reader *astutil.NodeReader) ast.Node {
 	if !tmpReader.PeekNodeIs(true, operatorTargetMatcher) {
 		return reader.CurNode
 	}
-	endIndex, _ := tmpReader.PeekNode(true)
+	endIndex, right := tmpReader.PeekNode(true)
+	if tmpReader.PeekNodeIs(true, operatorRecursionMatcher) {
+		if list, ok := right.(ast.TokenList); ok {
+			// For sub query
+			parenthesis := parseInfixGroup(astutil.NewNodeReader(list), operatorInfixMatcher, true, parseOperator)
+			reader.Replace(parenthesis, endIndex)
+		}
+	}
 
 	tmpReader.NextNode(true)
 	reader.Index = tmpReader.Index
@@ -558,7 +580,6 @@ func parseAliased(reader *astutil.NodeReader) ast.Node {
 	if !reader.CurNodeIs(aliasTargetMatcher) {
 		return reader.CurNode
 	}
-
 	if reader.CurNodeIs(aliasRecursionMatcher) {
 		if list, ok := reader.CurNode.(ast.TokenList); ok {
 			// For sub query

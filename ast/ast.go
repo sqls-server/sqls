@@ -112,6 +112,8 @@ func (o *Operator) GetTokens() []Node     { return o.Toks }
 func (o *Operator) SetTokens(toks []Node) { o.Toks = toks }
 func (o *Operator) Pos() token.Pos        { return findFrom(o) }
 func (o *Operator) End() token.Pos        { return findTo(o) }
+func (o *Operator) Left() Node            { return o.Toks[0] }
+func (o *Operator) Right() Node           { return o.Toks[len(o.Toks)-1] }
 
 type Comparison struct {
 	Toks []Node
