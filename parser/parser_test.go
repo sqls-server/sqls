@@ -152,7 +152,7 @@ func TestParseWhere(t *testing.T) {
 				where := testTokenList(t, list[5], 3).GetTokens()
 				testItem(t, where[0], "where")
 				testItem(t, where[1], " ")
-				testComparison(t, where[2], "bar = 1")
+				testComparison(t, where[2], "bar = 1", "bar", "=", "1")
 			},
 		},
 	}
@@ -312,7 +312,7 @@ func TestParseJoin_WithOn(t *testing.T) {
 	testJoin(t, list[5], "join efd ")
 	testItem(t, list[6], "on")
 	testItem(t, list[7], " ")
-	testComparison(t, list[8], "abc.id = efd.id")
+	testComparison(t, list[8], "abc.id = efd.id", "abc.id", "=", "efd.id")
 }
 
 func TestParseWhere_NotFoundClose(t *testing.T) {
@@ -352,7 +352,7 @@ func TestParseWhere_NotFoundClose(t *testing.T) {
 	where := testTokenList(t, list[5], 3).GetTokens()
 	testItem(t, where[0], "where")
 	testItem(t, where[1], " ")
-	testComparison(t, where[2], "bar = 1")
+	testComparison(t, where[2], "bar = 1", "bar", "=", "1")
 }
 
 func TestParseWhere_WithParenthesis(t *testing.T) {
@@ -751,45 +751,76 @@ func TestParseOperator(t *testing.T) {
 }
 
 func TestParseComparison(t *testing.T) {
-	var input string
-	var stmts []*ast.Statement
-	var list []ast.Node
-
-	input = "foo = 25.5"
-	stmts = parseInit(t, input)
-	testStatement(t, stmts[0], 1, input)
-	list = stmts[0].GetTokens()
-	testComparison(t, list[0], input)
-
-	input = "foo = 'bar'"
-	stmts = parseInit(t, input)
-	testStatement(t, stmts[0], 1, input)
-	list = stmts[0].GetTokens()
-	testComparison(t, list[0], input)
-
-	input = "(3 + 4) = 7"
-	stmts = parseInit(t, input)
-	testStatement(t, stmts[0], 1, input)
-	list = stmts[0].GetTokens()
-	testComparison(t, list[0], input)
-
-	input = "foo = DATE(bar.baz)"
-	stmts = parseInit(t, input)
-	testStatement(t, stmts[0], 1, input)
-	list = stmts[0].GetTokens()
-	testComparison(t, list[0], input)
-
-	input = "foo = DATE(bar.baz)"
-	stmts = parseInit(t, input)
-	testStatement(t, stmts[0], 1, input)
-	list = stmts[0].GetTokens()
-	testComparison(t, list[0], input)
-
-	input = "DATE(foo.bar) = bar.baz"
-	stmts = parseInit(t, input)
-	testStatement(t, stmts[0], 1, input)
-	list = stmts[0].GetTokens()
-	testComparison(t, list[0], input)
+	testcases := []struct {
+		name    string
+		input   string
+		checkFn func(t *testing.T, stmts []*ast.Statement, input string)
+	}{
+		{
+			name:  "equal number",
+			input: "foo = 25.5",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testComparison(t, list[0], input, "foo", "=", "25.5")
+			},
+		},
+		{
+			name:  "equal string",
+			input: "foo = 'bar'",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testComparison(t, list[0], input, "foo", "=", "'bar'")
+			},
+		},
+		{
+			name:  "equal left parenthesis",
+			input: "(3 = 4) = 7",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				comparison := testComparison(t, list[0], input, "(3 = 4)", "=", "7")
+				parenthesis := testTokenList(t, comparison.Left, 3).GetTokens()
+				testComparison(t, parenthesis[1], "3 = 4", "3", "=", "4")
+			},
+		},
+		{
+			name:  "equal right parenthesis",
+			input: "7 = (3 = 4)",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				comparison := testComparison(t, list[0], input, "7", "=", "(3 = 4)")
+				parenthesis := testTokenList(t, comparison.Right, 3).GetTokens()
+				testComparison(t, parenthesis[1], "3 = 4", "3", "=", "4")
+			},
+		},
+		{
+			name:  "equal left function",
+			input: "DATE(foo.bar) = bar.baz",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testComparison(t, list[0], input, "DATE(foo.bar)", "=", "bar.baz")
+			},
+		},
+		{
+			name:  "equal right function",
+			input: "foo.bar = DATE(bar.baz)",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testComparison(t, list[0], input, "foo.bar", "=", "DATE(bar.baz)")
+			},
+		},
+	}
+	for _, tt := range testcases {
+		t.Run(tt.name, func(t *testing.T) {
+			stmts := parseInit(t, tt.input)
+			tt.checkFn(t, stmts, tt.input)
+		})
+	}
 }
 
 func TestParseAliased(t *testing.T) {
@@ -1086,15 +1117,27 @@ func testOperator(t *testing.T, node ast.Node, expect string, left, ope, right s
 	return operator
 }
 
-func testComparison(t *testing.T, node ast.Node, expect string) {
+func testComparison(t *testing.T, node ast.Node, expect string, left, comp, right string) *ast.Comparison {
 	t.Helper()
-	_, ok := node.(*ast.Comparison)
+	comparison, ok := node.(*ast.Comparison)
 	if !ok {
 		t.Errorf("invalid type want Comparison got %T", node)
 	}
 	if expect != node.String() {
 		t.Errorf("expected %q, got %q", expect, node.String())
 	}
+	if ok {
+		if left != comparison.Left.String() {
+			t.Errorf("expected left %q, got %q", left, comparison.Left.String())
+		}
+		if comp != comparison.Comparison.String() {
+			t.Errorf("expected comparison %q, got %q", comp, comparison.Comparison.String())
+		}
+		if right != comparison.Right.String() {
+			t.Errorf("expected right %q, got %q", right, comparison.Right.String())
+		}
+	}
+	return comparison
 }
 
 func testParenthesis(t *testing.T, node ast.Node, expect string) {

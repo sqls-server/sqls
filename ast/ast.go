@@ -117,7 +117,10 @@ func (o *Operator) Pos() token.Pos        { return findFrom(o) }
 func (o *Operator) End() token.Pos        { return findTo(o) }
 
 type Comparison struct {
-	Toks []Node
+	Toks       []Node
+	Left       Node
+	Comparison Node
+	Right      Node
 }
 
 func (c *Comparison) String() string {
