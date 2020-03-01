@@ -206,7 +206,10 @@ func (c *Completer) complete(text string, params CompletionParams) ([]Completion
 		return nil, err
 	}
 
-	definedTables := parser.ExtractTable(parsed)
+	definedTables, err := parser.ExtractTable(parsed, pos)
+	if err != nil {
+		return nil, err
+	}
 	items := []CompletionItem{}
 	if completionTypeIs(cTypes, CompletionTypeKeyword) {
 		items = append(items, c.keywordCandidates()...)

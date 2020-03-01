@@ -133,7 +133,7 @@ func ExtractSubQueryView(stmt ast.TokenList) (*SubQueryInfo, error) {
 	}, nil
 }
 
-func ExtractTable2(parsed ast.TokenList, pos token.Pos) ([]*TableInfo, error) {
+func ExtractTable(parsed ast.TokenList, pos token.Pos) ([]*TableInfo, error) {
 	stmt, err := extractFocusedStatement(parsed, pos)
 	if err != nil {
 		return nil, err
@@ -154,23 +154,6 @@ func ExtractTable2(parsed ast.TokenList, pos token.Pos) ([]*TableInfo, error) {
 		res = append(res, infos...)
 	}
 	return res, nil
-}
-
-func ExtractTable(stmt ast.TokenList) []*TableInfo {
-	list := stmt.GetTokens()[0].(ast.TokenList)
-	fromJoinExpr := filterTokenList(astutil.NewNodeReader(list), fromJoinMatcher)
-	identifiers := filterTokenList(astutil.NewNodeReader(fromJoinExpr), identifierMatcher)
-
-	res := []*TableInfo{}
-	for _, ident := range identifiers.GetTokens() {
-		infos, err := parseTableInfo(ident)
-		if err != nil {
-			// FIXME error tracking
-			return res
-		}
-		res = append(res, infos...)
-	}
-	return res
 }
 
 var fromJoinMatcher = astutil.NodeMatcher{

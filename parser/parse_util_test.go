@@ -293,91 +293,10 @@ func TestExtractTable2(t *testing.T) {
 	for _, tt := range testcases {
 		t.Run(tt.name, func(t *testing.T) {
 			stmt := initExtractTable(t, tt.input)
-			got, err := ExtractTable2(stmt, tt.pos)
+			got, err := ExtractTable(stmt, tt.pos)
 			if err != nil {
 				t.Fatalf("error: %+v", err)
 			}
-			if d := cmp.Diff(tt.want, got); d != "" {
-				t.Errorf("unmatched value: %s", d)
-			}
-		})
-	}
-}
-
-func TestExtractTable(t *testing.T) {
-	testcases := []struct {
-		name  string
-		input string
-		want  []*TableInfo
-	}{
-		{
-			name:  "from only",
-			input: "from abc",
-			want: []*TableInfo{
-				&TableInfo{
-					Name: "abc",
-				},
-			},
-		},
-		{
-			name:  "one table",
-			input: "select * from abc",
-			want: []*TableInfo{
-				&TableInfo{
-					Name: "abc",
-				},
-			},
-		},
-		{
-			name:  "multiple table",
-			input: "select * from abc, def",
-			want: []*TableInfo{
-				&TableInfo{
-					Name: "abc",
-				},
-				&TableInfo{
-					Name: "def",
-				},
-			},
-		},
-		{
-			name:  "with database schema",
-			input: "select * from abc.def",
-			want: []*TableInfo{
-				&TableInfo{
-					DatabaseSchema: "abc",
-					Name:           "def",
-				},
-			},
-		},
-		{
-			name:  "with database schema and alias",
-			input: "select * from abc.def as ghi",
-			want: []*TableInfo{
-				&TableInfo{
-					DatabaseSchema: "abc",
-					Name:           "def",
-					Alias:          "ghi",
-				},
-			},
-		},
-		// {
-		// 	name:  "",
-		// 	input: "SELECT  FROM (SELECT ID as city_id, Name as city_name FROM city) as v",
-		// 	want: []*TableInfo{
-		// 		&TableInfo{
-		// 			DatabaseSchema: "",
-		// 			Name:           "v",
-		// 			Alias:          "",
-		// 		},
-		// 	},
-		// },
-	}
-
-	for _, tt := range testcases {
-		t.Run(tt.name, func(t *testing.T) {
-			stmt := initExtractTable(t, tt.input)
-			got := ExtractTable(stmt)
 			if d := cmp.Diff(tt.want, got); d != "" {
 				t.Errorf("unmatched value: %s", d)
 			}
