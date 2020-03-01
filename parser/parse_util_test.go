@@ -83,6 +83,88 @@ func Test_encloseIsSubQuery(t *testing.T) {
 	}
 }
 
+func TestExtractSubQueryView(t *testing.T) {
+	testcases := []struct {
+		name  string
+		input string
+		want  *SubQueryInfo
+	}{
+		{
+			name:  "sub query",
+			input: "(select city.ID, city.Name from dbs.city as ci)",
+			want: &SubQueryInfo{
+				Name: "",
+				Views: []*SubQueryView{
+					&SubQueryView{
+						Table: &TableInfo{
+							DatabaseSchema: "dbs",
+							Name:           "city",
+							Alias:          "ci",
+						},
+						Columns: []string{
+							"ID",
+							"Name",
+						},
+					},
+				},
+			},
+		},
+		// {
+		// 	name:  "sub query astrisk identifier",
+		// 	input: "(select * from dbs.city as ci)",
+		// 	want: &SubQueryInfo{
+		// 		Name: "",
+		// 		Views: []*SubQueryView{
+		// 			&SubQueryView{
+		// 				Table: &TableInfo{
+		// 					DatabaseSchema: "dbs",
+		// 					Name:           "city",
+		// 					Alias:          "ci",
+		// 				},
+		// 				Columns: []string{
+		// 					"*",
+		// 				},
+		// 			},
+		// 		},
+		// 	},
+		// },
+		// {
+		// 	name:  "aliased sub query",
+		// 	input: "(select city.ID, city.Name from dbs.city as ci) as sub",
+		// 	want: &SubQueryInfo{
+		// 		Name: "sub",
+		// 		Views: []*SubQueryView{
+		// 			&SubQueryView{
+		// 				Table: &TableInfo{
+		// 					DatabaseSchema: "dbs",
+		// 					Name:           "city",
+		// 					Alias:          "ci",
+		// 				},
+		// 				Columns: []string{
+		// 					"ID",
+		// 					"Name",
+		// 				},
+		// 			},
+		// 		},
+		// 	},
+		// },
+	}
+	for _, tt := range testcases {
+		t.Run(tt.name, func(t *testing.T) {
+			query := initExtractTable(t, tt.input)
+			stmt := query.GetTokens()[0].(ast.TokenList)
+			subQuery := stmt.GetTokens()[0].(ast.TokenList)
+			got, err := ExtractSubQueryView(subQuery)
+			if err != nil {
+				t.Fatalf("error: %+v", err)
+			}
+			if d := cmp.Diff(tt.want, got); d != "" {
+				t.Errorf("unmatched value: %s", d)
+			}
+		})
+	}
+}
+
 func TestExtractTable2(t *testing.T) {
 	testcases := []struct {
 		name  string
@@ -146,30 +228,66 @@ func TestExtractTable2(t *testing.T) {
 				},
 			},
 		},
-		// {
-		// 	name:  "focus inner deep sub query",
-		// 	input: "select t.* from (select city_id, city_name from (select ci.ID as city_id, ci.Name as city_name from city as ci) as t) as t",
-		// 	pos:   token.Pos{Line: 1, Col: 55},
-		// 	want: []*TableInfo{
-		// 		&TableInfo{
-		// 			DatabaseSchema: "",
-		// 			Name:           "city",
-		// 			Alias:          "ci",
-		// 		},
-		// 	},
-		// },
-		// {
-		// 	name:  "focus outer sub query before",
-		// 	input: "select t.* from (select city_id, city_name from (select city.ID as city_id, city.Name as city_name from city) as t) as t",
-		// 	pos:   token.Pos{Line: 1, Col: 1},
-		// 	want: []*TableInfo{
-		// 		&TableInfo{
-		// 			DatabaseSchema: "",
-		// 			Name:           "abc",
-		// 			Alias:          "",
-		// 		},
-		// 	},
-		// },
+		{
+			name:  "focus outer sub query before",
+			input: "select t.* from (select city_id, city_name from (select city.ID as city_id, city.Name as city_name from city) as t) as t",
+			pos:   token.Pos{Line: 1, Col: 1},
+			want: []*TableInfo{
+				&TableInfo{
+					DatabaseSchema: "",
+					Name:           "",
+					Alias:          "t",
+				},
+			},
+		},
+		{
+			name:  "focus outer sub query after",
+			input: "select t.* from (select city_id, city_name from (select city.ID as city_id, city.Name as city_name from city) as t) as t",
+			pos:   token.Pos{Line: 1, Col: 120},
+			want: []*TableInfo{
+				&TableInfo{
+					DatabaseSchema: "",
+					Name:           "",
+					Alias:          "t",
+				},
+			},
+		},
+		{
+			name:  "focus middle sub query before",
+			input: "select t.* from (select city_id, city_name from (select city.ID as city_id, city.Name as city_name from city) as t) as t",
+			pos:   token.Pos{Line: 1, Col: 18},
+			want: []*TableInfo{
+				&TableInfo{
+					DatabaseSchema: "",
+					Name:           "",
+					Alias:          "t",
+				},
+			},
+		},
+		{
+			name:  "focus middle sub query after",
+			input: "select t.* from (select city_id, city_name from (select city.ID as city_id, city.Name as city_name from city) as t) as t",
+			pos:   token.Pos{Line: 1, Col: 114},
+			want: []*TableInfo{
+				&TableInfo{
+					DatabaseSchema: "",
+					Name:           "",
+					Alias:          "t",
+				},
+			},
+		},
+		{
+			name:  "focus deep sub query",
+			input: "select t.* from (select city_id, city_name from (select ci.ID as city_id, ci.Name as city_name from city as ci) as t) as t",
+			pos:   token.Pos{Line: 1, Col: 55},
+			want: []*TableInfo{
+				&TableInfo{
+					DatabaseSchema: "",
+					Name:           "city",
+					Alias:          "ci",
+				},
+			},
+		},
 	}
 
 	for _, tt := range testcases {

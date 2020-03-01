@@ -16,20 +16,13 @@ type TableInfo struct {
 }
 
 type SubQueryInfo struct {
-	Tables  []TableInfo
-	Columns []*SubQueryColumnIdentifier
+	Name  string
+	Views []*SubQueryView
 }
 
-// select t.ID, t.Name from (select * from city) as t
-// select t.ID, t.Name from (select city.ID, city.Name from city) as t
-// select t.ID, t.Name from (select city.ID, city.Name from city) as t
-// select city_id, city_name from (select city.ID as city_id, city.Name as city_name from city) as t
-
-// extract sub query
-type SubQueryColumnIdentifier struct {
-	Parent      string
-	RealName    string
-	AliasedName string
+type SubQueryView struct {
+	Table   *TableInfo
+	Columns []string
 }
 
 var statementTypeMatcher = astutil.NodeMatcher{
@@ -82,7 +75,6 @@ func encloseIsSubQuery(stmt ast.TokenList, pos token.Pos) bool {
 		return false
 	}
 	if !reader.CurNodeIs(selectMatcher) {
-		fmt.Println(reader.Index, reader.CurNode)
 		return false
 	}
 	return true
@@ -97,6 +89,50 @@ func extractFocusedSubQuery(stmt ast.TokenList, pos token.Pos) ast.TokenList {
 	return parenthesis.(ast.TokenList)
 }
 
+func ExtractSubQueryView(stmt ast.TokenList) (*SubQueryInfo, error) {
+	p, ok := stmt.(*ast.Parenthesis)
+	if !ok {
+		return nil, xerrors.Errorf("Is not sub query, query: %q, type: %T", stmt, stmt)
+	}
+
+	// extract select identifiers
+	toks := p.Inner().GetTokens()
+	selectTokenListNode, ok := toks[2].(ast.TokenList)
+	if !ok {
+		return nil, xerrors.Errorf("failed read the TokenList of select, query: %q, type: %T", toks[2], toks[2])
+	}
+	identifiers := filterTokenList(astutil.NewNodeReader(selectTokenListNode), identifierMatcher)
+	sbIdents := []string{}
+	for _, ident := range identifiers.GetTokens() {
+		res, err := parseSubQueryColumns(ident)
+		if err != nil {
+			return nil, err
+		}
+		sbIdents = append(sbIdents, res...)
+	}
+
+	// extract table identifiers
+	fromJoinExpr := filterTokenList(astutil.NewNodeReader(p.Inner()), fromJoinMatcher)
+	fromIdentifiers := filterTokenList(astutil.NewNodeReader(fromJoinExpr), identifierMatcher)
+	sbTables := []*TableInfo{}
+	for _, ident := range fromIdentifiers.GetTokens() {
+		res, err := parseTableInfo(ident)
+		if err != nil {
+			return nil, err
+		}
+		sbTables = append(sbTables, res...)
+	}
+
+	return &SubQueryInfo{
+		Views: []*SubQueryView{
+			&SubQueryView{
+				Table:   sbTables[0],
+				Columns: sbIdents,
+			},
+		},
+	}, nil
+}
+
 func ExtractTable2(parsed ast.TokenList, pos token.Pos) ([]*TableInfo, error) {
 	stmt, err := extractFocusedStatement(parsed, pos)
 	if err != nil {
@@ -105,12 +141,8 @@ func ExtractTable2(parsed ast.TokenList, pos token.Pos) ([]*TableInfo, error) {
 	list := stmt
 	if encloseIsSubQuery(stmt, pos) {
 		list = extractFocusedSubQuery(stmt, pos)
-	} else {
-		// TODO get subquery info
 	}
-	fmt.Println(list)
 	fromJoinExpr := filterTokenList(astutil.NewNodeReader(list), fromJoinMatcher)
-	fmt.Println(fromJoinExpr)
 	identifiers := filterTokenList(astutil.NewNodeReader(fromJoinExpr), identifierMatcher)
 
 	res := []*TableInfo{}
@@ -244,17 +276,21 @@ func identifierListToTableInfo(il *ast.IdentiferList) []*TableInfo {
 
 func aliasedToTableInfo(aliased *ast.Aliased) *TableInfo {
 	ti := &TableInfo{}
+	// fetch table schema and name
 	switch v := aliased.RealName.(type) {
 	case *ast.Identifer:
 		ti.Name = v.String()
 	case *ast.MemberIdentifer:
 		ti.DatabaseSchema = v.Parent.String()
 		ti.Name = v.Child.String()
+	case *ast.Parenthesis:
+		// Through
 	default:
 		// FIXME add error tracking
 		panic(fmt.Sprintf("unknown node type, want Identifer or MemberIdentifier, got %T", v))
 	}
 
+	// fetch table aliased name
 	switch v := aliased.AliasedName.(type) {
 	case *ast.Identifer:
 		ti.Alias = v.String()
@@ -263,6 +299,62 @@ func aliasedToTableInfo(aliased *ast.Aliased) *TableInfo {
 		panic(fmt.Sprintf("unknown node type, want Identifer, got %T", v))
 	}
 	return ti
+}
+
+func parseSubQueryColumns(idents ast.Node) ([]string, error) {
+	res := []string{}
+	switch v := idents.(type) {
+	case *ast.Identifer:
+		res = append(res, v.String())
+	case *ast.IdentiferList:
+		res = append(res, identifierListToSubQueryColumn(v)...)
+	case *ast.MemberIdentifer:
+		res = append(res, v.Child.String())
+	case *ast.Aliased:
+		res = append(res, aliasedToSubQueryColumn(v))
+	default:
+		return nil, xerrors.Errorf("unknown node type %T", v)
+	}
+	return res, nil
+}
+
+func identifierListToSubQueryColumn(il *ast.IdentiferList) []string {
+	res := []string{}
+	idents := filterTokens(il.GetTokens(), identifierMatcher)
+	for _, ident := range idents {
+		switch v := ident.(type) {
+		case *ast.Identifer:
+			res = append(res, v.String())
+		case *ast.MemberIdentifer:
+			res = append(res, v.Child.String())
+		default:
+			// FIXME add error tracking
+			panic(fmt.Sprintf("unknown node type %T", v))
+		}
+	}
+	return res
+}
+
+func aliasedToSubQueryColumn(aliased *ast.Aliased) string {
+	// fetch table schema and name
+	switch v := aliased.RealName.(type) {
+	case *ast.Identifer:
+		return v.String()
+	case *ast.MemberIdentifer:
+		return v.Child.String()
+	default:
+		// FIXME add error tracking
+		panic(fmt.Sprintf("unknown node type, want Identifer or MemberIdentifier, got %T", v))
+	}
+
+	// fetch table aliased name
+	switch v := aliased.AliasedName.(type) {
+	case *ast.Identifer:
+		return v.String()
+	default:
+		// FIXME add error tracking
+		panic(fmt.Sprintf("unknown node type, want Identifer, got %T", v))
+	}
 }
 
 type NodeWalker struct {

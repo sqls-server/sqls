@@ -150,6 +150,25 @@ func (p *Parenthesis) GetTokens() []Node     { return p.Toks }
 func (p *Parenthesis) SetTokens(toks []Node) { p.Toks = toks }
 func (p *Parenthesis) Pos() token.Pos        { return findFrom(p) }
 func (p *Parenthesis) End() token.Pos        { return findTo(p) }
+func (p *Parenthesis) Inner() TokenList {
+	return &ParenthesisInner{Toks: p.Toks[1 : len(p.Toks)-1]}
+}
+
+type ParenthesisInner struct {
+	Toks []Node
+}
+
+func (p *ParenthesisInner) String() string {
+	var strs []string
+	for _, t := range p.Toks {
+		strs = append(strs, t.String())
+	}
+	return strings.Join(strs, "")
+}
+func (p *ParenthesisInner) GetTokens() []Node     { return p.Toks }
+func (p *ParenthesisInner) SetTokens(toks []Node) { p.Toks = toks }
+func (p *ParenthesisInner) Pos() token.Pos        { return findFrom(p) }
+func (p *ParenthesisInner) End() token.Pos        { return findTo(p) }
 
 type FunctionLiteral struct {
 	Toks []Node
