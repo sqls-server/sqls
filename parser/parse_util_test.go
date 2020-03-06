@@ -87,13 +87,15 @@ func TestExtractSubQueryView(t *testing.T) {
 	testcases := []struct {
 		name  string
 		input string
+		pos   token.Pos
 		want  *SubQueryInfo
 	}{
 		{
 			name:  "sub query",
-			input: "(select city.ID, city.Name from dbs.city as ci)",
+			input: "select * (select city.ID, city.Name from dbs.city as ci) as sub",
+			pos:   token.Pos{Line: 1, Col: 10},
 			want: &SubQueryInfo{
-				Name: "",
+				Name: "sub",
 				Views: []*SubQueryView{
 					&SubQueryView{
 						Table: &TableInfo{
@@ -110,10 +112,11 @@ func TestExtractSubQueryView(t *testing.T) {
 			},
 		},
 		{
-			name:  "sub query astrisk identifier",
-			input: "(select * from dbs.city as ci)",
+			name:  "astrisk identifier",
+			input: "select * (select * from dbs.city as ci) as sub",
+			pos:   token.Pos{Line: 1, Col: 10},
 			want: &SubQueryInfo{
-				Name: "",
+				Name: "sub",
 				Views: []*SubQueryView{
 					&SubQueryView{
 						Table: &TableInfo{
@@ -128,35 +131,18 @@ func TestExtractSubQueryView(t *testing.T) {
 				},
 			},
 		},
-		// {
-		// 	name:  "aliased sub query",
-		// 	input: "(select city.ID, city.Name from dbs.city as ci) as sub",
-		// 	want: &SubQueryInfo{
-		// 		Name: "sub",
-		// 		Views: []*SubQueryView{
-		// 			&SubQueryView{
-		// 				Table: &TableInfo{
-		// 					DatabaseSchema: "dbs",
-		// 					Name:           "city",
-		// 					Alias:          "ci",
-		// 				},
-		// 				Columns: []string{
-		// 					"ID",
-		// 					"Name",
-		// 				},
-		// 			},
-		// 		},
-		// 	},
-		// },
 	}
 	for _, tt := range testcases {
 		t.Run(tt.name, func(t *testing.T) {
 			query := initExtractTable(t, tt.input)
-			stmt := query.GetTokens()[0].(ast.TokenList)
-			subQuery := stmt.GetTokens()[0].(ast.TokenList)
-			got, err := ExtractSubQueryView(subQuery)
+			// stmt := query.GetTokens()[0].(ast.TokenList)
+			// subQuery := stmt.GetTokens()[0].(ast.TokenList)
+			got, err := ExtractSubQueryView(query, tt.pos)
 			if err != nil {
 				t.Fatalf("error: %+v", err)
+			}
+			if got == nil {
+				t.Fatalf("not found sub query")
 			}
 			if d := cmp.Diff(tt.want, got); d != "" {
 				t.Errorf("unmatched value: %s", d)

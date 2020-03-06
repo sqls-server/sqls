@@ -51,6 +51,14 @@ var parenthesisTypeMatcher = astutil.NodeMatcher{
 		return false
 	},
 }
+var aliasTypeMatcher = astutil.NodeMatcher{
+	NodeTypeMatcherFunc: func(node interface{}) bool {
+		if _, ok := node.(*ast.Aliased); ok {
+			return true
+		}
+		return false
+	},
+}
 var selectMatcher = astutil.NodeMatcher{
 	ExpectKeyword: []string{
 		"SELECT",
@@ -67,6 +75,10 @@ func encloseIsSubQuery(stmt ast.TokenList, pos token.Pos) bool {
 	if !ok {
 		return false
 	}
+	return isSubQuery(tokenList)
+}
+
+func isSubQuery(tokenList ast.TokenList) bool {
 	reader := astutil.NewNodeReader(tokenList)
 	if !reader.NextNode(false) {
 		return false
@@ -89,24 +101,50 @@ func extractFocusedSubQuery(stmt ast.TokenList, pos token.Pos) ast.TokenList {
 	return parenthesis.(ast.TokenList)
 }
 
-func extractFocusedSubQueryWithAlias(stmt ast.TokenList, pos token.Pos) ast.TokenList {
+func extractFocusedSubQueryWithAlias(stmt ast.TokenList, pos token.Pos) (*ast.Aliased, error) {
 	nodeWalker := NewNodeWalker(stmt, pos)
 	if !nodeWalker.CurNodeIs(parenthesisTypeMatcher) {
-		return nil
+		return nil, xerrors.Errorf("not found sub query")
 	}
-	parenthesis := nodeWalker.CurNodeButtomMatched(parenthesisTypeMatcher)
-	return parenthesis.(ast.TokenList)
+	aliases := nodeWalker.CurNodeMatches(aliasTypeMatcher)
+	for _, node := range aliases {
+		aliased, ok := node.(*ast.Aliased)
+		if !ok {
+			continue
+		}
+		if _, ok := aliased.RealName.(*ast.Parenthesis); !ok {
+			continue
+		}
+		tokenList := aliased.RealName.(ast.TokenList)
+		if isSubQuery(tokenList) {
+			return aliased, nil
+		}
+	}
+	return nil, xerrors.Errorf("not found sub query")
 }
 
-func ExtractSubQueryView(stmt ast.TokenList) (*SubQueryInfo, error) {
-	p, ok := stmt.(*ast.Parenthesis)
+func ExtractSubQueryView(parsed ast.TokenList, pos token.Pos) (*SubQueryInfo, error) {
+	stmt, err := extractFocusedStatement(parsed, pos)
+	if err != nil {
+		return nil, err
+	}
+
+	if !encloseIsSubQuery(stmt, pos) {
+		return nil, nil
+	}
+
+	aliased, err := extractFocusedSubQueryWithAlias(stmt, pos)
+	if err != nil {
+		return nil, err
+	}
+	parenthesis, ok := aliased.RealName.(*ast.Parenthesis)
 	if !ok {
 		return nil, xerrors.Errorf("Is not sub query, query: %q, type: %T", stmt, stmt)
 	}
 
 	// extract select identifiers
 	sbIdents := []string{}
-	toks := p.Inner().GetTokens()
+	toks := parenthesis.Inner().GetTokens()
 	switch v := toks[2].(type) {
 	case ast.TokenList:
 		identifiers := filterTokenList(astutil.NewNodeReader(v), identifierMatcher)
@@ -128,7 +166,7 @@ func ExtractSubQueryView(stmt ast.TokenList) (*SubQueryInfo, error) {
 	}
 
 	// extract table identifiers
-	fromJoinExpr := filterTokenList(astutil.NewNodeReader(p.Inner()), fromJoinMatcher)
+	fromJoinExpr := filterTokenList(astutil.NewNodeReader(parenthesis.Inner()), fromJoinMatcher)
 	fromIdentifiers := filterTokenList(astutil.NewNodeReader(fromJoinExpr), identifierMatcher)
 	sbTables := []*TableInfo{}
 	for _, ident := range fromIdentifiers.GetTokens() {
@@ -140,6 +178,7 @@ func ExtractSubQueryView(stmt ast.TokenList) (*SubQueryInfo, error) {
 	}
 
 	return &SubQueryInfo{
+		Name: aliased.AliasedName.String(),
 		Views: []*SubQueryView{
 			&SubQueryView{
 				Table:   sbTables[0],
