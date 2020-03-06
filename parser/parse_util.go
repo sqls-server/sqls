@@ -39,7 +39,7 @@ func extractFocusedStatement(parsed ast.TokenList, pos token.Pos) (ast.TokenList
 	if !nodeWalker.CurNodeIs(statementTypeMatcher) {
 		return nil, xerrors.Errorf("Not found statement, Node: %q, Position: (%d, %d)", parsed.String(), pos.Line, pos.Col)
 	}
-	stmt := nodeWalker.CurNodeMatched(statementTypeMatcher).(ast.TokenList)
+	stmt := nodeWalker.CurNodeTopMatched(statementTypeMatcher).(ast.TokenList)
 	return stmt, nil
 }
 
@@ -62,7 +62,7 @@ func encloseIsSubQuery(stmt ast.TokenList, pos token.Pos) bool {
 	if !nodeWalker.CurNodeIs(parenthesisTypeMatcher) {
 		return false
 	}
-	parenthesis := nodeWalker.CurNodeMatchedButtomUp(parenthesisTypeMatcher)
+	parenthesis := nodeWalker.CurNodeButtomMatched(parenthesisTypeMatcher)
 	tokenList, ok := parenthesis.(ast.TokenList)
 	if !ok {
 		return false
@@ -85,7 +85,16 @@ func extractFocusedSubQuery(stmt ast.TokenList, pos token.Pos) ast.TokenList {
 	if !nodeWalker.CurNodeIs(parenthesisTypeMatcher) {
 		return nil
 	}
-	parenthesis := nodeWalker.CurNodeMatchedButtomUp(parenthesisTypeMatcher)
+	parenthesis := nodeWalker.CurNodeButtomMatched(parenthesisTypeMatcher)
+	return parenthesis.(ast.TokenList)
+}
+
+func extractFocusedSubQueryWithAlias(stmt ast.TokenList, pos token.Pos) ast.TokenList {
+	nodeWalker := NewNodeWalker(stmt, pos)
+	if !nodeWalker.CurNodeIs(parenthesisTypeMatcher) {
+		return nil
+	}
+	parenthesis := nodeWalker.CurNodeButtomMatched(parenthesisTypeMatcher)
 	return parenthesis.(ast.TokenList)
 }
 
@@ -96,19 +105,26 @@ func ExtractSubQueryView(stmt ast.TokenList) (*SubQueryInfo, error) {
 	}
 
 	// extract select identifiers
-	toks := p.Inner().GetTokens()
-	selectTokenListNode, ok := toks[2].(ast.TokenList)
-	if !ok {
-		return nil, xerrors.Errorf("failed read the TokenList of select, query: %q, type: %T", toks[2], toks[2])
-	}
-	identifiers := filterTokenList(astutil.NewNodeReader(selectTokenListNode), identifierMatcher)
 	sbIdents := []string{}
-	for _, ident := range identifiers.GetTokens() {
-		res, err := parseSubQueryColumns(ident)
+	toks := p.Inner().GetTokens()
+	switch v := toks[2].(type) {
+	case ast.TokenList:
+		identifiers := filterTokenList(astutil.NewNodeReader(v), identifierMatcher)
+		for _, ident := range identifiers.GetTokens() {
+			res, err := parseSubQueryColumns(ident)
+			if err != nil {
+				return nil, err
+			}
+			sbIdents = append(sbIdents, res...)
+		}
+	case *ast.Identifer:
+		res, err := parseSubQueryColumns(v)
 		if err != nil {
 			return nil, err
 		}
 		sbIdents = append(sbIdents, res...)
+	default:
+		return nil, xerrors.Errorf("failed read the TokenList of select, query: %q, type: %T", toks[2], toks[2])
 	}
 
 	// extract table identifiers
@@ -377,25 +393,30 @@ func (nw *NodeWalker) CurNodeIs(matcher astutil.NodeMatcher) bool {
 	return false
 }
 
-func (nw *NodeWalker) CurNodeMatched(matcher astutil.NodeMatcher) ast.Node {
+func (nw *NodeWalker) CurNodeMatches(matcher astutil.NodeMatcher) []ast.Node {
+	matches := []ast.Node{}
 	for _, reader := range nw.Paths {
 		if reader.CurNodeIs(matcher) {
-			return reader.CurNode
+			matches = append(matches, reader.CurNode)
 		}
 	}
-	return nil
+	return matches
 }
 
-func (nw *NodeWalker) CurNodeMatchedButtomUp(matcher astutil.NodeMatcher) ast.Node {
-	var i = len(nw.Paths) - 1
-	for i > 0 {
-		reader := nw.Paths[i]
-		if reader.CurNodeIs(matcher) {
-			return reader.CurNode
-		}
-		i--
+func (nw *NodeWalker) CurNodeTopMatched(matcher astutil.NodeMatcher) ast.Node {
+	matches := nw.CurNodeMatches(matcher)
+	if len(matches) == 0 {
+		return nil
 	}
-	return nil
+	return matches[0]
+}
+
+func (nw *NodeWalker) CurNodeButtomMatched(matcher astutil.NodeMatcher) ast.Node {
+	matches := nw.CurNodeMatches(matcher)
+	if len(matches) == 0 {
+		return nil
+	}
+	return matches[len(matches)-1]
 }
 
 func (nw *NodeWalker) PrevNodesIs(ignoreWitespace bool, matcher astutil.NodeMatcher) bool {

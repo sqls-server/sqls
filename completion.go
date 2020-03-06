@@ -266,7 +266,7 @@ func getCompletionTypes(text string, pos token.Pos) ([]CompletionType, *parent, 
 	case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"SET", "ORDER BY", "GROUP BY", "DISTINCT"})):
 		if nodeWalker.CurNodeIs(memberIdentifierMatcher) {
 			// has parent
-			mi := nodeWalker.CurNodeMatched(memberIdentifierMatcher).(*ast.MemberIdentifer)
+			mi := nodeWalker.CurNodeTopMatched(memberIdentifierMatcher).(*ast.MemberIdentifer)
 			cType := []CompletionType{
 				CompletionTypeColumn,
 				CompletionTypeView,
@@ -298,7 +298,7 @@ func getCompletionTypes(text string, pos token.Pos) ([]CompletionType, *parent, 
 	case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"SELECT", "WHERE", "HAVING", "ON"})):
 		if nodeWalker.CurNodeIs(memberIdentifierMatcher) {
 			// has parent
-			mi := nodeWalker.CurNodeMatched(memberIdentifierMatcher).(*ast.MemberIdentifer)
+			mi := nodeWalker.CurNodeTopMatched(memberIdentifierMatcher).(*ast.MemberIdentifer)
 			cType := []CompletionType{
 				CompletionTypeColumn,
 				CompletionTypeView,

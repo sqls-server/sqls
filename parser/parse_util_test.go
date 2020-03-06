@@ -109,25 +109,25 @@ func TestExtractSubQueryView(t *testing.T) {
 				},
 			},
 		},
-		// {
-		// 	name:  "sub query astrisk identifier",
-		// 	input: "(select * from dbs.city as ci)",
-		// 	want: &SubQueryInfo{
-		// 		Name: "",
-		// 		Views: []*SubQueryView{
-		// 			&SubQueryView{
-		// 				Table: &TableInfo{
-		// 					DatabaseSchema: "dbs",
-		// 					Name:           "city",
-		// 					Alias:          "ci",
-		// 				},
-		// 				Columns: []string{
-		// 					"*",
-		// 				},
-		// 			},
-		// 		},
-		// 	},
-		// },
+		{
+			name:  "sub query astrisk identifier",
+			input: "(select * from dbs.city as ci)",
+			want: &SubQueryInfo{
+				Name: "",
+				Views: []*SubQueryView{
+					&SubQueryView{
+						Table: &TableInfo{
+							DatabaseSchema: "dbs",
+							Name:           "city",
+							Alias:          "ci",
+						},
+						Columns: []string{
+							"*",
+						},
+					},
+				},
+			},
+		},
 		// {
 		// 	name:  "aliased sub query",
 		// 	input: "(select city.ID, city.Name from dbs.city as ci) as sub",
