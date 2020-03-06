@@ -144,7 +144,7 @@ func TestParseWhere(t *testing.T) {
 				list := stmts[0].GetTokens()
 				testItem(t, list[0], "select")
 				testItem(t, list[1], " ")
-				testItem(t, list[2], "*")
+				testIdentifier(t, list[2], "*")
 				testItem(t, list[3], " ")
 				testFrom(t, list[4], "from foo ")
 				testWhere(t, list[5], "where bar = 1")
@@ -199,7 +199,7 @@ func TestParseFrom(t *testing.T) {
 				testPos(t, list[0], genPosOneline(1), genPosOneline(7))
 				testItem(t, list[1], " ")
 				testPos(t, list[1], genPosOneline(7), genPosOneline(8))
-				testItem(t, list[2], "*")
+				testIdentifier(t, list[2], "*")
 				testPos(t, list[2], genPosOneline(8), genPosOneline(9))
 				testItem(t, list[3], " ")
 				testPos(t, list[3], genPosOneline(9), genPosOneline(10))
@@ -226,7 +226,7 @@ func TestParseFrom(t *testing.T) {
 				list := stmts[0].GetTokens()
 				testItem(t, list[0], "select")
 				testItem(t, list[1], " ")
-				testItem(t, list[2], "*")
+				testIdentifier(t, list[2], "*")
 				testItem(t, list[3], " ")
 				testFrom(t, list[4], "from ")
 				testPos(t, list[4], genPosOneline(10), genPosOneline(15))
@@ -246,7 +246,7 @@ func TestParseFrom(t *testing.T) {
 				list := stmts[0].GetTokens()
 				testItem(t, list[0], "select")
 				testItem(t, list[1], " ")
-				testItem(t, list[2], "*")
+				testIdentifier(t, list[2], "*")
 				testItem(t, list[3], " ")
 				testFrom(t, list[4], "from (select * from abc) as t")
 
@@ -266,7 +266,7 @@ func TestParseFrom(t *testing.T) {
 				testItem(t, fromInParenthesis[0], "(")
 				testItem(t, fromInParenthesis[1], "select")
 				testItem(t, fromInParenthesis[2], " ")
-				testItem(t, fromInParenthesis[3], "*")
+				testIdentifier(t, fromInParenthesis[3], "*")
 				testItem(t, fromInParenthesis[4], " ")
 				testFrom(t, fromInParenthesis[5], "from abc")
 				testItem(t, fromInParenthesis[6], ")")
@@ -291,7 +291,7 @@ func TestParseJoin(t *testing.T) {
 	list := stmts[0].GetTokens()
 	testItem(t, list[0], "select")
 	testItem(t, list[1], " ")
-	testItem(t, list[2], "*")
+	testIdentifier(t, list[2], "*")
 	testItem(t, list[3], " ")
 	testFrom(t, list[4], "from abc ")
 	testJoin(t, list[5], "join efd")
@@ -306,7 +306,7 @@ func TestParseJoin_WithOn(t *testing.T) {
 	list := stmts[0].GetTokens()
 	testItem(t, list[0], "select")
 	testItem(t, list[1], " ")
-	testItem(t, list[2], "*")
+	testIdentifier(t, list[2], "*")
 	testItem(t, list[3], " ")
 	testFrom(t, list[4], "from abc ")
 	testJoin(t, list[5], "join efd ")
@@ -344,7 +344,7 @@ func TestParseWhere_NotFoundClose(t *testing.T) {
 	list := stmts[0].GetTokens()
 	testItem(t, list[0], "select")
 	testItem(t, list[1], " ")
-	testItem(t, list[2], "*")
+	testIdentifier(t, list[2], "*")
 	testItem(t, list[3], " ")
 	testFrom(t, list[4], "from foo ")
 	testWhere(t, list[5], "where bar = 1")
@@ -460,6 +460,15 @@ func TestParseIdentifier(t *testing.T) {
 				testStatement(t, stmts[0], 1, input)
 				list := stmts[0].GetTokens()
 				testIdentifier(t, list[0], `"abc"`)
+			},
+		},
+		{
+			name:  "wildcard",
+			input: "*",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testIdentifier(t, list[0], "*")
 			},
 		},
 		{

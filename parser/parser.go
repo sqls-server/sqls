@@ -395,6 +395,9 @@ func parseMultiKeyword(reader *astutil.NodeReader) ast.Node {
 // parseArrays
 
 var identifierPrefixMatcher = astutil.NodeMatcher{
+	ExpectTokens: []token.Kind{
+		token.Mult,
+	},
 	ExpectSQLType: []dialect.KeywordKind{
 		dialect.Unmatched,
 	},
