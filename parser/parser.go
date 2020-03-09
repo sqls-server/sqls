@@ -428,11 +428,8 @@ var operatorTargetMatcher = astutil.NodeMatcher{
 	},
 }
 var operatorRecursionMatcher = astutil.NodeMatcher{
-	NodeTypeMatcherFunc: func(node interface{}) bool {
-		if _, ok := node.(*ast.Parenthesis); ok {
-			return true
-		}
-		return false
+	NodeTypes: []ast.NodeType{
+		ast.TypeParenthesis,
 	},
 }
 
@@ -500,11 +497,8 @@ var comparisonTargetMatcher = astutil.NodeMatcher{
 	},
 }
 var comparisonRecursionMatcher = astutil.NodeMatcher{
-	NodeTypeMatcherFunc: func(node interface{}) bool {
-		if _, ok := node.(*ast.Parenthesis); ok {
-			return true
-		}
-		return false
+	NodeTypes: []ast.NodeType{
+		ast.TypeParenthesis,
 	},
 }
 
@@ -562,11 +556,8 @@ var aliasTargetMatcher = astutil.NodeMatcher{
 }
 
 var aliasRecursionMatcher = astutil.NodeMatcher{
-	NodeTypeMatcherFunc: func(node interface{}) bool {
-		if _, ok := node.(*ast.Parenthesis); ok {
-			return true
-		}
-		return false
+	NodeTypes: []ast.NodeType{
+		ast.TypeParenthesis,
 	},
 }
 
@@ -658,5 +649,3 @@ func parseIdentifierList(reader *astutil.NodeReader) ast.Node {
 	reader.CurNode = tmpReader.CurNode
 	return &ast.IdentiferList{Toks: reader.NodesWithRange(startIndex, endIndex+1)}
 }
-
-// parseValues

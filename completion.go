@@ -247,12 +247,7 @@ type parent struct {
 var noneParent = &parent{Type: ParentTypeNone}
 
 var memberIdentifierMatcher = astutil.NodeMatcher{
-	NodeTypeMatcherFunc: func(node interface{}) bool {
-		if _, ok := node.(*ast.MemberIdentifer); ok {
-			return true
-		}
-		return false
-	},
+	NodeTypes: []ast.NodeType{ast.TypeMemberIdentifer},
 }
 
 func getCompletionTypes(text string, pos token.Pos) ([]CompletionType, *parent, error) {

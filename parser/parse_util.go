@@ -25,52 +25,23 @@ type SubQueryView struct {
 	Columns []string
 }
 
-var statementTypeMatcher = astutil.NodeMatcher{
-	NodeTypeMatcherFunc: func(node interface{}) bool {
-		if _, ok := node.(*ast.Statement); ok {
-			return true
-		}
-		return false
-	},
-}
-
 func extractFocusedStatement(parsed ast.TokenList, pos token.Pos) (ast.TokenList, error) {
 	nodeWalker := NewNodeWalker(parsed, pos)
-	if !nodeWalker.CurNodeIs(statementTypeMatcher) {
+	matcher := astutil.NodeMatcher{NodeTypes: []ast.NodeType{ast.TypeStatement}}
+	if !nodeWalker.CurNodeIs(matcher) {
 		return nil, xerrors.Errorf("Not found statement, Node: %q, Position: (%d, %d)", parsed.String(), pos.Line, pos.Col)
 	}
-	stmt := nodeWalker.CurNodeTopMatched(statementTypeMatcher).(ast.TokenList)
+	stmt := nodeWalker.CurNodeTopMatched(matcher).(ast.TokenList)
 	return stmt, nil
-}
-
-var parenthesisTypeMatcher = astutil.NodeMatcher{
-	NodeTypeMatcherFunc: func(node interface{}) bool {
-		if _, ok := node.(*ast.Parenthesis); ok {
-			return true
-		}
-		return false
-	},
-}
-var aliasTypeMatcher = astutil.NodeMatcher{
-	NodeTypeMatcherFunc: func(node interface{}) bool {
-		if _, ok := node.(*ast.Aliased); ok {
-			return true
-		}
-		return false
-	},
-}
-var selectMatcher = astutil.NodeMatcher{
-	ExpectKeyword: []string{
-		"SELECT",
-	},
 }
 
 func encloseIsSubQuery(stmt ast.TokenList, pos token.Pos) bool {
 	nodeWalker := NewNodeWalker(stmt, pos)
-	if !nodeWalker.CurNodeIs(parenthesisTypeMatcher) {
+	matcher := astutil.NodeMatcher{NodeTypes: []ast.NodeType{ast.TypeParenthesis}}
+	if !nodeWalker.CurNodeIs(matcher) {
 		return false
 	}
-	parenthesis := nodeWalker.CurNodeButtomMatched(parenthesisTypeMatcher)
+	parenthesis := nodeWalker.CurNodeButtomMatched(matcher)
 	tokenList, ok := parenthesis.(ast.TokenList)
 	if !ok {
 		return false
@@ -86,7 +57,7 @@ func isSubQuery(tokenList ast.TokenList) bool {
 	if !reader.NextNode(false) {
 		return false
 	}
-	if !reader.CurNodeIs(selectMatcher) {
+	if !reader.CurNodeIs(astutil.NodeMatcher{ExpectKeyword: []string{"SELECT"}}) {
 		return false
 	}
 	return true
@@ -94,10 +65,11 @@ func isSubQuery(tokenList ast.TokenList) bool {
 
 func extractFocusedSubQuery(stmt ast.TokenList, pos token.Pos) ast.TokenList {
 	nodeWalker := NewNodeWalker(stmt, pos)
-	if !nodeWalker.CurNodeIs(parenthesisTypeMatcher) {
+	matcher := astutil.NodeMatcher{NodeTypes: []ast.NodeType{ast.TypeParenthesis}}
+	if !nodeWalker.CurNodeIs(matcher) {
 		return nil
 	}
-	parenthesis := nodeWalker.CurNodeButtomMatched(parenthesisTypeMatcher)
+	parenthesis := nodeWalker.CurNodeButtomMatched(matcher)
 	return parenthesis.(ast.TokenList)
 }
 
@@ -109,7 +81,8 @@ func ExtractSubQueryView(parsed ast.TokenList, pos token.Pos) (*SubQueryInfo, er
 
 	var firstSubQuery *ast.Aliased
 	reader := astutil.NewNodeReader(parsed)
-	aliases := reader.FindRecursive(aliasTypeMatcher)
+	matcher := astutil.NodeMatcher{NodeTypes: []ast.NodeType{ast.TypeAliased}}
+	aliases := reader.FindRecursive(matcher)
 	for _, node := range aliases {
 		if token.ComparePos(node.Pos(), pos) == 0 {
 			continue
@@ -200,32 +173,18 @@ func ExtractTable(parsed ast.TokenList, pos token.Pos) ([]*TableInfo, error) {
 }
 
 var fromJoinMatcher = astutil.NodeMatcher{
-	NodeTypeMatcherFunc: func(node interface{}) bool {
-		if _, ok := node.(*ast.FromClause); ok {
-			return true
-		}
-		if _, ok := node.(*ast.JoinClause); ok {
-			return true
-		}
-		return false
+	NodeTypes: []ast.NodeType{
+		ast.TypeFromClause,
+		ast.TypeJoinClause,
 	},
 }
 
 var identifierMatcher = astutil.NodeMatcher{
-	NodeTypeMatcherFunc: func(node interface{}) bool {
-		if _, ok := node.(*ast.Identifer); ok {
-			return true
-		}
-		if _, ok := node.(*ast.IdentiferList); ok {
-			return true
-		}
-		if _, ok := node.(*ast.MemberIdentifer); ok {
-			return true
-		}
-		if _, ok := node.(*ast.Aliased); ok {
-			return true
-		}
-		return false
+	NodeTypes: []ast.NodeType{
+		ast.TypeIdentifer,
+		ast.TypeIdentiferList,
+		ast.TypeMemberIdentifer,
+		ast.TypeAliased,
 	},
 }
 

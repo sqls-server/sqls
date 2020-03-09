@@ -10,11 +10,11 @@ import (
 )
 
 type NodeMatcher struct {
-	NodeTypeMatcherFunc func(node interface{}) bool
-	NodeTypes           []ast.NodeType
-	ExpectTokens        []token.Kind
-	ExpectSQLType       []dialect.KeywordKind
-	ExpectKeyword       []string
+	// NodeTypeMatcherFunc func(node interface{}) bool
+	NodeTypes     []ast.NodeType
+	ExpectTokens  []token.Kind
+	ExpectSQLType []dialect.KeywordKind
+	ExpectKeyword []string
 }
 
 func (nm *NodeMatcher) IsMatchNodeTypes(node ast.Node) bool {
@@ -23,15 +23,6 @@ func (nm *NodeMatcher) IsMatchNodeTypes(node ast.Node) bool {
 			if expect == node.Type() {
 				return true
 			}
-		}
-	}
-	return false
-}
-
-func (nm *NodeMatcher) IsMatchNodeType(node interface{}) bool {
-	if nm.NodeTypeMatcherFunc != nil {
-		if nm.NodeTypeMatcherFunc(node) {
-			return true
 		}
 	}
 	return false
@@ -73,9 +64,6 @@ func (nm *NodeMatcher) IsMatchKeyword(node ast.Node) bool {
 func (nm *NodeMatcher) IsMatch(node ast.Node) bool {
 	// For node object
 	if nm.IsMatchNodeTypes(node) {
-		return true
-	}
-	if nm.IsMatchNodeType(node) {
 		return true
 	}
 	if nm.IsMatchKeyword(node) {
@@ -244,7 +232,7 @@ func (nr *NodeReader) FindNode(ignoreWhiteSpace bool, nm NodeMatcher) (*NodeRead
 		node := tmpReader.Node.GetTokens()[tmpReader.Index]
 
 		// For node object
-		if nm.IsMatchNodeType(node) {
+		if nm.IsMatchNodeTypes(node) {
 			return tmpReader, node
 		}
 		if _, ok := tmpReader.CurNode.(ast.TokenList); ok {
