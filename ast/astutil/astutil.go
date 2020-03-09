@@ -233,6 +233,20 @@ func (nr *NodeReader) FindNode(ignoreWhiteSpace bool, nm NodeMatcher) (*NodeRead
 	return nil, nil
 }
 
+func (nr *NodeReader) FindRecursive(matcher NodeMatcher) []ast.Node {
+	matches := []ast.Node{}
+	for nr.NextNode(false) {
+		if nr.CurNodeIs(matcher) {
+			matches = append(matches, nr.CurNode)
+		}
+		if list, ok := nr.CurNode.(ast.TokenList); ok {
+			newReader := NewNodeReader(list)
+			matches = append(matches, newReader.FindRecursive(matcher)...)
+		}
+	}
+	return matches
+}
+
 func (nr *NodeReader) PrevNode(ignoreWhiteSpace bool) (int, ast.Node) {
 	if !nr.hasPrev() {
 		return 0, nil

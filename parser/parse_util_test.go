@@ -93,7 +93,7 @@ func TestExtractSubQueryView(t *testing.T) {
 		{
 			name:  "sub query",
 			input: "select * (select city.ID, city.Name from dbs.city as ci) as sub",
-			pos:   token.Pos{Line: 1, Col: 10},
+			pos:   token.Pos{Line: 1, Col: 1},
 			want: &SubQueryInfo{
 				Name: "sub",
 				Views: []*SubQueryView{
@@ -114,7 +114,7 @@ func TestExtractSubQueryView(t *testing.T) {
 		{
 			name:  "astrisk identifier",
 			input: "select * (select * from dbs.city as ci) as sub",
-			pos:   token.Pos{Line: 1, Col: 10},
+			pos:   token.Pos{Line: 1, Col: 1},
 			want: &SubQueryInfo{
 				Name: "sub",
 				Views: []*SubQueryView{

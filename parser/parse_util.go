@@ -101,45 +101,30 @@ func extractFocusedSubQuery(stmt ast.TokenList, pos token.Pos) ast.TokenList {
 	return parenthesis.(ast.TokenList)
 }
 
-func extractFocusedSubQueryWithAlias(stmt ast.TokenList, pos token.Pos) (*ast.Aliased, error) {
-	nodeWalker := NewNodeWalker(stmt, pos)
-	if !nodeWalker.CurNodeIs(parenthesisTypeMatcher) {
-		return nil, xerrors.Errorf("not found sub query")
-	}
-	aliases := nodeWalker.CurNodeMatches(aliasTypeMatcher)
-	for _, node := range aliases {
-		aliased, ok := node.(*ast.Aliased)
-		if !ok {
-			continue
-		}
-		if _, ok := aliased.RealName.(*ast.Parenthesis); !ok {
-			continue
-		}
-		tokenList := aliased.RealName.(ast.TokenList)
-		if isSubQuery(tokenList) {
-			return aliased, nil
-		}
-	}
-	return nil, xerrors.Errorf("not found sub query")
-}
-
 func ExtractSubQueryView(parsed ast.TokenList, pos token.Pos) (*SubQueryInfo, error) {
 	stmt, err := extractFocusedStatement(parsed, pos)
 	if err != nil {
 		return nil, err
 	}
 
-	if !encloseIsSubQuery(stmt, pos) {
-		return nil, nil
+	var firstSubQuery *ast.Aliased
+	reader := astutil.NewNodeReader(parsed)
+	aliases := reader.FindRecursive(aliasTypeMatcher)
+	for _, node := range aliases {
+		alias := node.(*ast.Aliased)
+		list := alias.RealName.(ast.TokenList)
+		if isSubQuery(list) {
+			firstSubQuery = alias
+			break
+		}
+	}
+	if firstSubQuery == nil {
+		return nil, xerrors.Errorf("not found sub query")
 	}
 
-	aliased, err := extractFocusedSubQueryWithAlias(stmt, pos)
-	if err != nil {
-		return nil, err
-	}
-	parenthesis, ok := aliased.RealName.(*ast.Parenthesis)
+	parenthesis, ok := firstSubQuery.RealName.(*ast.Parenthesis)
 	if !ok {
-		return nil, xerrors.Errorf("Is not sub query, query: %q, type: %T", stmt, stmt)
+		return nil, xerrors.Errorf("is not sub query, query: %q, type: %T", stmt, stmt)
 	}
 
 	// extract select identifiers
@@ -178,7 +163,7 @@ func ExtractSubQueryView(parsed ast.TokenList, pos token.Pos) (*SubQueryInfo, er
 	}
 
 	return &SubQueryInfo{
-		Name: aliased.AliasedName.String(),
+		Name: firstSubQuery.AliasedName.String(),
 		Views: []*SubQueryView{
 			&SubQueryView{
 				Table:   sbTables[0],
@@ -396,9 +381,8 @@ func aliasedToSubQueryColumn(aliased *ast.Aliased) string {
 }
 
 type NodeWalker struct {
-	Paths   []*astutil.NodeReader
-	CurPath *astutil.NodeReader
-	Index   int
+	Paths []*astutil.NodeReader
+	Index int
 }
 
 func astPaths(reader *astutil.NodeReader, pos token.Pos) []*astutil.NodeReader {
