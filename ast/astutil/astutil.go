@@ -165,19 +165,32 @@ func (nr *NodeReader) CurNodeIs(nm NodeMatcher) bool {
 	return false
 }
 
+func isEnclose(node ast.Node, pos token.Pos) bool {
+	_, isList := node.(ast.TokenList)
+	_, isMultiKeyword := node.(ast.TokenList)
+	if isList && !isMultiKeyword {
+		if 0 <= token.ComparePos(pos, node.Pos()) && 0 >= token.ComparePos(pos, node.End()) {
+			return true
+		}
+	} else {
+		if 0 <= token.ComparePos(pos, node.Pos()) && 0 > token.ComparePos(pos, node.End()) {
+			return true
+		}
+	}
+	return false
+}
+
 func (nr *NodeReader) CurNodeEncloseIs(pos token.Pos) bool {
 	if nr.CurNode != nil {
-		_, isList := nr.CurNode.(ast.TokenList)
-		_, isMultiKeyword := nr.CurNode.(ast.TokenList)
-		if isList && !isMultiKeyword {
-			if 0 <= token.ComparePos(pos, nr.CurNode.Pos()) && 0 >= token.ComparePos(pos, nr.CurNode.End()) {
-				return true
-			}
-		} else {
-			if 0 <= token.ComparePos(pos, nr.CurNode.Pos()) && 0 > token.ComparePos(pos, nr.CurNode.End()) {
-				return true
-			}
-		}
+		return isEnclose(nr.CurNode, pos)
+	}
+	return false
+}
+
+func (nr *NodeReader) PeekNodeEncloseIs(pos token.Pos) bool {
+	_, peekNode := nr.PeekNode(false)
+	if peekNode != nil {
+		return isEnclose(peekNode, pos)
 	}
 	return false
 }

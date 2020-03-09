@@ -111,6 +111,9 @@ func ExtractSubQueryView(parsed ast.TokenList, pos token.Pos) (*SubQueryInfo, er
 	reader := astutil.NewNodeReader(parsed)
 	aliases := reader.FindRecursive(aliasTypeMatcher)
 	for _, node := range aliases {
+		if token.ComparePos(node.Pos(), pos) == 0 {
+			continue
+		}
 		alias := node.(*ast.Aliased)
 		list := alias.RealName.(ast.TokenList)
 		if isSubQuery(list) {
@@ -119,7 +122,7 @@ func ExtractSubQueryView(parsed ast.TokenList, pos token.Pos) (*SubQueryInfo, er
 		}
 	}
 	if firstSubQuery == nil {
-		return nil, xerrors.Errorf("not found sub query")
+		return nil, nil
 	}
 
 	parenthesis, ok := firstSubQuery.RealName.(*ast.Parenthesis)

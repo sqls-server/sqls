@@ -93,7 +93,7 @@ func TestExtractSubQueryView(t *testing.T) {
 		{
 			name:  "sub query",
 			input: "select * (select city.ID, city.Name from dbs.city as ci) as sub",
-			pos:   token.Pos{Line: 1, Col: 1},
+			pos:   token.Pos{Line: 1, Col: 9},
 			want: &SubQueryInfo{
 				Name: "sub",
 				Views: []*SubQueryView{
@@ -112,9 +112,15 @@ func TestExtractSubQueryView(t *testing.T) {
 			},
 		},
 		{
+			name:  "not found sub query",
+			input: "select * (select city.ID, city.Name from dbs.city as ci) as sub",
+			pos:   token.Pos{Line: 1, Col: 10},
+			want:  nil,
+		},
+		{
 			name:  "astrisk identifier",
 			input: "select * (select * from dbs.city as ci) as sub",
-			pos:   token.Pos{Line: 1, Col: 1},
+			pos:   token.Pos{Line: 1, Col: 9},
 			want: &SubQueryInfo{
 				Name: "sub",
 				Views: []*SubQueryView{
@@ -141,9 +147,6 @@ func TestExtractSubQueryView(t *testing.T) {
 			if err != nil {
 				t.Fatalf("error: %+v", err)
 			}
-			if got == nil {
-				t.Fatalf("not found sub query")
-			}
 			if d := cmp.Diff(tt.want, got); d != "" {
 				t.Errorf("unmatched value: %s", d)
 			}
@@ -151,7 +154,7 @@ func TestExtractSubQueryView(t *testing.T) {
 	}
 }
 
-func TestExtractTable2(t *testing.T) {
+func TestExtractTable(t *testing.T) {
 	testcases := []struct {
 		name  string
 		input string
