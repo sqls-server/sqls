@@ -11,9 +11,21 @@ import (
 
 type NodeMatcher struct {
 	NodeTypeMatcherFunc func(node interface{}) bool
+	NodeTypes           []ast.NodeType
 	ExpectTokens        []token.Kind
 	ExpectSQLType       []dialect.KeywordKind
 	ExpectKeyword       []string
+}
+
+func (nm *NodeMatcher) IsMatchNodeTypes(node ast.Node) bool {
+	if nm.NodeTypes != nil {
+		for _, expect := range nm.NodeTypes {
+			if expect == node.Type() {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (nm *NodeMatcher) IsMatchNodeType(node interface{}) bool {
@@ -60,6 +72,9 @@ func (nm *NodeMatcher) IsMatchKeyword(node ast.Node) bool {
 
 func (nm *NodeMatcher) IsMatch(node ast.Node) bool {
 	// For node object
+	if nm.IsMatchNodeTypes(node) {
+		return true
+	}
 	if nm.IsMatchNodeType(node) {
 		return true
 	}

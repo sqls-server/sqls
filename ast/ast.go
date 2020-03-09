@@ -7,8 +7,30 @@ import (
 	"github.com/lighttiger2505/sqls/token"
 )
 
+type NodeType string
+
+const (
+	TypeItem             NodeType = "ITEM"
+	TypeMultiKeyword              = "MULTI_KEYWORD"
+	TypeMemberIdentifer           = "MULTI_KEYWORD"
+	TypeAliased                   = "ALIASED"
+	TypeIdentifer                 = "IDENTIFER"
+	TypeOperator                  = "OPERATOR"
+	TypeComparison                = "COMPARISON"
+	TypeParenthesis               = "PARENTHESIS"
+	TypeParenthesisInner          = "PARENTHESIS_INNER"
+	TypeFunctionLiteral           = "FUNCTION"
+	TypeWhereClause               = "WHERE"
+	TypeFromClause                = "FROM"
+	TypeJoinClause                = "JOIN"
+	TypeQuery                     = "QUERY"
+	TypeStatement                 = "STATEMENT"
+	TypeIdentiferList             = "IDENTIFER_LIST"
+)
+
 type Node interface {
 	String() string
+	Type() NodeType
 	Pos() token.Pos
 	End() token.Pos
 }
@@ -32,6 +54,7 @@ func NewItem(tok *token.Token) Node {
 	return &Item{NewSQLToken(tok)}
 }
 func (i *Item) String() string      { return i.Tok.String() }
+func (i *Item) Type() NodeType      { return TypeItem }
 func (i *Item) GetToken() *SQLToken { return i.Tok }
 func (i *Item) Pos() token.Pos      { return i.Tok.From }
 func (i *Item) End() token.Pos      { return i.Tok.To }
@@ -47,6 +70,7 @@ func (mk *MultiKeyword) String() string {
 	}
 	return strings.Join(strs, "")
 }
+func (mk *MultiKeyword) Type() NodeType        { return TypeMultiKeyword }
 func (mk *MultiKeyword) GetTokens() []Node     { return mk.Toks }
 func (mk *MultiKeyword) SetTokens(toks []Node) { mk.Toks = toks }
 func (mk *MultiKeyword) Pos() token.Pos        { return findFrom(mk) }
@@ -65,6 +89,7 @@ func (mi *MemberIdentifer) String() string {
 	}
 	return strings.Join(strs, "")
 }
+func (mi *MemberIdentifer) Type() NodeType        { return TypeMemberIdentifer }
 func (mi *MemberIdentifer) GetTokens() []Node     { return mi.Toks }
 func (mi *MemberIdentifer) SetTokens(toks []Node) { mi.Toks = toks }
 func (mi *MemberIdentifer) Pos() token.Pos        { return findFrom(mi) }
@@ -83,6 +108,7 @@ func (a *Aliased) String() string {
 	}
 	return strings.Join(strs, "")
 }
+func (a *Aliased) Type() NodeType        { return TypeAliased }
 func (a *Aliased) GetTokens() []Node     { return a.Toks }
 func (a *Aliased) SetTokens(toks []Node) { a.Toks = toks }
 func (a *Aliased) Pos() token.Pos        { return findFrom(a) }
@@ -92,6 +118,7 @@ type Identifer struct {
 	Tok *SQLToken
 }
 
+func (i *Identifer) Type() NodeType      { return TypeIdentifer }
 func (i *Identifer) String() string      { return i.Tok.String() }
 func (i *Identifer) GetToken() *SQLToken { return i.Tok }
 func (i *Identifer) Pos() token.Pos      { return i.Tok.From }
@@ -111,6 +138,7 @@ func (o *Operator) String() string {
 	}
 	return strings.Join(strs, "")
 }
+func (o *Operator) Type() NodeType        { return TypeOperator }
 func (o *Operator) GetTokens() []Node     { return o.Toks }
 func (o *Operator) SetTokens(toks []Node) { o.Toks = toks }
 func (o *Operator) Pos() token.Pos        { return findFrom(o) }
@@ -130,6 +158,7 @@ func (c *Comparison) String() string {
 	}
 	return strings.Join(strs, "")
 }
+func (c *Comparison) Type() NodeType        { return TypeComparison }
 func (c *Comparison) GetTokens() []Node     { return c.Toks }
 func (c *Comparison) SetTokens(toks []Node) { c.Toks = toks }
 func (c *Comparison) Pos() token.Pos        { return findFrom(c) }
@@ -146,6 +175,7 @@ func (p *Parenthesis) String() string {
 	}
 	return strings.Join(strs, "")
 }
+func (p *Parenthesis) Type() NodeType        { return TypeParenthesis }
 func (p *Parenthesis) GetTokens() []Node     { return p.Toks }
 func (p *Parenthesis) SetTokens(toks []Node) { p.Toks = toks }
 func (p *Parenthesis) Pos() token.Pos        { return findFrom(p) }
@@ -165,6 +195,7 @@ func (p *ParenthesisInner) String() string {
 	}
 	return strings.Join(strs, "")
 }
+func (p *ParenthesisInner) Type() NodeType        { return TypeParenthesisInner }
 func (p *ParenthesisInner) GetTokens() []Node     { return p.Toks }
 func (p *ParenthesisInner) SetTokens(toks []Node) { p.Toks = toks }
 func (p *ParenthesisInner) Pos() token.Pos        { return findFrom(p) }
@@ -181,6 +212,7 @@ func (fl *FunctionLiteral) String() string {
 	}
 	return strings.Join(strs, "")
 }
+func (fl *FunctionLiteral) Type() NodeType        { return TypeFunctionLiteral }
 func (fl *FunctionLiteral) GetTokens() []Node     { return fl.Toks }
 func (fl *FunctionLiteral) SetTokens(toks []Node) { fl.Toks = toks }
 func (fl *FunctionLiteral) Pos() token.Pos        { return findFrom(fl) }
@@ -197,6 +229,7 @@ func (w *WhereClause) String() string {
 	}
 	return strings.Join(strs, "")
 }
+func (w *WhereClause) Type() NodeType        { return TypeWhereClause }
 func (w *WhereClause) GetTokens() []Node     { return w.Toks }
 func (w *WhereClause) SetTokens(toks []Node) { w.Toks = toks }
 func (w *WhereClause) Pos() token.Pos        { return findFrom(w) }
@@ -213,6 +246,7 @@ func (f *FromClause) String() string {
 	}
 	return strings.Join(strs, "")
 }
+func (f *FromClause) Type() NodeType        { return TypeFromClause }
 func (f *FromClause) GetTokens() []Node     { return f.Toks }
 func (f *FromClause) SetTokens(toks []Node) { f.Toks = toks }
 func (f *FromClause) Pos() token.Pos        { return findFrom(f) }
@@ -229,6 +263,7 @@ func (j *JoinClause) String() string {
 	}
 	return strings.Join(strs, "")
 }
+func (j *JoinClause) Type() NodeType        { return TypeJoinClause }
 func (j *JoinClause) GetTokens() []Node     { return j.Toks }
 func (j *JoinClause) SetTokens(toks []Node) { j.Toks = toks }
 func (j *JoinClause) Pos() token.Pos        { return findFrom(j) }
@@ -245,6 +280,7 @@ func (q *Query) String() string {
 	}
 	return strings.Join(strs, "")
 }
+func (q *Query) Type() NodeType        { return TypeQuery }
 func (q *Query) GetTokens() []Node     { return q.Toks }
 func (q *Query) SetTokens(toks []Node) { q.Toks = toks }
 func (q *Query) Pos() token.Pos        { return findFrom(q) }
@@ -261,6 +297,7 @@ func (s *Statement) String() string {
 	}
 	return strings.Join(strs, "")
 }
+func (s *Statement) Type() NodeType        { return TypeStatement }
 func (s *Statement) GetTokens() []Node     { return s.Toks }
 func (s *Statement) SetTokens(toks []Node) { s.Toks = toks }
 func (s *Statement) Pos() token.Pos        { return findFrom(s) }
@@ -277,6 +314,7 @@ func (il *IdentiferList) String() string {
 	}
 	return strings.Join(strs, "")
 }
+func (il *IdentiferList) Type() NodeType        { return TypeIdentiferList }
 func (il *IdentiferList) GetTokens() []Node     { return il.Toks }
 func (il *IdentiferList) SetTokens(toks []Node) { il.Toks = toks }
 func (il *IdentiferList) Pos() token.Pos        { return findFrom(il) }

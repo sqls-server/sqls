@@ -169,12 +169,7 @@ var functionPrefixMatcher = astutil.NodeMatcher{
 	},
 }
 var functionArgsMatcher = astutil.NodeMatcher{
-	NodeTypeMatcherFunc: func(node interface{}) bool {
-		if _, ok := node.(*ast.Parenthesis); ok {
-			return true
-		}
-		return false
-	},
+	NodeTypes: []ast.NodeType{ast.TypeParenthesis},
 }
 
 func parseFunctions(reader *astutil.NodeReader) ast.Node {
@@ -288,12 +283,7 @@ var FromCloseMatcher = astutil.NodeMatcher{
 	},
 }
 var FromRecursionMatcher = astutil.NodeMatcher{
-	NodeTypeMatcherFunc: func(node interface{}) bool {
-		if _, ok := node.(*ast.Parenthesis); ok {
-			return true
-		}
-		return false
-	},
+	NodeTypes: []ast.NodeType{ast.TypeParenthesis},
 }
 
 func parseFrom(reader *astutil.NodeReader) ast.Node {
@@ -423,23 +413,12 @@ var operatorInfixMatcher = astutil.NodeMatcher{
 	},
 }
 var operatorTargetMatcher = astutil.NodeMatcher{
-	NodeTypeMatcherFunc: func(node interface{}) bool {
-		if _, ok := node.(*ast.Identifer); ok {
-			return true
-		}
-		if _, ok := node.(*ast.MemberIdentifer); ok {
-			return true
-		}
-		if _, ok := node.(*ast.Operator); ok {
-			return true
-		}
-		if _, ok := node.(*ast.Parenthesis); ok {
-			return true
-		}
-		if _, ok := node.(*ast.FunctionLiteral); ok {
-			return true
-		}
-		return false
+	NodeTypes: []ast.NodeType{
+		ast.TypeIdentifer,
+		ast.TypeMemberIdentifer,
+		ast.TypeOperator,
+		ast.TypeParenthesis,
+		ast.TypeFunctionLiteral,
 	},
 	ExpectTokens: []token.Kind{
 		token.Number,
@@ -506,23 +485,12 @@ var comparisonInfixMatcher = astutil.NodeMatcher{
 	},
 }
 var comparisonTargetMatcher = astutil.NodeMatcher{
-	NodeTypeMatcherFunc: func(node interface{}) bool {
-		if _, ok := node.(*ast.Parenthesis); ok {
-			return true
-		}
-		if _, ok := node.(*ast.Identifer); ok {
-			return true
-		}
-		if _, ok := node.(*ast.MemberIdentifer); ok {
-			return true
-		}
-		if _, ok := node.(*ast.Operator); ok {
-			return true
-		}
-		if _, ok := node.(*ast.FunctionLiteral); ok {
-			return true
-		}
-		return false
+	NodeTypes: []ast.NodeType{
+		ast.TypeParenthesis,
+		ast.TypeIdentifer,
+		ast.TypeMemberIdentifer,
+		ast.TypeOperator,
+		ast.TypeFunctionLiteral,
 	},
 	ExpectTokens: []token.Kind{
 		token.Number,
@@ -585,20 +553,11 @@ var aliasInfixMatcher = astutil.NodeMatcher{
 }
 
 var aliasTargetMatcher = astutil.NodeMatcher{
-	NodeTypeMatcherFunc: func(node interface{}) bool {
-		if _, ok := node.(*ast.Parenthesis); ok {
-			return true
-		}
-		if _, ok := node.(*ast.FunctionLiteral); ok {
-			return true
-		}
-		if _, ok := node.(*ast.Identifer); ok {
-			return true
-		}
-		if _, ok := node.(*ast.MemberIdentifer); ok {
-			return true
-		}
-		return false
+	NodeTypes: []ast.NodeType{
+		ast.TypeParenthesis,
+		ast.TypeFunctionLiteral,
+		ast.TypeIdentifer,
+		ast.TypeMemberIdentifer,
 	},
 }
 
@@ -652,26 +611,13 @@ var identifierListInfixMatcher = astutil.NodeMatcher{
 	},
 }
 var identifierListTargetMatcher = astutil.NodeMatcher{
-	NodeTypeMatcherFunc: func(node interface{}) bool {
-		if _, ok := node.(*ast.FunctionLiteral); ok {
-			return true
-		}
-		if _, ok := node.(*ast.Identifer); ok {
-			return true
-		}
-		if _, ok := node.(*ast.MemberIdentifer); ok {
-			return true
-		}
-		if _, ok := node.(*ast.Aliased); ok {
-			return true
-		}
-		if _, ok := node.(*ast.Comparison); ok {
-			return true
-		}
-		if _, ok := node.(*ast.Operator); ok {
-			return true
-		}
-		return false
+	NodeTypes: []ast.NodeType{
+		ast.TypeFunctionLiteral,
+		ast.TypeIdentifer,
+		ast.TypeMemberIdentifer,
+		ast.TypeAliased,
+		ast.TypeComparison,
+		ast.TypeOperator,
 	},
 }
 
