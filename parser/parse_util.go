@@ -103,47 +103,22 @@ func ExtractSubQueryView(parsed ast.TokenList, pos token.Pos) (*SubQueryInfo, er
 		return nil, xerrors.Errorf("is not sub query, query: %q, type: %T", stmt, stmt)
 	}
 
-	// extract select identifiers
-	sbIdents := []string{}
-	toks := parenthesis.Inner().GetTokens()
-	switch v := toks[2].(type) {
-	case ast.TokenList:
-		identifiers := filterTokenList(astutil.NewNodeReader(v), identifierMatcher)
-		for _, ident := range identifiers.GetTokens() {
-			res, err := parseSubQueryColumns(ident)
-			if err != nil {
-				return nil, err
-			}
-			sbIdents = append(sbIdents, res...)
-		}
-	case *ast.Identifer:
-		res, err := parseSubQueryColumns(v)
-		if err != nil {
-			return nil, err
-		}
-		sbIdents = append(sbIdents, res...)
-	default:
-		return nil, xerrors.Errorf("failed read the TokenList of select, query: %q, type: %T", toks[2], toks[2])
+	idents, err := extractSelectIdentifier(parenthesis.Inner().GetTokens())
+	if err != nil {
+		return nil, err
 	}
 
-	// extract table identifiers
-	fromJoinExpr := filterTokenList(astutil.NewNodeReader(parenthesis.Inner()), fromJoinMatcher)
-	fromIdentifiers := filterTokenList(astutil.NewNodeReader(fromJoinExpr), identifierMatcher)
-	sbTables := []*TableInfo{}
-	for _, ident := range fromIdentifiers.GetTokens() {
-		res, err := parseTableInfo(ident)
-		if err != nil {
-			return nil, err
-		}
-		sbTables = append(sbTables, res...)
+	tables, err := extractTableIdentifier(parenthesis.Inner())
+	if err != nil {
+		return nil, err
 	}
 
 	return &SubQueryInfo{
 		Name: firstSubQuery.AliasedName.String(),
 		Views: []*SubQueryView{
 			&SubQueryView{
-				Table:   sbTables[0],
-				Columns: sbIdents,
+				Table:   tables[0],
+				Columns: idents,
 			},
 		},
 	}, nil
@@ -158,18 +133,7 @@ func ExtractTable(parsed ast.TokenList, pos token.Pos) ([]*TableInfo, error) {
 	if encloseIsSubQuery(stmt, pos) {
 		list = extractFocusedSubQuery(stmt, pos)
 	}
-	fromJoinExpr := filterTokenList(astutil.NewNodeReader(list), fromJoinMatcher)
-	identifiers := filterTokenList(astutil.NewNodeReader(fromJoinExpr), identifierMatcher)
-
-	res := []*TableInfo{}
-	for _, ident := range identifiers.GetTokens() {
-		infos, err := parseTableInfo(ident)
-		if err != nil {
-			return nil, err
-		}
-		res = append(res, infos...)
-	}
-	return res, nil
+	return extractTableIdentifier(list)
 }
 
 var fromJoinMatcher = astutil.NodeMatcher{
@@ -186,6 +150,45 @@ var identifierMatcher = astutil.NodeMatcher{
 		ast.TypeMemberIdentifer,
 		ast.TypeAliased,
 	},
+}
+
+func extractSelectIdentifier(nodes []ast.Node) ([]string, error) {
+	idents := []string{}
+	identsObj := nodes[2]
+	switch v := identsObj.(type) {
+	case ast.TokenList:
+		identifiers := filterTokenList(astutil.NewNodeReader(v), identifierMatcher)
+		for _, ident := range identifiers.GetTokens() {
+			res, err := parseSubQueryColumns(ident)
+			if err != nil {
+				return nil, err
+			}
+			idents = append(idents, res...)
+		}
+	case *ast.Identifer:
+		res, err := parseSubQueryColumns(v)
+		if err != nil {
+			return nil, err
+		}
+		idents = append(idents, res...)
+	default:
+		return nil, xerrors.Errorf("failed read the TokenList of select, query: %q, type: %T", identsObj, identsObj)
+	}
+	return idents, nil
+}
+
+func extractTableIdentifier(list ast.TokenList) ([]*TableInfo, error) {
+	fromJoinExpr := filterTokenList(astutil.NewNodeReader(list), fromJoinMatcher)
+	identifiers := filterTokenList(astutil.NewNodeReader(fromJoinExpr), identifierMatcher)
+	res := []*TableInfo{}
+	for _, ident := range identifiers.GetTokens() {
+		infos, err := parseTableInfo(ident)
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, infos...)
+	}
+	return res, nil
 }
 
 func filterTokenList(reader *astutil.NodeReader, matcher astutil.NodeMatcher) ast.TokenList {
@@ -260,6 +263,7 @@ func identifierListToTableInfo(il *ast.IdentiferList) []*TableInfo {
 }
 
 func aliasedToTableInfo(aliased *ast.Aliased) *TableInfo {
+	fmt.Println(aliased)
 	ti := &TableInfo{}
 	// fetch table schema and name
 	switch v := aliased.RealName.(type) {
@@ -269,18 +273,12 @@ func aliasedToTableInfo(aliased *ast.Aliased) *TableInfo {
 		ti.DatabaseSchema = v.Parent.String()
 		ti.Name = v.Child.String()
 	case *ast.Parenthesis:
-		fromJoinExpr := filterTokenList(astutil.NewNodeReader(v.Inner()), fromJoinMatcher)
-		fromIdentifiers := filterTokenList(astutil.NewNodeReader(fromJoinExpr), identifierMatcher)
-		sbTables := []*TableInfo{}
-		for _, ident := range fromIdentifiers.GetTokens() {
-			res, err := parseTableInfo(ident)
-			if err != nil {
-				panic(err)
-			}
-			sbTables = append(sbTables, res...)
+		tables, err := extractTableIdentifier(v.Inner())
+		if err != nil {
+			panic(err)
 		}
-		ti.DatabaseSchema = sbTables[0].DatabaseSchema
-		ti.Name = sbTables[0].Name
+		ti.DatabaseSchema = tables[0].DatabaseSchema
+		ti.Name = tables[0].Name
 	default:
 		// FIXME add error tracking
 		panic(fmt.Sprintf("unknown node type, want Identifer or MemberIdentifier, got %T", v))

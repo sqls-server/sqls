@@ -275,7 +275,7 @@ func TestExtractTable(t *testing.T) {
 			want: []*TableInfo{
 				&TableInfo{
 					DatabaseSchema: "",
-					Name:           "",
+					Name:           "city",
 					Alias:          "t",
 				},
 			},
@@ -287,7 +287,7 @@ func TestExtractTable(t *testing.T) {
 			want: []*TableInfo{
 				&TableInfo{
 					DatabaseSchema: "",
-					Name:           "",
+					Name:           "city",
 					Alias:          "t",
 				},
 			},
@@ -299,7 +299,7 @@ func TestExtractTable(t *testing.T) {
 			want: []*TableInfo{
 				&TableInfo{
 					DatabaseSchema: "",
-					Name:           "",
+					Name:           "city",
 					Alias:          "t",
 				},
 			},
@@ -311,7 +311,7 @@ func TestExtractTable(t *testing.T) {
 			want: []*TableInfo{
 				&TableInfo{
 					DatabaseSchema: "",
-					Name:           "",
+					Name:           "city",
 					Alias:          "t",
 				},
 			},
