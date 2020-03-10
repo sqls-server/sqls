@@ -84,7 +84,7 @@ func ExtractSubQueryView(parsed ast.TokenList, pos token.Pos) (*SubQueryInfo, er
 	matcher := astutil.NodeMatcher{NodeTypes: []ast.NodeType{ast.TypeAliased}}
 	aliases := reader.FindRecursive(matcher)
 	for _, node := range aliases {
-		if token.ComparePos(node.Pos(), pos) == 0 {
+		if token.ComparePos(node.Pos(), pos) <= 0 {
 			continue
 		}
 		alias := node.(*ast.Aliased)
@@ -269,7 +269,18 @@ func aliasedToTableInfo(aliased *ast.Aliased) *TableInfo {
 		ti.DatabaseSchema = v.Parent.String()
 		ti.Name = v.Child.String()
 	case *ast.Parenthesis:
-		// Through
+		fromJoinExpr := filterTokenList(astutil.NewNodeReader(v.Inner()), fromJoinMatcher)
+		fromIdentifiers := filterTokenList(astutil.NewNodeReader(fromJoinExpr), identifierMatcher)
+		sbTables := []*TableInfo{}
+		for _, ident := range fromIdentifiers.GetTokens() {
+			res, err := parseTableInfo(ident)
+			if err != nil {
+				panic(err)
+			}
+			sbTables = append(sbTables, res...)
+		}
+		ti.DatabaseSchema = sbTables[0].DatabaseSchema
+		ti.Name = sbTables[0].Name
 	default:
 		// FIXME add error tracking
 		panic(fmt.Sprintf("unknown node type, want Identifer or MemberIdentifier, got %T", v))
