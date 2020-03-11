@@ -358,15 +358,6 @@ func aliasedToSubQueryColumn(aliased *ast.Aliased) string {
 		// FIXME add error tracking
 		panic(fmt.Sprintf("unknown node type, want Identifer or MemberIdentifier, got %T", v))
 	}
-
-	// fetch table aliased name
-	switch v := aliased.AliasedName.(type) {
-	case *ast.Identifer:
-		return v.String()
-	default:
-		// FIXME add error tracking
-		panic(fmt.Sprintf("unknown node type, want Identifer, got %T", v))
-	}
 }
 
 type NodeWalker struct {
