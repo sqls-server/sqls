@@ -7,25 +7,25 @@ import (
 	"github.com/lighttiger2505/sqls/token"
 )
 
-type NodeType string
+type NodeType int
 
 const (
-	TypeItem             NodeType = "ITEM"
-	TypeMultiKeyword              = "MULTI_KEYWORD"
-	TypeMemberIdentifer           = "MULTI_KEYWORD"
-	TypeAliased                   = "ALIASED"
-	TypeIdentifer                 = "IDENTIFER"
-	TypeOperator                  = "OPERATOR"
-	TypeComparison                = "COMPARISON"
-	TypeParenthesis               = "PARENTHESIS"
-	TypeParenthesisInner          = "PARENTHESIS_INNER"
-	TypeFunctionLiteral           = "FUNCTION"
-	TypeWhereClause               = "WHERE"
-	TypeFromClause                = "FROM"
-	TypeJoinClause                = "JOIN"
-	TypeQuery                     = "QUERY"
-	TypeStatement                 = "STATEMENT"
-	TypeIdentiferList             = "IDENTIFER_LIST"
+	TypeItem NodeType = iota
+	TypeMultiKeyword
+	TypeMemberIdentifer
+	TypeAliased
+	TypeIdentifer
+	TypeOperator
+	TypeComparison
+	TypeParenthesis
+	TypeParenthesisInner
+	TypeFunctionLiteral
+	TypeWhereClause
+	TypeFromClause
+	TypeJoinClause
+	TypeQuery
+	TypeStatement
+	TypeIdentiferList
 )
 
 type Node interface {
