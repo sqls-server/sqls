@@ -240,7 +240,11 @@ func parseTableInfo(idents ast.Node) ([]*TableInfo, error) {
 		ti := &TableInfo{Name: v.String()}
 		res = append(res, ti)
 	case *ast.IdentiferList:
-		res = append(res, identifierListToTableInfo(v)...)
+		tis, err := identifierListToTableInfo(v)
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, tis...)
 	case *ast.MemberIdentifer:
 		if v.Parent != nil {
 			ti := &TableInfo{
@@ -250,14 +254,18 @@ func parseTableInfo(idents ast.Node) ([]*TableInfo, error) {
 			res = append(res, ti)
 		}
 	case *ast.Aliased:
-		res = append(res, aliasedToTableInfo(v))
+		tis, err := aliasedToTableInfo(v)
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, tis)
 	default:
 		return nil, xerrors.Errorf("unknown node type %T", v)
 	}
 	return res, nil
 }
 
-func identifierListToTableInfo(il *ast.IdentiferList) []*TableInfo {
+func identifierListToTableInfo(il *ast.IdentiferList) ([]*TableInfo, error) {
 	tis := []*TableInfo{}
 	idents := filterTokens(il.GetTokens(), identifierMatcher)
 	for _, ident := range idents {
@@ -274,14 +282,13 @@ func identifierListToTableInfo(il *ast.IdentiferList) []*TableInfo {
 			}
 			tis = append(tis, ti)
 		default:
-			// FIXME add error tracking
-			panic(fmt.Sprintf("unknown node type %T", v))
+			return nil, xerrors.Errorf("failed parse table info, unknown node type %T, value %q in %q", ident, ident, il)
 		}
 	}
-	return tis
+	return tis, nil
 }
 
-func aliasedToTableInfo(aliased *ast.Aliased) *TableInfo {
+func aliasedToTableInfo(aliased *ast.Aliased) (*TableInfo, error) {
 	ti := &TableInfo{}
 	// fetch table schema and name
 	switch v := aliased.RealName.(type) {
@@ -298,8 +305,7 @@ func aliasedToTableInfo(aliased *ast.Aliased) *TableInfo {
 		ti.DatabaseSchema = tables[0].DatabaseSchema
 		ti.Name = tables[0].Name
 	default:
-		// FIXME add error tracking
-		panic(fmt.Sprintf("unknown node type, want Identifer or MemberIdentifier, got %T", v))
+		return nil, xerrors.Errorf("failed parse real name of alias, unknown node type %T, value %q", aliased.RealName, aliased.RealName)
 	}
 
 	// fetch table aliased name
@@ -307,10 +313,9 @@ func aliasedToTableInfo(aliased *ast.Aliased) *TableInfo {
 	case *ast.Identifer:
 		ti.Alias = v.String()
 	default:
-		// FIXME add error tracking
-		panic(fmt.Sprintf("unknown node type, want Identifer, got %T", v))
+		return nil, xerrors.Errorf("failed parse aliased name of alias, unknown node type %T, value %q", aliased.AliasedName, aliased.AliasedName)
 	}
-	return ti
+	return ti, nil
 }
 
 func parseSubQueryColumns(idents ast.Node) ([]string, error) {
