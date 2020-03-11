@@ -103,7 +103,7 @@ func ExtractSubQueryView(parsed ast.TokenList, pos token.Pos) (*SubQueryInfo, er
 		return nil, xerrors.Errorf("is not sub query, query: %q, type: %T", stmt, stmt)
 	}
 
-	idents, err := extractSelectIdentifier(parenthesis.Inner().GetTokens())
+	idents, err := extractSelectIdentifier(parenthesis.Inner())
 	if err != nil {
 		return nil, err
 	}
@@ -152,9 +152,28 @@ var identifierMatcher = astutil.NodeMatcher{
 	},
 }
 
-func extractSelectIdentifier(nodes []ast.Node) ([]string, error) {
+var fromMatcher = astutil.NodeMatcher{
+	NodeTypes: []ast.NodeType{
+		ast.TypeFromClause,
+	},
+}
+
+func extractSelectIdentifier(selectStmt ast.TokenList) ([]string, error) {
+	// check from clause is sub query
+	from := filterTokenList(astutil.NewNodeReader(selectStmt), fromMatcher).GetTokens()[0]
+	if list, ok := from.(ast.TokenList); ok {
+		fromIdents := list.GetTokens()[2]
+		if alias, ok := fromIdents.(*ast.Aliased); ok {
+			if parenthesis, ok := alias.RealName.(*ast.Parenthesis); ok {
+				if isSubQuery(parenthesis) {
+					return extractSelectIdentifier(parenthesis.Inner())
+				}
+			}
+		}
+	}
+
 	idents := []string{}
-	identsObj := nodes[2]
+	identsObj := selectStmt.GetTokens()[2]
 	switch v := identsObj.(type) {
 	case ast.TokenList:
 		identifiers := filterTokenList(astutil.NewNodeReader(v), identifierMatcher)
@@ -263,7 +282,6 @@ func identifierListToTableInfo(il *ast.IdentiferList) []*TableInfo {
 }
 
 func aliasedToTableInfo(aliased *ast.Aliased) *TableInfo {
-	fmt.Println(aliased)
 	ti := &TableInfo{}
 	// fetch table schema and name
 	switch v := aliased.RealName.(type) {

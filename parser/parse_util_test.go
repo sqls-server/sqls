@@ -188,6 +188,27 @@ func TestExtractSubQueryView(t *testing.T) {
 			pos:   token.Pos{Line: 1, Col: 42},
 			want:  nil,
 		},
+		{
+			name:  "recurcive parse sub query",
+			input: "SELECT * FROM (SELECT * FROM (SELECT * FROM (SELECT ci.ID, ci.Name FROM dbs.city AS ci) as t) as t) as t",
+			pos:   token.Pos{Line: 1, Col: 1},
+			want: &SubQueryInfo{
+				Name: "t",
+				Views: []*SubQueryView{
+					&SubQueryView{
+						Table: &TableInfo{
+							DatabaseSchema: "dbs",
+							Name:           "city",
+							Alias:          "t",
+						},
+						Columns: []string{
+							"ID",
+							"Name",
+						},
+					},
+				},
+			},
+		},
 	}
 	for _, tt := range testcases {
 		t.Run(tt.name, func(t *testing.T) {
