@@ -138,7 +138,7 @@ func TestExtractSubQueryView(t *testing.T) {
 			},
 		},
 		{
-			name:  "positoin of outer sub query ",
+			name:  "positoin of outer sub query",
 			input: "SELECT * FROM (SELECT t.ID, t.Name FROM (SELECT ci.ID, ci.Name, ci.CountryCode, ci.District, ci.Population FROM dbs.city AS ci) as it) as ot",
 			pos:   token.Pos{Line: 1, Col: 14},
 			want: &SubQueryInfo{
@@ -159,7 +159,7 @@ func TestExtractSubQueryView(t *testing.T) {
 			},
 		},
 		{
-			name:  "positoin of inner sub query ",
+			name:  "positoin of inner sub query",
 			input: "SELECT * FROM (SELECT t.ID, t.Name FROM (SELECT ci.ID, ci.Name, ci.CountryCode, ci.District, ci.Population FROM dbs.city AS ci) as it) as ot",
 			pos:   token.Pos{Line: 1, Col: 16},
 			want: &SubQueryInfo{

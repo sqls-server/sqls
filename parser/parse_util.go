@@ -159,19 +159,7 @@ var fromMatcher = astutil.NodeMatcher{
 }
 
 func extractSelectIdentifier(selectStmt ast.TokenList) ([]string, error) {
-	// check from clause is sub query
-	from := filterTokenList(astutil.NewNodeReader(selectStmt), fromMatcher).GetTokens()[0]
-	if list, ok := from.(ast.TokenList); ok {
-		fromIdents := list.GetTokens()[2]
-		if alias, ok := fromIdents.(*ast.Aliased); ok {
-			if parenthesis, ok := alias.RealName.(*ast.Parenthesis); ok {
-				if isSubQuery(parenthesis) {
-					return extractSelectIdentifier(parenthesis.Inner())
-				}
-			}
-		}
-	}
-
+	// extract select identifiers
 	idents := []string{}
 	identsObj := selectStmt.GetTokens()[2]
 	switch v := identsObj.(type) {
@@ -193,7 +181,43 @@ func extractSelectIdentifier(selectStmt ast.TokenList) ([]string, error) {
 	default:
 		return nil, xerrors.Errorf("failed read the TokenList of select, query: %q, type: %T", identsObj, identsObj)
 	}
-	return idents, nil
+
+	// check from clause is sub query
+	from := filterTokenList(astutil.NewNodeReader(selectStmt), fromMatcher).GetTokens()[0]
+	list, ok := from.(ast.TokenList)
+	if !ok {
+		return idents, nil
+	}
+	fromIdents := list.GetTokens()[2]
+	alias, ok := fromIdents.(*ast.Aliased)
+	if !ok {
+		return idents, nil
+	}
+	parenthesis, ok := alias.RealName.(*ast.Parenthesis)
+	if !ok {
+		return idents, nil
+	}
+	if !isSubQuery(parenthesis) {
+		return idents, nil
+	}
+
+	// merge select identiner of inner sub query
+	innerIdents, err := extractSelectIdentifier(parenthesis.Inner())
+	if err != nil {
+		return nil, err
+	}
+	realIdents := []string{}
+	for _, ident := range idents {
+		if ident == "*" {
+			return innerIdents, nil
+		}
+		for _, innerIdent := range innerIdents {
+			if ident == innerIdent {
+				realIdents = append(realIdents, ident)
+			}
+		}
+	}
+	return realIdents, nil
 }
 
 func extractTableIdentifier(list ast.TokenList) ([]*TableInfo, error) {
