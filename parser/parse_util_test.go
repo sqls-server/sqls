@@ -112,6 +112,27 @@ func TestExtractSubQueryView(t *testing.T) {
 			},
 		},
 		{
+			name:  "aliased column",
+			input: "select * (select city.ID as city_id, city.Name as city_name from dbs.city as ci) as sub",
+			pos:   token.Pos{Line: 1, Col: 9},
+			want: &SubQueryInfo{
+				Name: "sub",
+				Views: []*SubQueryView{
+					&SubQueryView{
+						Table: &TableInfo{
+							DatabaseSchema: "dbs",
+							Name:           "city",
+							Alias:          "ci",
+						},
+						Columns: []string{
+							"city_id",
+							"city_name",
+						},
+					},
+				},
+			},
+		},
+		{
 			name:  "not found sub query",
 			input: "select * (select city.ID, city.Name from dbs.city as ci) as sub",
 			pos:   token.Pos{Line: 1, Col: 10},

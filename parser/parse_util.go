@@ -378,11 +378,9 @@ func identifierListToSubQueryColumn(il *ast.IdentiferList) []string {
 
 func aliasedToSubQueryColumn(aliased *ast.Aliased) string {
 	// fetch table schema and name
-	switch v := aliased.RealName.(type) {
+	switch v := aliased.AliasedName.(type) {
 	case *ast.Identifer:
 		return v.String()
-	case *ast.MemberIdentifer:
-		return v.Child.String()
 	default:
 		// FIXME add error tracking
 		panic(fmt.Sprintf("unknown node type, want Identifer or MemberIdentifier, got %T", v))
