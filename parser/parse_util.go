@@ -1,8 +1,6 @@
 package parser
 
 import (
-	"fmt"
-
 	"github.com/lighttiger2505/sqls/ast"
 	"github.com/lighttiger2505/sqls/ast/astutil"
 	"github.com/lighttiger2505/sqls/token"
@@ -329,7 +327,11 @@ func aliasedToTableInfo(aliased *ast.Aliased) (*TableInfo, error) {
 		ti.DatabaseSchema = tables[0].DatabaseSchema
 		ti.Name = tables[0].Name
 	default:
-		return nil, xerrors.Errorf("failed parse real name of alias, unknown node type %T, value %q", aliased.RealName, aliased.RealName)
+		return nil, xerrors.Errorf(
+			"failed parse real name of alias, unknown node type %T, value %q",
+			aliased.RealName,
+			aliased.RealName,
+		)
 	}
 
 	// fetch table aliased name
@@ -337,53 +339,71 @@ func aliasedToTableInfo(aliased *ast.Aliased) (*TableInfo, error) {
 	case *ast.Identifer:
 		ti.Alias = v.String()
 	default:
-		return nil, xerrors.Errorf("failed parse aliased name of alias, unknown node type %T, value %q", aliased.AliasedName, aliased.AliasedName)
+		return nil, xerrors.Errorf(
+			"failed parse aliased name of alias, unknown node type %T, value %q",
+			aliased.AliasedName,
+			aliased.AliasedName,
+		)
 	}
 	return ti, nil
 }
 
 func parseSubQueryColumns(idents ast.Node) ([]string, error) {
-	res := []string{}
+	columns := []string{}
 	switch v := idents.(type) {
 	case *ast.Identifer:
-		res = append(res, v.String())
+		columns = append(columns, v.String())
 	case *ast.IdentiferList:
-		res = append(res, identifierListToSubQueryColumn(v)...)
+		results, err := identifierListToSubQueryColumns(v)
+		if err != nil {
+			return nil, err
+		}
+		columns = append(columns, results...)
 	case *ast.MemberIdentifer:
-		res = append(res, v.Child.String())
+		columns = append(columns, v.Child.String())
 	case *ast.Aliased:
-		res = append(res, aliasedToSubQueryColumn(v))
+		result, err := aliasedToSubQueryColumn(v)
+		if err != nil {
+			return nil, err
+		}
+		columns = append(columns, result)
 	default:
-		return nil, xerrors.Errorf("unknown node type %T", v)
+		return nil, xerrors.Errorf("failed parse sub query columns, unknown node type %T, value %q", idents, idents)
 	}
-	return res, nil
+	return columns, nil
 }
 
-func identifierListToSubQueryColumn(il *ast.IdentiferList) []string {
-	res := []string{}
+func identifierListToSubQueryColumns(il *ast.IdentiferList) ([]string, error) {
+	columns := []string{}
 	idents := filterTokens(il.GetTokens(), identifierMatcher)
 	for _, ident := range idents {
 		switch v := ident.(type) {
 		case *ast.Identifer:
-			res = append(res, v.String())
+			columns = append(columns, v.String())
 		case *ast.MemberIdentifer:
-			res = append(res, v.Child.String())
+			columns = append(columns, v.Child.String())
 		default:
-			// FIXME add error tracking
-			panic(fmt.Sprintf("unknown node type %T", v))
+			return nil, xerrors.Errorf(
+				"failed trans identifier list to column, unknown node type %T, value %q",
+				ident,
+				ident,
+			)
 		}
 	}
-	return res
+	return columns, nil
 }
 
-func aliasedToSubQueryColumn(aliased *ast.Aliased) string {
+func aliasedToSubQueryColumn(aliased *ast.Aliased) (string, error) {
 	// fetch table schema and name
 	switch v := aliased.AliasedName.(type) {
 	case *ast.Identifer:
-		return v.String()
+		return v.String(), nil
 	default:
-		// FIXME add error tracking
-		panic(fmt.Sprintf("unknown node type, want Identifer or MemberIdentifier, got %T", v))
+		return "", xerrors.Errorf(
+			"failed trans alias to column, unknown node type %T, value %q",
+			aliased.AliasedName,
+			aliased.AliasedName,
+		)
 	}
 }
 
