@@ -1,4 +1,4 @@
-package main
+package handler
 
 import (
 	"context"
@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"github.com/sourcegraph/jsonrpc2"
+
+	"github.com/lighttiger2505/sqls/internal/lsp"
 )
 
 type TestContext struct {
@@ -20,7 +22,7 @@ type TestContext struct {
 
 func newTestContext() *TestContext {
 	server := NewServer()
-	handler := jsonrpc2.HandlerWithError(server.handle)
+	handler := jsonrpc2.HandlerWithError(server.Handle)
 	ctx := context.Background()
 	return &TestContext{
 		h:      handler,
@@ -57,8 +59,8 @@ func (tx *TestContext) initServer(t *testing.T) {
 	tx.conn = jsonrpc2.NewConn(tx.ctx, jsonrpc2.NewBufferedStream(client, jsonrpc2.VSCodeObjectCodec{}), tx.h)
 
 	// Initialize Langage Server
-	params := InitializeParams{
-		InitializationOptions: InitializeOptions{},
+	params := lsp.InitializeParams{
+		InitializationOptions: lsp.InitializeOptions{},
 	}
 	if err := tx.conn.Call(tx.ctx, "initialize", params, nil); err != nil {
 		t.Fatal("conn.Call initialize:", err)
@@ -70,11 +72,11 @@ func TestInitialized(t *testing.T) {
 	tx.setup(t)
 	defer tx.tearDown()
 
-	want := InitializeResult{
-		ServerCapabilities{
-			TextDocumentSync: TDSKFull,
+	want := lsp.InitializeResult{
+		lsp.ServerCapabilities{
+			TextDocumentSync: lsp.TDSKFull,
 			HoverProvider:    false,
-			CompletionProvider: &CompletionOptions{
+			CompletionProvider: &lsp.CompletionOptions{
 				TriggerCharacters: []string{"."},
 			},
 			CodeActionProvider:              true,
@@ -83,9 +85,9 @@ func TestInitialized(t *testing.T) {
 			DocumentRangeFormattingProvider: false,
 		},
 	}
-	var got InitializeResult
-	params := InitializeParams{
-		InitializationOptions: InitializeOptions{},
+	var got lsp.InitializeResult
+	params := lsp.InitializeParams{
+		InitializationOptions: lsp.InitializeOptions{},
 	}
 	if err := tx.conn.Call(tx.ctx, "initialize", params, &got); err != nil {
 		t.Fatal("conn.Call initialize:", err)
@@ -104,8 +106,8 @@ func TestFileWatch(t *testing.T) {
 	openText := "SELECT * FROM todo ORDER BY id ASC"
 	changeText := "SELECT * FROM todo ORDER BY name ASC"
 
-	didOpenParams := DidOpenTextDocumentParams{
-		TextDocument: TextDocumentItem{
+	didOpenParams := lsp.DidOpenTextDocumentParams{
+		TextDocument: lsp.TextDocumentItem{
 			URI:        uri,
 			LanguageID: "sql",
 			Version:    0,
@@ -117,19 +119,19 @@ func TestFileWatch(t *testing.T) {
 	}
 	tx.testFile(t, didOpenParams.TextDocument.URI, didOpenParams.TextDocument.Text)
 
-	didChangeParams := DidChangeTextDocumentParams{
-		TextDocument: VersionedTextDocumentIdentifier{
+	didChangeParams := lsp.DidChangeTextDocumentParams{
+		TextDocument: lsp.VersionedTextDocumentIdentifier{
 			URI:     uri,
 			Version: 1,
 		},
-		ContentChanges: []TextDocumentContentChangeEvent{
-			TextDocumentContentChangeEvent{
-				Range: Range{
-					Start: Position{
+		ContentChanges: []lsp.TextDocumentContentChangeEvent{
+			lsp.TextDocumentContentChangeEvent{
+				Range: lsp.Range{
+					Start: lsp.Position{
 						Line:      1,
 						Character: 1,
 					},
-					End: Position{
+					End: lsp.Position{
 						Line:      1,
 						Character: 1,
 					},
@@ -144,16 +146,16 @@ func TestFileWatch(t *testing.T) {
 	}
 	tx.testFile(t, didChangeParams.TextDocument.URI, didChangeParams.ContentChanges[0].Text)
 
-	didSaveParams := DidSaveTextDocumentParams{
+	didSaveParams := lsp.DidSaveTextDocumentParams{
 		Text:         openText,
-		TextDocument: TextDocumentIdentifier{uri},
+		TextDocument: lsp.TextDocumentIdentifier{uri},
 	}
 	if err := tx.conn.Call(tx.ctx, "textDocument/didSave", didSaveParams, nil); err != nil {
 		t.Fatal("conn.Call textDocument/didSave:", err)
 	}
 	tx.testFile(t, didSaveParams.TextDocument.URI, didSaveParams.Text)
 
-	didCloseParams := DidCloseTextDocumentParams{TextDocumentIdentifier{uri}}
+	didCloseParams := lsp.DidCloseTextDocumentParams{lsp.TextDocumentIdentifier{uri}}
 	if err := tx.conn.Call(tx.ctx, "textDocument/didClose", didCloseParams, nil); err != nil {
 		t.Fatal("conn.Call textDocument/didClose:", err)
 	}
@@ -168,7 +170,7 @@ func TestComplete(t *testing.T) {
 	tx.setup(t)
 	defer tx.tearDown()
 
-	didChangeConfigurationParams := DidChangeConfigurationParams{
+	didChangeConfigurationParams := lsp.DidChangeConfigurationParams{
 		Settings: struct {
 			SQLS struct {
 				Driver         string "json:\"driver\""
@@ -432,8 +434,8 @@ func TestComplete(t *testing.T) {
 	for _, tt := range testcases {
 		t.Run(tt.name, func(t *testing.T) {
 			// Open dummy file
-			didOpenParams := DidOpenTextDocumentParams{
-				TextDocument: TextDocumentItem{
+			didOpenParams := lsp.DidOpenTextDocumentParams{
+				TextDocument: lsp.TextDocumentItem{
 					URI:        uri,
 					LanguageID: "sql",
 					Version:    0,
@@ -445,23 +447,23 @@ func TestComplete(t *testing.T) {
 			}
 			tx.testFile(t, didOpenParams.TextDocument.URI, didOpenParams.TextDocument.Text)
 			// Create completion params
-			commpletionParams := CompletionParams{
-				TextDocumentPositionParams: TextDocumentPositionParams{
-					TextDocument: TextDocumentIdentifier{
+			commpletionParams := lsp.CompletionParams{
+				TextDocumentPositionParams: lsp.TextDocumentPositionParams{
+					TextDocument: lsp.TextDocumentIdentifier{
 						URI: uri,
 					},
-					Position: Position{
+					Position: lsp.Position{
 						Line:      tt.line,
 						Character: tt.col,
 					},
 				},
-				CompletionContext: CompletionContext{
+				CompletionContext: lsp.CompletionContext{
 					TriggerKind:      0,
 					TriggerCharacter: nil,
 				},
 			}
 
-			var got []CompletionItem
+			var got []lsp.CompletionItem
 			if err := tx.conn.Call(tx.ctx, "textDocument/completion", commpletionParams, &got); err != nil {
 				t.Fatal("conn.Call textDocument/completion:", err)
 			}
@@ -470,7 +472,7 @@ func TestComplete(t *testing.T) {
 	}
 }
 
-func testCompletionItem(t *testing.T, expectLabels []string, gotItems []CompletionItem) {
+func testCompletionItem(t *testing.T, expectLabels []string, gotItems []lsp.CompletionItem) {
 	t.Helper()
 
 	itemMap := map[string]struct{}{}

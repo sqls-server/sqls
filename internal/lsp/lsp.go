@@ -1,4 +1,4 @@
-package main
+package lsp
 
 // https://microsoft.github.io/language-server-protocol/specifications/specification-3-14/#initialize
 
@@ -22,6 +22,12 @@ type InitializeResult struct {
 }
 
 type TextDocumentSyncKind int
+
+const (
+	TDSKNone        TextDocumentSyncKind = 0
+	TDSKFull        TextDocumentSyncKind = 1
+	TDSKIncremental TextDocumentSyncKind = 2
+)
 
 type ServerCapabilities struct {
 	TextDocumentSync                 TextDocumentSyncKind             `json:"textDocumentSync,omitempty"`

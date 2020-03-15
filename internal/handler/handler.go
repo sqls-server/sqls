@@ -1,4 +1,4 @@
-package main
+package handler
 
 import (
 	"context"
@@ -6,20 +6,17 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/lighttiger2505/sqls/database"
 	"github.com/sourcegraph/jsonrpc2"
-)
 
-const (
-	TDSKNone        TextDocumentSyncKind = 0
-	TDSKFull        TextDocumentSyncKind = 1
-	TDSKIncremental TextDocumentSyncKind = 2
+	"github.com/lighttiger2505/sqls/database"
+	"github.com/lighttiger2505/sqls/internal/completer"
+	"github.com/lighttiger2505/sqls/internal/lsp"
 )
 
 type Server struct {
 	db        database.Database
 	files     map[string]*File
-	completer *Completer
+	completer *completer.Completer
 }
 
 type File struct {
@@ -34,14 +31,14 @@ func NewServer() *Server {
 }
 
 func (s *Server) init() error {
-	s.completer = NewCompleter(s.db)
+	s.completer = completer.NewCompleter(s.db)
 	if err := s.completer.Init(); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (s *Server) handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
+func (s *Server) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
 	switch req.Method {
 	case "initialize":
 		return s.handleInitialize(ctx, conn, req)
@@ -79,17 +76,17 @@ func (s *Server) handleInitialize(ctx context.Context, conn *jsonrpc2.Conn, req 
 		return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeInvalidParams}
 	}
 
-	var params InitializeParams
+	var params lsp.InitializeParams
 	if err := json.Unmarshal(*req.Params, &params); err != nil {
 		return nil, err
 	}
 
-	return InitializeResult{
-		Capabilities: ServerCapabilities{
-			TextDocumentSync:   TDSKFull,
+	return lsp.InitializeResult{
+		Capabilities: lsp.ServerCapabilities{
+			TextDocumentSync:   lsp.TDSKFull,
 			HoverProvider:      false,
 			CodeActionProvider: true,
-			CompletionProvider: &CompletionOptions{
+			CompletionProvider: &lsp.CompletionOptions{
 				TriggerCharacters: []string{"."},
 			},
 			DefinitionProvider:              false,
@@ -115,7 +112,7 @@ func (s *Server) handleTextDocumentDidOpen(ctx context.Context, conn *jsonrpc2.C
 		return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeInvalidParams}
 	}
 
-	var params DidOpenTextDocumentParams
+	var params lsp.DidOpenTextDocumentParams
 	if err := json.Unmarshal(*req.Params, &params); err != nil {
 		return nil, err
 	}
@@ -134,7 +131,7 @@ func (s *Server) handleTextDocumentDidChange(ctx context.Context, conn *jsonrpc2
 		return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeInvalidParams}
 	}
 
-	var params DidChangeTextDocumentParams
+	var params lsp.DidChangeTextDocumentParams
 	if err := json.Unmarshal(*req.Params, &params); err != nil {
 		return nil, err
 	}
@@ -150,7 +147,7 @@ func (s *Server) handleTextDocumentDidSave(ctx context.Context, conn *jsonrpc2.C
 		return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeInvalidParams}
 	}
 
-	var params DidSaveTextDocumentParams
+	var params lsp.DidSaveTextDocumentParams
 	if err := json.Unmarshal(*req.Params, &params); err != nil {
 		return nil, err
 	}
@@ -171,7 +168,7 @@ func (s *Server) handleTextDocumentDidClose(ctx context.Context, conn *jsonrpc2.
 		return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeInvalidParams}
 	}
 
-	var params DidCloseTextDocumentParams
+	var params lsp.DidCloseTextDocumentParams
 	if err := json.Unmarshal(*req.Params, &params); err != nil {
 		return nil, err
 	}
@@ -187,7 +184,7 @@ func (s *Server) handleTextDocumentCompletion(ctx context.Context, conn *jsonrpc
 		return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeInvalidParams}
 	}
 
-	var params CompletionParams
+	var params lsp.CompletionParams
 	if err := json.Unmarshal(*req.Params, &params); err != nil {
 		return nil, err
 	}
@@ -197,7 +194,7 @@ func (s *Server) handleTextDocumentCompletion(ctx context.Context, conn *jsonrpc
 		return nil, fmt.Errorf("document not found: %s", params.TextDocument.URI)
 	}
 
-	completionItems, err := s.completer.complete(f.Text, params)
+	completionItems, err := s.completer.Complete(f.Text, params)
 	if err != nil {
 		return nil, err
 	}
@@ -236,12 +233,12 @@ func (h *Server) handleTextDocumentCodeAction(ctx context.Context, conn *jsonrpc
 		return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeInvalidParams}
 	}
 
-	var params CodeActionParams
+	var params lsp.CodeActionParams
 	if err := json.Unmarshal(*req.Params, &params); err != nil {
 		return nil, err
 	}
 
-	commands := []Command{
+	commands := []lsp.Command{
 		{
 			Title:     "Execute Query",
 			Command:   "executeQuery",
@@ -252,7 +249,7 @@ func (h *Server) handleTextDocumentCodeAction(ctx context.Context, conn *jsonrpc
 }
 
 func (s *Server) handleWorkspaceDidChangeConfiguration(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
-	var params DidChangeConfigurationParams
+	var params lsp.DidChangeConfigurationParams
 	if err := json.Unmarshal(*req.Params, &params); err != nil {
 		return nil, err
 	}
@@ -274,7 +271,7 @@ func (s *Server) handleWorkspaceDidChangeConfiguration(ctx context.Context, conn
 	return nil, nil
 }
 
-func (s *Server) executeQuery(params ExecuteCommandParams) (result interface{}, err error) {
+func (s *Server) executeQuery(params lsp.ExecuteCommandParams) (result interface{}, err error) {
 	if s.db == nil {
 		return nil, errors.New("connection is closed")
 	}
@@ -297,7 +294,7 @@ func (s *Server) handleWorkspaceExecuteCommand(ctx context.Context, conn *jsonrp
 		return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeInvalidParams}
 	}
 
-	var params ExecuteCommandParams
+	var params lsp.ExecuteCommandParams
 	if err := json.Unmarshal(*req.Params, &params); err != nil {
 		return nil, err
 	}

@@ -7,6 +7,8 @@ import (
 	"os"
 
 	"github.com/sourcegraph/jsonrpc2"
+
+	"github.com/lighttiger2505/sqls/internal/handler"
 )
 
 var (
@@ -41,8 +43,8 @@ func main() {
 
 	// Initialize language server
 	log.Println("sqls: start service")
-	server := NewServer()
-	handler := jsonrpc2.HandlerWithError(server.handle)
+	server := handler.NewServer()
+	handler := jsonrpc2.HandlerWithError(server.Handle)
 
 	// Start language server
 	log.Println("sqls: reading on stdin, writing on stdout")

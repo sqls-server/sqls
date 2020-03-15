@@ -1,4 +1,4 @@
-package main
+package completer
 
 import (
 	"bufio"
@@ -12,6 +12,7 @@ import (
 	"github.com/lighttiger2505/sqls/ast/astutil"
 	"github.com/lighttiger2505/sqls/database"
 	"github.com/lighttiger2505/sqls/dialect"
+	"github.com/lighttiger2505/sqls/internal/lsp"
 	"github.com/lighttiger2505/sqls/parser"
 	"github.com/lighttiger2505/sqls/token"
 )
@@ -196,7 +197,7 @@ func parse(text string) (ast.TokenList, error) {
 	return parsed, nil
 }
 
-func (c *Completer) complete(text string, params CompletionParams) ([]CompletionItem, error) {
+func (c *Completer) Complete(text string, params lsp.CompletionParams) ([]lsp.CompletionItem, error) {
 	parsed, err := parse(text)
 	if err != nil {
 		return nil, err
@@ -217,7 +218,7 @@ func (c *Completer) complete(text string, params CompletionParams) ([]Completion
 		return nil, err
 	}
 
-	items := []CompletionItem{}
+	items := []lsp.CompletionItem{}
 	if completionTypeIs(cTypes, CompletionTypeKeyword) {
 		items = append(items, c.keywordCandidates()...)
 	}
@@ -362,8 +363,8 @@ func genKeywordMatcher(keywords []string) astutil.NodeMatcher {
 	}
 }
 
-func filterCandidates(candidates []CompletionItem, lastWord string) []CompletionItem {
-	filterd := []CompletionItem{}
+func filterCandidates(candidates []lsp.CompletionItem, lastWord string) []lsp.CompletionItem {
+	filterd := []lsp.CompletionItem{}
 	for _, candidate := range candidates {
 		if strings.HasPrefix(strings.ToUpper(candidate.Label), strings.ToUpper(lastWord)) {
 			filterd = append(filterd, candidate)
@@ -372,12 +373,12 @@ func filterCandidates(candidates []CompletionItem, lastWord string) []Completion
 	return filterd
 }
 
-func (c *Completer) keywordCandidates() []CompletionItem {
-	candidates := []CompletionItem{}
+func (c *Completer) keywordCandidates() []lsp.CompletionItem {
+	candidates := []lsp.CompletionItem{}
 	for _, k := range keywords {
-		candidate := CompletionItem{
+		candidate := lsp.CompletionItem{
 			Label:  k,
-			Kind:   KeywordCompletion,
+			Kind:   lsp.KeywordCompletion,
 			Detail: "Keyword",
 		}
 		candidates = append(candidates, candidate)
@@ -387,8 +388,8 @@ func (c *Completer) keywordCandidates() []CompletionItem {
 
 var ColumnDetailTemplate = "Column"
 
-func (c *Completer) columnCandidates(targetTables []*parser.TableInfo, pare *parent) []CompletionItem {
-	candidates := []CompletionItem{}
+func (c *Completer) columnCandidates(targetTables []*parser.TableInfo, pare *parent) []lsp.CompletionItem {
+	candidates := []lsp.CompletionItem{}
 
 	switch pare.Type {
 	case ParentTypeNone:
@@ -404,9 +405,9 @@ func (c *Completer) columnCandidates(targetTables []*parser.TableInfo, pare *par
 				continue
 			}
 			for _, column := range columns {
-				candidate := CompletionItem{
+				candidate := lsp.CompletionItem{
 					Label:  column.Name,
-					Kind:   FieldCompletion,
+					Kind:   lsp.FieldCompletion,
 					Detail: ColumnDetailTemplate,
 				}
 				candidates = append(candidates, candidate)
@@ -426,9 +427,9 @@ func (c *Completer) columnCandidates(targetTables []*parser.TableInfo, pare *par
 				continue
 			}
 			for _, column := range columns {
-				candidate := CompletionItem{
+				candidate := lsp.CompletionItem{
 					Label:  column.Name,
-					Kind:   FieldCompletion,
+					Kind:   lsp.FieldCompletion,
 					Detail: ColumnDetailTemplate,
 				}
 				candidates = append(candidates, candidate)
@@ -440,16 +441,16 @@ func (c *Completer) columnCandidates(targetTables []*parser.TableInfo, pare *par
 
 var TableDetailTemplate = "Table"
 
-func (c *Completer) TableCandidates() []CompletionItem {
-	candidates := []CompletionItem{}
+func (c *Completer) TableCandidates() []lsp.CompletionItem {
+	candidates := []lsp.CompletionItem{}
 	if c.DBInfo == nil {
 		return candidates
 	}
 	tables := c.DBInfo.SortedTables()
 	for _, tableName := range tables {
-		candidate := CompletionItem{
+		candidate := lsp.CompletionItem{
 			Label:  tableName,
-			Kind:   FieldCompletion,
+			Kind:   lsp.FieldCompletion,
 			Detail: TableDetailTemplate,
 		}
 		candidates = append(candidates, candidate)
@@ -459,15 +460,15 @@ func (c *Completer) TableCandidates() []CompletionItem {
 
 var AliasDetailTemplate = "Alias"
 
-func (c *Completer) aliasCandidates(targetTables []*parser.TableInfo) []CompletionItem {
-	candidates := []CompletionItem{}
+func (c *Completer) aliasCandidates(targetTables []*parser.TableInfo) []lsp.CompletionItem {
+	candidates := []lsp.CompletionItem{}
 	for _, info := range targetTables {
 		if info.Alias == "" {
 			continue
 		}
-		candidate := CompletionItem{
+		candidate := lsp.CompletionItem{
 			Label:  info.Alias,
-			Kind:   FieldCompletion,
+			Kind:   lsp.FieldCompletion,
 			Detail: AliasDetailTemplate,
 		}
 		candidates = append(candidates, candidate)
@@ -477,13 +478,13 @@ func (c *Completer) aliasCandidates(targetTables []*parser.TableInfo) []Completi
 
 var SubQueryColumnDetailTemplate = "Sub Query"
 
-func (c *Completer) SubQueryColumnCandidates(info *parser.SubQueryInfo) []CompletionItem {
-	candidates := []CompletionItem{}
+func (c *Completer) SubQueryColumnCandidates(info *parser.SubQueryInfo) []lsp.CompletionItem {
+	candidates := []lsp.CompletionItem{}
 	for _, view := range info.Views {
 		for _, colmun := range view.Columns {
-			candidate := CompletionItem{
+			candidate := lsp.CompletionItem{
 				Label:  colmun,
-				Kind:   FieldCompletion,
+				Kind:   lsp.FieldCompletion,
 				Detail: SubQueryColumnDetailTemplate,
 			}
 			candidates = append(candidates, candidate)
@@ -492,12 +493,12 @@ func (c *Completer) SubQueryColumnCandidates(info *parser.SubQueryInfo) []Comple
 	return candidates
 }
 
-func (c *Completer) DatabaseCandidates() []CompletionItem {
-	candidates := []CompletionItem{}
+func (c *Completer) DatabaseCandidates() []lsp.CompletionItem {
+	candidates := []lsp.CompletionItem{}
 	for _, databaseName := range c.DBInfo.SortedDatabases() {
-		candidate := CompletionItem{
+		candidate := lsp.CompletionItem{
 			Label:  databaseName,
-			Kind:   FieldCompletion,
+			Kind:   lsp.FieldCompletion,
 			Detail: "Database",
 		}
 		candidates = append(candidates, candidate)
