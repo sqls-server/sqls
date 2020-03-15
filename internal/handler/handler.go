@@ -8,8 +8,8 @@ import (
 
 	"github.com/sourcegraph/jsonrpc2"
 
-	"github.com/lighttiger2505/sqls/database"
 	"github.com/lighttiger2505/sqls/internal/completer"
+	"github.com/lighttiger2505/sqls/internal/database"
 	"github.com/lighttiger2505/sqls/internal/lsp"
 )
 
