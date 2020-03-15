@@ -355,6 +355,48 @@ func TestComplete(t *testing.T) {
 				"countrylanguage",
 			},
 		},
+		{
+			name:  "FROM identifiers in the sub query",
+			input: "SELECT * FROM (SELECT * FROM ",
+			line:  0,
+			col:   29,
+			want: []string{
+				"city",
+				"country",
+				"countrylanguage",
+			},
+		},
+		{
+			name:  "filterd FROM identifiers in the sub query",
+			input: "SELECT * FROM (SELECT * FROM co",
+			line:  0,
+			col:   29,
+			want: []string{
+				"country",
+				"countrylanguage",
+			},
+		},
+		{
+			name:  "filterd SELECT identifiers in the sub query",
+			input: "SELECT * FROM (SELECT Cou FROM city)",
+			line:  0,
+			col:   25,
+			want: []string{
+				"CountryCode",
+				"country",
+				"countrylanguage",
+			},
+		},
+		{
+			name:  "SELECT identifiers by sub query",
+			input: "SELECT  FROM (SELECT ID as city_id, Name as city_name FROM city) as t",
+			line:  0,
+			col:   7,
+			want: []string{
+				"city_id",
+				"city_name",
+			},
+		},
 	}
 
 	for _, tt := range testcases {

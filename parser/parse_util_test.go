@@ -136,7 +136,7 @@ func TestExtractSubQueryView(t *testing.T) {
 			name:  "not found sub query",
 			input: "select * (select city.ID, city.Name from dbs.city as ci) as sub",
 			pos:   token.Pos{Line: 1, Col: 10},
-			want:  nil,
+			want:  &SubQueryInfo{},
 		},
 		{
 			name:  "astrisk identifier",
@@ -207,7 +207,7 @@ func TestExtractSubQueryView(t *testing.T) {
 			name:  "positoin of sub query in sub query",
 			input: "SELECT * FROM (SELECT t.ID, t.Name FROM (SELECT ci.ID, ci.Name, ci.CountryCode, ci.District, ci.Population FROM dbs.city AS ci) as it) as ot",
 			pos:   token.Pos{Line: 1, Col: 42},
-			want:  nil,
+			want:  &SubQueryInfo{},
 		},
 		{
 			name:  "recurcive parse sub query",

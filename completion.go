@@ -26,6 +26,8 @@ const (
 	CompletionTypeColumn
 	CompletionTypeTable
 	CompletionTypeView
+	CompletionTypeSubQueryView
+	CompletionTypeSubQueryColumn
 	CompletionTypeChange
 	CompletionTypeUser
 	CompletionTypeDatabase
@@ -210,6 +212,11 @@ func (c *Completer) complete(text string, params CompletionParams) ([]Completion
 	if err != nil {
 		return nil, err
 	}
+	definedSubQuery, err := parser.ExtractSubQueryView(parsed, pos)
+	if err != nil {
+		return nil, err
+	}
+
 	items := []CompletionItem{}
 	if completionTypeIs(cTypes, CompletionTypeKeyword) {
 		items = append(items, c.keywordCandidates()...)
@@ -222,6 +229,9 @@ func (c *Completer) complete(text string, params CompletionParams) ([]Completion
 	}
 	if completionTypeIs(cTypes, CompletionTypeTable) {
 		items = append(items, c.TableCandidates()...)
+	}
+	if completionTypeIs(cTypes, CompletionTypeSubQueryColumn) {
+		items = append(items, c.SubQueryColumnCandidates(definedSubQuery)...)
 	}
 
 	lastWord := getLastWord(text, params.Position.Line+1, params.Position.Character)
@@ -237,6 +247,7 @@ const (
 	ParentTypeNone
 	ParentTypeSchema
 	ParentTypeTable
+	ParentTypeSubQuery
 )
 
 type parent struct {
@@ -264,6 +275,7 @@ func getCompletionTypes(text string, pos token.Pos) ([]CompletionType, *parent, 
 			mi := nodeWalker.CurNodeTopMatched(memberIdentifierMatcher).(*ast.MemberIdentifer)
 			cType := []CompletionType{
 				CompletionTypeColumn,
+				CompletionTypeSubQueryColumn,
 				CompletionTypeView,
 				CompletionTypeFunction,
 			}
@@ -276,6 +288,8 @@ func getCompletionTypes(text string, pos token.Pos) ([]CompletionType, *parent, 
 		return []CompletionType{
 			CompletionTypeColumn,
 			CompletionTypeTable,
+			CompletionTypeSubQueryColumn,
+			CompletionTypeSubQueryView,
 			CompletionTypeAlias,
 			CompletionTypeView,
 			CompletionTypeFunction,
@@ -297,6 +311,7 @@ func getCompletionTypes(text string, pos token.Pos) ([]CompletionType, *parent, 
 			cType := []CompletionType{
 				CompletionTypeColumn,
 				CompletionTypeView,
+				CompletionTypeSubQueryColumn,
 				CompletionTypeFunction,
 			}
 			tableParent := &parent{
@@ -310,6 +325,8 @@ func getCompletionTypes(text string, pos token.Pos) ([]CompletionType, *parent, 
 			CompletionTypeTable,
 			CompletionTypeAlias,
 			CompletionTypeView,
+			CompletionTypeSubQueryColumn,
+			CompletionTypeSubQueryView,
 			CompletionTypeFunction,
 		}, noneParent, nil
 	case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"JOIN", "COPY", "FROM", "UPDATE", "INTO", "DESCRIBE", "TRUNCATE", "DESC", "EXPLAIN"})):
@@ -317,6 +334,8 @@ func getCompletionTypes(text string, pos token.Pos) ([]CompletionType, *parent, 
 			CompletionTypeColumn,
 			CompletionTypeTable,
 			CompletionTypeView,
+			CompletionTypeSubQueryColumn,
+			CompletionTypeSubQueryView,
 			CompletionTypeFunction,
 		}, noneParent, nil
 	// case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"ON"})):
@@ -452,6 +471,23 @@ func (c *Completer) aliasCandidates(targetTables []*parser.TableInfo) []Completi
 			Detail: AliasDetailTemplate,
 		}
 		candidates = append(candidates, candidate)
+	}
+	return candidates
+}
+
+var SubQueryColumnDetailTemplate = "Sub Query"
+
+func (c *Completer) SubQueryColumnCandidates(info *parser.SubQueryInfo) []CompletionItem {
+	candidates := []CompletionItem{}
+	for _, view := range info.Views {
+		for _, colmun := range view.Columns {
+			candidate := CompletionItem{
+				Label:  colmun,
+				Kind:   FieldCompletion,
+				Detail: SubQueryColumnDetailTemplate,
+			}
+			candidates = append(candidates, candidate)
+		}
 	}
 	return candidates
 }

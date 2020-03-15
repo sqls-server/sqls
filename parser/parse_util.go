@@ -85,15 +85,21 @@ func ExtractSubQueryView(parsed ast.TokenList, pos token.Pos) (*SubQueryInfo, er
 		if token.ComparePos(node.Pos(), pos) <= 0 {
 			continue
 		}
-		alias := node.(*ast.Aliased)
-		list := alias.RealName.(ast.TokenList)
+		alias, ok := node.(*ast.Aliased)
+		if !ok {
+			continue
+		}
+		list, ok := alias.RealName.(ast.TokenList)
+		if !ok {
+			continue
+		}
 		if isSubQuery(list) {
 			firstSubQuery = alias
 			break
 		}
 	}
 	if firstSubQuery == nil {
-		return nil, nil
+		return &SubQueryInfo{}, nil
 	}
 
 	parenthesis, ok := firstSubQuery.RealName.(*ast.Parenthesis)
