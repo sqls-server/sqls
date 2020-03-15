@@ -73,7 +73,7 @@ func TestParseParenthesis(t *testing.T) {
 			name:  "with select",
 			input: "select (select (x3) x2) and (y2) bar",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
-				testStatement(t, stmts[0], 9, input)
+				testStatement(t, stmts[0], 7, input)
 
 				list := stmts[0].GetTokens()
 				testItem(t, list[0], "select")
@@ -82,25 +82,21 @@ func TestParseParenthesis(t *testing.T) {
 				testItem(t, list[3], " ")
 				testItem(t, list[4], "and")
 				testItem(t, list[5], " ")
-				testParenthesis(t, list[6], "(y2)")
-				testItem(t, list[7], " ")
-				testIdentifier(t, list[8], `bar`)
+				testAliased(t, list[6], "(y2) bar", "(y2)", "bar")
 
-				parenthesis := testTokenList(t, list[2], 7).GetTokens()
+				parenthesis := testTokenList(t, list[2], 5).GetTokens()
 				testItem(t, parenthesis[0], "(")
 				testItem(t, parenthesis[1], "select")
 				testItem(t, parenthesis[2], " ")
-				testParenthesis(t, parenthesis[3], "(x3)")
-				testItem(t, parenthesis[4], " ")
-				testIdentifier(t, parenthesis[5], "x2")
-				testItem(t, parenthesis[6], ")")
+				testAliased(t, parenthesis[3], "(x3) x2", "(x3)", "x2")
+				testItem(t, parenthesis[4], ")")
 			},
 		},
 		{
 			name:  "not close parenthesis",
 			input: "select (select (x3) x2 and (y2) bar",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
-				testStatement(t, stmts[0], 14, input)
+				testStatement(t, stmts[0], 10, input)
 
 				list := stmts[0].GetTokens()
 				testItem(t, list[0], "select")
@@ -108,15 +104,11 @@ func TestParseParenthesis(t *testing.T) {
 				testItem(t, list[2], "(")
 				testItem(t, list[3], "select")
 				testItem(t, list[4], " ")
-				testParenthesis(t, list[5], "(x3)")
+				testAliased(t, list[5], "(x3) x2", "(x3)", "x2")
 				testItem(t, list[6], " ")
-				testIdentifier(t, list[7], "x2")
+				testItem(t, list[7], "and")
 				testItem(t, list[8], " ")
-				testItem(t, list[9], "and")
-				testItem(t, list[10], " ")
-				testParenthesis(t, list[11], "(y2)")
-				testItem(t, list[12], " ")
-				testIdentifier(t, list[13], "bar")
+				testAliased(t, list[9], "(y2) bar", "(y2)", "bar")
 			},
 		},
 	}
@@ -367,8 +359,13 @@ func TestParseWhere_WithParenthesis(t *testing.T) {
 	testItem(t, list[3], " ")
 	testFrom(t, list[4], "from (select y from foo where bar = 1) z")
 
-	from := testTokenList(t, list[4], 5).GetTokens()
-	parenthesis := testTokenList(t, from[2], 8).GetTokens()
+	from := testTokenList(t, list[4], 3).GetTokens()
+	testItem(t, from[0], "from")
+	testItem(t, from[1], " ")
+	testAliased(t, from[2], "(select y from foo where bar = 1) z", "(select y from foo where bar = 1)", "z")
+
+	aliased := testTokenList(t, from[2], 3).GetTokens()
+	parenthesis := testTokenList(t, aliased[0], 8).GetTokens()
 	testItem(t, parenthesis[0], "(")
 	testItem(t, parenthesis[1], "select")
 	testItem(t, parenthesis[2], " ")
@@ -838,6 +835,24 @@ func TestParseAliased(t *testing.T) {
 		input   string
 		checkFn func(t *testing.T, stmts []*ast.Statement, input string)
 	}{
+		{
+			name:  "aliase",
+			input: "foo AS bar",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testAliased(t, list[0], "foo AS bar", "foo", "bar")
+			},
+		},
+		{
+			name:  "aliase without AS",
+			input: "foo bar",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testAliased(t, list[0], "foo bar", "foo", "bar")
+			},
+		},
 		{
 			name:  "aliase select identifier",
 			input: "select foo as bar from mytable",

@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/lighttiger2505/sqls/ast"
@@ -86,6 +87,7 @@ func (p *Parser) Parse() (ast.TokenList, error) {
 	root = parseInfixGroup(astutil.NewNodeReader(root), operatorInfixMatcher, true, parseOperator)
 	root = parseInfixGroup(astutil.NewNodeReader(root), comparisonInfixMatcher, true, parseComparison)
 	root = parseInfixGroup(astutil.NewNodeReader(root), aliasInfixMatcher, true, parseAliased)
+	root = parseInfixGroup(astutil.NewNodeReader(root), aliasWithoutAsInfixMatcher, false, parseAliasedWithoutAs)
 	root = parseInfixGroup(astutil.NewNodeReader(root), identifierListInfixMatcher, true, parseIdentifierList)
 	return root, nil
 }
@@ -295,6 +297,7 @@ func parseFrom(reader *astutil.NodeReader) ast.Node {
 		}
 
 		if tmpReader.CurNodeIs(FromRecursionMatcher) {
+			// FIXME: more simplity
 			// For sub query
 			if list, ok := tmpReader.CurNode.(ast.TokenList); ok {
 				parenthesis := parsePrefixGroup(astutil.NewNodeReader(list), FromPrefixMatcher, parseFrom)
@@ -440,6 +443,7 @@ func parseOperator(reader *astutil.NodeReader) ast.Node {
 	}
 	if reader.CurNodeIs(operatorRecursionMatcher) {
 		if list, ok := reader.CurNode.(ast.TokenList); ok {
+			// FIXME: more simplity
 			// For sub query
 			parenthesis := parseInfixGroup(astutil.NewNodeReader(list), operatorInfixMatcher, true, parseOperator)
 			reader.Replace(parenthesis, reader.Index-1)
@@ -456,6 +460,7 @@ func parseOperator(reader *astutil.NodeReader) ast.Node {
 	endIndex, right := tmpReader.PeekNode(true)
 	if tmpReader.PeekNodeIs(true, operatorRecursionMatcher) {
 		if list, ok := right.(ast.TokenList); ok {
+			// FIXME: more simplity
 			// For sub query
 			parenthesis := parseInfixGroup(astutil.NewNodeReader(list), operatorInfixMatcher, true, parseOperator)
 			reader.Replace(parenthesis, endIndex)
@@ -509,6 +514,7 @@ func parseComparison(reader *astutil.NodeReader) ast.Node {
 	}
 	if reader.CurNodeIs(comparisonRecursionMatcher) {
 		if list, ok := reader.CurNode.(ast.TokenList); ok {
+			// FIXME: more simplity
 			// For sub query
 			parenthesis := parseInfixGroup(astutil.NewNodeReader(list), comparisonInfixMatcher, true, parseComparison)
 			reader.Replace(parenthesis, reader.Index-1)
@@ -525,6 +531,7 @@ func parseComparison(reader *astutil.NodeReader) ast.Node {
 	endIndex, right := tmpReader.PeekNode(true)
 	if tmpReader.PeekNodeIs(true, operatorRecursionMatcher) {
 		if list, ok := right.(ast.TokenList); ok {
+			// FIXME: more simplity
 			// For sub query
 			parenthesis := parseInfixGroup(astutil.NewNodeReader(list), comparisonInfixMatcher, true, parseComparison)
 			reader.Replace(parenthesis, endIndex)
@@ -567,6 +574,7 @@ func parseAliased(reader *astutil.NodeReader) ast.Node {
 	}
 	if reader.CurNodeIs(aliasRecursionMatcher) {
 		if list, ok := reader.CurNode.(ast.TokenList); ok {
+			// FIXME: more simplity
 			// For sub query
 			parenthesis := parseInfixGroup(astutil.NewNodeReader(list), aliasInfixMatcher, true, parseAliased)
 			reader.Replace(parenthesis, reader.Index-1)
@@ -584,6 +592,46 @@ func parseAliased(reader *astutil.NodeReader) ast.Node {
 	endIndex, aliasedName := tmpReader.PeekNode(true)
 
 	tmpReader.NextNode(true)
+	reader.Index = tmpReader.Index
+	reader.CurNode = tmpReader.CurNode
+	return &ast.Aliased{
+		Toks:        reader.NodesWithRange(startIndex, endIndex+1),
+		RealName:    realName,
+		AliasedName: aliasedName,
+	}
+}
+
+var aliasWithoutAsInfixMatcher = astutil.NodeMatcher{
+	ExpectTokens: []token.Kind{
+		token.Whitespace,
+	},
+}
+
+func parseAliasedWithoutAs(reader *astutil.NodeReader) ast.Node {
+	fmt.Println(reader.CurNode)
+	if !reader.CurNodeIs(aliasTargetMatcher) {
+		return reader.CurNode
+	}
+	if reader.CurNodeIs(aliasRecursionMatcher) {
+		if list, ok := reader.CurNode.(ast.TokenList); ok {
+			// FIXME: more simplity
+			// For sub query
+			parenthesis := parseInfixGroup(astutil.NewNodeReader(list), aliasWithoutAsInfixMatcher, false, parseAliasedWithoutAs)
+			reader.Replace(parenthesis, reader.Index-1)
+		}
+	}
+
+	realName := reader.CurNode
+	startIndex := reader.Index - 1
+	tmpReader := reader.CopyReader()
+	tmpReader.NextNode(false)
+
+	if !tmpReader.PeekNodeIs(false, aliasTargetMatcher) {
+		return reader.CurNode
+	}
+	endIndex, aliasedName := tmpReader.PeekNode(false)
+
+	tmpReader.NextNode(false)
 	reader.Index = tmpReader.Index
 	reader.CurNode = tmpReader.CurNode
 	return &ast.Aliased{

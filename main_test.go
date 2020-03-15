@@ -230,6 +230,23 @@ func TestComplete(t *testing.T) {
 			},
 		},
 		{
+			name:  "select identifier with table alias without as",
+			input: "select  from city c",
+			line:  0,
+			col:   7,
+			want: []string{
+				"ID",
+				"Name",
+				"CountryCode",
+				"District",
+				"Population",
+				"c",
+				"city",
+				"country",
+				"countrylanguage",
+			},
+		},
+		{
 			name:  "select identifier filterd",
 			input: "select Cou from city",
 			line:  0,
@@ -253,6 +270,19 @@ func TestComplete(t *testing.T) {
 		},
 		{
 			name:  "select has aliased table identifier",
+			input: "select c. from city as c",
+			line:  0,
+			col:   9,
+			want: []string{
+				"ID",
+				"Name",
+				"CountryCode",
+				"District",
+				"Population",
+			},
+		},
+		{
+			name:  "select has aliased without as table identifier",
 			input: "select c. from city as c",
 			line:  0,
 			col:   9,
