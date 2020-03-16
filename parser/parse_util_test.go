@@ -91,7 +91,7 @@ func TestExtractSubQueryView(t *testing.T) {
 		want  *SubQueryInfo
 	}{
 		{
-			name:  "sub query",
+			name:  "simple sub query",
 			input: "select * (select city.ID, city.Name from dbs.city as ci) as sub",
 			pos:   token.Pos{Line: 1, Col: 9},
 			want: &SubQueryInfo{
@@ -234,8 +234,6 @@ func TestExtractSubQueryView(t *testing.T) {
 	for _, tt := range testcases {
 		t.Run(tt.name, func(t *testing.T) {
 			query := initExtractTable(t, tt.input)
-			// stmt := query.GetTokens()[0].(ast.TokenList)
-			// subQuery := stmt.GetTokens()[0].(ast.TokenList)
 			got, err := ExtractSubQueryView(query, tt.pos)
 			if err != nil {
 				t.Fatalf("error: %+v", err)
