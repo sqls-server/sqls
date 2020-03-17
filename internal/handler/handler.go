@@ -308,6 +308,12 @@ func (s *Server) executeQuery(params lsp.ExecuteCommandParams) (result interface
 	if !ok {
 		return nil, fmt.Errorf("document not found: %s", uri)
 	}
+
+	if err := s.db.Open(); err != nil {
+		return nil, err
+	}
+	defer s.db.Close()
+
 	return s.db.ExecuteQuery(context.Background(), f.Text)
 }
 
