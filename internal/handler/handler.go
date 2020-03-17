@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
+	"runtime"
 
 	"github.com/sourcegraph/jsonrpc2"
 
@@ -38,7 +40,27 @@ func (s *Server) init() error {
 	return nil
 }
 
+func panicf(r interface{}, format string, v ...interface{}) error {
+	if r != nil {
+		// Same as net/http
+		const size = 64 << 10
+		buf := make([]byte, size)
+		buf = buf[:runtime.Stack(buf, false)]
+		id := fmt.Sprintf(format, v...)
+		log.Printf("panic serving %s: %v\n%s", id, r, string(buf))
+		return fmt.Errorf("unexpected panic: %v", r)
+	}
+	return nil
+}
+
 func (s *Server) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
+	// Prevent any uncaught panics from taking the entire server down.
+	defer func() {
+		if perr := panicf(recover(), "%v", req.Method); perr != nil {
+			err = perr
+		}
+	}()
+
 	switch req.Method {
 	case "initialize":
 		return s.handleInitialize(ctx, conn, req)
