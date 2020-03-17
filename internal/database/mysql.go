@@ -3,7 +3,6 @@ package database
 import (
 	"context"
 	"database/sql"
-	"log"
 
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -47,7 +46,7 @@ func (db *MySQLDB) Close() error {
 func (db *MySQLDB) Databases() ([]string, error) {
 	rows, err := db.Conn.Query("SHOW DATABASES")
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	databases := []string{}
 	for rows.Next() {
@@ -63,7 +62,7 @@ func (db *MySQLDB) Databases() ([]string, error) {
 func (db *MySQLDB) Tables() ([]string, error) {
 	rows, err := db.Conn.Query("SHOW TABLES")
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	tables := []string{}
 	for rows.Next() {
@@ -79,7 +78,7 @@ func (db *MySQLDB) Tables() ([]string, error) {
 func (db *MySQLDB) DescribeTable(tableName string) ([]*ColumnDesc, error) {
 	rows, err := db.Conn.Query("DESC " + tableName)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	tableInfos := []*ColumnDesc{}
 	for rows.Next() {
