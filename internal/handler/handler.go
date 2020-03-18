@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -8,6 +9,7 @@ import (
 	"log"
 	"runtime"
 
+	"github.com/olekukonko/tablewriter"
 	"github.com/sourcegraph/jsonrpc2"
 
 	"github.com/lighttiger2505/sqls/internal/completer"
@@ -317,7 +319,27 @@ func (s *Server) executeQuery(params lsp.ExecuteCommandParams) (result interface
 	if _, isExec := database.QueryExecType(f.Text, ""); isExec {
 		return s.db.Exec(context.Background(), f.Text)
 	} else {
-		return s.db.Query(context.Background(), f.Text)
+		rows, err := s.db.Query(context.Background(), f.Text)
+		if err != nil {
+			return nil, err
+		}
+		columns, err := database.Columns(rows)
+		if err != nil {
+			return nil, err
+		}
+		stringRows, err := database.ScanRows(rows, len(columns))
+		if err != nil {
+			return nil, err
+		}
+
+		buf := new(bytes.Buffer)
+		table := tablewriter.NewWriter(buf)
+		table.SetHeader(columns)
+		for _, stringRow := range stringRows {
+			table.Append(stringRow)
+		}
+		table.Render()
+		return buf.String(), nil
 	}
 
 }
