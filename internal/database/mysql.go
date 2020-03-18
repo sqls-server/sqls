@@ -99,6 +99,10 @@ func (db *MySQLDB) DescribeTable(tableName string) ([]*ColumnDesc, error) {
 	return tableInfos, nil
 }
 
-func (db *MySQLDB) ExecuteQuery(ctx context.Context, query string) (interface{}, error) {
+func (db *MySQLDB) Exec(ctx context.Context, query string) (sql.Result, error) {
 	return db.Conn.ExecContext(ctx, query)
+}
+
+func (db *MySQLDB) Query(ctx context.Context, query string) (*sql.Rows, error) {
+	return db.Conn.QueryContext(ctx, query)
 }

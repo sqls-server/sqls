@@ -107,6 +107,10 @@ func (db *SQLite3DB) DescribeTable(tableName string) ([]*ColumnDesc, error) {
 	return tableInfos, nil
 }
 
-func (db *SQLite3DB) ExecuteQuery(ctx context.Context, query string) (interface{}, error) {
+func (db *SQLite3DB) Exec(ctx context.Context, query string) (sql.Result, error) {
 	return db.Conn.ExecContext(ctx, query)
+}
+
+func (db *SQLite3DB) Query(ctx context.Context, query string) (*sql.Rows, error) {
+	return db.Conn.QueryContext(ctx, query)
 }

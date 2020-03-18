@@ -12,7 +12,8 @@ type Database interface {
 	Databases() ([]string, error)
 	Tables() ([]string, error)
 	DescribeTable(tableName string) ([]*ColumnDesc, error)
-	ExecuteQuery(context.Context, string) (interface{}, error) // TODO result rows?
+	Exec(ctx context.Context, query string) (sql.Result, error)
+	Query(ctx context.Context, query string) (*sql.Rows, error)
 }
 
 const (

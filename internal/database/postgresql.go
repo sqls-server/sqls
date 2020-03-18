@@ -143,6 +143,10 @@ func (db *PostgreSQLDB) DescribeTable(tableName string) ([]*ColumnDesc, error) {
 	return tableInfos, nil
 }
 
-func (db *PostgreSQLDB) ExecuteQuery(ctx context.Context, query string) (interface{}, error) {
+func (db *PostgreSQLDB) Exec(ctx context.Context, query string) (sql.Result, error) {
 	return db.Conn.ExecContext(ctx, query)
+}
+
+func (db *PostgreSQLDB) Query(ctx context.Context, query string) (*sql.Rows, error) {
+	return db.Conn.QueryContext(ctx, query)
 }

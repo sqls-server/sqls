@@ -10,8 +10,9 @@ type MockDB struct {
 	MockClose         func() error
 	MockDatabases     func() ([]string, error)
 	MockTables        func() ([]string, error)
-	MockDescribeTable func(tableName string) ([]*ColumnDesc, error)
-	MockExecuteQuery  func(context.Context, string) (interface{}, error)
+	MockDescribeTable func(string) ([]*ColumnDesc, error)
+	MockExec          func(context.Context, string) (sql.Result, error)
+	MockQuery         func(context.Context, string) (*sql.Rows, error)
 }
 
 func (m *MockDB) Open() error {
@@ -34,8 +35,12 @@ func (m *MockDB) DescribeTable(tableName string) ([]*ColumnDesc, error) {
 	return m.MockDescribeTable(tableName)
 }
 
-func (m *MockDB) ExecuteQuery(ctx context.Context, query string) (interface{}, error) {
-	return m.MockExecuteQuery(ctx, query)
+func (m *MockDB) Exec(ctx context.Context, query string) (sql.Result, error) {
+	return m.MockExec(ctx, query)
+}
+
+func (m *MockDB) Query(ctx context.Context, query string) (*sql.Rows, error) {
+	return m.MockQuery(ctx, query)
 }
 
 var dummyDatabases = []string{
@@ -321,6 +326,18 @@ var dummyCountryLanguageColumns = []*ColumnDesc{
 	},
 }
 
+type MockResult struct {
+	MockLastInsertID func() (int64, error)
+	MockRowsAffected func() (int64, error)
+}
+
+func (m *MockResult) LastInsertId() (int64, error) {
+	return m.MockLastInsertID()
+}
+func (m *MockResult) RowsAffected() (int64, error) {
+	return m.MockRowsAffected()
+}
+
 func init() {
 	Register("mock", func(connString string) Database {
 		return &MockDB{
@@ -339,8 +356,14 @@ func init() {
 				}
 				return nil, nil
 			},
-			MockExecuteQuery: func(ctx context.Context, query string) (interface{}, error) {
-				return "dummy result", nil
+			MockExec: func(ctx context.Context, query string) (sql.Result, error) {
+				return &MockResult{
+					MockLastInsertID: func() (int64, error) { return 11, nil },
+					MockRowsAffected: func() (int64, error) { return 22, nil },
+				}, nil
+			},
+			MockQuery: func(ctx context.Context, query string) (*sql.Rows, error) {
+				return &sql.Rows{}, nil
 			},
 		}
 	})

@@ -314,7 +314,12 @@ func (s *Server) executeQuery(params lsp.ExecuteCommandParams) (result interface
 	}
 	defer s.db.Close()
 
-	return s.db.ExecuteQuery(context.Background(), f.Text)
+	if _, isExec := database.QueryExecType(f.Text, ""); isExec {
+		return s.db.Exec(context.Background(), f.Text)
+	} else {
+		return s.db.Query(context.Background(), f.Text)
+	}
+
 }
 
 func (s *Server) handleWorkspaceExecuteCommand(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
