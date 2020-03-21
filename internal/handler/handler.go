@@ -20,6 +20,7 @@ import (
 
 type Server struct {
 	db        database.Database
+	dbName    string
 	files     map[string]*File
 	completer *completer.Completer
 }
@@ -274,6 +275,11 @@ func (h *Server) handleTextDocumentCodeAction(ctx context.Context, conn *jsonrpc
 			Command:   "showDatabases",
 			Arguments: []interface{}{},
 		},
+		{
+			Title:     "Switch Database",
+			Command:   "switchDatabase",
+			Arguments: []interface{}{},
+		},
 	}
 	return commands, nil
 }
@@ -290,6 +296,7 @@ func (s *Server) handleWorkspaceDidChangeConfiguration(ctx context.Context, conn
 	s.db, err = database.Open(
 		params.Settings.SQLS.Driver,
 		params.Settings.SQLS.DataSourceName,
+		s.dbName,
 	)
 	if err != nil {
 		return nil, err
@@ -369,6 +376,24 @@ func (s *Server) showDatabases(params lsp.ExecuteCommandParams) (result interfac
 	return strings.Join(databases, "\n"), nil
 }
 
+func (s *Server) switchDatabase(params lsp.ExecuteCommandParams) (result interface{}, err error) {
+	if len(params.Arguments) != 1 {
+		return nil, fmt.Errorf("invalid arguments for %s", params.Command)
+	}
+	dbName, ok := params.Arguments[0].(string)
+	if !ok {
+		return nil, fmt.Errorf("invalid arguments for %s", params.Command)
+	}
+	if s.db.SwitchDB(dbName); err != nil {
+		return nil, err
+	}
+	s.dbName = dbName
+	if err := s.init(); err != nil {
+		return nil, err
+	}
+	return nil, nil
+}
+
 func (s *Server) handleWorkspaceExecuteCommand(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
 	if req.Params == nil {
 		return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeInvalidParams}
@@ -384,6 +409,8 @@ func (s *Server) handleWorkspaceExecuteCommand(ctx context.Context, conn *jsonrp
 		return s.executeQuery(params)
 	case "showDatabases":
 		return s.showDatabases(params)
+	case "switchDatabase":
+		return s.switchDatabase(params)
 	}
 	return nil, fmt.Errorf("unsupported command: %v", params.Command)
 }

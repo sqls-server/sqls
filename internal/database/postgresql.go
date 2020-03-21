@@ -9,22 +9,22 @@ import (
 )
 
 type PostgreSQLDB struct {
-	ConnString string
-	Option     *DBOption
-	Conn       *sql.DB
+	DataSourceName string
+	Option         *DBOption
+	Conn           *sql.DB
 }
 
 func init() {
-	Register("postgresql", func(connString string) Database {
+	Register("postgresql", func(dataSourceName, dbName string) Database {
 		return &PostgreSQLDB{
-			ConnString: connString,
-			Option:     &DBOption{},
+			DataSourceName: dataSourceName,
+			Option:         &DBOption{},
 		}
 	})
 }
 
 func (db *PostgreSQLDB) Open() error {
-	conn, err := sql.Open("postgres", db.ConnString)
+	conn, err := sql.Open("postgres", db.DataSourceName)
 	if err != nil {
 		return err
 	}
@@ -149,4 +149,8 @@ func (db *PostgreSQLDB) Exec(ctx context.Context, query string) (sql.Result, err
 
 func (db *PostgreSQLDB) Query(ctx context.Context, query string) (*sql.Rows, error) {
 	return db.Conn.QueryContext(ctx, query)
+}
+
+func (db *PostgreSQLDB) SwitchDB(dbName string) error {
+	return ErrNotImplementation
 }

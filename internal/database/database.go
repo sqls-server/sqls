@@ -3,7 +3,12 @@ package database
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
+)
+
+var (
+	ErrNotImplementation error = errors.New("not implementation")
 )
 
 type Database interface {
@@ -14,6 +19,7 @@ type Database interface {
 	DescribeTable(tableName string) ([]*ColumnDesc, error)
 	Exec(ctx context.Context, query string) (sql.Result, error)
 	Query(ctx context.Context, query string) (*sql.Rows, error)
+	SwitchDB(dbName string) error
 }
 
 const (
@@ -35,7 +41,7 @@ type ColumnDesc struct {
 	Extra   string
 }
 
-type Opener func(string) Database
+type Opener func(string, string) Database
 
 var drivers = make(map[string]Opener)
 
@@ -43,10 +49,10 @@ func Register(name string, f Opener) {
 	drivers[name] = f
 }
 
-func Open(driver string, dataSourceName string) (Database, error) {
+func Open(driver string, dataSourceName, dbName string) (Database, error) {
 	d, ok := drivers[driver]
 	if !ok {
 		return nil, fmt.Errorf("driver not found: %v", driver)
 	}
-	return d(dataSourceName), nil
+	return d(dataSourceName, dbName), nil
 }

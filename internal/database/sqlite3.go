@@ -10,22 +10,22 @@ import (
 )
 
 type SQLite3DB struct {
-	ConnString string
-	Option     *DBOption
-	Conn       *sql.DB
+	DataSourceName string
+	Option         *DBOption
+	Conn           *sql.DB
 }
 
 func init() {
-	Register("sqlite3", func(connString string) Database {
+	Register("sqlite3", func(dataSourceName, dbName string) Database {
 		return &SQLite3DB{
-			ConnString: connString,
-			Option:     &DBOption{},
+			DataSourceName: dataSourceName,
+			Option:         &DBOption{},
 		}
 	})
 }
 
 func (db *SQLite3DB) Open() error {
-	conn, err := sql.Open("sqlite3", db.ConnString)
+	conn, err := sql.Open("sqlite3", db.DataSourceName)
 	if err != nil {
 		return err
 	}
@@ -113,4 +113,8 @@ func (db *SQLite3DB) Exec(ctx context.Context, query string) (sql.Result, error)
 
 func (db *SQLite3DB) Query(ctx context.Context, query string) (*sql.Rows, error) {
 	return db.Conn.QueryContext(ctx, query)
+}
+
+func (db *SQLite3DB) SwitchDB(dbName string) error {
+	return ErrNotImplementation
 }

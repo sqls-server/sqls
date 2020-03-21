@@ -43,6 +43,10 @@ func (m *MockDB) Query(ctx context.Context, query string) (*sql.Rows, error) {
 	return m.MockQuery(ctx, query)
 }
 
+func (m *MockDB) SwitchDB(dbName string) error {
+	return ErrNotImplementation
+}
+
 var dummyDatabases = []string{
 	"information_schema",
 	"mysql",
@@ -339,7 +343,7 @@ func (m *MockResult) RowsAffected() (int64, error) {
 }
 
 func init() {
-	Register("mock", func(connString string) Database {
+	Register("mock", func(dataSourceName, dbName string) Database {
 		return &MockDB{
 			MockOpen:      func() error { return nil },
 			MockClose:     func() error { return nil },

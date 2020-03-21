@@ -4,29 +4,45 @@ import (
 	"context"
 	"database/sql"
 
-	_ "github.com/go-sql-driver/mysql"
+	mysql "github.com/go-sql-driver/mysql"
 )
 
 type MySQLDB struct {
-	ConnString string
-	Option     *DBOption
-	Conn       *sql.DB
+	dataSourceName string
+	dbName         string
+	Option         *DBOption
+	Conn           *sql.DB
 }
 
 func init() {
-	Register("mysql", func(connString string) Database {
+	Register("mysql", func(dataSourceName, dbName string) Database {
 		return &MySQLDB{
-			ConnString: connString,
-			Option:     &DBOption{},
+			dataSourceName: dataSourceName,
+			dbName:         dbName,
+			Option:         &DBOption{},
 		}
 	})
 }
 
 func (db *MySQLDB) Open() error {
-	conn, err := sql.Open("mysql", db.ConnString)
+	var conn *sql.DB
+
+	var connString string
+	if db.dbName != "" {
+		cfg, err := mysql.ParseDSN(db.dataSourceName)
+		if err != nil {
+			return err
+		}
+		cfg.DBName = db.dbName
+		connString = cfg.FormatDSN()
+	} else {
+		connString = db.dataSourceName
+	}
+	conn, err := sql.Open("mysql", connString)
 	if err != nil {
 		return err
 	}
+
 	conn.SetMaxIdleConns(DefaultMaxIdleConns)
 	if db.Option.MaxIdleConns != 0 {
 		conn.SetMaxIdleConns(db.Option.MaxIdleConns)
@@ -105,4 +121,9 @@ func (db *MySQLDB) Exec(ctx context.Context, query string) (sql.Result, error) {
 
 func (db *MySQLDB) Query(ctx context.Context, query string) (*sql.Rows, error) {
 	return db.Conn.QueryContext(ctx, query)
+}
+
+func (db *MySQLDB) SwitchDB(dbName string) error {
+	db.dbName = dbName
+	return nil
 }
