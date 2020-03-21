@@ -233,10 +233,11 @@ func QueryExecType(prefix, sqlstr string) (string, bool) {
 	}
 
 	s := strings.Split(prefix, " ")
+	pref := strings.ToUpper(s[0])
 	if len(s) > 0 {
 		// check query map
-		if _, ok := queryMap[s[0]]; ok {
-			typ := s[0]
+		if _, ok := queryMap[pref]; ok {
+			typ := pref
 			switch {
 			case typ == "SELECT" && len(s) >= 2 && s[1] == "INTO":
 				return "SELECT INTO", false
@@ -247,7 +248,7 @@ func QueryExecType(prefix, sqlstr string) (string, bool) {
 		}
 
 		// normalize prefixes
-		switch s[0] {
+		switch pref {
 		// CREATE statements have a large number of variants
 		case "CREATE":
 			n := []string{"CREATE"}
@@ -280,5 +281,5 @@ func QueryExecType(prefix, sqlstr string) (string, bool) {
 		}
 	}
 
-	return s[0], false
+	return pref, false
 }

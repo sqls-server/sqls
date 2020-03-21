@@ -316,12 +316,10 @@ func (s *Server) executeQuery(params lsp.ExecuteCommandParams) (result interface
 	}
 	defer s.db.Close()
 
-	if _, isExec := database.QueryExecType(f.Text, ""); isExec {
-		return s.db.Exec(context.Background(), f.Text)
-	} else {
+	if _, isQuery := database.QueryExecType(f.Text, ""); isQuery {
 		rows, err := s.db.Query(context.Background(), f.Text)
 		if err != nil {
-			return nil, err
+			return err.Error(), nil
 		}
 		columns, err := database.Columns(rows)
 		if err != nil {
@@ -339,9 +337,18 @@ func (s *Server) executeQuery(params lsp.ExecuteCommandParams) (result interface
 			table.Append(stringRow)
 		}
 		table.Render()
-		return buf.String(), nil
+		return buf.String() + fmt.Sprintf("%d rows in set", len(stringRows)), nil
+	} else {
+		result, err := s.db.Exec(context.Background(), f.Text)
+		if err != nil {
+			return err.Error(), nil
+		}
+		rowsAffected, err := result.RowsAffected()
+		if err != nil {
+			return nil, err
+		}
+		return fmt.Sprintf("Query OK, %d row affected", rowsAffected), nil
 	}
-
 }
 
 func (s *Server) handleWorkspaceExecuteCommand(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
