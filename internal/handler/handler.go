@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"runtime"
+	"strings"
 
 	"github.com/olekukonko/tablewriter"
 	"github.com/sourcegraph/jsonrpc2"
@@ -268,6 +269,11 @@ func (h *Server) handleTextDocumentCodeAction(ctx context.Context, conn *jsonrpc
 			Command:   "executeQuery",
 			Arguments: []interface{}{params.TextDocument.URI},
 		},
+		{
+			Title:     "Show Databases",
+			Command:   "showDatabases",
+			Arguments: []interface{}{},
+		},
 	}
 	return commands, nil
 }
@@ -351,6 +357,18 @@ func (s *Server) executeQuery(params lsp.ExecuteCommandParams) (result interface
 	}
 }
 
+func (s *Server) showDatabases(params lsp.ExecuteCommandParams) (result interface{}, err error) {
+	if err := s.db.Open(); err != nil {
+		return nil, err
+	}
+	databases, err := s.db.Databases()
+	if err != nil {
+		return nil, err
+	}
+	defer s.db.Close()
+	return strings.Join(databases, "\n"), nil
+}
+
 func (s *Server) handleWorkspaceExecuteCommand(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
 	if req.Params == nil {
 		return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeInvalidParams}
@@ -364,6 +382,8 @@ func (s *Server) handleWorkspaceExecuteCommand(ctx context.Context, conn *jsonrp
 	switch params.Command {
 	case "executeQuery":
 		return s.executeQuery(params)
+	case "showDatabases":
+		return s.showDatabases(params)
 	}
 	return nil, fmt.Errorf("unsupported command: %v", params.Command)
 }
