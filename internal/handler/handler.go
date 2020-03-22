@@ -384,7 +384,7 @@ func (s *Server) switchDatabase(params lsp.ExecuteCommandParams) (result interfa
 	if !ok {
 		return nil, fmt.Errorf("invalid arguments for %s", params.Command)
 	}
-	if s.db.SwitchDB(dbName); err != nil {
+	if err := s.db.SwitchDB(dbName); err != nil {
 		return nil, err
 	}
 	s.dbName = dbName
