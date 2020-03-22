@@ -429,6 +429,41 @@ func TestComplete(t *testing.T) {
 				"city_name",
 			},
 		},
+		{
+			name:  "SELECT identifiers with multiple statement forcused first",
+			input: "SELECT c. FROM city as c;SELECT c. FROM country as c;",
+			line:  0,
+			col:   9,
+			want: []string{
+				"ID",
+				"Name",
+				"CountryCode",
+				"District",
+				"Population",
+			},
+		},
+		{
+			name:  "SELECT identifiers with multiple statement forcused second",
+			input: "SELECT c. FROM city as c;SELECT c. FROM country as c;",
+			line:  0,
+			col:   34,
+			want: []string{
+				"Code",
+				"Name",
+				"CountryCode",
+				"Region",
+				"SurfaceArea",
+				"IndepYear",
+				"LifeExpectancy",
+				"GNP",
+				"GNPOld",
+				"LocalName",
+				"GovernmentForm",
+				"HeadOfState",
+				"Capital",
+				"Code2",
+			},
+		},
 	}
 
 	for _, tt := range testcases {

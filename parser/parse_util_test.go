@@ -286,6 +286,36 @@ func TestExtractTable(t *testing.T) {
 			},
 		},
 		{
+			name:  "multiple statement before",
+			input: "select * from abc;select * from def;select * from ghi",
+			pos:   token.Pos{Line: 1, Col: 1},
+			want: []*TableInfo{
+				&TableInfo{
+					Name: "abc",
+				},
+			},
+		},
+		{
+			name:  "multiple statement center",
+			input: "select * from abc;select * from def;select * from ghi",
+			pos:   token.Pos{Line: 1, Col: 19},
+			want: []*TableInfo{
+				&TableInfo{
+					Name: "def",
+				},
+			},
+		},
+		{
+			name:  "multiple statement after",
+			input: "select * from abc;select * from def;select * from ghi",
+			pos:   token.Pos{Line: 1, Col: 37},
+			want: []*TableInfo{
+				&TableInfo{
+					Name: "ghi",
+				},
+			},
+		},
+		{
 			name:  "with database schema",
 			input: "select * from abc.def",
 			pos:   token.Pos{Line: 1, Col: 1},
