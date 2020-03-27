@@ -763,7 +763,7 @@ func TestParseOperator(t *testing.T) {
 				testStatement(t, stmts[0], 1, input)
 				list := stmts[0].GetTokens()
 				operator := testOperator(t, list[0], input, "(100+foo)", "/", "100")
-				parenthesis := testTokenList(t, operator.Left, 3).GetTokens()
+				parenthesis := testTokenList(t, operator.GetLeft(), 3).GetTokens()
 				testOperator(t, parenthesis[1], "100+foo", "100", "+", "foo")
 			},
 		},
@@ -774,7 +774,7 @@ func TestParseOperator(t *testing.T) {
 				testStatement(t, stmts[0], 1, input)
 				list := stmts[0].GetTokens()
 				operator := testOperator(t, list[0], input, "100", "/", "(100+foo)")
-				parenthesis := testTokenList(t, operator.Right, 3).GetTokens()
+				parenthesis := testTokenList(t, operator.GetRight(), 3).GetTokens()
 				testOperator(t, parenthesis[1], "100+foo", "100", "+", "foo")
 			},
 		},
@@ -827,7 +827,7 @@ func TestParseComparison(t *testing.T) {
 				testStatement(t, stmts[0], 1, input)
 				list := stmts[0].GetTokens()
 				comparison := testComparison(t, list[0], input, "(3 = 4)", "=", "7")
-				parenthesis := testTokenList(t, comparison.Left, 3).GetTokens()
+				parenthesis := testTokenList(t, comparison.GetLeft(), 3).GetTokens()
 				testComparison(t, parenthesis[1], "3 = 4", "3", "=", "4")
 			},
 		},
@@ -838,7 +838,7 @@ func TestParseComparison(t *testing.T) {
 				testStatement(t, stmts[0], 1, input)
 				list := stmts[0].GetTokens()
 				comparison := testComparison(t, list[0], input, "7", "=", "(3 = 4)")
-				parenthesis := testTokenList(t, comparison.Right, 3).GetTokens()
+				parenthesis := testTokenList(t, comparison.GetRight(), 3).GetTokens()
 				testComparison(t, parenthesis[1], "3 = 4", "3", "=", "4")
 			},
 		},
@@ -1152,14 +1152,8 @@ func testMemberIdentifier(t *testing.T, node ast.Node, expect, parent, child str
 			t.Errorf("parent is nil , got %q", parent)
 		}
 	}
-	if child != "" {
-		if mi.Child != nil {
-			if child != mi.Child.String() {
-				t.Errorf("child expected %q , got %q", child, mi.Parent.String())
-			}
-		} else {
-			t.Errorf("child is nil , got %q", child)
-		}
+	if child != mi.GetChild().String() {
+		t.Errorf("child expected %q , got %q", child, mi.Parent.String())
 	}
 }
 
@@ -1194,20 +1188,14 @@ func testOperator(t *testing.T, node ast.Node, expect string, left, ope, right s
 	if expect != node.String() {
 		t.Errorf("expected %q, got %q", expect, node.String())
 	}
-	if left != operator.Left.String() {
+	if left != operator.GetLeft().String() {
 		t.Errorf("expected left %q, got %q", left, operator.Left.String())
 	}
-	if ope != operator.Operator.String() {
-		t.Errorf("expected operator %q, got %q", ope, operator.Operator.String())
+	if ope != operator.GetOperator().String() {
+		t.Errorf("expected operator %q, got %q", ope, operator.GetOperator().String())
 	}
-	if right != "" {
-		if operator.Right != nil {
-			if right != operator.Right.String() {
-				t.Errorf("expected right %q, got %q", right, operator.Right.String())
-			}
-		} else {
-			t.Errorf("right is nil, got %q", right)
-		}
+	if right != operator.GetRight().String() {
+		t.Errorf("expected right %q, got %q", right, operator.GetRight().String())
 	}
 	return operator
 }
@@ -1221,20 +1209,14 @@ func testComparison(t *testing.T, node ast.Node, expect string, left, comp, righ
 	if expect != node.String() {
 		t.Errorf("expected %q, got %q", expect, node.String())
 	}
-	if left != comparison.Left.String() {
-		t.Errorf("expected left %q, got %q", left, comparison.Left.String())
+	if left != comparison.GetLeft().String() {
+		t.Errorf("expected left %q, got %q", left, comparison.GetLeft().String())
 	}
-	if comp != comparison.Comparison.String() {
-		t.Errorf("expected comparison %q, got %q", comp, comparison.Comparison.String())
+	if comp != comparison.GetComparison().String() {
+		t.Errorf("expected comparison %q, got %q", comp, comparison.GetComparison().String())
 	}
-	if right != "" {
-		if comparison.Right != nil {
-			if right != comparison.Right.String() {
-				t.Errorf("expected right %q, got %q", right, comparison.Right.String())
-			}
-		} else {
-			t.Errorf("right is nil , got %q", right)
-		}
+	if right != comparison.GetRight().String() {
+		t.Errorf("expected right %q, got %q", right, comparison.GetRight().String())
 	}
 	return comparison
 }

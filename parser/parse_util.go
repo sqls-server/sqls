@@ -277,7 +277,7 @@ func parseTableInfo(idents ast.Node) ([]*TableInfo, error) {
 		if v.Parent != nil {
 			ti := &TableInfo{
 				DatabaseSchema: v.Parent.String(),
-				Name:           v.Child.String(),
+				Name:           v.GetChild().String(),
 			}
 			res = append(res, ti)
 		}
@@ -306,7 +306,7 @@ func identifierListToTableInfo(il *ast.IdentiferList) ([]*TableInfo, error) {
 		case *ast.MemberIdentifer:
 			ti := &TableInfo{
 				DatabaseSchema: v.Parent.String(),
-				Name:           v.Child.String(),
+				Name:           v.GetChild().String(),
 			}
 			tis = append(tis, ti)
 		default:
@@ -324,7 +324,7 @@ func aliasedToTableInfo(aliased *ast.Aliased) (*TableInfo, error) {
 		ti.Name = v.String()
 	case *ast.MemberIdentifer:
 		ti.DatabaseSchema = v.Parent.String()
-		ti.Name = v.Child.String()
+		ti.Name = v.GetChild().String()
 	case *ast.Parenthesis:
 		tables, err := extractTableIdentifier(v.Inner())
 		if err != nil {
@@ -366,7 +366,7 @@ func parseSubQueryColumns(idents ast.Node) ([]string, error) {
 		}
 		columns = append(columns, results...)
 	case *ast.MemberIdentifer:
-		columns = append(columns, v.Child.String())
+		columns = append(columns, v.GetChild().String())
 	case *ast.Aliased:
 		result, err := aliasedToSubQueryColumn(v)
 		if err != nil {
@@ -387,7 +387,7 @@ func identifierListToSubQueryColumns(il *ast.IdentiferList) ([]string, error) {
 		case *ast.Identifer:
 			columns = append(columns, v.String())
 		case *ast.MemberIdentifer:
-			columns = append(columns, v.Child.String())
+			columns = append(columns, v.GetChild().String())
 		default:
 			return nil, xerrors.Errorf(
 				"failed trans identifier list to column, unknown node type %T, value %q",

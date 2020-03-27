@@ -26,6 +26,7 @@ const (
 	TypeQuery
 	TypeStatement
 	TypeIdentiferList
+	TypeNull
 )
 
 type Node interface {
@@ -45,6 +46,13 @@ type TokenList interface {
 	GetTokens() []Node
 	SetTokens([]Node)
 }
+
+type Null struct{}
+
+func (n *Null) String() string { return "" }
+func (n *Null) Type() NodeType { return TypeNull }
+func (n *Null) Pos() token.Pos { return token.Pos{} }
+func (n *Null) End() token.Pos { return token.Pos{} }
 
 type Item struct {
 	Tok *SQLToken
@@ -94,6 +102,12 @@ func (mi *MemberIdentifer) GetTokens() []Node     { return mi.Toks }
 func (mi *MemberIdentifer) SetTokens(toks []Node) { mi.Toks = toks }
 func (mi *MemberIdentifer) Pos() token.Pos        { return findFrom(mi) }
 func (mi *MemberIdentifer) End() token.Pos        { return findTo(mi) }
+func (mi *MemberIdentifer) GetChild() Node {
+	if mi.Child == nil {
+		return &Null{}
+	}
+	return mi.Child
+}
 
 type Aliased struct {
 	Toks        []Node
@@ -144,6 +158,24 @@ func (o *Operator) GetTokens() []Node     { return o.Toks }
 func (o *Operator) SetTokens(toks []Node) { o.Toks = toks }
 func (o *Operator) Pos() token.Pos        { return findFrom(o) }
 func (o *Operator) End() token.Pos        { return findTo(o) }
+func (o *Operator) GetLeft() Node {
+	if o.Left == nil {
+		return &Null{}
+	}
+	return o.Left
+}
+func (o *Operator) GetOperator() Node {
+	if o.Operator == nil {
+		return &Null{}
+	}
+	return o.Operator
+}
+func (o *Operator) GetRight() Node {
+	if o.Right == nil {
+		return &Null{}
+	}
+	return o.Right
+}
 
 type Comparison struct {
 	Toks       []Node
@@ -164,6 +196,24 @@ func (c *Comparison) GetTokens() []Node     { return c.Toks }
 func (c *Comparison) SetTokens(toks []Node) { c.Toks = toks }
 func (c *Comparison) Pos() token.Pos        { return findFrom(c) }
 func (c *Comparison) End() token.Pos        { return findTo(c) }
+func (c *Comparison) GetLeft() Node {
+	if c.Left == nil {
+		return &Null{}
+	}
+	return c.Left
+}
+func (c *Comparison) GetComparison() Node {
+	if c.Comparison == nil {
+		return &Null{}
+	}
+	return c.Comparison
+}
+func (c *Comparison) GetRight() Node {
+	if c.Right == nil {
+		return &Null{}
+	}
+	return c.Right
+}
 
 type Parenthesis struct {
 	Toks []Node
