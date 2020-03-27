@@ -507,7 +507,6 @@ var comparisonRecursionMatcher = astutil.NodeMatcher{
 }
 
 func parseComparison(reader *astutil.NodeReader) ast.Node {
-	comparison := &ast.Comparison{Left: reader.CurNode}
 	if !reader.CurNodeIs(comparisonTargetMatcher) {
 		return reader.CurNode
 	}
@@ -519,16 +518,20 @@ func parseComparison(reader *astutil.NodeReader) ast.Node {
 			reader.Replace(parenthesis, reader.Index-1)
 		}
 	}
+	left := reader.CurNode
 	startIndex := reader.Index - 1
-	tmpReader := reader.CopyReader()
-	tmpReader.NextNode(true)
-	comparison.Comparison = tmpReader.CurNode
-
-	if !tmpReader.PeekNodeIs(true, comparisonTargetMatcher) {
-		return reader.CurNode
+	reader.NextNode(true)
+	comparison := &ast.Comparison{
+		Toks:       reader.NodesWithRange(startIndex, reader.Index),
+		Left:       left,
+		Comparison: reader.CurNode,
 	}
-	endIndex, right := tmpReader.PeekNode(true)
-	if tmpReader.PeekNodeIs(true, operatorRecursionMatcher) {
+
+	if !reader.PeekNodeIs(true, comparisonTargetMatcher) {
+		return comparison
+	}
+	endIndex, right := reader.PeekNode(true)
+	if reader.PeekNodeIs(true, operatorRecursionMatcher) {
 		if list, ok := right.(ast.TokenList); ok {
 			// FIXME: more simplity
 			// For sub query
@@ -538,10 +541,7 @@ func parseComparison(reader *astutil.NodeReader) ast.Node {
 	}
 	comparison.Right = right
 
-	tmpReader.NextNode(true)
-	reader.Index = tmpReader.Index
-	reader.CurNode = tmpReader.CurNode
-
+	reader.NextNode(true)
 	comparison.Toks = reader.NodesWithRange(startIndex, endIndex+1)
 	return comparison
 }

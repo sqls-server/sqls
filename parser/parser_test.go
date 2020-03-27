@@ -860,6 +860,15 @@ func TestParseComparison(t *testing.T) {
 				testComparison(t, list[0], input, "foo.bar", "=", "DATE(bar.baz)")
 			},
 		},
+		{
+			name:  "invalid",
+			input: "foo=",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testComparison(t, list[0], input, "foo", "=", "")
+			},
+		},
 	}
 	for _, tt := range testcases {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1212,15 +1221,19 @@ func testComparison(t *testing.T, node ast.Node, expect string, left, comp, righ
 	if expect != node.String() {
 		t.Errorf("expected %q, got %q", expect, node.String())
 	}
-	if ok {
-		if left != comparison.Left.String() {
-			t.Errorf("expected left %q, got %q", left, comparison.Left.String())
-		}
-		if comp != comparison.Comparison.String() {
-			t.Errorf("expected comparison %q, got %q", comp, comparison.Comparison.String())
-		}
-		if right != comparison.Right.String() {
-			t.Errorf("expected right %q, got %q", right, comparison.Right.String())
+	if left != comparison.Left.String() {
+		t.Errorf("expected left %q, got %q", left, comparison.Left.String())
+	}
+	if comp != comparison.Comparison.String() {
+		t.Errorf("expected comparison %q, got %q", comp, comparison.Comparison.String())
+	}
+	if right != "" {
+		if comparison.Right != nil {
+			if right != comparison.Right.String() {
+				t.Errorf("expected right %q, got %q", right, comparison.Right.String())
+			}
+		} else {
+			t.Errorf("right is nil , got %q", right)
 		}
 	}
 	return comparison
