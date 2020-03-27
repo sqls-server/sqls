@@ -377,12 +377,43 @@ func TestParseWhere_WithParenthesis(t *testing.T) {
 }
 
 func TestParseFunction(t *testing.T) {
-	input := `foo()`
-	stmts := parseInit(t, input)
-	testStatement(t, stmts[0], 1, input)
+	testcases := []struct {
+		name    string
+		input   string
+		checkFn func(t *testing.T, stmts []*ast.Statement, input string)
+	}{
+		{
+			name:  "function none args",
+			input: "foo()",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				list := stmts[0].GetTokens()
+				testFunction(t, list[0], "foo()")
+			},
+		},
+		{
+			name:  "function one args",
+			input: "foo(a)",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				list := stmts[0].GetTokens()
+				testFunction(t, list[0], "foo(a)")
+			},
+		},
+		{
+			name:  "function multiplue args",
+			input: "foo(a, b, c)",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				list := stmts[0].GetTokens()
+				testFunction(t, list[0], "foo(a, b, c)")
+			},
+		},
+	}
+	for _, tt := range testcases {
+		t.Run(tt.name, func(t *testing.T) {
+			stmts := parseInit(t, tt.input)
+			tt.checkFn(t, stmts, tt.input)
+		})
+	}
 
-	list := stmts[0].GetTokens()
-	testFunction(t, list[0], "foo()")
 }
 
 func TestParsePeriod_Double(t *testing.T) {
