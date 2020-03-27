@@ -778,6 +778,15 @@ func TestParseOperator(t *testing.T) {
 				testOperator(t, parenthesis[1], "100+foo", "100", "+", "foo")
 			},
 		},
+		{
+			name:  "invalid",
+			input: "foo+",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testOperator(t, list[0], input, "foo", "+", "")
+			},
+		},
 	}
 	for _, tt := range testcases {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1176,15 +1185,19 @@ func testOperator(t *testing.T, node ast.Node, expect string, left, ope, right s
 	if expect != node.String() {
 		t.Errorf("expected %q, got %q", expect, node.String())
 	}
-	if ok {
-		if left != operator.Left.String() {
-			t.Errorf("expected left %q, got %q", left, operator.Left.String())
-		}
-		if ope != operator.Operator.String() {
-			t.Errorf("expected operator %q, got %q", ope, operator.Operator.String())
-		}
-		if right != operator.Right.String() {
-			t.Errorf("expected right %q, got %q", right, operator.Right.String())
+	if left != operator.Left.String() {
+		t.Errorf("expected left %q, got %q", left, operator.Left.String())
+	}
+	if ope != operator.Operator.String() {
+		t.Errorf("expected operator %q, got %q", ope, operator.Operator.String())
+	}
+	if right != "" {
+		if operator.Right != nil {
+			if right != operator.Right.String() {
+				t.Errorf("expected right %q, got %q", right, operator.Right.String())
+			}
+		} else {
+			t.Errorf("right is nil, got %q", right)
 		}
 	}
 	return operator
