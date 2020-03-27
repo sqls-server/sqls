@@ -112,6 +112,28 @@ func TestComplete(t *testing.T) {
 			},
 		},
 		{
+			name:  "select identifier with comparison",
+			input: "select 1 = cou from city",
+			line:  0,
+			col:   14,
+			want: []string{
+				"CountryCode",
+				"country",
+				"countrylanguage",
+			},
+		},
+		{
+			name:  "select identifier with operator",
+			input: "select 1 + cou from city",
+			line:  0,
+			col:   14,
+			want: []string{
+				"CountryCode",
+				"country",
+				"countrylanguage",
+			},
+		},
+		{
 			name:  "select has aliased table identifier",
 			input: "select c. from city as c",
 			line:  0,
