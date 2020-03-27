@@ -1028,6 +1028,24 @@ func TestParseIdentifierList(t *testing.T) {
 				testIdentifierList(t, list[0], input)
 			},
 		},
+		{
+			name:  "IndentifierList comparison",
+			input: "1 > 2, 3 < 4, 5 = 6",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testIdentifierList(t, list[0], input)
+			},
+		},
+		{
+			name:  "IndentifierList operator",
+			input: "1 + 2, 3 - 4, 5 * 6",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testIdentifierList(t, list[0], input)
+			},
+		},
 	}
 	for _, tt := range testcases {
 		t.Run(tt.name, func(t *testing.T) {
