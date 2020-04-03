@@ -263,7 +263,17 @@ func TestExtractTable(t *testing.T) {
 			},
 		},
 		{
-			name:  "one table",
+			name:  "join only",
+			input: "join abc",
+			pos:   token.Pos{Line: 1, Col: 1},
+			want: []*TableInfo{
+				&TableInfo{
+					Name: "abc",
+				},
+			},
+		},
+		{
+			name:  "select table reference",
 			input: "select * from abc",
 			pos:   token.Pos{Line: 1, Col: 1},
 			want: []*TableInfo{
@@ -273,8 +283,21 @@ func TestExtractTable(t *testing.T) {
 			},
 		},
 		{
-			name:  "multiple table",
+			name:  "select table references",
 			input: "select * from abc, def",
+			pos:   token.Pos{Line: 1, Col: 1},
+			want: []*TableInfo{
+				&TableInfo{
+					Name: "abc",
+				},
+				&TableInfo{
+					Name: "def",
+				},
+			},
+		},
+		{
+			name:  "select join table reference",
+			input: "select * from abc left join def on abc.id = def.id",
 			pos:   token.Pos{Line: 1, Col: 1},
 			want: []*TableInfo{
 				&TableInfo{
