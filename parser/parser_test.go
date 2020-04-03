@@ -663,6 +663,24 @@ func TestParseMultiKeyword(t *testing.T) {
 			},
 		},
 		{
+			name:  "insert keyword",
+			input: "insert into",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testMultiKeyword(t, list[0], input)
+			},
+		},
+		{
+			name:  "delete keyword",
+			input: "delete from",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testMultiKeyword(t, list[0], input)
+			},
+		},
+		{
 			name:  "select with group keyword",
 			input: "select a, b, c from abc group by d, e, f",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {

@@ -2,6 +2,7 @@ package parser
 
 import (
 	"io"
+	"strings"
 
 	"github.com/lighttiger2505/sqls/ast"
 	"github.com/lighttiger2505/sqls/ast/astutil"
@@ -82,7 +83,7 @@ func (p *Parser) Parse() (ast.TokenList, error) {
 	root = parsePrefixGroup(astutil.NewNodeReader(root), identifierPrefixMatcher, parseIdentifier)
 
 	root = parseInfixGroup(astutil.NewNodeReader(root), memberIdentifierInfixMatcher, false, parseMemberIdentifier)
-	root = parseInfixGroup(astutil.NewNodeReader(root), multiKeywordInfixMatcher, true, parseMultiKeyword)
+	root = parsePrefixGroup(astutil.NewNodeReader(root), multiKeywordPrefixMatcher, parseMultiKeyword)
 	root = parseInfixGroup(astutil.NewNodeReader(root), operatorInfixMatcher, true, parseOperator)
 	root = parseInfixGroup(astutil.NewNodeReader(root), comparisonInfixMatcher, true, parseComparison)
 	root = parsePrefixGroup(astutil.NewNodeReader(root), aliasLeftMatcher, parseAliasedWithoutAs)
@@ -360,20 +361,25 @@ func parseMemberIdentifier(reader *astutil.NodeReader) ast.Node {
 	return memberIdentifier
 }
 
-var multiKeywordInfixMatcher = astutil.NodeMatcher{
-	ExpectKeyword: []string{
-		"BY",
-	},
+var multiKeywordMap = map[string]string{
+	"ORDER":  "BY",
+	"GROUP":  "BY",
+	"INSERT": "INTO",
+	"DELETE": "FROM",
 }
-var multiKeywordTargetMatcher = astutil.NodeMatcher{
+var multiKeywordPrefixMatcher = astutil.NodeMatcher{
 	ExpectKeyword: []string{
 		"ORDER",
 		"GROUP",
+		"INSERT",
+		"DELETE",
 	},
 }
 
 func parseMultiKeyword(reader *astutil.NodeReader) ast.Node {
-	if !reader.CurNodeIs(multiKeywordTargetMatcher) {
+	curKeyword := strings.ToUpper(reader.CurNode.String())
+	peekKeyword := multiKeywordMap[curKeyword]
+	if !reader.PeekNodeIs(true, astutil.NodeMatcher{ExpectKeyword: []string{peekKeyword}}) {
 		return reader.CurNode
 	}
 	startIndex := reader.Index - 1
