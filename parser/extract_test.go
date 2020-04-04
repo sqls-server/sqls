@@ -123,6 +123,31 @@ func TestExtractTableReference(t *testing.T) {
 	}
 }
 
+func TestExtractTableFactor(t *testing.T) {
+	testcases := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{
+			name:  "only",
+			input: "JOIN abc",
+			want:  "abc",
+		},
+	}
+	for _, tt := range testcases {
+		t.Run(tt.name, func(t *testing.T) {
+			query := initExtractTable(t, tt.input)
+			got := ExtractTableFactor(query)
+			if len(got) == 0 {
+				t.Fatalf("not found filterd node")
+			}
+			if tt.want != got[0].String() {
+				t.Errorf("expected %q, got %q", tt.want, got[0].String())
+			}
+		})
+	}
+}
 func TestExtractWhereConditon(t *testing.T) {
 	testcases := []struct {
 		name  string

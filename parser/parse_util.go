@@ -225,10 +225,12 @@ func extractSelectIdentifier(selectStmt ast.TokenList) ([]string, error) {
 }
 
 func extractTableIdentifier(list ast.TokenList) ([]*TableInfo, error) {
-	fromJoinExpr := filterTokenList(astutil.NewNodeReader(list), fromJoinMatcher)
-	identifiers := filterTokenList(astutil.NewNodeReader(fromJoinExpr), identifierMatcher)
+	nodes := []ast.Node{}
+	nodes = append(nodes, ExtractTableReferences(list)...)
+	nodes = append(nodes, ExtractTableReference(list)...)
+	nodes = append(nodes, ExtractTableFactor(list)...)
 	res := []*TableInfo{}
-	for _, ident := range identifiers.GetTokens() {
+	for _, ident := range nodes {
 		infos, err := parseTableInfo(ident)
 		if err != nil {
 			return nil, err

@@ -42,7 +42,7 @@ func ExtractTableReferences(parsed ast.TokenList) []ast.Node {
 			ast.TypeAliased,
 		},
 	}
-	return filterPrefixGroup(astutil.NewNodeReader(parsed), prefixMatcher, peekMatcher)
+	return filterPrefixGroupOnce(astutil.NewNodeReader(parsed), prefixMatcher, peekMatcher)
 }
 
 func ExtractTableReference(parsed ast.TokenList) []ast.Node {
@@ -51,6 +51,22 @@ func ExtractTableReference(parsed ast.TokenList) []ast.Node {
 			"INSERT INTO",
 			"UPDATE",
 			"DELETE FROM",
+		},
+	}
+	peekMatcher := astutil.NodeMatcher{
+		NodeTypes: []ast.NodeType{
+			ast.TypeIdentifer,
+			ast.TypeMemberIdentifer,
+			ast.TypeAliased,
+		},
+	}
+	return filterPrefixGroup(astutil.NewNodeReader(parsed), prefixMatcher, peekMatcher)
+}
+
+func ExtractTableFactor(parsed ast.TokenList) []ast.Node {
+	prefixMatcher := astutil.NodeMatcher{
+		ExpectKeyword: []string{
+			"JOIN",
 		},
 	}
 	peekMatcher := astutil.NodeMatcher{
@@ -91,4 +107,12 @@ func filterPrefixGroup(reader *astutil.NodeReader, prefixMatcher astutil.NodeMat
 		}
 	}
 	return results
+}
+
+func filterPrefixGroupOnce(reader *astutil.NodeReader, prefixMatcher astutil.NodeMatcher, peekMatcher astutil.NodeMatcher) []ast.Node {
+	results := filterPrefixGroup(reader, prefixMatcher, peekMatcher)
+	if len(results) > 0 {
+		return []ast.Node{results[0]}
+	}
+	return nil
 }
