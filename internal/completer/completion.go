@@ -330,7 +330,7 @@ func getCompletionTypes(text string, pos token.Pos) ([]CompletionType, *parent, 
 			CompletionTypeSubQueryView,
 			CompletionTypeFunction,
 		}, noneParent, nil
-	case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"JOIN", "COPY", "FROM", "UPDATE", "INTO", "DESCRIBE", "TRUNCATE", "DESC", "EXPLAIN"})):
+	case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"JOIN", "COPY", "FROM", "UPDATE", "INSERT INTO", "DESCRIBE", "TRUNCATE", "DESC", "EXPLAIN"})):
 		return []CompletionType{
 			CompletionTypeColumn,
 			CompletionTypeTable,
@@ -339,13 +339,13 @@ func getCompletionTypes(text string, pos token.Pos) ([]CompletionType, *parent, 
 			CompletionTypeSubQueryView,
 			CompletionTypeFunction,
 		}, noneParent, nil
-	// case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"ON"})):
-	// 	res = []CompletionType{
-	// 		CompletionTypeColumn,
-	// 		CompletionTypeTable,
-	// 		CompletionTypeView,
-	// 		CompletionTypeFunction,
-	// 	}
+	case nodeWalker.CurNodeIs(genTokenMatcher([]token.Kind{token.LParen})) || nodeWalker.PrevNodesIs(true, genTokenMatcher([]token.Kind{token.LParen})):
+		// for insert columns
+		return []CompletionType{
+			CompletionTypeColumn,
+			CompletionTypeTable,
+			CompletionTypeView,
+		}, noneParent, nil
 	// case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"USE", "DATABASE", "TEMPLATE", "CONNECT"})):
 	// 	res = []CompletionType{
 	// 		CompletionTypeDatabase,
@@ -354,6 +354,12 @@ func getCompletionTypes(text string, pos token.Pos) ([]CompletionType, *parent, 
 		return []CompletionType{
 			CompletionTypeKeyword,
 		}, noneParent, nil
+	}
+}
+
+func genTokenMatcher(tokens []token.Kind) astutil.NodeMatcher {
+	return astutil.NodeMatcher{
+		ExpectTokens: tokens,
 	}
 }
 

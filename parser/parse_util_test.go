@@ -2,6 +2,7 @@ package parser
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -421,6 +422,18 @@ func TestExtractTable(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:  "insert",
+			input: "insert into abc",
+			pos:   token.Pos{Line: 1, Col: 1},
+			want: []*TableInfo{
+				&TableInfo{
+					DatabaseSchema: "",
+					Name:           "abc",
+					Alias:          "",
+				},
+			},
+		},
 	}
 
 	for _, tt := range testcases {
@@ -524,11 +537,11 @@ func TestNodeWalker_PrevNodesIs(t *testing.T) {
 			want: true,
 		},
 		{
-			name:  "prev order by",
-			input: "SELECT * FROM abc ORDER BY ",
-			pos:   token.Pos{Line: 1, Col: 27},
+			name:  "insert into",
+			input: "insert into city (abc",
+			pos:   token.Pos{Line: 1, Col: 21},
 			matcher: astutil.NodeMatcher{
-				ExpectKeyword: []string{"ORDER BY"},
+				ExpectTokens: []token.Kind{token.LParen},
 			},
 			want: true,
 		},
@@ -550,6 +563,11 @@ func TestNodeWalker_PrevNodesIs(t *testing.T) {
 			// execute
 			if got := nodeWalker.PrevNodesIs(true, tt.matcher); got != tt.want {
 				t.Errorf("nodeWalker.PrevNodesIs() = %v, want %v", got, tt.want)
+				curNodes := nodeWalker.CurNodes()
+				prevNodes := nodeWalker.PrevNodes(true)
+				for i := 0; i < len(nodeWalker.Paths); i++ {
+					fmt.Printf("%d CurNode: %q, PrevNode: %q\n", i, curNodes[i], prevNodes[i])
+				}
 			}
 		})
 	}

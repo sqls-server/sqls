@@ -327,6 +327,49 @@ func TestComplete(t *testing.T) {
 				"Code2",
 			},
 		},
+		{
+			name:  "insert table reference",
+			input: "INSERT INTO ",
+			line:  0,
+			col:   12,
+			want: []string{
+				"city",
+				"country",
+				"countrylanguage",
+			},
+		},
+		{
+			name:  "insert table reference filterd",
+			input: "INSERT INTO co",
+			line:  0,
+			col:   12,
+			want: []string{
+				"country",
+				"countrylanguage",
+			},
+		},
+		{
+			name:  "insert column non filter",
+			input: "INSERT INTO city (",
+			line:  0,
+			col:   18,
+			want: []string{
+				"ID",
+				"Name",
+				"CountryCode",
+				"District",
+				"Population",
+			},
+		},
+		{
+			name:  "insert column filterd",
+			input: "INSERT INTO city (cou",
+			line:  0,
+			col:   21,
+			want: []string{
+				"CountryCode",
+			},
+		},
 	}
 
 	for _, tt := range testcases {

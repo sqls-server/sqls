@@ -477,6 +477,23 @@ func (nw *NodeWalker) CurNodeButtomMatched(matcher astutil.NodeMatcher) ast.Node
 	return matches[len(matches)-1]
 }
 
+func (nw *NodeWalker) CurNodes() []ast.Node {
+	results := []ast.Node{}
+	for _, reader := range nw.Paths {
+		results = append(results, reader.CurNode)
+	}
+	return results
+}
+
+func (nw *NodeWalker) PrevNodes(ignoreWitespace bool) []ast.Node {
+	results := []ast.Node{}
+	for _, reader := range nw.Paths {
+		_, node := reader.PrevNode(ignoreWitespace)
+		results = append(results, node)
+	}
+	return results
+}
+
 func (nw *NodeWalker) PrevNodesIs(ignoreWitespace bool, matcher astutil.NodeMatcher) bool {
 	for _, reader := range nw.Paths {
 		if reader.PrevNodeIs(ignoreWitespace, matcher) {
