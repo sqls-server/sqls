@@ -11,26 +11,69 @@ import (
 )
 
 func TestParseStatement(t *testing.T) {
-	var input string
-	var stmts []*ast.Statement
+	testcases := []struct {
+		name    string
+		input   string
+		checkFn func(t *testing.T, stmts []*ast.Statement, input string)
+	}{
+		{
+			name:  "single statement",
+			input: "select 1;",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				if len(stmts) != 1 {
+					t.Fatalf("Query does not contain 1 statements, got %d", len(stmts))
+				}
+				testStatement(t, stmts[0], 4, "select 1;")
+			},
+		},
+		{
+			name:  "single statement non semicolon",
+			input: "select 1",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				if len(stmts) != 1 {
+					t.Fatalf("Query does not contain 1 statements, got %d", len(stmts))
+				}
+				testStatement(t, stmts[0], 3, "select 1")
+			},
+		},
+		{
+			name:  "three statement",
+			input: "select 1;select 2;select 3;",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				if len(stmts) != 3 {
+					t.Fatalf("Query does not contain 3 statements, got %d", len(stmts))
+				}
+				testStatement(t, stmts[0], 4, "select 1;")
+				testPos(t, stmts[0], genPosOneline(1), genPosOneline(10))
+				testStatement(t, stmts[1], 4, "select 2;")
+				testPos(t, stmts[1], genPosOneline(10), genPosOneline(19))
+				testStatement(t, stmts[2], 4, "select 3;")
+				testPos(t, stmts[2], genPosOneline(19), genPosOneline(28))
+			},
+		},
+		{
+			name:  "three statement non semicolon",
+			input: "select 1;select 2;select 3",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				if len(stmts) != 3 {
+					t.Fatalf("Query does not contain 3 statements, got %d", len(stmts))
+				}
+				testStatement(t, stmts[0], 4, "select 1;")
+				testPos(t, stmts[0], genPosOneline(1), genPosOneline(10))
+				testStatement(t, stmts[1], 4, "select 2;")
+				testPos(t, stmts[1], genPosOneline(10), genPosOneline(19))
+				testStatement(t, stmts[2], 3, "select 3")
+				testPos(t, stmts[2], genPosOneline(19), genPosOneline(27))
+			},
+		},
+	}
 
-	input = "select 1;select 2;select 3;"
-	stmts = parseInit(t, input)
-	testStatement(t, stmts[0], 4, "select 1;")
-	testPos(t, stmts[0], genPosOneline(1), genPosOneline(10))
-	testStatement(t, stmts[1], 4, "select 2;")
-	testPos(t, stmts[1], genPosOneline(10), genPosOneline(19))
-	testStatement(t, stmts[2], 4, "select 3;")
-	testPos(t, stmts[2], genPosOneline(19), genPosOneline(28))
-
-	input = "select 1;select 2;select 3"
-	stmts = parseInit(t, input)
-	testStatement(t, stmts[0], 4, "select 1;")
-	testPos(t, stmts[0], genPosOneline(1), genPosOneline(10))
-	testStatement(t, stmts[1], 4, "select 2;")
-	testPos(t, stmts[1], genPosOneline(10), genPosOneline(19))
-	testStatement(t, stmts[2], 3, "select 3")
-	testPos(t, stmts[2], genPosOneline(19), genPosOneline(27))
+	for _, tt := range testcases {
+		t.Run(tt.name, func(t *testing.T) {
+			stmts := parseInit(t, tt.input)
+			tt.checkFn(t, stmts, tt.input)
+		})
+	}
 }
 
 func TestParseParenthesis(t *testing.T) {
