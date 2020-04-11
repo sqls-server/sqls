@@ -226,6 +226,24 @@ func (nr *NodeReader) PeekNodeIs(ignoreWhiteSpace bool, nm NodeMatcher) bool {
 	return false
 }
 
+func (nr *NodeReader) TailNode() (int, ast.Node) {
+	var (
+		index int
+		node  ast.Node
+	)
+
+	tmpReader := nr.CopyReader()
+	for {
+		index = tmpReader.Index
+		node = tmpReader.CurNode
+		if !tmpReader.hasNext() {
+			break
+		}
+		tmpReader.NextNode(false)
+	}
+	return index, node
+}
+
 func (nr *NodeReader) FindNode(ignoreWhiteSpace bool, nm NodeMatcher) (*NodeReader, ast.Node) {
 	tmpReader := nr.CopyReader()
 	for tmpReader.hasNext() {

@@ -1048,8 +1048,8 @@ func TestParseIdentifierList(t *testing.T) {
 		checkFn func(t *testing.T, stmts []*ast.Statement, input string)
 	}{
 		{
-			name:  "IndentifierList",
-			input: "foo, bar",
+			name:  "simple",
+			input: "foo, bar, foobar",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, input)
 				list := stmts[0].GetTokens()
@@ -1057,12 +1057,61 @@ func TestParseIdentifierList(t *testing.T) {
 			},
 		},
 		{
-			name:  "invalid IndentifierList",
+			name:  "invalid single identifer without whitespace",
+			input: "foo,",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testIdentifierList(t, list[0], input)
+			},
+		},
+		{
+			name:  "invalid single identifer include whitespace",
+			input: "foo,  ",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testIdentifierList(t, list[0], input)
+			},
+		},
+		{
+			name:  "invalid multiple identifier without whitespace",
 			input: "foo, bar,",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, input)
 				list := stmts[0].GetTokens()
 				testIdentifierList(t, list[0], input)
+			},
+		},
+		{
+			name:  "invalid multiple identifier include whitespace",
+			input: "foo, bar,  ",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testIdentifierList(t, list[0], input)
+			},
+		},
+		{
+			name:  "parenthesis",
+			input: "(foo, bar, foobar)",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testParenthesis(t, list[0], input)
+				parenthesis := list[0].(*ast.Parenthesis)
+				tokens := parenthesis.Inner().GetTokens()
+				testIdentifierList(t, tokens[0], "foo, bar, foobar")
+			},
+		},
+		{
+			name:  "invalid parenthesis",
+			input: "(foo, bar,",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 2, input)
+				list := stmts[0].GetTokens()
+				testItem(t, list[0], "(")
+				testIdentifierList(t, list[1], "foo, bar,")
 			},
 		},
 		{
@@ -1173,7 +1222,7 @@ func testTokenList(t *testing.T, node ast.Node, length int) ast.TokenList {
 func testStatement(t *testing.T, stmt *ast.Statement, length int, expect string) {
 	t.Helper()
 	if length != len(stmt.GetTokens()) {
-		t.Fatalf("Statements does not contain %d statements, got %d, (expect %q got: %q)", length, len(stmt.GetTokens()), expect, stmt.String())
+		t.Fatalf("Statement does not contain %d nodes, got %d, (expect %q got: %q)", length, len(stmt.GetTokens()), expect, stmt.String())
 	}
 	if expect != stmt.String() {
 		t.Errorf("expected %q, got %q", expect, stmt.String())

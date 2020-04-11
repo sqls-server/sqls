@@ -370,6 +370,15 @@ func TestComplete(t *testing.T) {
 				"CountryCode",
 			},
 		},
+		{
+			name:  "insert columns",
+			input: "INSERT INTO city (id, cou",
+			line:  0,
+			col:   25,
+			want: []string{
+				"CountryCode",
+			},
+		},
 	}
 
 	for _, tt := range testcases {

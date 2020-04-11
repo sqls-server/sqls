@@ -673,6 +673,11 @@ func parseIdentifierList(reader *astutil.NodeReader) ast.Node {
 			if peekNode != nil {
 				endIndex = peekIndex - 1
 				tmpReader.Index = endIndex + 1
+			} else {
+				tailIndex, tailNode := tmpReader.TailNode()
+				endIndex = tailIndex - 1
+				tmpReader.Index = tailIndex
+				tmpReader.CurNode = tailNode
 			}
 			break
 		}
@@ -684,9 +689,6 @@ func parseIdentifierList(reader *astutil.NodeReader) ast.Node {
 		if !tmpReader.PeekNodeIs(true, identifierListInfixMatcher) {
 			break
 		}
-		peekIndex, _ = tmpReader.PeekNode(true)
-		endIndex = peekIndex
-
 		tmpReader.NextNode(true)
 	}
 
