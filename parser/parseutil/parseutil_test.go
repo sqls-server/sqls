@@ -13,7 +13,7 @@ import (
 	"github.com/lighttiger2505/sqls/token"
 )
 
-func Test_focusedStatement(t *testing.T) {
+func Test_extractFocusedStatement(t *testing.T) {
 	testcases := []struct {
 		name  string
 		input string
