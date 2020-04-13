@@ -379,6 +379,58 @@ func TestComplete(t *testing.T) {
 				"CountryCode",
 			},
 		},
+		{
+			name:  "update table references",
+			input: "UPDATE ",
+			line:  0,
+			col:   7,
+			want: []string{
+				"city",
+				"country",
+				"countrylanguage",
+			},
+		},
+		{
+			name:  "update table references filterd",
+			input: "UPDATE co",
+			line:  0,
+			col:   9,
+			want: []string{
+				"country",
+				"countrylanguage",
+			},
+		},
+		{
+			name:  "update column non filter",
+			input: "UPDATE city SET ",
+			line:  0,
+			col:   16,
+			want: []string{
+				"ID",
+				"Name",
+				"CountryCode",
+				"District",
+				"Population",
+			},
+		},
+		{
+			name:  "update column filterd",
+			input: "UPDATE city SET cou",
+			line:  0,
+			col:   19,
+			want: []string{
+				"CountryCode",
+			},
+		},
+		{
+			name:  "update columns",
+			input: "UPDATE city SET CountryCode=12, Na",
+			line:  0,
+			col:   34,
+			want: []string{
+				"Name",
+			},
+		},
 	}
 
 	for _, tt := range testcases {
