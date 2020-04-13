@@ -1,4 +1,4 @@
-package parser
+package parseutil
 
 import (
 	"github.com/lighttiger2505/sqls/ast"

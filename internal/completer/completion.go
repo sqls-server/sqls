@@ -14,6 +14,7 @@ import (
 	"github.com/lighttiger2505/sqls/internal/database"
 	"github.com/lighttiger2505/sqls/internal/lsp"
 	"github.com/lighttiger2505/sqls/parser"
+	"github.com/lighttiger2505/sqls/parser/parseutil"
 	"github.com/lighttiger2505/sqls/token"
 )
 
@@ -209,11 +210,11 @@ func (c *Completer) Complete(text string, params lsp.CompletionParams) ([]lsp.Co
 		return nil, err
 	}
 
-	definedTables, err := parser.ExtractTable(parsed, pos)
+	definedTables, err := parseutil.ExtractTable(parsed, pos)
 	if err != nil {
 		return nil, err
 	}
-	definedSubQuery, err := parser.ExtractSubQueryView(parsed, pos)
+	definedSubQuery, err := parseutil.ExtractSubQueryView(parsed, pos)
 	if err != nil {
 		return nil, err
 	}
@@ -267,7 +268,7 @@ func getCompletionTypes(text string, pos token.Pos) ([]CompletionType, *parent, 
 	if err != nil {
 		return nil, nil, err
 	}
-	nodeWalker := parser.NewNodeWalker(parsed, pos)
+	nodeWalker := parseutil.NewNodeWalker(parsed, pos)
 
 	switch {
 	case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"SET", "ORDER BY", "GROUP BY", "DISTINCT"})):
@@ -394,7 +395,7 @@ func (c *Completer) keywordCandidates() []lsp.CompletionItem {
 
 var ColumnDetailTemplate = "Column"
 
-func (c *Completer) columnCandidates(targetTables []*parser.TableInfo, pare *parent) []lsp.CompletionItem {
+func (c *Completer) columnCandidates(targetTables []*parseutil.TableInfo, pare *parent) []lsp.CompletionItem {
 	candidates := []lsp.CompletionItem{}
 
 	switch pare.Type {
@@ -466,7 +467,7 @@ func (c *Completer) TableCandidates() []lsp.CompletionItem {
 
 var AliasDetailTemplate = "Alias"
 
-func (c *Completer) aliasCandidates(targetTables []*parser.TableInfo) []lsp.CompletionItem {
+func (c *Completer) aliasCandidates(targetTables []*parseutil.TableInfo) []lsp.CompletionItem {
 	candidates := []lsp.CompletionItem{}
 	for _, info := range targetTables {
 		if info.Alias == "" {
@@ -484,7 +485,7 @@ func (c *Completer) aliasCandidates(targetTables []*parser.TableInfo) []lsp.Comp
 
 var SubQueryColumnDetailTemplate = "Sub Query"
 
-func (c *Completer) SubQueryColumnCandidates(info *parser.SubQueryInfo) []lsp.CompletionItem {
+func (c *Completer) SubQueryColumnCandidates(info *parseutil.SubQueryInfo) []lsp.CompletionItem {
 	candidates := []lsp.CompletionItem{}
 	for _, view := range info.Views {
 		for _, colmun := range view.Columns {

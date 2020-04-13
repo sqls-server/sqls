@@ -1,4 +1,4 @@
-package parser
+package parseutil
 
 import (
 	"bytes"
@@ -9,6 +9,7 @@ import (
 	"github.com/lighttiger2505/sqls/ast"
 	"github.com/lighttiger2505/sqls/ast/astutil"
 	"github.com/lighttiger2505/sqls/dialect"
+	"github.com/lighttiger2505/sqls/parser"
 	"github.com/lighttiger2505/sqls/token"
 )
 
@@ -453,7 +454,7 @@ func TestExtractTable(t *testing.T) {
 func initExtractTable(t *testing.T, input string) ast.TokenList {
 	t.Helper()
 	src := bytes.NewBuffer([]byte(input))
-	parser, err := NewParser(src, &dialect.GenericSQLDialect{})
+	parser, err := parser.NewParser(src, &dialect.GenericSQLDialect{})
 	if err != nil {
 		t.Fatalf("error %+v\n", err)
 	}
@@ -550,7 +551,7 @@ func TestNodeWalker_PrevNodesIs(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// initialize
 			src := bytes.NewBuffer([]byte(tt.input))
-			parser, err := NewParser(src, &dialect.GenericSQLDialect{})
+			parser, err := parser.NewParser(src, &dialect.GenericSQLDialect{})
 			if err != nil {
 				t.Fatalf("error %+v\n", err)
 			}
