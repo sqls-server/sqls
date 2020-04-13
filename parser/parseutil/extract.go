@@ -49,7 +49,6 @@ func ExtractTableReference(parsed ast.TokenList) []ast.Node {
 	prefixMatcher := astutil.NodeMatcher{
 		ExpectKeyword: []string{
 			"INSERT INTO",
-			"UPDATE",
 			"DELETE FROM",
 		},
 	}

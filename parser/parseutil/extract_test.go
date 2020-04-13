@@ -97,11 +97,6 @@ func TestExtractTableReference(t *testing.T) {
 			input: "INSERT INTO abc",
 			want:  "abc",
 		},
-		{
-			name:  "UPDATE",
-			input: "UPDATE abc",
-			want:  "abc",
-		},
 		// FIXME
 		// {
 		// 	name:  "DELETE FROM",

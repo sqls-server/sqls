@@ -99,7 +99,7 @@ func TestExtractSubQueryView(t *testing.T) {
 			want: &SubQueryInfo{
 				Name: "sub",
 				Views: []*SubQueryView{
-					&SubQueryView{
+					{
 						Table: &TableInfo{
 							DatabaseSchema: "dbs",
 							Name:           "city",
@@ -120,7 +120,7 @@ func TestExtractSubQueryView(t *testing.T) {
 			want: &SubQueryInfo{
 				Name: "sub",
 				Views: []*SubQueryView{
-					&SubQueryView{
+					{
 						Table: &TableInfo{
 							DatabaseSchema: "dbs",
 							Name:           "city",
@@ -147,7 +147,7 @@ func TestExtractSubQueryView(t *testing.T) {
 			want: &SubQueryInfo{
 				Name: "sub",
 				Views: []*SubQueryView{
-					&SubQueryView{
+					{
 						Table: &TableInfo{
 							DatabaseSchema: "dbs",
 							Name:           "city",
@@ -167,7 +167,7 @@ func TestExtractSubQueryView(t *testing.T) {
 			want: &SubQueryInfo{
 				Name: "ot",
 				Views: []*SubQueryView{
-					&SubQueryView{
+					{
 						Table: &TableInfo{
 							DatabaseSchema: "dbs",
 							Name:           "city",
@@ -188,7 +188,7 @@ func TestExtractSubQueryView(t *testing.T) {
 			want: &SubQueryInfo{
 				Name: "it",
 				Views: []*SubQueryView{
-					&SubQueryView{
+					{
 						Table: &TableInfo{
 							DatabaseSchema: "dbs",
 							Name:           "city",
@@ -218,7 +218,7 @@ func TestExtractSubQueryView(t *testing.T) {
 			want: &SubQueryInfo{
 				Name: "t",
 				Views: []*SubQueryView{
-					&SubQueryView{
+					{
 						Table: &TableInfo{
 							DatabaseSchema: "dbs",
 							Name:           "city",
@@ -259,7 +259,7 @@ func TestExtractTable(t *testing.T) {
 			input: "from abc",
 			pos:   token.Pos{Line: 1, Col: 1},
 			want: []*TableInfo{
-				&TableInfo{
+				{
 					Name: "abc",
 				},
 			},
@@ -269,7 +269,7 @@ func TestExtractTable(t *testing.T) {
 			input: "join abc",
 			pos:   token.Pos{Line: 1, Col: 1},
 			want: []*TableInfo{
-				&TableInfo{
+				{
 					Name: "abc",
 				},
 			},
@@ -279,7 +279,7 @@ func TestExtractTable(t *testing.T) {
 			input: "select * from abc",
 			pos:   token.Pos{Line: 1, Col: 1},
 			want: []*TableInfo{
-				&TableInfo{
+				{
 					Name: "abc",
 				},
 			},
@@ -289,10 +289,10 @@ func TestExtractTable(t *testing.T) {
 			input: "select * from abc, def",
 			pos:   token.Pos{Line: 1, Col: 1},
 			want: []*TableInfo{
-				&TableInfo{
+				{
 					Name: "abc",
 				},
-				&TableInfo{
+				{
 					Name: "def",
 				},
 			},
@@ -302,10 +302,10 @@ func TestExtractTable(t *testing.T) {
 			input: "select * from abc left join def on abc.id = def.id",
 			pos:   token.Pos{Line: 1, Col: 1},
 			want: []*TableInfo{
-				&TableInfo{
+				{
 					Name: "abc",
 				},
-				&TableInfo{
+				{
 					Name: "def",
 				},
 			},
@@ -315,7 +315,7 @@ func TestExtractTable(t *testing.T) {
 			input: "select * from abc;select * from def;select * from ghi",
 			pos:   token.Pos{Line: 1, Col: 1},
 			want: []*TableInfo{
-				&TableInfo{
+				{
 					Name: "abc",
 				},
 			},
@@ -325,7 +325,7 @@ func TestExtractTable(t *testing.T) {
 			input: "select * from abc;select * from def;select * from ghi",
 			pos:   token.Pos{Line: 1, Col: 19},
 			want: []*TableInfo{
-				&TableInfo{
+				{
 					Name: "def",
 				},
 			},
@@ -335,7 +335,7 @@ func TestExtractTable(t *testing.T) {
 			input: "select * from abc;select * from def;select * from ghi",
 			pos:   token.Pos{Line: 1, Col: 37},
 			want: []*TableInfo{
-				&TableInfo{
+				{
 					Name: "ghi",
 				},
 			},
@@ -345,7 +345,7 @@ func TestExtractTable(t *testing.T) {
 			input: "select * from abc.def",
 			pos:   token.Pos{Line: 1, Col: 1},
 			want: []*TableInfo{
-				&TableInfo{
+				{
 					DatabaseSchema: "abc",
 					Name:           "def",
 				},
@@ -356,7 +356,7 @@ func TestExtractTable(t *testing.T) {
 			input: "select * from abc.def as ghi",
 			pos:   token.Pos{Line: 1, Col: 1},
 			want: []*TableInfo{
-				&TableInfo{
+				{
 					DatabaseSchema: "abc",
 					Name:           "def",
 					Alias:          "ghi",
@@ -368,7 +368,7 @@ func TestExtractTable(t *testing.T) {
 			input: "select t.* from (select city_id, city_name from (select city.ID as city_id, city.Name as city_name from city) as t) as t",
 			pos:   token.Pos{Line: 1, Col: 1},
 			want: []*TableInfo{
-				&TableInfo{
+				{
 					DatabaseSchema: "",
 					Name:           "city",
 					Alias:          "t",
@@ -380,7 +380,7 @@ func TestExtractTable(t *testing.T) {
 			input: "select t.* from (select city_id, city_name from (select city.ID as city_id, city.Name as city_name from city) as t) as t",
 			pos:   token.Pos{Line: 1, Col: 120},
 			want: []*TableInfo{
-				&TableInfo{
+				{
 					DatabaseSchema: "",
 					Name:           "city",
 					Alias:          "t",
@@ -392,7 +392,7 @@ func TestExtractTable(t *testing.T) {
 			input: "select t.* from (select city_id, city_name from (select city.ID as city_id, city.Name as city_name from city) as t) as t",
 			pos:   token.Pos{Line: 1, Col: 18},
 			want: []*TableInfo{
-				&TableInfo{
+				{
 					DatabaseSchema: "",
 					Name:           "city",
 					Alias:          "t",
@@ -404,7 +404,7 @@ func TestExtractTable(t *testing.T) {
 			input: "select t.* from (select city_id, city_name from (select city.ID as city_id, city.Name as city_name from city) as t) as t",
 			pos:   token.Pos{Line: 1, Col: 114},
 			want: []*TableInfo{
-				&TableInfo{
+				{
 					DatabaseSchema: "",
 					Name:           "city",
 					Alias:          "t",
@@ -416,7 +416,7 @@ func TestExtractTable(t *testing.T) {
 			input: "select t.* from (select city_id, city_name from (select ci.ID as city_id, ci.Name as city_name from city as ci) as t) as t",
 			pos:   token.Pos{Line: 1, Col: 55},
 			want: []*TableInfo{
-				&TableInfo{
+				{
 					DatabaseSchema: "",
 					Name:           "city",
 					Alias:          "ci",
@@ -428,7 +428,19 @@ func TestExtractTable(t *testing.T) {
 			input: "insert into abc",
 			pos:   token.Pos{Line: 1, Col: 1},
 			want: []*TableInfo{
-				&TableInfo{
+				{
+					DatabaseSchema: "",
+					Name:           "abc",
+					Alias:          "",
+				},
+			},
+		},
+		{
+			name:  "update",
+			input: "update abc",
+			pos:   token.Pos{Line: 1, Col: 1},
+			want: []*TableInfo{
+				{
 					DatabaseSchema: "",
 					Name:           "abc",
 					Alias:          "",
