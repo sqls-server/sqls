@@ -164,191 +164,6 @@ func TestParseParenthesis(t *testing.T) {
 	}
 }
 
-func TestParseFrom(t *testing.T) {
-	testcases := []struct {
-		name    string
-		input   string
-		checkFn func(t *testing.T, stmts []*ast.Statement, input string)
-	}{
-		{
-			name:  "from",
-			input: "from ",
-			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
-				testStatement(t, stmts[0], 1, input)
-				list := stmts[0].GetTokens()
-				testFrom(t, list[0], "from ")
-			},
-		},
-		{
-			name:  "from with identifier",
-			input: "from abc",
-			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
-				testStatement(t, stmts[0], 1, input)
-				list := stmts[0].GetTokens()
-				testFrom(t, list[0], "from abc")
-			},
-		},
-		{
-			name:  "simple select",
-			input: "select * from abc",
-			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
-				testStatement(t, stmts[0], 5, input)
-				list := stmts[0].GetTokens()
-				testItem(t, list[0], "select")
-				testPos(t, list[0], genPosOneline(1), genPosOneline(7))
-				testItem(t, list[1], " ")
-				testPos(t, list[1], genPosOneline(7), genPosOneline(8))
-				testIdentifier(t, list[2], "*")
-				testPos(t, list[2], genPosOneline(8), genPosOneline(9))
-				testItem(t, list[3], " ")
-				testPos(t, list[3], genPosOneline(9), genPosOneline(10))
-				testFrom(t, list[4], "from abc")
-				testPos(t, list[4], genPosOneline(10), genPosOneline(18))
-			},
-		},
-		{
-			name:  "invalid select none select identifier",
-			input: "select from abc",
-			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
-				testStatement(t, stmts[0], 3, input)
-				list := stmts[0].GetTokens()
-				testItem(t, list[0], "select")
-				testItem(t, list[1], " ")
-				testFrom(t, list[2], "from abc")
-			},
-		},
-		{
-			name:  "invalid select none from identifier",
-			input: "select * from ",
-			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
-				testStatement(t, stmts[0], 5, input)
-				list := stmts[0].GetTokens()
-				testItem(t, list[0], "select")
-				testItem(t, list[1], " ")
-				testIdentifier(t, list[2], "*")
-				testItem(t, list[3], " ")
-				testFrom(t, list[4], "from ")
-				testPos(t, list[4], genPosOneline(10), genPosOneline(15))
-
-				where := testTokenList(t, list[4], 2).GetTokens()
-				testItem(t, where[0], "from")
-				testPos(t, where[0], genPosOneline(10), genPosOneline(14))
-				testItem(t, where[1], " ")
-				testPos(t, where[1], genPosOneline(14), genPosOneline(15))
-			},
-		},
-		{
-			name:  "sub query",
-			input: "select * from (select * from abc) as t",
-			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
-				testStatement(t, stmts[0], 5, input)
-				list := stmts[0].GetTokens()
-				testItem(t, list[0], "select")
-				testItem(t, list[1], " ")
-				testIdentifier(t, list[2], "*")
-				testItem(t, list[3], " ")
-				testFrom(t, list[4], "from (select * from abc) as t")
-
-				from := testTokenList(t, list[4], 3).GetTokens()
-				testItem(t, from[0], "from")
-				testItem(t, from[1], " ")
-				testAliased(t, from[2], "(select * from abc) as t", "(select * from abc)", "t")
-
-				aliased := testTokenList(t, from[2], 5).GetTokens()
-				testParenthesis(t, aliased[0], "(select * from abc)")
-				testItem(t, aliased[1], " ")
-				testItem(t, aliased[2], "as")
-				testItem(t, aliased[3], " ")
-				testIdentifier(t, aliased[4], "t")
-
-				fromInParenthesis := testTokenList(t, aliased[0], 7).GetTokens()
-				testItem(t, fromInParenthesis[0], "(")
-				testItem(t, fromInParenthesis[1], "select")
-				testItem(t, fromInParenthesis[2], " ")
-				testIdentifier(t, fromInParenthesis[3], "*")
-				testItem(t, fromInParenthesis[4], " ")
-				testFrom(t, fromInParenthesis[5], "from abc")
-				testItem(t, fromInParenthesis[6], ")")
-			},
-		},
-	}
-
-	for _, tt := range testcases {
-		t.Run(tt.name, func(t *testing.T) {
-			stmts := parseInit(t, tt.input)
-			tt.checkFn(t, stmts, tt.input)
-		})
-	}
-}
-
-func TestParseWhere_NotFoundClose(t *testing.T) {
-	input := "select * from foo where bar = 1"
-	src := bytes.NewBuffer([]byte(input))
-	parser, err := NewParser(src, &dialect.GenericSQLDialect{})
-	if err != nil {
-		t.Fatalf("error %+v\n", err)
-	}
-
-	got, err := parser.Parse()
-	if err != nil {
-		t.Fatalf("error %+v\n", err)
-	}
-	wantStmtLen := 1
-	if wantStmtLen != len(got.GetTokens()) {
-		t.Errorf("Statements does not contain %d statements, got %d", wantStmtLen, len(got.GetTokens()))
-	}
-	var stmts []*ast.Statement
-	for _, node := range got.GetTokens() {
-		stmt, ok := node.(*ast.Statement)
-		if !ok {
-			t.Fatalf("invalid type want Statement got %T", stmt)
-		}
-		stmts = append(stmts, stmt)
-	}
-	testStatement(t, stmts[0], 8, input)
-
-	list := stmts[0].GetTokens()
-	testItem(t, list[0], "select")
-	testItem(t, list[1], " ")
-	testIdentifier(t, list[2], "*")
-	testItem(t, list[3], " ")
-	testFrom(t, list[4], "from foo ")
-	testItem(t, list[5], "where")
-	testItem(t, list[6], " ")
-	testComparison(t, list[7], "bar = 1", "bar", "=", "1")
-}
-
-func TestParseWhere_WithParenthesis(t *testing.T) {
-	input := "select x from (select y from foo where bar = 1) z"
-	stmts := parseInit(t, input)
-	testStatement(t, stmts[0], 5, input)
-
-	list := stmts[0].GetTokens()
-	testItem(t, list[0], "select")
-	testItem(t, list[1], " ")
-	testIdentifier(t, list[2], "x")
-	testItem(t, list[3], " ")
-	testFrom(t, list[4], "from (select y from foo where bar = 1) z")
-
-	from := testTokenList(t, list[4], 3).GetTokens()
-	testItem(t, from[0], "from")
-	testItem(t, from[1], " ")
-	testAliased(t, from[2], "(select y from foo where bar = 1) z", "(select y from foo where bar = 1)", "z")
-
-	aliased := testTokenList(t, from[2], 3).GetTokens()
-	parenthesis := testTokenList(t, aliased[0], 10).GetTokens()
-	testItem(t, parenthesis[0], "(")
-	testItem(t, parenthesis[1], "select")
-	testItem(t, parenthesis[2], " ")
-	testIdentifier(t, parenthesis[3], "y")
-	testItem(t, parenthesis[4], " ")
-	testFrom(t, parenthesis[5], "from foo ")
-	testItem(t, parenthesis[6], "where")
-	testItem(t, parenthesis[7], " ")
-	testComparison(t, parenthesis[8], "bar = 1", "bar", "=", "1")
-	testItem(t, parenthesis[9], ")")
-}
-
 func TestParseFunction(t *testing.T) {
 	testcases := []struct {
 		name    string
@@ -429,14 +244,16 @@ func TestParsePeriod_InvalidWithSelect(t *testing.T) {
 	input := `SELECT foo. FROM foo`
 	stmts := parseInit(t, input)
 
-	testStatement(t, stmts[0], 5, input)
+	testStatement(t, stmts[0], 7, input)
 
 	list := stmts[0].GetTokens()
 	testItem(t, list[0], "SELECT")
 	testItem(t, list[1], " ")
 	testMemberIdentifier(t, list[2], "foo.", "foo", "")
 	testItem(t, list[3], " ")
-	testFrom(t, list[4], "FROM foo")
+	testItem(t, list[4], "FROM")
+	testItem(t, list[5], " ")
+	testIdentifier(t, list[6], "foo")
 }
 
 func TestParseIdentifier(t *testing.T) {
@@ -487,17 +304,15 @@ func TestParseIdentifier(t *testing.T) {
 			name:  "from identifier",
 			input: "select abc from def",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
-				testStatement(t, stmts[0], 5, input)
+				testStatement(t, stmts[0], 7, input)
 				list := stmts[0].GetTokens()
 				testItem(t, list[0], "select")
 				testItem(t, list[1], " ")
 				testIdentifier(t, list[2], "abc")
 				testItem(t, list[3], " ")
-				testFrom(t, list[4], "from def")
-				from := testTokenList(t, list[4], 3).GetTokens()
-				testItem(t, from[0], "from")
-				testItem(t, from[1], " ")
-				testIdentifier(t, from[2], "def")
+				testItem(t, list[4], "from")
+				testItem(t, list[5], " ")
+				testIdentifier(t, list[6], "def")
 			},
 		},
 	}
@@ -553,51 +368,52 @@ func TestMemberIdentifier(t *testing.T) {
 		},
 		{
 			name:  "member identifier select",
-			input: "select foo.bar from table",
+			input: "select foo.bar from abc",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
-				testStatement(t, stmts[0], 5, input)
+				testStatement(t, stmts[0], 7, input)
 				list := stmts[0].GetTokens()
 				testItem(t, list[0], "select")
 				testItem(t, list[1], " ")
 				testMemberIdentifier(t, list[2], "foo.bar", "foo", "bar")
 				testItem(t, list[3], " ")
-				testFrom(t, list[4], `from table`)
+				testItem(t, list[4], "from")
+				testItem(t, list[5], " ")
+				testIdentifier(t, list[6], "abc")
 			},
 		},
 		{
 			name:  "invalid member identifier select",
-			input: "select foo. from table",
+			input: "select foo. from abc",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
-				testStatement(t, stmts[0], 5, input)
+				testStatement(t, stmts[0], 7, input)
 				list := stmts[0].GetTokens()
-
 				testItem(t, list[0], "select")
 				testPos(t, list[0], genPosOneline(1), genPosOneline(7))
-
 				testItem(t, list[1], " ")
 				testPos(t, list[1], genPosOneline(7), genPosOneline(8))
-
 				testMemberIdentifier(t, list[2], "foo.", "foo", "")
 				testPos(t, list[2], genPosOneline(8), genPosOneline(12))
-
 				testItem(t, list[3], " ")
 				testPos(t, list[3], genPosOneline(12), genPosOneline(13))
-
-				testFrom(t, list[4], `from table`)
-				testPos(t, list[4], genPosOneline(13), genPosOneline(23))
+				testItem(t, list[4], "from")
+				testPos(t, list[4], genPosOneline(13), genPosOneline(17))
+				testItem(t, list[5], " ")
+				testIdentifier(t, list[6], "abc")
 			},
 		},
 		{
 			name:  "member identifier from",
-			input: "select foo from myschema.table",
+			input: "select foo from myschema.abc",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
-				testStatement(t, stmts[0], 5, input)
+				testStatement(t, stmts[0], 7, input)
 				list := stmts[0].GetTokens()
 				testItem(t, list[0], "select")
 				testItem(t, list[1], " ")
 				testIdentifier(t, list[2], "foo")
 				testItem(t, list[3], " ")
-				testFrom(t, list[4], `from myschema.table`)
+				testItem(t, list[4], "from")
+				testItem(t, list[5], " ")
+				testMemberIdentifier(t, list[6], "myschema.abc", "myschema", "abc")
 			},
 		},
 	}
@@ -657,16 +473,19 @@ func TestParseMultiKeyword(t *testing.T) {
 			name:  "select with group keyword",
 			input: "select a, b, c from abc group by d, e, f",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
-				testStatement(t, stmts[0], 8, input)
+				testStatement(t, stmts[0], 11, input)
 				list := stmts[0].GetTokens()
 				testItem(t, list[0], "select")
 				testItem(t, list[1], " ")
 				testIdentifierList(t, list[2], "a, b, c")
 				testItem(t, list[3], " ")
-				testFrom(t, list[4], "from abc ")
-				testMultiKeyword(t, list[5], "group by")
-				testItem(t, list[6], " ")
-				testIdentifierList(t, list[7], "d, e, f")
+				testItem(t, list[4], "from")
+				testItem(t, list[5], " ")
+				testIdentifier(t, list[6], "abc")
+				testItem(t, list[7], " ")
+				testMultiKeyword(t, list[8], "group by")
+				testItem(t, list[9], " ")
+				testIdentifierList(t, list[10], "d, e, f")
 			},
 		},
 	}
@@ -897,66 +716,74 @@ func TestParseAliased(t *testing.T) {
 			name:  "aliase select identifier",
 			input: "select foo as bar from mytable",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
-				testStatement(t, stmts[0], 5, input)
+				testStatement(t, stmts[0], 7, input)
 				list := stmts[0].GetTokens()
 				testItem(t, list[0], "select")
 				testItem(t, list[1], " ")
 				testAliased(t, list[2], "foo as bar", "foo", "bar")
 				testItem(t, list[3], " ")
-				testFrom(t, list[4], "from mytable")
+				testItem(t, list[4], "from")
+				testItem(t, list[5], " ")
+				testIdentifier(t, list[6], "mytable")
 			},
 		},
 		{
 			name:  "aliase from identifier",
 			input: "select foo from mytable as mt",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
-				testStatement(t, stmts[0], 5, input)
+				testStatement(t, stmts[0], 7, input)
 				list := stmts[0].GetTokens()
 				testItem(t, list[0], "select")
 				testItem(t, list[1], " ")
 				testIdentifier(t, list[2], "foo")
 				testItem(t, list[3], " ")
-				testFrom(t, list[4], "from mytable as mt")
-
-				from := testTokenList(t, list[4], 3).GetTokens()
-				testItem(t, from[0], "from")
-				testItem(t, from[1], " ")
-				testAliased(t, from[2], "mytable as mt", "mytable", "mt")
+				testItem(t, list[4], "from")
+				testItem(t, list[5], " ")
+				testAliased(t, list[6], "mytable as mt", "mytable", "mt")
 			},
 		},
 		{
 			name:  "aliase join identifier",
 			input: "select foo from abc inner join def as d",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
-				testStatement(t, stmts[0], 10, input)
+				testStatement(t, stmts[0], 13, input)
 				list := stmts[0].GetTokens()
 				testItem(t, list[0], "select")
 				testItem(t, list[1], " ")
 				testIdentifier(t, list[2], "foo")
 				testItem(t, list[3], " ")
-				testFrom(t, list[4], "from abc ")
-				testItem(t, list[5], "inner")
-				testItem(t, list[6], " ")
-				testItem(t, list[7], "join")
-				testItem(t, list[8], " ")
-				testAliased(t, list[9], "def as d", "def", "d")
+				testItem(t, list[4], "from")
+				testItem(t, list[5], " ")
+				testIdentifier(t, list[6], "abc")
+				testItem(t, list[7], " ")
+				testItem(t, list[8], "inner")
+				testItem(t, list[9], " ")
+				testItem(t, list[10], "join")
+				testItem(t, list[11], " ")
+				testAliased(t, list[12], "def as d", "def", "d")
 			},
 		},
 		{
 			name:  "aliase sub query",
-			input: "select * from (ci.ID, ci.Name from city as ci) as t",
+			input: "select * from (select ci.ID, ci.Name from city as ci) as t",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
-				testStatement(t, stmts[0], 5, input)
+				testStatement(t, stmts[0], 7, input)
+
 				list := stmts[0].GetTokens()
-				testFrom(t, list[4], "from (ci.ID, ci.Name from city as ci) as t")
-				from := testTokenList(t, list[4], 3).GetTokens()
-				testAliased(t, from[2], "(ci.ID, ci.Name from city as ci) as t", "(ci.ID, ci.Name from city as ci)", "t")
-				aliased := testTokenList(t, from[2], 5).GetTokens()
-				testParenthesis(t, aliased[0], "(ci.ID, ci.Name from city as ci)")
-				parenthesis := testTokenList(t, aliased[0], 5).GetTokens()
-				testFrom(t, parenthesis[3], "from city as ci")
-				from2 := testTokenList(t, parenthesis[3], 3).GetTokens()
-				testAliased(t, from2[2], "city as ci", "city", "ci")
+				testAliased(t, list[6], "(select ci.ID, ci.Name from city as ci) as t", "(select ci.ID, ci.Name from city as ci)", "t")
+				aliased := testTokenList(t, list[6], 5).GetTokens()
+				testParenthesis(t, aliased[0], "(select ci.ID, ci.Name from city as ci)")
+
+				parenthesis := testTokenList(t, aliased[0], 9).GetTokens()
+				testItem(t, parenthesis[0], "(")
+				testItem(t, parenthesis[1], "select")
+				testItem(t, parenthesis[2], " ")
+				testIdentifierList(t, parenthesis[3], "ci.ID, ci.Name")
+				testItem(t, parenthesis[4], " ")
+				testItem(t, parenthesis[5], "from")
+				testItem(t, parenthesis[6], " ")
+				testAliased(t, parenthesis[7], "city as ci", "city", "ci")
+				testItem(t, parenthesis[8], ")")
 			},
 		},
 	}
@@ -1043,26 +870,30 @@ func TestParseIdentifierList(t *testing.T) {
 		},
 		{
 			name:  "invalid single IndentifierList in select statement",
-			input: "select foo,  from table",
+			input: "select foo,  from abc",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
-				testStatement(t, stmts[0], 4, input)
+				testStatement(t, stmts[0], 6, input)
 				list := stmts[0].GetTokens()
 				testItem(t, list[0], "select")
 				testItem(t, list[1], " ")
 				testIdentifierList(t, list[2], "foo,  ")
-				testFrom(t, list[3], "from table")
+				testItem(t, list[3], "from")
+				testItem(t, list[4], " ")
+				testIdentifier(t, list[5], "abc")
 			},
 		},
 		{
 			name:  "invalid multiplue IndentifierList in select statement",
-			input: "select foo, bar, from table",
+			input: "select foo, bar, from abc",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
-				testStatement(t, stmts[0], 4, input)
+				testStatement(t, stmts[0], 6, input)
 				list := stmts[0].GetTokens()
 				testItem(t, list[0], "select")
 				testItem(t, list[1], " ")
 				testIdentifierList(t, list[2], "foo, bar, ")
-				testFrom(t, list[3], "from table")
+				testItem(t, list[3], "from")
+				testItem(t, list[4], " ")
+				testIdentifier(t, list[5], "abc")
 			},
 		},
 		{

@@ -77,7 +77,6 @@ func (p *Parser) Parse() (ast.TokenList, error) {
 
 	root = parsePrefixGroup(astutil.NewNodeReader(root), parenthesisPrefixMatcher, parseParenthesis)
 	root = parsePrefixGroup(astutil.NewNodeReader(root), functionPrefixMatcher, parseFunctions)
-	root = parsePrefixGroup(astutil.NewNodeReader(root), FromPrefixMatcher, parseFrom)
 	root = parsePrefixGroup(astutil.NewNodeReader(root), identifierPrefixMatcher, parseIdentifier)
 
 	root = parseInfixGroup(astutil.NewNodeReader(root), memberIdentifierInfixMatcher, false, parseMemberIdentifier)
@@ -181,72 +180,6 @@ func parseFunctions(reader *astutil.NodeReader) ast.Node {
 		return function
 	}
 	return reader.CurNode
-}
-
-var FromPrefixMatcher = astutil.NodeMatcher{
-	ExpectKeyword: []string{
-		"FROM",
-	},
-}
-var FromCloseMatcher = astutil.NodeMatcher{
-	ExpectTokens: []token.Kind{
-		token.RParen,
-	},
-	ExpectKeyword: []string{
-		// for join prefix
-		"LEFT",
-		"RIGHT",
-		"INNER",
-		"OUTER",
-		"CROSS",
-		"JOIN",
-		// for other expression
-		"WHERE",
-		"ORDER",
-		"GROUP",
-		"LIMIT",
-		"UNION",
-		"EXCEPT",
-		"HAVING",
-		"RETURNING",
-		"INTO",
-	},
-}
-var FromRecursionMatcher = astutil.NodeMatcher{
-	NodeTypes: []ast.NodeType{ast.TypeParenthesis},
-}
-
-func parseFrom(reader *astutil.NodeReader) ast.Node {
-	nodes := []ast.Node{reader.CurNode}
-	tmpReader := reader.CopyReader()
-	for tmpReader.NextNode(false) {
-		if _, ok := reader.CurNode.(ast.TokenList); ok {
-			continue
-		}
-
-		if tmpReader.CurNodeIs(FromRecursionMatcher) {
-			// FIXME: more simplity
-			// For sub query
-			if list, ok := tmpReader.CurNode.(ast.TokenList); ok {
-				parenthesis := parsePrefixGroup(astutil.NewNodeReader(list), FromPrefixMatcher, parseFrom)
-				nodes = append(nodes, parenthesis)
-			} else {
-				nodes = append(nodes, tmpReader.CurNode)
-			}
-		} else if tmpReader.CurNodeIs(FromPrefixMatcher) {
-			from := parseFrom(tmpReader)
-			nodes = append(nodes, from)
-		} else if tmpReader.PeekNodeIs(false, FromCloseMatcher) {
-			reader.Index = tmpReader.Index
-			reader.CurNode = tmpReader.CurNode
-			return &ast.FromClause{Toks: append(nodes, tmpReader.CurNode)}
-		} else {
-			nodes = append(nodes, tmpReader.CurNode)
-		}
-	}
-	reader.Index = tmpReader.Index
-	reader.CurNode = tmpReader.CurNode
-	return &ast.FromClause{Toks: nodes}
 }
 
 var memberIdentifierInfixMatcher = astutil.NodeMatcher{
