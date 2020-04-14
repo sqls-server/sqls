@@ -164,42 +164,6 @@ func TestParseParenthesis(t *testing.T) {
 	}
 }
 
-func TestParseWhere(t *testing.T) {
-	testcases := []struct {
-		name    string
-		input   string
-		checkFn func(t *testing.T, stmts []*ast.Statement, input string)
-	}{
-		{
-			name:  "select with where",
-			input: "select * from foo where bar = 1",
-			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
-				testStatement(t, stmts[0], 6, input)
-
-				list := stmts[0].GetTokens()
-				testItem(t, list[0], "select")
-				testItem(t, list[1], " ")
-				testIdentifier(t, list[2], "*")
-				testItem(t, list[3], " ")
-				testFrom(t, list[4], "from foo ")
-				testWhere(t, list[5], "where bar = 1")
-
-				where := testTokenList(t, list[5], 3).GetTokens()
-				testItem(t, where[0], "where")
-				testItem(t, where[1], " ")
-				testComparison(t, where[2], "bar = 1", "bar", "=", "1")
-			},
-		},
-	}
-
-	for _, tt := range testcases {
-		t.Run(tt.name, func(t *testing.T) {
-			stmts := parseInit(t, tt.input)
-			tt.checkFn(t, stmts, tt.input)
-		})
-	}
-}
-
 func TestParseFrom(t *testing.T) {
 	testcases := []struct {
 		name    string
@@ -341,7 +305,7 @@ func TestParseWhere_NotFoundClose(t *testing.T) {
 		}
 		stmts = append(stmts, stmt)
 	}
-	testStatement(t, stmts[0], 6, input)
+	testStatement(t, stmts[0], 8, input)
 
 	list := stmts[0].GetTokens()
 	testItem(t, list[0], "select")
@@ -349,12 +313,9 @@ func TestParseWhere_NotFoundClose(t *testing.T) {
 	testIdentifier(t, list[2], "*")
 	testItem(t, list[3], " ")
 	testFrom(t, list[4], "from foo ")
-	testWhere(t, list[5], "where bar = 1")
-
-	where := testTokenList(t, list[5], 3).GetTokens()
-	testItem(t, where[0], "where")
-	testItem(t, where[1], " ")
-	testComparison(t, where[2], "bar = 1", "bar", "=", "1")
+	testItem(t, list[5], "where")
+	testItem(t, list[6], " ")
+	testComparison(t, list[7], "bar = 1", "bar", "=", "1")
 }
 
 func TestParseWhere_WithParenthesis(t *testing.T) {
@@ -375,15 +336,17 @@ func TestParseWhere_WithParenthesis(t *testing.T) {
 	testAliased(t, from[2], "(select y from foo where bar = 1) z", "(select y from foo where bar = 1)", "z")
 
 	aliased := testTokenList(t, from[2], 3).GetTokens()
-	parenthesis := testTokenList(t, aliased[0], 8).GetTokens()
+	parenthesis := testTokenList(t, aliased[0], 10).GetTokens()
 	testItem(t, parenthesis[0], "(")
 	testItem(t, parenthesis[1], "select")
 	testItem(t, parenthesis[2], " ")
 	testIdentifier(t, parenthesis[3], "y")
 	testItem(t, parenthesis[4], " ")
 	testFrom(t, parenthesis[5], "from foo ")
-	testWhere(t, parenthesis[6], "where bar = 1")
-	testItem(t, parenthesis[7], ")")
+	testItem(t, parenthesis[6], "where")
+	testItem(t, parenthesis[7], " ")
+	testComparison(t, parenthesis[8], "bar = 1", "bar", "=", "1")
+	testItem(t, parenthesis[9], ")")
 }
 
 func TestParseFunction(t *testing.T) {

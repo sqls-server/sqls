@@ -78,7 +78,6 @@ func (p *Parser) Parse() (ast.TokenList, error) {
 	root = parsePrefixGroup(astutil.NewNodeReader(root), parenthesisPrefixMatcher, parseParenthesis)
 	root = parsePrefixGroup(astutil.NewNodeReader(root), functionPrefixMatcher, parseFunctions)
 	root = parsePrefixGroup(astutil.NewNodeReader(root), FromPrefixMatcher, parseFrom)
-	root = parsePrefixGroup(astutil.NewNodeReader(root), wherePrefixMatcher, parseWhere)
 	root = parsePrefixGroup(astutil.NewNodeReader(root), identifierPrefixMatcher, parseIdentifier)
 
 	root = parseInfixGroup(astutil.NewNodeReader(root), memberIdentifierInfixMatcher, false, parseMemberIdentifier)
@@ -182,40 +181,6 @@ func parseFunctions(reader *astutil.NodeReader) ast.Node {
 		return function
 	}
 	return reader.CurNode
-}
-
-var wherePrefixMatcher = astutil.NodeMatcher{
-	ExpectKeyword: []string{
-		"WHERE",
-	},
-}
-var whereCloseMatcher = astutil.NodeMatcher{
-	ExpectTokens: []token.Kind{
-		token.RParen,
-	},
-	ExpectKeyword: []string{
-		"ORDER",
-		"GROUP",
-		"LIMIT",
-		"UNION",
-		"EXCEPT",
-		"HAVING",
-		"RETURNING",
-		"INTO",
-	},
-}
-
-func parseWhere(reader *astutil.NodeReader) ast.Node {
-	whereExpr := reader.CurNode
-	nodes := []ast.Node{whereExpr}
-
-	for reader.NextNode(false) {
-		nodes = append(nodes, reader.CurNode)
-		if reader.PeekNodeIs(false, whereCloseMatcher) {
-			return &ast.WhereClause{Toks: nodes}
-		}
-	}
-	return &ast.WhereClause{Toks: nodes}
 }
 
 var FromPrefixMatcher = astutil.NodeMatcher{
