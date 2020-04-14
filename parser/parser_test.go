@@ -317,39 +317,6 @@ func TestParseFrom(t *testing.T) {
 	}
 }
 
-func TestParseJoin(t *testing.T) {
-	input := "select * from abc join efd"
-
-	stmts := parseInit(t, input)
-	testStatement(t, stmts[0], 6, input)
-
-	list := stmts[0].GetTokens()
-	testItem(t, list[0], "select")
-	testItem(t, list[1], " ")
-	testIdentifier(t, list[2], "*")
-	testItem(t, list[3], " ")
-	testFrom(t, list[4], "from abc ")
-	testJoin(t, list[5], "join efd")
-}
-
-func TestParseJoin_WithOn(t *testing.T) {
-	input := "select * from abc join efd on abc.id = efd.id"
-
-	stmts := parseInit(t, input)
-	testStatement(t, stmts[0], 9, input)
-
-	list := stmts[0].GetTokens()
-	testItem(t, list[0], "select")
-	testItem(t, list[1], " ")
-	testIdentifier(t, list[2], "*")
-	testItem(t, list[3], " ")
-	testFrom(t, list[4], "from abc ")
-	testJoin(t, list[5], "join efd ")
-	testItem(t, list[6], "on")
-	testItem(t, list[7], " ")
-	testComparison(t, list[8], "abc.id = efd.id", "abc.id", "=", "efd.id")
-}
-
 func TestParseWhere_NotFoundClose(t *testing.T) {
 	input := "select * from foo where bar = 1"
 	src := bytes.NewBuffer([]byte(input))
@@ -998,7 +965,7 @@ func TestParseAliased(t *testing.T) {
 			name:  "aliase join identifier",
 			input: "select foo from abc inner join def as d",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
-				testStatement(t, stmts[0], 8, input)
+				testStatement(t, stmts[0], 10, input)
 				list := stmts[0].GetTokens()
 				testItem(t, list[0], "select")
 				testItem(t, list[1], " ")
@@ -1007,12 +974,9 @@ func TestParseAliased(t *testing.T) {
 				testFrom(t, list[4], "from abc ")
 				testItem(t, list[5], "inner")
 				testItem(t, list[6], " ")
-				testJoin(t, list[7], "join def as d")
-
-				join := testTokenList(t, list[7], 3).GetTokens()
-				testItem(t, join[0], "join")
-				testItem(t, join[1], " ")
-				testAliased(t, join[2], "def as d", "def", "d")
+				testItem(t, list[7], "join")
+				testItem(t, list[8], " ")
+				testAliased(t, list[9], "def as d", "def", "d")
 			},
 		},
 		{
