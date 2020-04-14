@@ -140,25 +140,12 @@ func ExtractTable(parsed ast.TokenList, pos token.Pos) ([]*TableInfo, error) {
 	return extractTableIdentifier(list)
 }
 
-var fromJoinMatcher = astutil.NodeMatcher{
-	NodeTypes: []ast.NodeType{
-		ast.TypeFromClause,
-		ast.TypeJoinClause,
-	},
-}
-
 var identifierMatcher = astutil.NodeMatcher{
 	NodeTypes: []ast.NodeType{
 		ast.TypeIdentifer,
 		ast.TypeIdentiferList,
 		ast.TypeMemberIdentifer,
 		ast.TypeAliased,
-	},
-}
-
-var fromMatcher = astutil.NodeMatcher{
-	NodeTypes: []ast.NodeType{
-		ast.TypeFromClause,
 	},
 }
 
@@ -187,13 +174,11 @@ func extractSelectIdentifier(selectStmt ast.TokenList) ([]string, error) {
 	}
 
 	// check from clause is sub query
-	from := filterTokenList(astutil.NewNodeReader(selectStmt), fromMatcher).GetTokens()[0]
-	list, ok := from.(ast.TokenList)
-	if !ok {
+	fromIdentifier := ExtractTableReferences(selectStmt)
+	if len(fromIdentifier) == 0 {
 		return idents, nil
 	}
-	fromIdents := list.GetTokens()[2]
-	alias, ok := fromIdents.(*ast.Aliased)
+	alias, ok := fromIdentifier[0].(*ast.Aliased)
 	if !ok {
 		return idents, nil
 	}
