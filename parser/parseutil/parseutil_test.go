@@ -558,6 +558,15 @@ func TestNodeWalker_PrevNodesIs(t *testing.T) {
 			},
 			want: true,
 		},
+		{
+			name:  "delete from",
+			input: "delete from city",
+			pos:   token.Pos{Line: 1, Col: 16},
+			matcher: astutil.NodeMatcher{
+				ExpectKeyword: []string{"DELETE FROM"},
+			},
+			want: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

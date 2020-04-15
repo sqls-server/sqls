@@ -431,6 +431,49 @@ func TestComplete(t *testing.T) {
 				"Name",
 			},
 		},
+		{
+			name:  "delete table references",
+			input: "DELETE FROM ",
+			line:  0,
+			col:   12,
+			want: []string{
+				"city",
+				"country",
+				"countrylanguage",
+			},
+		},
+		{
+			name:  "delete table references filterd",
+			input: "DELETE FROM co",
+			line:  0,
+			col:   14,
+			want: []string{
+				"country",
+				"countrylanguage",
+			},
+		},
+		{
+			name:  "delete column non filter",
+			input: "DELETE FROM city WHERE ",
+			line:  0,
+			col:   23,
+			want: []string{
+				"ID",
+				"Name",
+				"CountryCode",
+				"District",
+				"Population",
+			},
+		},
+		{
+			name:  "delete column filterd",
+			input: "DELETE FROM city WHERE co",
+			line:  0,
+			col:   25,
+			want: []string{
+				"CountryCode",
+			},
+		},
 	}
 
 	for _, tt := range testcases {

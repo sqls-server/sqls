@@ -331,7 +331,7 @@ func getCompletionTypes(text string, pos token.Pos) ([]CompletionType, *parent, 
 			CompletionTypeSubQueryView,
 			CompletionTypeFunction,
 		}, noneParent, nil
-	case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"JOIN", "COPY", "FROM", "UPDATE", "INSERT INTO", "DESCRIBE", "TRUNCATE", "DESC", "EXPLAIN"})):
+	case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"JOIN", "COPY", "FROM", "DELETE FROM", "UPDATE", "INSERT INTO", "DESCRIBE", "TRUNCATE", "DESC", "EXPLAIN"})):
 		return []CompletionType{
 			CompletionTypeColumn,
 			CompletionTypeTable,
