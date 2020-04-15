@@ -80,8 +80,6 @@ if executable('sqls')
 endif
 ```
 
-`dataSourceName` 
-
 #### MySQL
 
 ```vim
