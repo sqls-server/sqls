@@ -20,7 +20,7 @@ import (
 
 type Server struct {
 	db        database.Database
-	dbName    string
+	curDB     string
 	files     map[string]*File
 	completer *completer.Completer
 }
@@ -271,13 +271,14 @@ func (s *Server) handleWorkspaceDidChangeConfiguration(ctx context.Context, conn
 	if s.db != nil {
 		s.db.Close()
 	}
-	s.db, err = database.Open(
-		params.Settings.SQLS.Driver,
-		params.Settings.SQLS.DataSourceName,
-		s.dbName,
-	)
+	s.db, err = database.Open(params.Settings.SQLS)
 	if err != nil {
 		return nil, err
+	}
+	if s.curDB != "" {
+		if err := s.db.SwitchDB(s.curDB); err != nil {
+			return nil, err
+		}
 	}
 
 	if err := s.init(); err != nil {
@@ -365,7 +366,7 @@ func (s *Server) switchDatabase(params lsp.ExecuteCommandParams) (result interfa
 	if err := s.db.SwitchDB(dbName); err != nil {
 		return nil, err
 	}
-	s.dbName = dbName
+	s.curDB = dbName
 	if err := s.init(); err != nil {
 		return nil, err
 	}

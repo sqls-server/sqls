@@ -41,7 +41,7 @@ type ColumnDesc struct {
 	Extra   string
 }
 
-type Opener func(string, string) Database
+type Opener func(*Config) Database
 
 var drivers = make(map[string]Opener)
 
@@ -49,12 +49,12 @@ func Register(name string, f Opener) {
 	drivers[name] = f
 }
 
-func Open(driver string, dataSourceName, dbName string) (Database, error) {
-	d, ok := drivers[driver]
+func Open(cfg *Config) (Database, error) {
+	d, ok := drivers[cfg.Driver]
 	if !ok {
-		return nil, fmt.Errorf("driver not found: %v", driver)
+		return nil, fmt.Errorf("driver not found: %v", cfg.Driver)
 	}
-	return d(dataSourceName, dbName), nil
+	return d(cfg), nil
 }
 
 type Proto string

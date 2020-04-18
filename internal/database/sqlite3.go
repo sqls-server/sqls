@@ -16,10 +16,10 @@ type SQLite3DB struct {
 }
 
 func init() {
-	Register("sqlite3", func(dataSourceName, dbName string) Database {
-		return &SQLite3DB{
-			DataSourceName: dataSourceName,
-			Option:         &DBOption{},
+	Register("sqlite3", func(cfg *Config) Database {
+		return &MySQLDB{
+			Cfg:    cfg,
+			Option: &DBOption{},
 		}
 	})
 }

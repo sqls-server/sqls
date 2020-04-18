@@ -3,6 +3,7 @@ package handler
 import (
 	"testing"
 
+	"github.com/lighttiger2505/sqls/internal/database"
 	"github.com/lighttiger2505/sqls/internal/lsp"
 )
 
@@ -13,15 +14,9 @@ func TestComplete(t *testing.T) {
 
 	didChangeConfigurationParams := lsp.DidChangeConfigurationParams{
 		Settings: struct {
-			SQLS struct {
-				Driver         string "json:\"driver\""
-				DataSourceName string "json:\"dataSourceName\""
-			} "json:\"sqls\""
+			SQLS *database.Config "json:\"sqls\""
 		}{
-			SQLS: struct {
-				Driver         string "json:\"driver\""
-				DataSourceName string "json:\"dataSourceName\""
-			}{
+			SQLS: &database.Config{
 				Driver:         "mock",
 				DataSourceName: "",
 			},

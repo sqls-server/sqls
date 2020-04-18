@@ -15,10 +15,10 @@ type PostgreSQLDB struct {
 }
 
 func init() {
-	Register("postgresql", func(dataSourceName, dbName string) Database {
-		return &PostgreSQLDB{
-			DataSourceName: dataSourceName,
-			Option:         &DBOption{},
+	Register("postgresql", func(cfg *Config) Database {
+		return &MySQLDB{
+			Cfg:    cfg,
+			Option: &DBOption{},
 		}
 	})
 }

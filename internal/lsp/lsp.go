@@ -282,6 +282,6 @@ type ExecuteCommandParams struct {
 
 type DidChangeConfigurationParams struct {
 	Settings struct {
-		SQLS database.Config `json:"sqls"`
+		SQLS *database.Config `json:"sqls"`
 	} `json:"settings"`
 }
