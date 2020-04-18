@@ -12,13 +12,16 @@ import (
 
 	"github.com/olekukonko/tablewriter"
 	"github.com/sourcegraph/jsonrpc2"
+	"golang.org/x/xerrors"
 
 	"github.com/lighttiger2505/sqls/internal/completer"
+	"github.com/lighttiger2505/sqls/internal/config"
 	"github.com/lighttiger2505/sqls/internal/database"
 	"github.com/lighttiger2505/sqls/internal/lsp"
 )
 
 type Server struct {
+	Cfg       *config.Config
 	db        database.Database
 	curDB     string
 	files     map[string]*File
@@ -64,7 +67,13 @@ func (s *Server) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.
 			err = perr
 		}
 	}()
-
+	res, err := s.handle(ctx, conn, req)
+	if err != nil {
+		log.Printf("error serving %+v\n", err)
+	}
+	return res, err
+}
+func (s *Server) handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
 	switch req.Method {
 	case "initialize":
 		return s.handleInitialize(ctx, conn, req)
@@ -93,7 +102,6 @@ func (s *Server) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.
 	case "workspace/didChangeConfiguration":
 		return s.handleWorkspaceDidChangeConfiguration(ctx, conn, req)
 	}
-
 	return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeMethodNotFound, Message: fmt.Sprintf("method not supported: %s", req.Method)}
 }
 
@@ -271,10 +279,19 @@ func (s *Server) handleWorkspaceDidChangeConfiguration(ctx context.Context, conn
 	if s.db != nil {
 		s.db.Close()
 	}
-	s.db, err = database.Open(params.Settings.SQLS)
+
+	var connCfg *database.Config
+	if s.Cfg != nil {
+		connCfg = s.Cfg.Connections[0]
+	} else {
+		connCfg = params.Settings.SQLS
+	}
+
+	s.db, err = database.Open(connCfg)
 	if err != nil {
 		return nil, err
 	}
+
 	if s.curDB != "" {
 		if err := s.db.SwitchDB(s.curDB); err != nil {
 			return nil, err
@@ -282,7 +299,7 @@ func (s *Server) handleWorkspaceDidChangeConfiguration(ctx context.Context, conn
 	}
 
 	if err := s.init(); err != nil {
-		return nil, fmt.Errorf("sqls: failed database connection: %v", err)
+		return nil, xerrors.Errorf("sqls: failed database connection: %+v", err)
 	}
 	return nil, nil
 }

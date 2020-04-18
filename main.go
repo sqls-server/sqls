@@ -9,17 +9,20 @@ import (
 
 	"github.com/sourcegraph/jsonrpc2"
 
+	"github.com/lighttiger2505/sqls/internal/config"
 	"github.com/lighttiger2505/sqls/internal/handler"
 )
 
 var (
-	logfile string
-	trace   bool
+	logfile    string
+	trace      bool
+	configFile string
 )
 
 func main() {
-	flag.StringVar(&logfile, "log", "", "also log to this file (in addition to stderr)")
-	flag.BoolVar(&trace, "trace", false, "print all requests and responses")
+	flag.StringVar(&logfile, "log", "", "Also log to this file. (in addition to stderr)")
+	flag.StringVar(&configFile, "config", "", "Specifies an alternative per-user configuration file. If a configuration file is given on the command line, the workspace option (initializationOptions) will be ignored.")
+	flag.BoolVar(&trace, "trace", false, "Print all requests and responses.")
 	flag.Parse()
 
 	var logWriter io.Writer
@@ -43,6 +46,17 @@ func main() {
 	// Initialize language server
 	server := handler.NewServer()
 	handler := jsonrpc2.HandlerWithError(server.Handle)
+
+	// Load config
+	if configFile != "" {
+		cfg, err := config.GetConfig()
+		if err != nil {
+			log.Fatal(err)
+		}
+		if len(cfg.Connections) > 0 {
+			server.Cfg = cfg
+		}
+	}
 
 	// Set connect option
 	var connOpt []jsonrpc2.ConnOpt

@@ -4,19 +4,24 @@ import (
 	"context"
 	"database/sql"
 	"log"
+	"net/url"
+	"sort"
+	"strconv"
+	"strings"
 
 	_ "github.com/lib/pq"
+	"golang.org/x/xerrors"
 )
 
 type PostgreSQLDB struct {
-	DataSourceName string
-	Option         *DBOption
-	Conn           *sql.DB
+	Cfg    *Config
+	Option *DBOption
+	Conn   *sql.DB
 }
 
 func init() {
 	Register("postgresql", func(cfg *Config) Database {
-		return &MySQLDB{
+		return &PostgreSQLDB{
 			Cfg:    cfg,
 			Option: &DBOption{},
 		}
@@ -24,9 +29,13 @@ func init() {
 }
 
 func (db *PostgreSQLDB) Open() error {
-	conn, err := sql.Open("postgres", db.DataSourceName)
+	dsn, err := genPostgresConfig(db.Cfg)
 	if err != nil {
 		return err
+	}
+	conn, err := sql.Open("postgres", dsn)
+	if err != nil {
+		return xerrors.Errorf("cannot connection to postgresql, %+v", err)
 	}
 	conn.SetMaxIdleConns(DefaultMaxIdleConns)
 	if db.Option.MaxIdleConns != 0 {
@@ -153,4 +162,89 @@ func (db *PostgreSQLDB) Query(ctx context.Context, query string) (*sql.Rows, err
 
 func (db *PostgreSQLDB) SwitchDB(dbName string) error {
 	return ErrNotImplementation
+}
+
+func genPostgresURL(connCfg *Config) (*url.URL, error) {
+	return &url.URL{}, nil
+}
+
+func genPostgresConfig(connCfg *Config) (string, error) {
+	if connCfg.DataSourceName != "" {
+		return connCfg.DataSourceName, nil
+	}
+
+	q := url.Values{}
+	q.Set("user", connCfg.User)
+	q.Set("password", connCfg.Passwd)
+	q.Set("dbname", connCfg.DBName)
+
+	switch connCfg.Proto {
+	case ProtoTCP:
+		host, port := connCfg.Host, connCfg.Port
+		if host == "" {
+			host = "127.0.0.1"
+		}
+		if port == 0 {
+			port = 3306
+		}
+		q.Set("host", host)
+		q.Set("port", strconv.Itoa(port))
+	case ProtoUnix:
+		q.Set("host", connCfg.Path)
+	default:
+		return "", xerrors.Errorf("default addr for network %s unknown", connCfg.Proto)
+	}
+
+	for k, v := range connCfg.Params {
+		q.Set(k, v)
+	}
+
+	return genOptions(q, "", "=", " ", ",", true), nil
+}
+
+// genOptions takes URL values and generates options, joining together with
+// joiner, and separated by sep, with any multi URL values joined by valSep,
+// ignoring any values with keys in ignore.
+//
+// For example, to build a "ODBC" style connection string, use like the following:
+//     genOptions(u.Query(), "", "=", ";", ",")
+func genOptions(q url.Values, joiner, assign, sep, valSep string, skipWhenEmpty bool, ignore ...string) string {
+	qlen := len(q)
+	if qlen == 0 {
+		return ""
+	}
+
+	// make ignore map
+	ig := make(map[string]bool, len(ignore))
+	for _, v := range ignore {
+		ig[strings.ToLower(v)] = true
+	}
+
+	// sort keys
+	s := make([]string, len(q))
+	var i int
+	for k := range q {
+		s[i] = k
+		i++
+	}
+	sort.Strings(s)
+
+	var opts []string
+	for _, k := range s {
+		if !ig[strings.ToLower(k)] {
+			val := strings.Join(q[k], valSep)
+			if !skipWhenEmpty || val != "" {
+				if val != "" {
+					val = assign + val
+				}
+				opts = append(opts, k+val)
+			}
+		}
+	}
+
+	if len(opts) != 0 {
+		return joiner + strings.Join(opts, sep)
+	}
+
+	return ""
 }

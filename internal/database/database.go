@@ -66,6 +66,7 @@ const (
 )
 
 type Config struct {
+	Alias          string            `json:"alias" yaml:"alias"`
 	Driver         string            `json:"driver" yaml:"driver"`
 	DataSourceName string            `json:"dataSourceName" yaml:"dataSourceName"`
 	Proto          Proto             `json:"proto" yaml:"proto"`
