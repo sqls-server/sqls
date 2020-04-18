@@ -56,3 +56,24 @@ func Open(driver string, dataSourceName, dbName string) (Database, error) {
 	}
 	return d(dataSourceName, dbName), nil
 }
+
+type Proto string
+
+const (
+	ProtoTCP  Proto = "tcp"
+	ProtoUDP  Proto = "udp"
+	ProtoUnix Proto = "unix"
+)
+
+type Config struct {
+	Driver         string            `json:"driver" yaml:"driver"`
+	DataSourceName string            `json:"dataSourceName" yaml:"dataSourceName"`
+	Proto          Proto             `json:"proto" yaml:"proto"`
+	User           string            `json:"user" yaml:"user"`
+	Passwd         string            `json:"passwd" yaml:"passwd"`
+	Host           string            `json:"host" yaml:"host"`
+	Port           int               `json:"port" yaml:"port"`
+	Path           string            `json:"path" yaml:"path"`
+	DBName         string            `json:"dbName" yaml:"dbName"`
+	Params         map[string]string `json:"params" yaml:"params"`
+}

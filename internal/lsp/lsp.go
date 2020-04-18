@@ -1,5 +1,7 @@
 package lsp
 
+import "github.com/lighttiger2505/sqls/internal/database"
+
 // https://microsoft.github.io/language-server-protocol/specifications/specification-3-14/#initialize
 
 type InitializeParams struct {
@@ -280,9 +282,6 @@ type ExecuteCommandParams struct {
 
 type DidChangeConfigurationParams struct {
 	Settings struct {
-		SQLS struct {
-			Driver         string `json:"driver"`
-			DataSourceName string `json:"dataSourceName"`
-		} `json:"sqls"`
+		SQLS database.Config `json:"sqls"`
 	} `json:"settings"`
 }
