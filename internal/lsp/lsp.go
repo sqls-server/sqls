@@ -1,6 +1,6 @@
 package lsp
 
-import "github.com/lighttiger2505/sqls/internal/database"
+import "github.com/lighttiger2505/sqls/internal/config"
 
 // https://microsoft.github.io/language-server-protocol/specifications/specification-3-14/#initialize
 
@@ -282,6 +282,6 @@ type ExecuteCommandParams struct {
 
 type DidChangeConfigurationParams struct {
 	Settings struct {
-		SQLS *database.Config `json:"sqls"`
+		SQLS *config.Config `json:"sqls"`
 	} `json:"settings"`
 }

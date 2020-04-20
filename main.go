@@ -54,7 +54,7 @@ func main() {
 			log.Fatal(err)
 		}
 		if len(cfg.Connections) > 0 {
-			server.Cfg = cfg
+			server.FileCfg = cfg
 		}
 	}
 

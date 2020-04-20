@@ -4,7 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
+
+	"golang.org/x/xerrors"
 )
 
 var (
@@ -52,7 +53,7 @@ func Register(name string, f Opener) {
 func Open(cfg *Config) (Database, error) {
 	d, ok := drivers[cfg.Driver]
 	if !ok {
-		return nil, fmt.Errorf("driver not found: %v", cfg.Driver)
+		return nil, xerrors.Errorf("driver not found, %v", cfg.Driver)
 	}
 	return d(cfg), nil
 }

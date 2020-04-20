@@ -16,7 +16,7 @@ var yamlConfigPath = filepath.Join(getXDGConfigPath(runtime.GOOS), "config.yml")
 var jsonConfigPath = filepath.Join(getXDGConfigPath(runtime.GOOS), "config.json")
 
 type Config struct {
-	Connections []*database.Config `yaml:"connections"`
+	Connections []*database.Config `json:"connections" yaml:"connections"`
 }
 
 func newConfig() *Config {
