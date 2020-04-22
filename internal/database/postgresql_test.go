@@ -47,3 +47,38 @@ func Test_genPostgresConfig(t *testing.T) {
 		})
 	}
 }
+
+func Test_replaceDBName(t *testing.T) {
+	type args struct {
+		dsn    string
+		dbName string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    string
+		wantErr bool
+	}{
+		{
+			name: "",
+			args: args{
+				dsn:    "dbname=dvdrental host=127.0.0.1 password=mysecretpassword1234 port=15432 sslmode=disable user=postgres",
+				dbName: "template0",
+			},
+			want:    "dbname=template0 host=127.0.0.1 password=mysecretpassword1234 port=15432 sslmode=disable user=postgres",
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := replaceDBName(tt.args.dsn, tt.args.dbName)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("replaceDBName() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("replaceDBName() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
