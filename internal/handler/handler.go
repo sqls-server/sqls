@@ -298,31 +298,11 @@ func (s *Server) handleWorkspaceDidChangeConfiguration(ctx context.Context, conn
 	}
 	s.WSCfg = params.Settings.SQLS
 
-	// Get the most preferred DB connection settings
-	connCfg := s.topConnection()
-	if s.curConnectionIndex != 0 {
-		connCfg = s.getConnection(s.curConnectionIndex)
-	}
-	if connCfg == nil {
-		return nil, fmt.Errorf("not found database connection config, index %d", s.curConnectionIndex+1)
-	}
-
-	// Reconnect DB
+	// Initialize database database connection
 	if s.db != nil {
-		s.db.Close()
+		return nil, nil
 	}
-	s.db, err = database.Open(connCfg)
-	if err != nil {
-		return nil, err
-	}
-	if s.curDBName != "" {
-		if err := s.db.SwitchDB(s.curDBName); err != nil {
-			return nil, err
-		}
-	}
-
-	// Get database, table, columns to complete
-	if err := s.init(); err != nil {
+	if err := s.connectDatabase(); err != nil {
 		return nil, err
 	}
 	return nil, nil
@@ -404,11 +384,10 @@ func (s *Server) switchDatabase(params lsp.ExecuteCommandParams) (result interfa
 	if !ok {
 		return nil, fmt.Errorf("specify the db name as a string")
 	}
-	if err := s.db.SwitchDB(dbName); err != nil {
-		return nil, err
-	}
+
+	// Reconnect database
 	s.curDBName = dbName
-	if err := s.init(); err != nil {
+	if err := s.connectDatabase(); err != nil {
 		return nil, err
 	}
 	return nil, nil
@@ -449,29 +428,9 @@ func (s *Server) switchConnections(params lsp.ExecuteCommandParams) (result inte
 	}
 	index = index - 1
 
-	// Get the most preferred DB connection settings
-	connCfg := s.getConnection(index)
-	if connCfg == nil {
-		return nil, fmt.Errorf("not found database connection config, index %d", index+1)
-	}
+	// Reconnect database
 	s.curConnectionIndex = index
-
-	// Reconnect DB
-	if s.db != nil {
-		s.db.Close()
-	}
-	s.db, err = database.Open(connCfg)
-	if err != nil {
-		return nil, err
-	}
-	if s.curDBName != "" {
-		if err := s.db.SwitchDB(s.curDBName); err != nil {
-			return nil, err
-		}
-	}
-
-	// Get database infomations(databases, tables, columns) to complete
-	if err := s.init(); err != nil {
+	if err := s.connectDatabase(); err != nil {
 		return nil, err
 	}
 	return nil, nil
@@ -500,6 +459,35 @@ func (s *Server) handleWorkspaceExecuteCommand(ctx context.Context, conn *jsonrp
 		return s.switchConnections(params)
 	}
 	return nil, fmt.Errorf("unsupported command: %v", params.Command)
+}
+
+func (s *Server) connectDatabase() error {
+	// Get the most preferred DB connection settings
+	connCfg := s.topConnection()
+	if s.curConnectionIndex != 0 {
+		connCfg = s.getConnection(s.curConnectionIndex)
+	}
+	if connCfg == nil {
+		return fmt.Errorf("not found database connection config, index %d", s.curConnectionIndex+1)
+	}
+
+	// Connect database
+	db, err := database.Open(connCfg)
+	if err != nil {
+		return err
+	}
+	s.db = db
+	if s.curDBName != "" {
+		if err := s.db.SwitchDB(s.curDBName); err != nil {
+			return err
+		}
+	}
+
+	// Get database infomations(databases, tables, columns) to complete
+	if err := s.init(); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *Server) topConnection() *database.Config {
