@@ -302,7 +302,7 @@ func (s *Server) handleWorkspaceDidChangeConfiguration(ctx context.Context, conn
 	if s.db != nil {
 		return nil, nil
 	}
-	if err := s.connectDatabase(); err != nil {
+	if err := s.ConnectDatabase(); err != nil {
 		return nil, err
 	}
 	return nil, nil
@@ -387,7 +387,7 @@ func (s *Server) switchDatabase(params lsp.ExecuteCommandParams) (result interfa
 
 	// Reconnect database
 	s.curDBName = dbName
-	if err := s.connectDatabase(); err != nil {
+	if err := s.ConnectDatabase(); err != nil {
 		return nil, err
 	}
 	return nil, nil
@@ -430,7 +430,7 @@ func (s *Server) switchConnections(params lsp.ExecuteCommandParams) (result inte
 
 	// Reconnect database
 	s.curConnectionIndex = index
-	if err := s.connectDatabase(); err != nil {
+	if err := s.ConnectDatabase(); err != nil {
 		return nil, err
 	}
 	return nil, nil
@@ -461,7 +461,7 @@ func (s *Server) handleWorkspaceExecuteCommand(ctx context.Context, conn *jsonrp
 	return nil, fmt.Errorf("unsupported command: %v", params.Command)
 }
 
-func (s *Server) connectDatabase() error {
+func (s *Server) ConnectDatabase() error {
 	// Get the most preferred DB connection settings
 	connCfg := s.topConnection()
 	if s.curConnectionIndex != 0 {

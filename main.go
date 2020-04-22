@@ -56,6 +56,9 @@ func main() {
 		if len(cfg.Connections) > 0 {
 			server.FileCfg = cfg
 		}
+		if err := server.ConnectDatabase(); err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	// Set connect option
