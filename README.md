@@ -26,22 +26,26 @@ sqls aims to provide advanced intelligence for you to edit sql in your own edito
 
 - DML(Data Manipulation Language)
     - [x] SELECT
-        - [ ] Sub Query
-    - [ ] INSERT
-    - [ ] UPDATE
-    - [ ] DELETE
+        - [x] Sub Query
+    - [x] INSERT
+    - [x] UPDATE
+    - [x] DELETE
 - DDL(Data Definition Language)
     - [ ] CREATE TABLE
     - [ ] ALTER TABLE
 
 #### CodeAction
 
-Coming soon.
+![code_actions](https://github.com/lighttiger2505/sqls.vim/blob/master/imgs/sqls_vim_demo.gif)
 
-- [ ] Execute SQL
+- [x] Execute SQL
 - [ ] Explain SQL
-- [ ] Switch Connection(Selected Database Connection)
-- [ ] Switch Database
+- [x] Switch Connection(Selected Database Connection)
+- [x] Switch Database
+
+#### Hover
+
+Coming soon.
 
 #### Document Formatting
 
@@ -52,6 +56,10 @@ Coming soon.
 ```
 go get github.com/lighttiger2505/sqls
 ```
+
+### Vim Plugin
+
+- [sqls.vim](https://github.com/lighttiger2505/sqls.vim)
 
 ### DB Configuration (For the Language Server Client)
 

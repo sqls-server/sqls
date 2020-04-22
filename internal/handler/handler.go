@@ -8,21 +8,26 @@ import (
 	"fmt"
 	"log"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/olekukonko/tablewriter"
 	"github.com/sourcegraph/jsonrpc2"
 
 	"github.com/lighttiger2505/sqls/internal/completer"
+	"github.com/lighttiger2505/sqls/internal/config"
 	"github.com/lighttiger2505/sqls/internal/database"
 	"github.com/lighttiger2505/sqls/internal/lsp"
 )
 
 type Server struct {
-	db        database.Database
-	dbName    string
-	files     map[string]*File
-	completer *completer.Completer
+	FileCfg            *config.Config
+	WSCfg              *config.Config
+	db                 database.Database
+	curDBName          string
+	curConnectionIndex int
+	files              map[string]*File
+	completer          *completer.Completer
 }
 
 type File struct {
@@ -64,7 +69,13 @@ func (s *Server) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.
 			err = perr
 		}
 	}()
-
+	res, err := s.handle(ctx, conn, req)
+	if err != nil {
+		log.Printf("error serving %+v\n", err)
+	}
+	return res, err
+}
+func (s *Server) handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
 	switch req.Method {
 	case "initialize":
 		return s.handleInitialize(ctx, conn, req)
@@ -93,7 +104,6 @@ func (s *Server) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.
 	case "workspace/didChangeConfiguration":
 		return s.handleWorkspaceDidChangeConfiguration(ctx, conn, req)
 	}
-
 	return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeMethodNotFound, Message: fmt.Sprintf("method not supported: %s", req.Method)}
 }
 
@@ -232,6 +242,14 @@ func (s *Server) saveFile(uri string) error {
 	return nil
 }
 
+const (
+	CommandExecuteQuery     = "executeQuery"
+	CommandShowDatabases    = "showDatabases"
+	CommandShowConnections  = "showConnections"
+	CommandSwitchDatabase   = "switchDatabase"
+	CommandSwitchConnection = "switchConnections"
+)
+
 func (h *Server) handleTextDocumentCodeAction(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
 	if req.Params == nil {
 		return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeInvalidParams}
@@ -245,17 +263,27 @@ func (h *Server) handleTextDocumentCodeAction(ctx context.Context, conn *jsonrpc
 	commands := []lsp.Command{
 		{
 			Title:     "Execute Query",
-			Command:   "executeQuery",
+			Command:   CommandExecuteQuery,
 			Arguments: []interface{}{params.TextDocument.URI},
 		},
 		{
 			Title:     "Show Databases",
-			Command:   "showDatabases",
+			Command:   CommandShowDatabases,
+			Arguments: []interface{}{},
+		},
+		{
+			Title:     "Show Connections",
+			Command:   CommandShowConnections,
 			Arguments: []interface{}{},
 		},
 		{
 			Title:     "Switch Database",
-			Command:   "switchDatabase",
+			Command:   CommandSwitchDatabase,
+			Arguments: []interface{}{},
+		},
+		{
+			Title:     "Switch Connections",
+			Command:   CommandSwitchConnection,
 			Arguments: []interface{}{},
 		},
 	}
@@ -263,25 +291,19 @@ func (h *Server) handleTextDocumentCodeAction(ctx context.Context, conn *jsonrpc
 }
 
 func (s *Server) handleWorkspaceDidChangeConfiguration(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
+	// Update changed configration
 	var params lsp.DidChangeConfigurationParams
 	if err := json.Unmarshal(*req.Params, &params); err != nil {
 		return nil, err
 	}
+	s.WSCfg = params.Settings.SQLS
 
+	// Initialize database database connection
 	if s.db != nil {
-		s.db.Close()
+		return nil, nil
 	}
-	s.db, err = database.Open(
-		params.Settings.SQLS.Driver,
-		params.Settings.SQLS.DataSourceName,
-		s.dbName,
-	)
-	if err != nil {
+	if err := s.ConnectDatabase(); err != nil {
 		return nil, err
-	}
-
-	if err := s.init(); err != nil {
-		return nil, fmt.Errorf("sqls: failed database connection: %v", err)
 	}
 	return nil, nil
 }
@@ -291,15 +313,15 @@ func (s *Server) executeQuery(params lsp.ExecuteCommandParams) (result interface
 		return nil, errors.New("connection is closed")
 	}
 	if len(params.Arguments) != 1 {
-		return nil, fmt.Errorf("invalid arguments for %s", params.Command)
+		return nil, fmt.Errorf("required arguments were not provided: <File URI>")
 	}
 	uri, ok := params.Arguments[0].(string)
 	if !ok {
-		return nil, fmt.Errorf("invalid arguments for %s", params.Command)
+		return nil, fmt.Errorf("specify the file uri as a string")
 	}
 	f, ok := s.files[uri]
 	if !ok {
-		return nil, fmt.Errorf("document not found: %s", uri)
+		return nil, fmt.Errorf("document not found, %q", uri)
 	}
 
 	if err := s.db.Open(); err != nil {
@@ -356,17 +378,59 @@ func (s *Server) showDatabases(params lsp.ExecuteCommandParams) (result interfac
 
 func (s *Server) switchDatabase(params lsp.ExecuteCommandParams) (result interface{}, err error) {
 	if len(params.Arguments) != 1 {
-		return nil, fmt.Errorf("invalid arguments for %s", params.Command)
+		return nil, fmt.Errorf("required arguments were not provided: <DB Name>")
 	}
 	dbName, ok := params.Arguments[0].(string)
 	if !ok {
-		return nil, fmt.Errorf("invalid arguments for %s", params.Command)
+		return nil, fmt.Errorf("specify the db name as a string")
 	}
-	if err := s.db.SwitchDB(dbName); err != nil {
+
+	// Reconnect database
+	s.curDBName = dbName
+	if err := s.ConnectDatabase(); err != nil {
 		return nil, err
 	}
-	s.dbName = dbName
-	if err := s.init(); err != nil {
+	return nil, nil
+}
+
+func (s *Server) showConnections(params lsp.ExecuteCommandParams) (result interface{}, err error) {
+	results := []string{}
+	conns := s.getConfig().Connections
+	for i, conn := range conns {
+		var desc string
+		if conn.DataSourceName != "" {
+			desc = conn.DataSourceName
+		} else {
+			switch conn.Proto {
+			case database.ProtoTCP:
+				desc = fmt.Sprintf("tcp(%s:%d)/%s", conn.Host, conn.Port, conn.DBName)
+			case database.ProtoUnix:
+				desc = fmt.Sprintf("unix(%s)/%s", conn.Path, conn.DBName)
+			}
+		}
+		res := fmt.Sprintf("%d %s %s %s", i+1, conn.Driver, conn.Alias, desc)
+		results = append(results, res)
+	}
+	return strings.Join(results, "\n"), nil
+}
+
+func (s *Server) switchConnections(params lsp.ExecuteCommandParams) (result interface{}, err error) {
+	if len(params.Arguments) != 1 {
+		return nil, fmt.Errorf("required arguments were not provided: <Connection Index>")
+	}
+	indexStr, ok := params.Arguments[0].(string)
+	if !ok {
+		return nil, fmt.Errorf("specify the connection index as a number")
+	}
+	index, err := strconv.Atoi(indexStr)
+	if err != nil {
+		return nil, fmt.Errorf("specify the connection index as a number, %s", err)
+	}
+	index = index - 1
+
+	// Reconnect database
+	s.curConnectionIndex = index
+	if err := s.ConnectDatabase(); err != nil {
 		return nil, err
 	}
 	return nil, nil
@@ -383,12 +447,71 @@ func (s *Server) handleWorkspaceExecuteCommand(ctx context.Context, conn *jsonrp
 	}
 
 	switch params.Command {
-	case "executeQuery":
+	case CommandExecuteQuery:
 		return s.executeQuery(params)
-	case "showDatabases":
+	case CommandShowDatabases:
 		return s.showDatabases(params)
-	case "switchDatabase":
+	case CommandShowConnections:
+		return s.showConnections(params)
+	case CommandSwitchDatabase:
 		return s.switchDatabase(params)
+	case CommandSwitchConnection:
+		return s.switchConnections(params)
 	}
 	return nil, fmt.Errorf("unsupported command: %v", params.Command)
+}
+
+func (s *Server) ConnectDatabase() error {
+	// Get the most preferred DB connection settings
+	connCfg := s.topConnection()
+	if s.curConnectionIndex != 0 {
+		connCfg = s.getConnection(s.curConnectionIndex)
+	}
+	if connCfg == nil {
+		return fmt.Errorf("not found database connection config, index %d", s.curConnectionIndex+1)
+	}
+
+	// Connect database
+	db, err := database.Open(connCfg)
+	if err != nil {
+		return err
+	}
+	s.db = db
+	if s.curDBName != "" {
+		if err := s.db.SwitchDB(s.curDBName); err != nil {
+			return err
+		}
+	}
+
+	// Get database infomations(databases, tables, columns) to complete
+	if err := s.init(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Server) topConnection() *database.Config {
+	cfg := s.getConfig()
+	if len(cfg.Connections) == 0 {
+		return nil
+	}
+	return cfg.Connections[0]
+}
+
+func (s *Server) getConnection(index int) *database.Config {
+	cfg := s.getConfig()
+	if index < 0 && len(cfg.Connections) <= index {
+		return nil
+	}
+	return cfg.Connections[index]
+}
+
+func (s *Server) getConfig() *config.Config {
+	var cfg *config.Config
+	if s.FileCfg != nil {
+		cfg = s.FileCfg
+	} else {
+		cfg = s.WSCfg
+	}
+	return cfg
 }

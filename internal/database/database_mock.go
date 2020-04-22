@@ -343,7 +343,7 @@ func (m *MockResult) RowsAffected() (int64, error) {
 }
 
 func init() {
-	Register("mock", func(dataSourceName, dbName string) Database {
+	Register("mock", func(cfg *Config) Database {
 		return &MockDB{
 			MockOpen:      func() error { return nil },
 			MockClose:     func() error { return nil },

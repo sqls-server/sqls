@@ -10,22 +10,22 @@ import (
 )
 
 type SQLite3DB struct {
-	DataSourceName string
-	Option         *DBOption
-	Conn           *sql.DB
+	Cfg    *Config
+	Option *DBOption
+	Conn   *sql.DB
 }
 
 func init() {
-	Register("sqlite3", func(dataSourceName, dbName string) Database {
+	Register("sqlite3", func(cfg *Config) Database {
 		return &SQLite3DB{
-			DataSourceName: dataSourceName,
-			Option:         &DBOption{},
+			Cfg:    cfg,
+			Option: &DBOption{},
 		}
 	})
 }
 
 func (db *SQLite3DB) Open() error {
-	conn, err := sql.Open("sqlite3", db.DataSourceName)
+	conn, err := sql.Open("sqlite3", db.Cfg.DataSourceName)
 	if err != nil {
 		return err
 	}

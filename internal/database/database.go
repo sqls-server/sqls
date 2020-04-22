@@ -4,7 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
+
+	"golang.org/x/xerrors"
 )
 
 var (
@@ -41,7 +42,7 @@ type ColumnDesc struct {
 	Extra   string
 }
 
-type Opener func(string, string) Database
+type Opener func(*Config) Database
 
 var drivers = make(map[string]Opener)
 
@@ -49,10 +50,32 @@ func Register(name string, f Opener) {
 	drivers[name] = f
 }
 
-func Open(driver string, dataSourceName, dbName string) (Database, error) {
-	d, ok := drivers[driver]
+func Open(cfg *Config) (Database, error) {
+	d, ok := drivers[cfg.Driver]
 	if !ok {
-		return nil, fmt.Errorf("driver not found: %v", driver)
+		return nil, xerrors.Errorf("driver not found, %v", cfg.Driver)
 	}
-	return d(dataSourceName, dbName), nil
+	return d(cfg), nil
+}
+
+type Proto string
+
+const (
+	ProtoTCP  Proto = "tcp"
+	ProtoUDP  Proto = "udp"
+	ProtoUnix Proto = "unix"
+)
+
+type Config struct {
+	Alias          string            `json:"alias" yaml:"alias"`
+	Driver         string            `json:"driver" yaml:"driver"`
+	DataSourceName string            `json:"dataSourceName" yaml:"dataSourceName"`
+	Proto          Proto             `json:"proto" yaml:"proto"`
+	User           string            `json:"user" yaml:"user"`
+	Passwd         string            `json:"passwd" yaml:"passwd"`
+	Host           string            `json:"host" yaml:"host"`
+	Port           int               `json:"port" yaml:"port"`
+	Path           string            `json:"path" yaml:"path"`
+	DBName         string            `json:"dbName" yaml:"dbName"`
+	Params         map[string]string `json:"params" yaml:"params"`
 }

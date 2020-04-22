@@ -3,42 +3,38 @@ package database
 import (
 	"context"
 	"database/sql"
+	"fmt"
+	"strconv"
 
 	mysql "github.com/go-sql-driver/mysql"
 )
 
 type MySQLDB struct {
-	dataSourceName string
-	dbName         string
-	Option         *DBOption
-	Conn           *sql.DB
+	Cfg    *Config
+	Option *DBOption
+	Conn   *sql.DB
+	curDB  string
 }
 
 func init() {
-	Register("mysql", func(dataSourceName, dbName string) Database {
+	Register("mysql", func(cfg *Config) Database {
 		return &MySQLDB{
-			dataSourceName: dataSourceName,
-			dbName:         dbName,
-			Option:         &DBOption{},
+			Cfg:    cfg,
+			Option: &DBOption{},
 		}
 	})
 }
 
 func (db *MySQLDB) Open() error {
-	var conn *sql.DB
-
-	var connString string
-	if db.dbName != "" {
-		cfg, err := mysql.ParseDSN(db.dataSourceName)
-		if err != nil {
-			return err
-		}
-		cfg.DBName = db.dbName
-		connString = cfg.FormatDSN()
-	} else {
-		connString = db.dataSourceName
+	cfg, err := genMysqlConfig(db.Cfg)
+	if err != nil {
+		return err
 	}
-	conn, err := sql.Open("mysql", connString)
+	if db.curDB != "" {
+		cfg.DBName = db.curDB
+	}
+
+	conn, err := sql.Open("mysql", cfg.FormatDSN())
 	if err != nil {
 		return err
 	}
@@ -124,6 +120,44 @@ func (db *MySQLDB) Query(ctx context.Context, query string) (*sql.Rows, error) {
 }
 
 func (db *MySQLDB) SwitchDB(dbName string) error {
-	db.dbName = dbName
+	db.curDB = dbName
 	return nil
+}
+
+func genMysqlConfig(connCfg *Config) (*mysql.Config, error) {
+	cfg := mysql.NewConfig()
+
+	if connCfg.DataSourceName != "" {
+		return mysql.ParseDSN(connCfg.DataSourceName)
+	}
+
+	cfg.User = connCfg.User
+	cfg.Passwd = connCfg.Passwd
+	cfg.DBName = connCfg.DBName
+
+	switch connCfg.Proto {
+	case ProtoTCP, ProtoUDP:
+		host, port := connCfg.Host, connCfg.Port
+		if host == "" {
+			host = "127.0.0.1"
+		}
+		if port == 0 {
+			port = 3306
+		}
+		cfg.Addr = host + ":" + strconv.Itoa(port)
+		cfg.Net = string(connCfg.Proto)
+	case ProtoUnix:
+		if connCfg.Path != "" {
+			cfg.Addr = "/tmp/mysql.sock"
+			break
+		}
+		cfg.Addr = connCfg.Path
+		cfg.Net = string(connCfg.Proto)
+	default:
+		return nil, fmt.Errorf("default addr for network %s unknown", connCfg.Proto)
+	}
+
+	cfg.Params = connCfg.Params
+
+	return cfg, nil
 }

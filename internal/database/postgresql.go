@@ -3,31 +3,50 @@ package database
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log"
+	"net/url"
+	"sort"
+	"strconv"
+	"strings"
+	"unicode"
 
 	_ "github.com/lib/pq"
+	"golang.org/x/xerrors"
 )
 
 type PostgreSQLDB struct {
-	DataSourceName string
-	Option         *DBOption
-	Conn           *sql.DB
+	Cfg    *Config
+	Option *DBOption
+	Conn   *sql.DB
+	curDB  string
 }
 
 func init() {
-	Register("postgresql", func(dataSourceName, dbName string) Database {
+	Register("postgresql", func(cfg *Config) Database {
 		return &PostgreSQLDB{
-			DataSourceName: dataSourceName,
-			Option:         &DBOption{},
+			Cfg:    cfg,
+			Option: &DBOption{},
 		}
 	})
 }
 
 func (db *PostgreSQLDB) Open() error {
-	conn, err := sql.Open("postgres", db.DataSourceName)
+	dsn, err := genPostgresConfig(db.Cfg)
 	if err != nil {
 		return err
 	}
+	if db.curDB != "" {
+		dsn, err = replaceDBName(dsn, db.curDB)
+		if err != nil {
+			return err
+		}
+	}
+	conn, err := sql.Open("postgres", dsn)
+	if err != nil {
+		return xerrors.Errorf("cannot connection to postgresql, %+v", err)
+	}
+
 	conn.SetMaxIdleConns(DefaultMaxIdleConns)
 	if db.Option.MaxIdleConns != 0 {
 		conn.SetMaxIdleConns(db.Option.MaxIdleConns)
@@ -46,12 +65,7 @@ func (db *PostgreSQLDB) Close() error {
 
 func (db *PostgreSQLDB) Databases() ([]string, error) {
 	rows, err := db.Conn.Query(`
-	SELECT
-	  schema_name 
-	FROM
-	  information_schema.schemata
-	WHERE
-	  schema_name NOT IN ('pg_catalog', 'information_schema') 
+	SELECT datname FROM pg_database
 	`)
 	if err != nil {
 		log.Fatal(err)
@@ -152,5 +166,228 @@ func (db *PostgreSQLDB) Query(ctx context.Context, query string) (*sql.Rows, err
 }
 
 func (db *PostgreSQLDB) SwitchDB(dbName string) error {
-	return ErrNotImplementation
+	db.curDB = dbName
+	return nil
+}
+
+func genPostgresConfig(connCfg *Config) (string, error) {
+	if connCfg.DataSourceName != "" {
+		return connCfg.DataSourceName, nil
+	}
+
+	q := url.Values{}
+	q.Set("user", connCfg.User)
+	q.Set("password", connCfg.Passwd)
+	q.Set("dbname", connCfg.DBName)
+
+	switch connCfg.Proto {
+	case ProtoTCP:
+		host, port := connCfg.Host, connCfg.Port
+		if host == "" {
+			host = "127.0.0.1"
+		}
+		if port == 0 {
+			port = 3306
+		}
+		q.Set("host", host)
+		q.Set("port", strconv.Itoa(port))
+	case ProtoUnix:
+		q.Set("host", connCfg.Path)
+	default:
+		return "", xerrors.Errorf("default addr for network %s unknown", connCfg.Proto)
+	}
+
+	for k, v := range connCfg.Params {
+		q.Set(k, v)
+	}
+
+	return genOptions(q, "", "=", " ", ",", true), nil
+}
+
+// genOptions takes URL values and generates options, joining together with
+// joiner, and separated by sep, with any multi URL values joined by valSep,
+// ignoring any values with keys in ignore.
+//
+// For example, to build a "ODBC" style connection string, use like the following:
+//     genOptions(u.Query(), "", "=", ";", ",")
+func genOptions(q url.Values, joiner, assign, sep, valSep string, skipWhenEmpty bool, ignore ...string) string {
+	qlen := len(q)
+	if qlen == 0 {
+		return ""
+	}
+
+	// make ignore map
+	ig := make(map[string]bool, len(ignore))
+	for _, v := range ignore {
+		ig[strings.ToLower(v)] = true
+	}
+
+	// sort keys
+	s := make([]string, len(q))
+	var i int
+	for k := range q {
+		s[i] = k
+		i++
+	}
+	sort.Strings(s)
+
+	var opts []string
+	for _, k := range s {
+		if !ig[strings.ToLower(k)] {
+			val := strings.Join(q[k], valSep)
+			if !skipWhenEmpty || val != "" {
+				if val != "" {
+					val = assign + val
+				}
+				opts = append(opts, k+val)
+			}
+		}
+	}
+
+	if len(opts) != 0 {
+		return joiner + strings.Join(opts, sep)
+	}
+
+	return ""
+}
+
+type values map[string]string
+
+// scanner implements a tokenizer for libpq-style option strings.
+type scanner struct {
+	s []rune
+	i int
+}
+
+// Next returns the next rune.
+// It returns 0, false if the end of the text has been reached.
+func (s *scanner) Next() (rune, bool) {
+	if s.i >= len(s.s) {
+		return 0, false
+	}
+	r := s.s[s.i]
+	s.i++
+	return r, true
+}
+
+// newScanner returns a new scanner initialized with the option string s.
+func newScanner(s string) *scanner {
+	return &scanner{[]rune(s), 0}
+}
+
+// SkipSpaces returns the next non-whitespace rune.
+// It returns 0, false if the end of the text has been reached.
+func (s *scanner) SkipSpaces() (rune, bool) {
+	r, ok := s.Next()
+	for unicode.IsSpace(r) && ok {
+		r, ok = s.Next()
+	}
+	return r, ok
+}
+
+// The parsing code is based on conninfo_parse from libpq's fe-connect.c
+func parseOpts(name string, o values) error {
+	s := newScanner(name)
+
+	for {
+		var (
+			keyRunes, valRunes []rune
+			r                  rune
+			ok                 bool
+		)
+
+		if r, ok = s.SkipSpaces(); !ok {
+			break
+		}
+
+		// Scan the key
+		for !unicode.IsSpace(r) && r != '=' {
+			keyRunes = append(keyRunes, r)
+			if r, ok = s.Next(); !ok {
+				break
+			}
+		}
+
+		// Skip any whitespace if we're not at the = yet
+		if r != '=' {
+			r, ok = s.SkipSpaces()
+		}
+
+		// The current character should be =
+		if r != '=' || !ok {
+			return fmt.Errorf(`missing "=" after %q in connection info string"`, string(keyRunes))
+		}
+
+		// Skip any whitespace after the =
+		if r, ok = s.SkipSpaces(); !ok {
+			// If we reach the end here, the last value is just an empty string as per libpq.
+			o[string(keyRunes)] = ""
+			break
+		}
+
+		if r != '\'' {
+			for !unicode.IsSpace(r) {
+				if r == '\\' {
+					if r, ok = s.Next(); !ok {
+						return fmt.Errorf(`missing character after backslash`)
+					}
+				}
+				valRunes = append(valRunes, r)
+
+				if r, ok = s.Next(); !ok {
+					break
+				}
+			}
+		} else {
+		quote:
+			for {
+				if r, ok = s.Next(); !ok {
+					return fmt.Errorf(`unterminated quoted string literal in connection string`)
+				}
+				switch r {
+				case '\'':
+					break quote
+				case '\\':
+					r, _ = s.Next()
+					fallthrough
+				default:
+					valRunes = append(valRunes, r)
+				}
+			}
+		}
+
+		o[string(keyRunes)] = string(valRunes)
+	}
+
+	return nil
+}
+
+func parseURL(opts values) (string, error) {
+	var kvs []string
+	escaper := strings.NewReplacer(` `, `\ `, `'`, `\'`, `\`, `\\`)
+	accrue := func(k, v string) {
+		if v != "" {
+			kvs = append(kvs, k+"="+escaper.Replace(v))
+		}
+	}
+
+	for k, v := range opts {
+		accrue(k, v)
+	}
+
+	sort.Strings(kvs) // Makes testing easier (not a performance concern)
+	return strings.Join(kvs, " "), nil
+}
+
+func replaceDBName(dsn, dbName string) (string, error) {
+	o := make(values)
+	if err := parseOpts(dsn, o); err != nil {
+		return "", err
+	}
+	o["dbname"] = dbName
+	newDSN, err := parseURL(o)
+	if err != nil {
+		return "", err
+	}
+	return newDSN, nil
 }

@@ -11,11 +11,10 @@ services:
       TZ: 'Asia/Tokyo'
     command: mysqld --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     volumes:
-    - ./docker/mysql/data:/var/lib/mysql
-    - ./docker/mysql/my.cnf:/etc/mysql/conf.d/my.cnf
-    - ./docker/mysql/sql:/docker-entrypoint-initdb.d
+    - ./.docker/mysql/data:/var/lib/mysql
     ports:
     - 13306:3306
+    restart: always
   db:
     image: postgres:12-alpine
     container_name: sqls_postgres
@@ -28,4 +27,5 @@ services:
       - POSTGRES_DB=dvdrental
       - DATABASE_HOST=localhost
     volumes:
-      - ./docker/postgres/init:/docker-entrypoint-initdb.d
+      - ./.docker/postgres/data:/var/lib/postgresql/data
+    restart: always
