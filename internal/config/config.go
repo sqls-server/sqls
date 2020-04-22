@@ -134,7 +134,9 @@ func createNewConfig() error {
 			},
 		},
 	}
-	cfg.Save()
+	if err := cfg.Save(); err != nil {
+		return err
+	}
 	return nil
 }
 
