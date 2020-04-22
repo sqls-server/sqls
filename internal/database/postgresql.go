@@ -65,12 +65,7 @@ func (db *PostgreSQLDB) Close() error {
 
 func (db *PostgreSQLDB) Databases() ([]string, error) {
 	rows, err := db.Conn.Query(`
-	SELECT
-	  schema_name 
-	FROM
-	  information_schema.schemata
-	WHERE
-	  schema_name NOT IN ('pg_catalog', 'information_schema') 
+	SELECT datname FROM pg_database
 	`)
 	if err != nil {
 		log.Fatal(err)
