@@ -300,9 +300,11 @@ func (s *Server) handleWorkspaceDidChangeConfiguration(ctx context.Context, conn
 
 	// Get the most preferred DB connection settings
 	connCfg := s.topConnection()
+	if s.curConnectionIndex != 0 {
+		connCfg = s.getConnection(s.curConnectionIndex)
+	}
 	if connCfg == nil {
-		log.Printf("database connection not found")
-		return
+		return nil, fmt.Errorf("not found database connection config, index %d", s.curConnectionIndex+1)
 	}
 
 	// Reconnect DB
@@ -331,15 +333,15 @@ func (s *Server) executeQuery(params lsp.ExecuteCommandParams) (result interface
 		return nil, errors.New("connection is closed")
 	}
 	if len(params.Arguments) != 1 {
-		return nil, fmt.Errorf("invalid arguments for %s", params.Command)
+		return nil, fmt.Errorf("required arguments were not provided: <File URI>")
 	}
 	uri, ok := params.Arguments[0].(string)
 	if !ok {
-		return nil, fmt.Errorf("invalid arguments for %s", params.Command)
+		return nil, fmt.Errorf("specify the file uri as a string")
 	}
 	f, ok := s.files[uri]
 	if !ok {
-		return nil, fmt.Errorf("document not found: %s", uri)
+		return nil, fmt.Errorf("document not found, %q", uri)
 	}
 
 	if err := s.db.Open(); err != nil {
@@ -396,11 +398,11 @@ func (s *Server) showDatabases(params lsp.ExecuteCommandParams) (result interfac
 
 func (s *Server) switchDatabase(params lsp.ExecuteCommandParams) (result interface{}, err error) {
 	if len(params.Arguments) != 1 {
-		return nil, fmt.Errorf("invalid arguments for %s", params.Command)
+		return nil, fmt.Errorf("required arguments were not provided: <DB Name>")
 	}
 	dbName, ok := params.Arguments[0].(string)
 	if !ok {
-		return nil, fmt.Errorf("invalid arguments for %s", params.Command)
+		return nil, fmt.Errorf("specify the db name as a string")
 	}
 	if err := s.db.SwitchDB(dbName); err != nil {
 		return nil, err
@@ -427,7 +429,7 @@ func (s *Server) showConnections(params lsp.ExecuteCommandParams) (result interf
 				desc = fmt.Sprintf("unix(%s)/%s", conn.Path, conn.DBName)
 			}
 		}
-		res := fmt.Sprintf("%d %s %s %s", i, conn.Driver, conn.Alias, desc)
+		res := fmt.Sprintf("%d %s %s %s", i+1, conn.Driver, conn.Alias, desc)
 		results = append(results, res)
 	}
 	return strings.Join(results, "\n"), nil
@@ -435,22 +437,22 @@ func (s *Server) showConnections(params lsp.ExecuteCommandParams) (result interf
 
 func (s *Server) switchConnections(params lsp.ExecuteCommandParams) (result interface{}, err error) {
 	if len(params.Arguments) != 1 {
-		return nil, fmt.Errorf("invalid arguments for %s", params.Command)
+		return nil, fmt.Errorf("required arguments were not provided: <Connection Index>")
 	}
 	indexStr, ok := params.Arguments[0].(string)
 	if !ok {
-		return nil, fmt.Errorf("invalid arguments for %s", params.Command)
+		return nil, fmt.Errorf("specify the connection index as a number")
 	}
 	index, err := strconv.Atoi(indexStr)
 	if err != nil {
-		return nil, fmt.Errorf("cannot parse connection index, %+v", err)
+		return nil, fmt.Errorf("specify the connection index as a number, %s", err)
 	}
+	index = index - 1
 
 	// Get the most preferred DB connection settings
 	connCfg := s.getConnection(index)
 	if connCfg == nil {
-		log.Printf("database connection not found")
-		return
+		return nil, fmt.Errorf("not found database connection config, index %d", index+1)
 	}
 	s.curConnectionIndex = index
 
@@ -468,7 +470,7 @@ func (s *Server) switchConnections(params lsp.ExecuteCommandParams) (result inte
 		}
 	}
 
-	// Get database, table, columns to complete
+	// Get database infomations(databases, tables, columns) to complete
 	if err := s.init(); err != nil {
 		return nil, err
 	}
@@ -510,7 +512,7 @@ func (s *Server) topConnection() *database.Config {
 
 func (s *Server) getConnection(index int) *database.Config {
 	cfg := s.getConfig()
-	if len(cfg.Connections) < index {
+	if index < 0 && len(cfg.Connections) <= index {
 		return nil
 	}
 	return cfg.Connections[index]
@@ -519,10 +521,8 @@ func (s *Server) getConnection(index int) *database.Config {
 func (s *Server) getConfig() *config.Config {
 	var cfg *config.Config
 	if s.FileCfg != nil {
-		log.Printf("use file configration")
 		cfg = s.FileCfg
 	} else {
-		log.Printf("use workspace configration")
 		cfg = s.WSCfg
 	}
 	return cfg
