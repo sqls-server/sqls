@@ -1,5 +1,9 @@
+NAME := sqls
+VERSION := v0.1.0
+REVISION := $(shell git rev-parse --short HEAD)
+GOVERSION := $(go version)
 SRCS := $(shell find . -type f -name '*.go')
-LDFLAGS := -ldflags="-s -w -X \"main.version=$(VERSION)\" -X \"main.revision=$(REVISION)\" -X \"main.goversion=$(GOVERSION)\" "
+LDFLAGS := -ldflags="-s -w -X \"main.version=$(VERSION)\" -X \"main.revision=$(REVISION)\""
 
 .PHONY: test
 test:

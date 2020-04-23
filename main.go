@@ -14,7 +14,14 @@ import (
 	"github.com/lighttiger2505/sqls/internal/handler"
 )
 
+// builtin variables. see Makefile
 var (
+	version  string
+	revision string
+)
+
+var (
+	ver        bool
 	help       bool
 	logfile    string
 	trace      bool
@@ -23,6 +30,7 @@ var (
 
 func main() {
 	flag.BoolVar(&help, "help", false, "Print help.")
+	flag.BoolVar(&ver, "version", false, "Print version.")
 	flag.StringVar(&logfile, "log", "", "Also log to this file. (in addition to stderr)")
 	flag.StringVar(&configFile, "config", "", "Specifies an alternative per-user configuration file. If a configuration file is given on the command line, the workspace option (initializationOptions) will be ignored.")
 	flag.BoolVar(&trace, "trace", false, "Print all requests and responses.")
@@ -31,6 +39,11 @@ func main() {
 	if help {
 		fmt.Fprintf(os.Stderr, "usage: sqls [flags]\n")
 		flag.PrintDefaults()
+		return
+	}
+
+	if ver {
+		fmt.Fprintf(os.Stderr, "sqls Version:%s, Revision:%s\n", version, revision)
 		return
 	}
 
