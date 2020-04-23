@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -14,16 +15,24 @@ import (
 )
 
 var (
+	help       bool
 	logfile    string
 	trace      bool
 	configFile string
 )
 
 func main() {
+	flag.BoolVar(&help, "help", false, "Print help.")
 	flag.StringVar(&logfile, "log", "", "Also log to this file. (in addition to stderr)")
 	flag.StringVar(&configFile, "config", "", "Specifies an alternative per-user configuration file. If a configuration file is given on the command line, the workspace option (initializationOptions) will be ignored.")
 	flag.BoolVar(&trace, "trace", false, "Print all requests and responses.")
 	flag.Parse()
+
+	if help {
+		fmt.Fprintf(os.Stderr, "usage: sqls [flags]\n")
+		flag.PrintDefaults()
+		return
+	}
 
 	var logWriter io.Writer
 	if logfile != "" {
