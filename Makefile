@@ -16,3 +16,8 @@ install: $(SRCS)
 .PHONY: lint
 lint: $(SRCS)
 	golangci-lint run
+
+.PHONY: coverage
+coverage:
+	go test -v -coverprofile=coverage.out ./...
+	go tool cover -html=coverage.out
