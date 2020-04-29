@@ -60,7 +60,7 @@ var dummyTables = []string{
 	"countrylanguage",
 }
 var dummyCityColumns = []*ColumnDesc{
-	&ColumnDesc{
+	{
 		Name: "ID",
 		Type: "int(11)",
 		Null: "NO",
@@ -71,7 +71,7 @@ var dummyCityColumns = []*ColumnDesc{
 		},
 		Extra: "auto_increment",
 	},
-	&ColumnDesc{
+	{
 		Name: "Name",
 		Type: "char(35)",
 		Null: "NO",
@@ -82,7 +82,7 @@ var dummyCityColumns = []*ColumnDesc{
 		},
 		Extra: "",
 	},
-	&ColumnDesc{
+	{
 		Name: "CountryCode",
 		Type: "char(3)",
 		Null: "NO",
@@ -93,7 +93,7 @@ var dummyCityColumns = []*ColumnDesc{
 		},
 		Extra: "",
 	},
-	&ColumnDesc{
+	{
 		Name: "District",
 		Type: "char(20)",
 		Null: "NO",
@@ -104,7 +104,7 @@ var dummyCityColumns = []*ColumnDesc{
 		},
 		Extra: "",
 	},
-	&ColumnDesc{
+	{
 		Name: "Population",
 		Type: "int(11)",
 		Null: "NO",
@@ -117,7 +117,7 @@ var dummyCityColumns = []*ColumnDesc{
 	},
 }
 var dummyCountryColumns = []*ColumnDesc{
-	&ColumnDesc{
+	{
 		Name: "Code",
 		Type: "char(3)",
 		Null: "NO",
@@ -128,7 +128,7 @@ var dummyCountryColumns = []*ColumnDesc{
 		},
 		Extra: "auto_increment",
 	},
-	&ColumnDesc{
+	{
 		Name: "Name",
 		Type: "char(52)",
 		Null: "NO",
@@ -139,7 +139,7 @@ var dummyCountryColumns = []*ColumnDesc{
 		},
 		Extra: "",
 	},
-	&ColumnDesc{
+	{
 		Name: "CountryCode",
 		Type: "char(3)",
 		Null: "NO",
@@ -150,7 +150,7 @@ var dummyCountryColumns = []*ColumnDesc{
 		},
 		Extra: "",
 	},
-	&ColumnDesc{
+	{
 		Name: "Continent",
 		Type: "enum('Asia','Europe','North America','Africa','Oceania','Antarctica','South America')",
 		Null: "NO",
@@ -161,7 +161,7 @@ var dummyCountryColumns = []*ColumnDesc{
 		},
 		Extra: "",
 	},
-	&ColumnDesc{
+	{
 		Name: "Region",
 		Type: "char(26)",
 		Null: "NO",
@@ -172,7 +172,7 @@ var dummyCountryColumns = []*ColumnDesc{
 		},
 		Extra: "",
 	},
-	&ColumnDesc{
+	{
 		Name: "SurfaceArea",
 		Type: "decimal(10,2)",
 		Null: "NO",
@@ -183,7 +183,7 @@ var dummyCountryColumns = []*ColumnDesc{
 		},
 		Extra: "auto_increment",
 	},
-	&ColumnDesc{
+	{
 		Name: "IndepYear",
 		Type: "smallint(6)",
 		Null: "YES",
@@ -194,7 +194,7 @@ var dummyCountryColumns = []*ColumnDesc{
 		},
 		Extra: "",
 	},
-	&ColumnDesc{
+	{
 		Name: "LifeExpectancy",
 		Type: "decimal(3,1)",
 		Null: "YES",
@@ -205,7 +205,7 @@ var dummyCountryColumns = []*ColumnDesc{
 		},
 		Extra: "",
 	},
-	&ColumnDesc{
+	{
 		Name: "GNP",
 		Type: "decimal(10,2)",
 		Null: "YES",
@@ -216,7 +216,7 @@ var dummyCountryColumns = []*ColumnDesc{
 		},
 		Extra: "",
 	},
-	&ColumnDesc{
+	{
 		Name: "GNPOld",
 		Type: "decimal(10,2)",
 		Null: "YES",
@@ -227,7 +227,7 @@ var dummyCountryColumns = []*ColumnDesc{
 		},
 		Extra: "",
 	},
-	&ColumnDesc{
+	{
 		Name: "LocalName",
 		Type: "char(45)",
 		Null: "NO",
@@ -238,7 +238,7 @@ var dummyCountryColumns = []*ColumnDesc{
 		},
 		Extra: "",
 	},
-	&ColumnDesc{
+	{
 		Name: "GovernmentForm",
 		Type: "char(45)",
 		Null: "NO",
@@ -249,7 +249,7 @@ var dummyCountryColumns = []*ColumnDesc{
 		},
 		Extra: "",
 	},
-	&ColumnDesc{
+	{
 		Name: "HeadOfState",
 		Type: "char(60)",
 		Null: "YES",
@@ -260,7 +260,7 @@ var dummyCountryColumns = []*ColumnDesc{
 		},
 		Extra: "",
 	},
-	&ColumnDesc{
+	{
 		Name: "Capital",
 		Type: "int(11)",
 		Null: "YES",
@@ -271,7 +271,7 @@ var dummyCountryColumns = []*ColumnDesc{
 		},
 		Extra: "",
 	},
-	&ColumnDesc{
+	{
 		Name: "Code2",
 		Type: "char(2)",
 		Null: "NO",
@@ -284,7 +284,7 @@ var dummyCountryColumns = []*ColumnDesc{
 	},
 }
 var dummyCountryLanguageColumns = []*ColumnDesc{
-	&ColumnDesc{
+	{
 		Name: "CountryCode",
 		Type: "char(3)",
 		Null: "NO",
@@ -295,7 +295,7 @@ var dummyCountryLanguageColumns = []*ColumnDesc{
 		},
 		Extra: "",
 	},
-	&ColumnDesc{
+	{
 		Name: "Language",
 		Type: "char(30)",
 		Null: "NO",
@@ -306,7 +306,7 @@ var dummyCountryLanguageColumns = []*ColumnDesc{
 		},
 		Extra: "",
 	},
-	&ColumnDesc{
+	{
 		Name: "IsOfficial",
 		Type: "enum('T','F')",
 		Null: "NO",
@@ -317,7 +317,7 @@ var dummyCountryLanguageColumns = []*ColumnDesc{
 		},
 		Extra: "",
 	},
-	&ColumnDesc{
+	{
 		Name: "Percentage",
 		Type: "decimal(4,1)",
 		Null: "NO",
