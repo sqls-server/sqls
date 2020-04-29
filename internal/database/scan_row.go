@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"golang.org/x/xerrors"
 )
 
 func Columns(rows *sql.Rows) ([]string, error) {
@@ -14,7 +16,7 @@ func Columns(rows *sql.Rows) ([]string, error) {
 
 	cols, err = rows.Columns()
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("cannot get query columns, %s", err)
 	}
 
 	for i, c := range cols {

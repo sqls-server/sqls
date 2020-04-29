@@ -9,10 +9,14 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/lighttiger2505/sqls/ast"
+	"github.com/lighttiger2505/sqls/dialect"
 	"github.com/lighttiger2505/sqls/internal/database"
 	"github.com/lighttiger2505/sqls/internal/lsp"
+	"github.com/lighttiger2505/sqls/parser"
 	"github.com/olekukonko/tablewriter"
 	"github.com/sourcegraph/jsonrpc2"
+	"golang.org/x/xerrors"
 )
 
 const (
@@ -90,7 +94,7 @@ func (s *Server) handleWorkspaceExecuteCommand(ctx context.Context, conn *jsonrp
 
 func (s *Server) executeQuery(params lsp.ExecuteCommandParams) (result interface{}, err error) {
 	if s.db == nil {
-		return nil, errors.New("connection is closed")
+		return nil, errors.New("database connection is not open")
 	}
 	if len(params.Arguments) != 1 {
 		return nil, fmt.Errorf("required arguments were not provided: <File URI>")
@@ -109,39 +113,59 @@ func (s *Server) executeQuery(params lsp.ExecuteCommandParams) (result interface
 	}
 	defer s.db.Close()
 
-	if _, isQuery := database.QueryExecType(f.Text, ""); isQuery {
-		rows, err := s.db.Query(context.Background(), f.Text)
-		if err != nil {
-			return err.Error(), nil
-		}
-		columns, err := database.Columns(rows)
-		if err != nil {
-			return nil, err
-		}
-		stringRows, err := database.ScanRows(rows, len(columns))
-		if err != nil {
-			return nil, err
+	stmts, err := getStatements(f.Text)
+	if err != nil {
+		return nil, err
+	}
+
+	buf := new(bytes.Buffer)
+	for _, stmt := range stmts {
+		query := strings.TrimSpace(stmt.String())
+		if query == "" {
+			continue
 		}
 
-		buf := new(bytes.Buffer)
-		table := tablewriter.NewWriter(buf)
-		table.SetHeader(columns)
-		for _, stringRow := range stringRows {
-			table.Append(stringRow)
+		if _, isQuery := database.QueryExecType(query, ""); isQuery {
+			rows, err := s.db.Query(context.Background(), query)
+			if err != nil {
+				fmt.Fprintln(buf, err.Error())
+				continue
+			}
+			columns, err := database.Columns(rows)
+			if err != nil {
+				return nil, err
+			}
+			stringRows, err := database.ScanRows(rows, len(columns))
+			if err != nil {
+				return nil, err
+			}
+
+			table := tablewriter.NewWriter(buf)
+			table.SetHeader(columns)
+			for _, stringRow := range stringRows {
+				table.Append(stringRow)
+			}
+			table.Render()
+
+			fmt.Fprintf(buf, "%d rows in set", len(stringRows))
+			fmt.Fprintln(buf, "")
+			fmt.Fprintln(buf, "")
+		} else {
+			result, err := s.db.Exec(context.Background(), query)
+			if err != nil {
+				fmt.Fprintln(buf, err.Error())
+				continue
+			}
+			rowsAffected, err := result.RowsAffected()
+			if err != nil {
+				return nil, err
+			}
+			fmt.Fprintf(buf, "Query OK, %d row affected", rowsAffected)
+			fmt.Fprintln(buf, "")
+			fmt.Fprintln(buf, "")
 		}
-		table.Render()
-		return buf.String() + fmt.Sprintf("%d rows in set", len(stringRows)), nil
-	} else {
-		result, err := s.db.Exec(context.Background(), f.Text)
-		if err != nil {
-			return err.Error(), nil
-		}
-		rowsAffected, err := result.RowsAffected()
-		if err != nil {
-			return nil, err
-		}
-		return fmt.Sprintf("Query OK, %d row affected", rowsAffected), nil
 	}
+	return buf.String(), nil
 }
 
 func (s *Server) showDatabases(params lsp.ExecuteCommandParams) (result interface{}, err error) {
@@ -214,4 +238,26 @@ func (s *Server) switchConnections(params lsp.ExecuteCommandParams) (result inte
 		return nil, err
 	}
 	return nil, nil
+}
+
+func getStatements(text string) ([]*ast.Statement, error) {
+	src := bytes.NewBuffer([]byte(text))
+	p, err := parser.NewParser(src, &dialect.GenericSQLDialect{})
+	if err != nil {
+		return nil, err
+	}
+	parsed, err := p.Parse()
+	if err != nil {
+		return nil, err
+	}
+
+	var stmts []*ast.Statement
+	for _, node := range parsed.GetTokens() {
+		stmt, ok := node.(*ast.Statement)
+		if !ok {
+			return nil, xerrors.Errorf("invalid type want Statement parsed %T", stmt)
+		}
+		stmts = append(stmts, stmt)
+	}
+	return stmts, nil
 }
