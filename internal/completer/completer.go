@@ -220,9 +220,6 @@ func (c *Completer) Complete(text string, params lsp.CompletionParams) ([]lsp.Co
 	}
 
 	items := []lsp.CompletionItem{}
-	if completionTypeIs(cTypes, CompletionTypeKeyword) {
-		items = append(items, c.keywordCandidates()...)
-	}
 	if completionTypeIs(cTypes, CompletionTypeColumn) {
 		items = append(items, c.columnCandidates(definedTables, pare)...)
 	}
@@ -234,6 +231,9 @@ func (c *Completer) Complete(text string, params lsp.CompletionParams) ([]lsp.Co
 	}
 	if completionTypeIs(cTypes, CompletionTypeSubQueryColumn) {
 		items = append(items, c.SubQueryColumnCandidates(definedSubQuery)...)
+	}
+	if completionTypeIs(cTypes, CompletionTypeKeyword) {
+		items = append(items, c.keywordCandidates()...)
 	}
 
 	lastWord := getLastWord(text, params.Position.Line+1, params.Position.Character)
@@ -295,6 +295,7 @@ func getCompletionTypes(text string, pos token.Pos) ([]CompletionType, *parent, 
 			CompletionTypeAlias,
 			CompletionTypeView,
 			CompletionTypeFunction,
+			CompletionTypeKeyword,
 		}, noneParent, nil
 	// case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"AS"})):
 	// 	res = []CompletionType{}
@@ -330,6 +331,7 @@ func getCompletionTypes(text string, pos token.Pos) ([]CompletionType, *parent, 
 			CompletionTypeSubQueryColumn,
 			CompletionTypeSubQueryView,
 			CompletionTypeFunction,
+			CompletionTypeKeyword,
 		}, noneParent, nil
 	case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"JOIN", "COPY", "FROM", "DELETE FROM", "UPDATE", "INSERT INTO", "DESCRIBE", "TRUNCATE", "DESC", "EXPLAIN", "AND", "OR", "XOR"})):
 		return []CompletionType{
@@ -339,6 +341,7 @@ func getCompletionTypes(text string, pos token.Pos) ([]CompletionType, *parent, 
 			CompletionTypeSubQueryColumn,
 			CompletionTypeSubQueryView,
 			CompletionTypeFunction,
+			CompletionTypeKeyword,
 		}, noneParent, nil
 	case nodeWalker.CurNodeIs(genTokenMatcher([]token.Kind{token.LParen})) || nodeWalker.PrevNodesIs(true, genTokenMatcher([]token.Kind{token.LParen})):
 		// for insert columns
