@@ -88,14 +88,6 @@ func (s *Server) handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.
 		return s.handleTextDocumentDidClose(ctx, conn, req)
 	case "textDocument/completion":
 		return s.handleTextDocumentCompletion(ctx, conn, req)
-
-		const (
-			CommandExecuteQuery     = "executeQuery"
-			CommandShowDatabases    = "showDatabases"
-			CommandShowConnections  = "showConnections"
-			CommandSwitchDatabase   = "switchDatabase"
-			CommandSwitchConnection = "switchConnections"
-		)
 		// case "textDocument/formatting":
 		// 	return h.handleTextDocumentFormatting(ctx, conn, req)
 		// case "textDocument/documentSymbol":
