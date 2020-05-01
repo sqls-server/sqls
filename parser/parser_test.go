@@ -76,6 +76,64 @@ func TestParseStatement(t *testing.T) {
 	}
 }
 
+func TestParseComments(t *testing.T) {
+	testcases := []struct {
+		name    string
+		input   string
+		checkFn func(t *testing.T, stmts []*ast.Statement, input string)
+	}{
+		{
+			name:  "line comment with identiger",
+			input: "-- foo\nbar",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 2, "\nbar")
+
+				list := stmts[0].GetTokens()
+				testItem(t, list[0], "\n")
+				testIdentifier(t, list[1], "bar")
+			},
+		},
+		{
+			name:  "range commnet with identiger",
+			input: "/* foo */bar",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, "bar")
+
+				list := stmts[0].GetTokens()
+				testIdentifier(t, list[0], "bar")
+			},
+		},
+		{
+			name:  "range commnet with identiger list",
+			input: "foo, /* foo */bar",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, "foo, bar")
+
+				list := stmts[0].GetTokens()
+				testIdentifierList(t, list[0], "foo, bar")
+			},
+		},
+		{
+			name:  "multi line range commnet with identiger",
+			input: "/*\n * foo\n */\nbar",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 2, "\nbar")
+
+				list := stmts[0].GetTokens()
+				testItem(t, list[0], "\n")
+				testIdentifier(t, list[1], "bar")
+			},
+		},
+	}
+
+	for _, tt := range testcases {
+		t.Run(tt.name, func(t *testing.T) {
+			stmts := parseInit(t, tt.input)
+			tt.checkFn(t, stmts, tt.input)
+		})
+	}
+}
+
 func TestParseParenthesis(t *testing.T) {
 	testcases := []struct {
 		name    string
