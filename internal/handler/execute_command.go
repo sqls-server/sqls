@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"strconv"
 	"strings"
 
@@ -96,7 +97,7 @@ func (s *Server) executeQuery(params lsp.ExecuteCommandParams) (result interface
 	if s.db == nil {
 		return nil, errors.New("database connection is not open")
 	}
-	if len(params.Arguments) != 1 {
+	if len(params.Arguments) == 0 {
 		return nil, fmt.Errorf("required arguments were not provided: <File URI>")
 	}
 	uri, ok := params.Arguments[0].(string)
@@ -106,6 +107,16 @@ func (s *Server) executeQuery(params lsp.ExecuteCommandParams) (result interface
 	f, ok := s.files[uri]
 	if !ok {
 		return nil, fmt.Errorf("document not found, %q", uri)
+	}
+
+	showVertical := false
+	if len(params.Arguments) > 1 {
+		showVerticalFlag, ok := params.Arguments[1].(string)
+		if ok {
+			if showVerticalFlag == "-show-vertical" {
+				showVertical = true
+			}
+		}
 	}
 
 	if err := s.db.Open(); err != nil {
@@ -140,16 +151,25 @@ func (s *Server) executeQuery(params lsp.ExecuteCommandParams) (result interface
 				return nil, err
 			}
 
-			table := tablewriter.NewWriter(buf)
-			table.SetHeader(columns)
-			for _, stringRow := range stringRows {
-				table.Append(stringRow)
+			if showVertical {
+				table := newVerticalTableWriter(buf)
+				table.setHeaders(columns)
+				for _, stringRow := range stringRows {
+					table.appendRow(stringRow)
+				}
+				table.render()
+			} else {
+				table := tablewriter.NewWriter(buf)
+				table.SetHeader(columns)
+				for _, stringRow := range stringRows {
+					table.Append(stringRow)
+				}
+				table.Render()
 			}
-			table.Render()
-
 			fmt.Fprintf(buf, "%d rows in set", len(stringRows))
 			fmt.Fprintln(buf, "")
 			fmt.Fprintln(buf, "")
+
 		} else {
 			result, err := s.db.Exec(context.Background(), query)
 			if err != nil {
@@ -260,4 +280,45 @@ func getStatements(text string) ([]*ast.Statement, error) {
 		stmts = append(stmts, stmt)
 	}
 	return stmts, nil
+}
+
+type verticalTableWriter struct {
+	writer       io.Writer
+	headers      []string
+	rows         [][]string
+	headerMaxLen int
+}
+
+func newVerticalTableWriter(writer io.Writer) *verticalTableWriter {
+	return &verticalTableWriter{
+		writer: writer,
+	}
+}
+
+func (vtw *verticalTableWriter) setHeaders(headers []string) {
+	vtw.headers = headers
+	for _, h := range headers {
+		length := len(h)
+		if vtw.headerMaxLen < length {
+			vtw.headerMaxLen = length
+		}
+	}
+}
+
+func (vtw *verticalTableWriter) appendRow(row []string) {
+	vtw.rows = append(vtw.rows, row)
+}
+
+func (vtw *verticalTableWriter) render() {
+	for rowNum, row := range vtw.rows {
+		fmt.Fprintf(vtw.writer, "***************************[ %d. row ]***************************", rowNum+1)
+		fmt.Fprintln(vtw.writer, "")
+		for colNum, col := range row {
+			header := vtw.headers[colNum]
+
+			padHeader := fmt.Sprintf("%"+strconv.Itoa(vtw.headerMaxLen)+"s", header)
+			fmt.Fprintf(vtw.writer, "%s | %s", padHeader, col)
+			fmt.Fprintln(vtw.writer, "")
+		}
+	}
 }
