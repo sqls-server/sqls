@@ -192,6 +192,17 @@ type Command struct {
 	Arguments []interface{} `json:"arguments,omitempty"`
 }
 
+// https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_hover
+type HoverParams struct {
+	TextDocumentPositionParams
+	WorkDoneProgressParams
+}
+
+type Hover struct {
+	Contents MarkupContent/*MarkupContent | MarkedString | MarkedString[]*/ `json:"contents"`
+	Range    Range `json:"range,omitempty"`
+}
+
 // =========================================================
 // Common Items
 // =========================================================
@@ -284,4 +295,16 @@ type DidChangeConfigurationParams struct {
 	Settings struct {
 		SQLS *config.Config `json:"sqls"`
 	} `json:"settings"`
+}
+
+type MarkupKind string
+
+const (
+	PlainText MarkupKind = "plaintext"
+	Markdown  MarkupKind = "markdown"
+)
+
+type MarkupContent struct {
+	Kind  MarkupKind `json:"kind"`
+	Value string     `json:"value"`
 }

@@ -75,7 +75,7 @@ func TestInitialized(t *testing.T) {
 	want := lsp.InitializeResult{
 		Capabilities: lsp.ServerCapabilities{
 			TextDocumentSync: lsp.TDSKFull,
-			HoverProvider:    false,
+			HoverProvider:    true,
 			CompletionProvider: &lsp.CompletionOptions{
 				TriggerCharacters: []string{"."},
 			},

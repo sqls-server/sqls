@@ -88,10 +88,8 @@ func (s *Server) handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.
 		return s.handleTextDocumentDidClose(ctx, conn, req)
 	case "textDocument/completion":
 		return s.handleTextDocumentCompletion(ctx, conn, req)
-		// case "textDocument/formatting":
-		// 	return h.handleTextDocumentFormatting(ctx, conn, req)
-		// case "textDocument/documentSymbol":
-		// 	return h.handleTextDocumentSymbol(ctx, conn, req)
+	case "textDocument/hover":
+		return s.handleTextDocumentHover(ctx, conn, req)
 	case "textDocument/codeAction":
 		return s.handleTextDocumentCodeAction(ctx, conn, req)
 	case "workspace/executeCommand":
@@ -115,7 +113,7 @@ func (s *Server) handleInitialize(ctx context.Context, conn *jsonrpc2.Conn, req 
 	return lsp.InitializeResult{
 		Capabilities: lsp.ServerCapabilities{
 			TextDocumentSync:   lsp.TDSKFull,
-			HoverProvider:      false,
+			HoverProvider:      true,
 			CodeActionProvider: true,
 			CompletionProvider: &lsp.CompletionOptions{
 				TriggerCharacters: []string{"."},
