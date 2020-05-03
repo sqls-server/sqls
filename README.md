@@ -57,9 +57,10 @@ Coming soon.
 go get github.com/lighttiger2505/sqls
 ```
 
-### Vim Plugin
+### Editor Plugins
 
 - [sqls.vim](https://github.com/lighttiger2505/sqls.vim)
+- [vscode-sqls](https://github.com/lighttiger2505/vscode-sqls)
 
 ### DB Configuration (For the Language Server Client)
 
