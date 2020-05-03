@@ -125,6 +125,19 @@ func (di *DatabaseInfo) ColumnDescs(databaseName string) (cols []*database.Colum
 	return
 }
 
+func (di *DatabaseInfo) Column(databaseName, columnName string) (*database.ColumnDesc, bool) {
+	cols, ok := di.Columns[strings.ToUpper(databaseName)]
+	if !ok {
+		return nil, false
+	}
+	for _, col := range cols {
+		if strings.EqualFold(col.Name, columnName) {
+			return col, true
+		}
+	}
+	return nil, false
+}
+
 type Completer struct {
 	Conn   database.Database
 	DBInfo *DatabaseInfo
