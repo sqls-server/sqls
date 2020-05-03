@@ -45,7 +45,7 @@ sqls aims to provide advanced intelligence for you to edit sql in your own edito
 
 #### Hover
 
-Coming soon.
+![hover](./imgs/sqls_hover.gif)
 
 #### Document Formatting
 
