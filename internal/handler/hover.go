@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/lighttiger2505/sqls/ast"
@@ -18,6 +19,8 @@ import (
 	"github.com/sourcegraph/jsonrpc2"
 	"golang.org/x/xerrors"
 )
+
+var ErrNoHover = errors.New("no hover infomation found")
 
 func (s *Server) handleTextDocumentHover(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
 	if req.Params == nil {
@@ -36,6 +39,9 @@ func (s *Server) handleTextDocumentHover(ctx context.Context, conn *jsonrpc2.Con
 
 	res, err := hover(f.Text, params, s.completer.DBInfo)
 	if err != nil {
+		if err == ErrNoHover {
+			return nil, nil
+		}
 		return nil, err
 	}
 	return res, nil
@@ -62,16 +68,12 @@ func hover(text string, params lsp.HoverParams, dbInfo *completer.DatabaseInfo) 
 	if err != nil {
 		return nil, err
 	}
-	// definedSubQuery, err := parseutil.ExtractSubQueryView(parsed, pos)
-	// if err != nil {
-	// 	return nil, err
-	// }
 
 	nodeWalker := parseutil.NewNodeWalker(parsed, pos)
 	curNode := nodeWalker.CurNodeButtomMatched(hoverTargetMatcher)
 
 	if curNode == nil {
-		return nil, xerrors.Errorf("no hover infomation found")
+		return nil, ErrNoHover
 	}
 
 	var hoverContent *lsp.MarkupContent
@@ -79,7 +81,6 @@ func hover(text string, params lsp.HoverParams, dbInfo *completer.DatabaseInfo) 
 	case *ast.Identifer:
 		identName := v.String()
 
-		// translate column alias
 		// find column
 		hoverContents := []string{}
 		for _, table := range definedTables {
@@ -94,11 +95,11 @@ func hover(text string, params lsp.HoverParams, dbInfo *completer.DatabaseInfo) 
 			}
 		}
 		if len(hoverContents) >= 2 {
-			return nil, xerrors.Errorf("no hover infomation found")
+			return nil, ErrNoHover
 		}
 		if len(hoverContents) == 1 {
 			hoverContent = &lsp.MarkupContent{
-				Kind:  lsp.PlainText,
+				Kind:  lsp.Markdown,
 				Value: hoverContents[0],
 			}
 		}
@@ -126,14 +127,12 @@ func hover(text string, params lsp.HoverParams, dbInfo *completer.DatabaseInfo) 
 				Value: buf.String(),
 			}
 		}
-	case *ast.MemberIdentifer:
-		return nil, xerrors.Errorf("unknown node type %T", v)
 	default:
 		return nil, xerrors.Errorf("unknown node type %T", v)
 	}
 
 	if hoverContent == nil {
-		return nil, xerrors.Errorf("no hover infomation found")
+		return nil, ErrNoHover
 	}
 
 	res := &lsp.Hover{
