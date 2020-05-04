@@ -34,34 +34,32 @@ func TestHover(t *testing.T) {
 
 	uri := "file:///Users/octref/Code/css-test/test.sql"
 	testcases := []struct {
-		name     string
-		input    string
-		output   string
-		line     int
-		col      int
-		want     []string
-		notFound bool
+		name   string
+		input  string
+		output string
+		line   int
+		col    int
 	}{
 		{
-			name:     "not found head",
-			input:    "SELECT ID, Name FROM city",
-			line:     0,
-			col:      6,
-			notFound: true,
+			name:   "not found head",
+			input:  "SELECT ID, Name FROM city",
+			output: "",
+			line:   0,
+			col:    6,
 		},
 		{
-			name:     "not found tail",
-			input:    "SELECT ID, Name FROM city",
-			line:     0,
-			col:      15,
-			notFound: true,
+			name:   "not found tail",
+			input:  "SELECT ID, Name FROM city",
+			output: "",
+			line:   0,
+			col:    15,
 		},
 		{
-			name:     "not found duplicate ident",
-			input:    "SELECT Name FROM city, country",
-			line:     0,
-			col:      8,
-			notFound: true,
+			name:   "not found duplicate ident",
+			input:  "SELECT Name FROM city, country",
+			output: "",
+			line:   0,
+			col:    8,
 		},
 		{
 			name:   "select ident head",
@@ -207,12 +205,12 @@ func TestHover(t *testing.T) {
 
 			var got lsp.Hover
 			err := tx.conn.Call(tx.ctx, "textDocument/hover", hoverParams, &got)
-			if err != nil && !tt.notFound {
+			if err != nil {
 				t.Errorf("conn.Call textDocument/hover: %+v", err)
 				return
 			}
-			if err == nil && tt.notFound {
-				t.Errorf("want error, found hover: %+v", got)
+			if tt.output == "" && got.Contents.Value != "" {
+				t.Errorf("found hover, %q", got.Contents.Value)
 				return
 			}
 			testHover(t, tt.output, got)
