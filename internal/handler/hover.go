@@ -123,7 +123,7 @@ func hover(text string, params lsp.HoverParams, dbInfo *completer.DatabaseInfo) 
 				fmt.Fprintln(buf)
 			}
 			hoverContent = &lsp.MarkupContent{
-				Kind:  lsp.PlainText,
+				Kind:  lsp.Markdown,
 				Value: buf.String(),
 			}
 		}

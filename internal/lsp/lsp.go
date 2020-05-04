@@ -193,6 +193,7 @@ type Command struct {
 }
 
 // https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_hover
+
 type HoverParams struct {
 	TextDocumentPositionParams
 	WorkDoneProgressParams
