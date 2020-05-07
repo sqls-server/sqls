@@ -1,12 +1,14 @@
 package handler
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"strconv"
 	"strings"
 
@@ -94,6 +96,7 @@ func (s *Server) handleWorkspaceExecuteCommand(ctx context.Context, conn *jsonrp
 }
 
 func (s *Server) executeQuery(params lsp.ExecuteCommandParams) (result interface{}, err error) {
+	// parse execute command arguments
 	if s.db == nil {
 		return nil, errors.New("database connection is not open")
 	}
@@ -124,67 +127,125 @@ func (s *Server) executeQuery(params lsp.ExecuteCommandParams) (result interface
 	}
 	defer s.db.Close()
 
-	stmts, err := getStatements(f.Text)
+	// extract target query
+	text := f.Text
+	if params.Range != nil {
+		text = extractRangeText(
+			text,
+			params.Range.Start.Line,
+			params.Range.Start.Character,
+			params.Range.End.Line,
+			params.Range.End.Character,
+		)
+	}
+	stmts, err := getStatements(text)
 	if err != nil {
 		return nil, err
 	}
 
+	// execute statements
 	buf := new(bytes.Buffer)
 	for _, stmt := range stmts {
+		log.Println(text)
 		query := strings.TrimSpace(stmt.String())
 		if query == "" {
 			continue
 		}
 
 		if _, isQuery := database.QueryExecType(query, ""); isQuery {
-			rows, err := s.db.Query(context.Background(), query)
-			if err != nil {
-				fmt.Fprintln(buf, err.Error())
-				continue
-			}
-			columns, err := database.Columns(rows)
+			res, err := s.query(query, showVertical)
 			if err != nil {
 				return nil, err
 			}
-			stringRows, err := database.ScanRows(rows, len(columns))
-			if err != nil {
-				return nil, err
-			}
-
-			if showVertical {
-				table := newVerticalTableWriter(buf)
-				table.setHeaders(columns)
-				for _, stringRow := range stringRows {
-					table.appendRow(stringRow)
-				}
-				table.render()
-			} else {
-				table := tablewriter.NewWriter(buf)
-				table.SetHeader(columns)
-				for _, stringRow := range stringRows {
-					table.Append(stringRow)
-				}
-				table.Render()
-			}
-			fmt.Fprintf(buf, "%d rows in set", len(stringRows))
-			fmt.Fprintln(buf, "")
-			fmt.Fprintln(buf, "")
-
+			fmt.Fprintln(buf, res)
 		} else {
-			result, err := s.db.Exec(context.Background(), query)
-			if err != nil {
-				fmt.Fprintln(buf, err.Error())
-				continue
-			}
-			rowsAffected, err := result.RowsAffected()
+			res, err := s.exec(query, showVertical)
 			if err != nil {
 				return nil, err
 			}
-			fmt.Fprintf(buf, "Query OK, %d row affected", rowsAffected)
-			fmt.Fprintln(buf, "")
-			fmt.Fprintln(buf, "")
+			fmt.Fprintln(buf, res)
 		}
 	}
+	return buf.String(), nil
+}
+
+func extractRangeText(text string, startLine, startChar, endLine, endChar int) string {
+	writer := bytes.NewBufferString("")
+	scanner := bufio.NewScanner(strings.NewReader(text))
+
+	i := 0
+	for scanner.Scan() {
+		t := scanner.Text()
+		if i >= startLine && i <= endLine {
+			st, en := 0, len(t)
+
+			if i == startLine {
+				st = startChar
+			}
+			if i == endLine {
+				en = endChar
+			}
+
+			writer.Write([]byte(t[st:en]))
+			if i != endLine {
+				writer.Write([]byte("\n"))
+			}
+		}
+		i++
+	}
+	return writer.String()
+}
+
+func (s *Server) query(query string, vertical bool) (string, error) {
+	rows, err := s.db.Query(context.Background(), query)
+	if err != nil {
+		return err.Error(), nil
+	}
+	columns, err := database.Columns(rows)
+	if err != nil {
+		return "", err
+	}
+	stringRows, err := database.ScanRows(rows, len(columns))
+	if err != nil {
+		return "", err
+	}
+
+	buf := new(bytes.Buffer)
+	if vertical {
+		table := newVerticalTableWriter(buf)
+		table.setHeaders(columns)
+		for _, stringRow := range stringRows {
+			table.appendRow(stringRow)
+		}
+		table.render()
+	} else {
+		table := tablewriter.NewWriter(buf)
+		table.SetHeader(columns)
+		for _, stringRow := range stringRows {
+			table.Append(stringRow)
+		}
+		table.Render()
+	}
+	fmt.Fprintf(buf, "%d rows in set", len(stringRows))
+	fmt.Fprintln(buf, "")
+	fmt.Fprintln(buf, "")
+	return buf.String(), nil
+}
+
+func (s *Server) exec(query string, vertical bool) (string, error) {
+	result, err := s.db.Exec(context.Background(), query)
+	if err != nil {
+		return err.Error(), nil
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return "", err
+	}
+
+	buf := new(bytes.Buffer)
+	fmt.Fprintf(buf, "Query OK, %d row affected", rowsAffected)
+	fmt.Fprintln(buf, "")
+	fmt.Fprintln(buf, "")
 	return buf.String(), nil
 }
 

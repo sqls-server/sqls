@@ -283,11 +283,15 @@ type CodeActionParams struct {
 	Context      CodeActionContext      `json:"context"`
 }
 
+// https://microsoft.github.io/language-server-protocol/specifications/specification-3-14/#workspace_executeCommand
+
 type ExecuteCommandParams struct {
 	WorkDoneProgressParams
 
 	Command   string        `json:"command"`
 	Arguments []interface{} `json:"arguments,omitempty"`
+	// sqls specific option for query execute range
+	Range *Range `json:"range,omitempty"`
 }
 
 // https://microsoft.github.io/language-server-protocol/specifications/specification-3-14/#workspace_didChangeConfiguration

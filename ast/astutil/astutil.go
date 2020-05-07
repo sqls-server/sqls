@@ -10,7 +10,6 @@ import (
 )
 
 type NodeMatcher struct {
-	// NodeTypeMatcherFunc func(node interface{}) bool
 	NodeTypes     []ast.NodeType
 	ExpectTokens  []token.Kind
 	ExpectSQLType []dialect.KeywordKind

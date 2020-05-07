@@ -530,25 +530,6 @@ func (c *Completer) DatabaseCandidates() []lsp.CompletionItem {
 	return candidates
 }
 
-// func getLastToken(tokens []*sqltoken.Token, line, char int) (int, *sqltoken.Token) {
-// 	pos := sqltoken.Pos{
-// 		Line: line,
-// 		Col:  char,
-// 	}
-// 	var curIndex int
-// 	var curToken *sqltoken.Token
-// 	for i, token := range tokens {
-// 		if 0 <= sqltoken.ComparePos(pos, token.From) {
-// 			curToken = token
-// 			curIndex = i
-// 			if 0 >= sqltoken.ComparePos(pos, token.To) {
-// 				return curIndex, curToken
-// 			}
-// 		}
-// 	}
-// 	return curIndex, curToken
-// }
-
 func getLine(text string, line int) string {
 	scanner := bufio.NewScanner(strings.NewReader(text))
 	i := 1
