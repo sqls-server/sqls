@@ -4,7 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
+	"io/ioutil"
+	"net"
 
+	"golang.org/x/crypto/ssh"
 	"golang.org/x/xerrors"
 )
 
@@ -85,6 +89,45 @@ type SSHConfig struct {
 	Host       string `json:"host" yaml:"host"`
 	Port       int    `json:"port" yaml:"port"`
 	User       string `json:"user" yaml:"user"`
-	Passwd     string `json:"passwd" yaml:"passwd"`
+	PassPhrase string `json:"passPhrase" yaml:"passPhrase"`
 	PrivateKey string `json:"privateKey" yaml:"privateKey"`
+}
+
+func (s *SSHConfig) Endpoint() string {
+	return fmt.Sprintf("%s:%d", s.Host, s.Port)
+}
+
+func (s *SSHConfig) ClientConfig() (*ssh.ClientConfig, error) {
+	buffer, err := ioutil.ReadFile(s.PrivateKey)
+	if err != nil {
+		return nil, xerrors.Errorf("cannot read SSH private key file, PrivateKey=%s, %+v", s.PrivateKey, err)
+	}
+
+	var key ssh.Signer
+	if s.PassPhrase != "" {
+		key, err = ssh.ParsePrivateKeyWithPassphrase(buffer, []byte(s.PassPhrase))
+		if err != nil {
+			return nil, xerrors.Errorf("cannot parse SSH private key file with passphrase, PrivateKey=%s, %+v", s.PrivateKey, err)
+		}
+	} else {
+		key, err = ssh.ParsePrivateKey(buffer)
+		if err != nil {
+			return nil, xerrors.Errorf("cannot parse SSH private key file, PrivateKey=%s, %+v", s.PrivateKey, err)
+		}
+	}
+
+	sshConfig := &ssh.ClientConfig{
+		User:            s.User,
+		Auth:            []ssh.AuthMethod{ssh.PublicKeys(key)},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+	}
+	return sshConfig, nil
+}
+
+type ViaSSHDialer struct {
+	client *ssh.Client
+}
+
+func (self *ViaSSHDialer) Dial(addr string) (net.Conn, error) {
+	return self.client.Dial("tcp", addr)
 }
