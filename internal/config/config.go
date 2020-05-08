@@ -5,15 +5,14 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"runtime"
 
 	"github.com/lighttiger2505/sqls/internal/database"
 	"golang.org/x/xerrors"
 	"gopkg.in/yaml.v2"
 )
 
-var yamlConfigPath = filepath.Join(getXDGConfigPath(runtime.GOOS), "config.yml")
-var jsonConfigPath = filepath.Join(getXDGConfigPath(runtime.GOOS), "config.json")
+var ymlConfigPath = configFilePath("config.yml")
+var jsonConfigPath = configFilePath("config.json")
 
 type Config struct {
 	Connections []*database.Config `json:"connections" yaml:"connections"`
@@ -33,22 +32,22 @@ func GetConfig() (*Config, error) {
 }
 
 func (c *Config) Path() string {
-	return yamlConfigPath
+	return ymlConfigPath
 }
 
 func (c *Config) Read() (string, error) {
-	if err := os.MkdirAll(filepath.Dir(yamlConfigPath), 0700); err != nil {
+	if err := os.MkdirAll(filepath.Dir(ymlConfigPath), 0700); err != nil {
 		return "", xerrors.Errorf("cannot create directory, %+v", err)
 	}
 
-	if !IsFileExist(yamlConfigPath) {
-		_, err := os.Create(yamlConfigPath)
+	if !IsFileExist(ymlConfigPath) {
+		_, err := os.Create(ymlConfigPath)
 		if err != nil {
 			return "", xerrors.Errorf("cannot create config, %+v", err.Error())
 		}
 	}
 
-	file, err := os.OpenFile(yamlConfigPath, os.O_RDONLY, 0666)
+	file, err := os.OpenFile(ymlConfigPath, os.O_RDONLY, 0666)
 	if err != nil {
 		return "", xerrors.Errorf("cannot open config, %+v", err)
 	}
@@ -63,17 +62,17 @@ func (c *Config) Read() (string, error) {
 }
 
 func (c *Config) Load() error {
-	if err := os.MkdirAll(filepath.Dir(yamlConfigPath), 0700); err != nil {
+	if err := os.MkdirAll(filepath.Dir(ymlConfigPath), 0700); err != nil {
 		return xerrors.Errorf("cannot create directory, %+v", err)
 	}
 
-	if !IsFileExist(yamlConfigPath) {
+	if !IsFileExist(ymlConfigPath) {
 		if err := createNewConfig(); err != nil {
 			return err
 		}
 	}
 
-	file, err := os.OpenFile(yamlConfigPath, os.O_RDONLY, 0666)
+	file, err := os.OpenFile(ymlConfigPath, os.O_RDONLY, 0666)
 	if err != nil {
 		return xerrors.Errorf("cannot open config, %+v", err)
 	}
@@ -91,7 +90,7 @@ func (c *Config) Load() error {
 }
 
 func (c *Config) Save() error {
-	file, err := os.OpenFile(yamlConfigPath, os.O_WRONLY, 0666)
+	file, err := os.OpenFile(ymlConfigPath, os.O_WRONLY, 0666)
 	if err != nil {
 		return xerrors.Errorf("cannot open file, %+v", err)
 	}
@@ -110,7 +109,7 @@ func (c *Config) Save() error {
 
 func createNewConfig() error {
 	// Create new config file
-	_, err := os.Create(yamlConfigPath)
+	_, err := os.Create(ymlConfigPath)
 	if err != nil {
 		return xerrors.Errorf("cannot create config, %+v", err)
 	}
@@ -145,18 +144,10 @@ func IsFileExist(fPath string) bool {
 	return err == nil || !os.IsNotExist(err)
 }
 
-const AppName = "sqls"
-
-func getXDGConfigPath(goos string) string {
-	var dir string
-	if goos == "windows" {
-		dir = os.Getenv("APPDATA")
-		if dir == "" {
-			dir = filepath.Join(os.Getenv("USERPROFILE"), "Application Data", AppName)
-		}
-		dir = filepath.Join(dir, "lab")
-	} else {
-		dir = filepath.Join(os.Getenv("HOME"), ".config", AppName)
+func configFilePath(fileName string) string {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		panic(err)
 	}
-	return dir
+	return filepath.Join(homeDir, ".config", "sqls", fileName)
 }
