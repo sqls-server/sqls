@@ -78,4 +78,13 @@ type Config struct {
 	Path           string            `json:"path" yaml:"path"`
 	DBName         string            `json:"dbName" yaml:"dbName"`
 	Params         map[string]string `json:"params" yaml:"params"`
+	SSHCfg         *SSHConfig        `json:"sshConfig" yaml:"sshConfig"`
+}
+
+type SSHConfig struct {
+	Host       string `json:"host" yaml:"host"`
+	Port       int    `json:"port" yaml:"port"`
+	User       string `json:"user" yaml:"user"`
+	Passwd     string `json:"passwd" yaml:"passwd"`
+	PrivateKey string `json:"privateKey" yaml:"privateKey"`
 }
