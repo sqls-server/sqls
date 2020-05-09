@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -10,7 +11,13 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-var ymlConfigPath = configFilePath("config.yml")
+var (
+	ErrNotFoundConfig = errors.New("NotFound Config")
+)
+
+var (
+	ymlConfigPath = configFilePath("config.yml")
+)
 
 type Config struct {
 	Connections []*database.Config `json:"connections" yaml:"connections"`
@@ -21,7 +28,7 @@ func newConfig() *Config {
 	return cfg
 }
 
-func GetConfig() (*Config, error) {
+func GetDefaultConfig() (*Config, error) {
 	cfg := newConfig()
 	if err := cfg.Load(ymlConfigPath); err != nil {
 		return nil, err
@@ -29,15 +36,23 @@ func GetConfig() (*Config, error) {
 	return cfg, nil
 }
 
-func GetConfigWithPath(fp string) (*Config, error) {
+func GetConfig(fp string) (*Config, error) {
 	cfg := newConfig()
-	if err := cfg.Load(fp); err != nil {
+	expandPath, err := expand(fp)
+	if err != nil {
+		return nil, err
+	}
+	if err := cfg.Load(expandPath); err != nil {
 		return nil, err
 	}
 	return cfg, nil
 }
 
 func (c *Config) Load(fp string) error {
+	if !IsFileExist(fp) {
+		return ErrNotFoundConfig
+	}
+
 	file, err := os.OpenFile(fp, os.O_RDONLY, 0666)
 	if err != nil {
 		return xerrors.Errorf("cannot open config, %+v", err)
@@ -66,4 +81,16 @@ func configFilePath(fileName string) string {
 		panic(err)
 	}
 	return filepath.Join(homeDir, ".config", "sqls", fileName)
+}
+
+func expand(path string) (string, error) {
+	if len(path) == 0 || path[0] != '~' {
+		return path, nil
+	}
+
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(homeDir, path[1:]), nil
 }

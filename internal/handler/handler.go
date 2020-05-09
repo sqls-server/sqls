@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"runtime"
@@ -15,9 +16,15 @@ import (
 	"github.com/lighttiger2505/sqls/internal/lsp"
 )
 
+var (
+	ErrNotFoundConnection = errors.New("NotFound database connection")
+)
+
 type Server struct {
-	FileCfg            *config.Config
-	WSCfg              *config.Config
+	SpecificFileCfg *config.Config
+	DefaultFileCfg  *config.Config
+	WSCfg           *config.Config
+
 	db                 database.Database
 	curDBName          string
 	curConnectionIndex int
@@ -256,6 +263,9 @@ func (s *Server) handleWorkspaceDidChangeConfiguration(ctx context.Context, conn
 func (s *Server) ConnectDatabase() error {
 	// Get the most preferred DB connection settings
 	connCfg := s.topConnection()
+	if connCfg == nil {
+		return ErrNotFoundConnection
+	}
 	if s.curConnectionIndex != 0 {
 		connCfg = s.getConnection(s.curConnectionIndex)
 	}
@@ -284,7 +294,7 @@ func (s *Server) ConnectDatabase() error {
 
 func (s *Server) topConnection() *database.Config {
 	cfg := s.getConfig()
-	if len(cfg.Connections) == 0 {
+	if cfg == nil || len(cfg.Connections) == 0 {
 		return nil
 	}
 	return cfg.Connections[0]
@@ -292,7 +302,7 @@ func (s *Server) topConnection() *database.Config {
 
 func (s *Server) getConnection(index int) *database.Config {
 	cfg := s.getConfig()
-	if index < 0 && len(cfg.Connections) <= index {
+	if cfg == nil || (index < 0 && len(cfg.Connections) <= index) {
 		return nil
 	}
 	return cfg.Connections[index]
@@ -300,10 +310,22 @@ func (s *Server) getConnection(index int) *database.Config {
 
 func (s *Server) getConfig() *config.Config {
 	var cfg *config.Config
-	if s.FileCfg != nil {
-		cfg = s.FileCfg
-	} else {
+	switch {
+	case validConfig(s.SpecificFileCfg):
+		cfg = s.SpecificFileCfg
+	case validConfig(s.WSCfg):
 		cfg = s.WSCfg
+	case validConfig(s.DefaultFileCfg):
+		cfg = s.DefaultFileCfg
+	default:
+		cfg = nil
 	}
 	return cfg
+}
+
+func validConfig(cfg *config.Config) bool {
+	if cfg != nil && len(cfg.Connections) > 0 {
+		return true
+	}
+	return false
 }
