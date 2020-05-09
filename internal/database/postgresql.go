@@ -3,23 +3,28 @@ package database
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
 	"fmt"
 	"log"
+	"net"
 	"net/url"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 	"unicode"
 
-	_ "github.com/lib/pq"
+	pq "github.com/lib/pq"
+	"golang.org/x/crypto/ssh"
 	"golang.org/x/xerrors"
 )
 
 type PostgreSQLDB struct {
-	Cfg    *Config
-	Option *DBOption
-	Conn   *sql.DB
-	curDB  string
+	Cfg     *Config
+	Option  *DBOption
+	Conn    *sql.DB
+	SSHConn *ssh.Client
+	curDB   string
 }
 
 func init() {
@@ -42,25 +47,92 @@ func (db *PostgreSQLDB) Open() error {
 			return err
 		}
 	}
-	conn, err := sql.Open("postgres", dsn)
-	if err != nil {
-		return xerrors.Errorf("cannot connection to postgresql, %+v", err)
+
+	if db.Cfg.SSHCfg != nil {
+		log.Println("via ssh connection")
+		dbConn, sshConn, err := openPostgreSQLViaSSH(dsn, db.Cfg.SSHCfg)
+		if err != nil {
+			return err
+		}
+		db.Conn = dbConn
+		db.SSHConn = sshConn
+	} else {
+		log.Println("normal connection")
+		dbConn, err := sql.Open("postgres", dsn)
+		if err != nil {
+			return err
+		}
+		db.Conn = dbConn
+	}
+	if err := db.Conn.Ping(); err != nil {
+		return err
 	}
 
-	conn.SetMaxIdleConns(DefaultMaxIdleConns)
+	db.Conn.SetMaxIdleConns(DefaultMaxIdleConns)
 	if db.Option.MaxIdleConns != 0 {
-		conn.SetMaxIdleConns(db.Option.MaxIdleConns)
+		db.Conn.SetMaxIdleConns(db.Option.MaxIdleConns)
 	}
-	conn.SetMaxOpenConns(DefaultMaxOpenConns)
+	db.Conn.SetMaxOpenConns(DefaultMaxOpenConns)
 	if db.Option.MaxOpenConns != 0 {
-		conn.SetMaxOpenConns(db.Option.MaxOpenConns)
+		db.Conn.SetMaxOpenConns(db.Option.MaxOpenConns)
 	}
-	db.Conn = conn
 	return nil
 }
 
+type PostgreSQLViaSSHDialer struct {
+	client *ssh.Client
+}
+
+func (d *PostgreSQLViaSSHDialer) Open(s string) (_ driver.Conn, err error) {
+	return pq.DialOpen(d, s)
+}
+
+func (d *PostgreSQLViaSSHDialer) Dial(network, address string) (net.Conn, error) {
+	return d.client.Dial(network, address)
+}
+
+func (d *PostgreSQLViaSSHDialer) DialTimeout(network, address string, timeout time.Duration) (net.Conn, error) {
+	return d.client.Dial(network, address)
+}
+
+var (
+	sshConnCount int = 1
+)
+
+func openPostgreSQLViaSSH(dsn string, sshCfg *SSHConfig) (*sql.DB, *ssh.Client, error) {
+	sshConfig, err := sshCfg.ClientConfig()
+	if err != nil {
+		return nil, nil, err
+	}
+	sshConn, err := ssh.Dial("tcp", sshCfg.Endpoint(), sshConfig)
+	if err != nil {
+		return nil, nil, xerrors.Errorf("cannot ssh dial, %+v", err)
+	}
+
+	// NOTE: This is a workaround to avoid the panic that occurs in the specifications of sql.driver
+	// See https://pkg.go.dev/database/sql#Register
+	// > If Register is called twice with the same name or if driver is nil, it panics
+	viaSSHDriver := "postgres+ssh" + strconv.Itoa(sshConnCount)
+	sql.Register(viaSSHDriver, &PostgreSQLViaSSHDialer{sshConn})
+	sshConnCount++
+
+	conn, err := sql.Open(viaSSHDriver, dsn)
+	if err != nil {
+		return nil, nil, xerrors.Errorf("cannot connect database, %+v", err)
+	}
+	return conn, sshConn, nil
+}
+
 func (db *PostgreSQLDB) Close() error {
-	return db.Conn.Close()
+	if err := db.Conn.Close(); err != nil {
+		return err
+	}
+	if db.SSHConn != nil {
+		if err := db.SSHConn.Close(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (db *PostgreSQLDB) Databases() ([]string, error) {
@@ -187,7 +259,7 @@ func genPostgresConfig(connCfg *Config) (string, error) {
 			host = "127.0.0.1"
 		}
 		if port == 0 {
-			port = 3306
+			port = 5432
 		}
 		q.Set("host", host)
 		q.Set("port", strconv.Itoa(port))

@@ -1,19 +1,23 @@
 package config
 
 import (
-	"io"
+	"errors"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"runtime"
 
 	"github.com/lighttiger2505/sqls/internal/database"
 	"golang.org/x/xerrors"
 	"gopkg.in/yaml.v2"
 )
 
-var yamlConfigPath = filepath.Join(getXDGConfigPath(runtime.GOOS), "config.yml")
-var jsonConfigPath = filepath.Join(getXDGConfigPath(runtime.GOOS), "config.json")
+var (
+	ErrNotFoundConfig = errors.New("NotFound Config")
+)
+
+var (
+	ymlConfigPath = configFilePath("config.yml")
+)
 
 type Config struct {
 	Connections []*database.Config `json:"connections" yaml:"connections"`
@@ -24,56 +28,32 @@ func newConfig() *Config {
 	return cfg
 }
 
-func GetConfig() (*Config, error) {
+func GetDefaultConfig() (*Config, error) {
 	cfg := newConfig()
-	if err := cfg.Load(); err != nil {
+	if err := cfg.Load(ymlConfigPath); err != nil {
 		return nil, err
 	}
 	return cfg, nil
 }
 
-func (c *Config) Path() string {
-	return yamlConfigPath
+func GetConfig(fp string) (*Config, error) {
+	cfg := newConfig()
+	expandPath, err := expand(fp)
+	if err != nil {
+		return nil, err
+	}
+	if err := cfg.Load(expandPath); err != nil {
+		return nil, err
+	}
+	return cfg, nil
 }
 
-func (c *Config) Read() (string, error) {
-	if err := os.MkdirAll(filepath.Dir(yamlConfigPath), 0700); err != nil {
-		return "", xerrors.Errorf("cannot create directory, %+v", err)
+func (c *Config) Load(fp string) error {
+	if !IsFileExist(fp) {
+		return ErrNotFoundConfig
 	}
 
-	if !IsFileExist(yamlConfigPath) {
-		_, err := os.Create(yamlConfigPath)
-		if err != nil {
-			return "", xerrors.Errorf("cannot create config, %+v", err.Error())
-		}
-	}
-
-	file, err := os.OpenFile(yamlConfigPath, os.O_RDONLY, 0666)
-	if err != nil {
-		return "", xerrors.Errorf("cannot open config, %+v", err)
-	}
-	defer file.Close()
-
-	b, err := ioutil.ReadAll(file)
-	if err != nil {
-		return "", xerrors.Errorf("cannot read config, %+v", err)
-	}
-
-	return string(b), nil
-}
-
-func (c *Config) Load() error {
-	if err := os.MkdirAll(filepath.Dir(yamlConfigPath), 0700); err != nil {
-		return xerrors.Errorf("cannot create directory, %+v", err)
-	}
-
-	if !IsFileExist(yamlConfigPath) {
-		if err := createNewConfig(); err != nil {
-			return err
-		}
-	}
-
-	file, err := os.OpenFile(yamlConfigPath, os.O_RDONLY, 0666)
+	file, err := os.OpenFile(fp, os.O_RDONLY, 0666)
 	if err != nil {
 		return xerrors.Errorf("cannot open config, %+v", err)
 	}
@@ -90,73 +70,27 @@ func (c *Config) Load() error {
 	return nil
 }
 
-func (c *Config) Save() error {
-	file, err := os.OpenFile(yamlConfigPath, os.O_WRONLY, 0666)
-	if err != nil {
-		return xerrors.Errorf("cannot open file, %+v", err)
-	}
-	defer file.Close()
-
-	out, err := yaml.Marshal(c)
-	if err != nil {
-		return xerrors.Errorf("cannot marshal config, %+v", err)
-	}
-
-	if _, err = io.WriteString(file, string(out)); err != nil {
-		return xerrors.Errorf("cannot write config file, %+v", err)
-	}
-	return nil
-}
-
-func createNewConfig() error {
-	// Create new config file
-	_, err := os.Create(yamlConfigPath)
-	if err != nil {
-		return xerrors.Errorf("cannot create config, %+v", err)
-	}
-
-	// Add default settings
-	cfg := newConfig()
-	cfg.Connections = []*database.Config{
-		{
-			Driver:         "mysql",
-			DataSourceName: "",
-			Proto:          "tcp",
-			User:           "root",
-			Passwd:         "root",
-			Host:           "127.0.0.1",
-			Port:           13306,
-			Path:           "",
-			DBName:         "world",
-			Params: map[string]string{
-				"tls":        "skip-verify",
-				"autocommit": "true",
-			},
-		},
-	}
-	if err := cfg.Save(); err != nil {
-		return err
-	}
-	return nil
-}
-
 func IsFileExist(fPath string) bool {
 	_, err := os.Stat(fPath)
 	return err == nil || !os.IsNotExist(err)
 }
 
-const AppName = "sqls"
-
-func getXDGConfigPath(goos string) string {
-	var dir string
-	if goos == "windows" {
-		dir = os.Getenv("APPDATA")
-		if dir == "" {
-			dir = filepath.Join(os.Getenv("USERPROFILE"), "Application Data", AppName)
-		}
-		dir = filepath.Join(dir, "lab")
-	} else {
-		dir = filepath.Join(os.Getenv("HOME"), ".config", AppName)
+func configFilePath(fileName string) string {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		panic(err)
 	}
-	return dir
+	return filepath.Join(homeDir, ".config", "sqls", fileName)
+}
+
+func expand(path string) (string, error) {
+	if len(path) == 0 || path[0] != '~' {
+		return path, nil
+	}
+
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(homeDir, path[1:]), nil
 }

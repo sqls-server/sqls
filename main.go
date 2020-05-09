@@ -67,20 +67,26 @@ func main() {
 
 	// Initialize language server
 	server := handler.NewServer()
-	handler := jsonrpc2.HandlerWithError(server.Handle)
+	h := jsonrpc2.HandlerWithError(server.Handle)
 
-	// Load config
+	// Load specific config
 	if configFile != "" {
-		cfg, err := config.GetConfig()
+		cfg, err := config.GetConfig(configFile)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatalf("cannot read config, %+v", err)
 		}
-		if len(cfg.Connections) > 0 {
-			server.FileCfg = cfg
+		server.SpecificFileCfg = cfg
+	} else {
+		// Load default config
+		cfg, err := config.GetDefaultConfig()
+		if err != nil && err != config.ErrNotFoundConfig {
+			log.Fatalf("cannot read config, %+v", err)
 		}
-		if err := server.ConnectDatabase(); err != nil {
-			log.Fatal(err)
-		}
+		server.DefaultFileCfg = cfg
+	}
+	// DB Connection use file setting
+	if err := server.ConnectDatabase(); err != nil && err != handler.ErrNotFoundConnection {
+		log.Fatalf("cannot connection to database, %+v", err)
 	}
 
 	// Set connect option
@@ -94,7 +100,7 @@ func main() {
 	<-jsonrpc2.NewConn(
 		context.Background(),
 		jsonrpc2.NewBufferedStream(stdrwc{}, jsonrpc2.VSCodeObjectCodec{}),
-		handler,
+		h,
 		connOpt...,
 	).DisconnectNotify()
 	log.Println("sqls: connections closed")

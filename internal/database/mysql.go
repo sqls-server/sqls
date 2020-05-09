@@ -4,16 +4,21 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"io/ioutil"
+	"net"
 	"strconv"
 
 	mysql "github.com/go-sql-driver/mysql"
+	"golang.org/x/crypto/ssh"
+	"golang.org/x/xerrors"
 )
 
 type MySQLDB struct {
-	Cfg    *Config
-	Option *DBOption
-	Conn   *sql.DB
-	curDB  string
+	Cfg     *Config
+	Option  *DBOption
+	Conn    *sql.DB
+	SSHConn *ssh.Client
+	curDB   string
 }
 
 func init() {
@@ -34,25 +39,91 @@ func (db *MySQLDB) Open() error {
 		cfg.DBName = db.curDB
 	}
 
-	conn, err := sql.Open("mysql", cfg.FormatDSN())
-	if err != nil {
+	if db.Cfg.SSHCfg != nil {
+		dbConn, sshConn, err := openMySQLViaSSH(cfg.FormatDSN(), db.Cfg.SSHCfg)
+		if err != nil {
+			return err
+		}
+		db.Conn = dbConn
+		db.SSHConn = sshConn
+	} else {
+		dbConn, err := sql.Open("mysql", cfg.FormatDSN())
+		if err != nil {
+			return err
+		}
+		db.Conn = dbConn
+	}
+	if err := db.Conn.Ping(); err != nil {
 		return err
 	}
 
-	conn.SetMaxIdleConns(DefaultMaxIdleConns)
+	db.Conn.SetMaxIdleConns(DefaultMaxIdleConns)
 	if db.Option.MaxIdleConns != 0 {
-		conn.SetMaxIdleConns(db.Option.MaxIdleConns)
+		db.Conn.SetMaxIdleConns(db.Option.MaxIdleConns)
 	}
-	conn.SetMaxOpenConns(DefaultMaxOpenConns)
+	db.Conn.SetMaxOpenConns(DefaultMaxOpenConns)
 	if db.Option.MaxOpenConns != 0 {
-		conn.SetMaxOpenConns(db.Option.MaxOpenConns)
+		db.Conn.SetMaxOpenConns(db.Option.MaxOpenConns)
 	}
-	db.Conn = conn
 	return nil
 }
 
+type MySQLViaSSHDialer struct {
+	client *ssh.Client
+}
+
+func (d *MySQLViaSSHDialer) Dial(ctx context.Context, addr string) (net.Conn, error) {
+	return d.client.Dial("tcp", addr)
+}
+
+func openMySQLViaSSH(dsn string, sshCfg *SSHConfig) (*sql.DB, *ssh.Client, error) {
+	sshConfig, err := sshCfg.ClientConfig()
+	if err != nil {
+		return nil, nil, err
+	}
+	sshConn, err := ssh.Dial("tcp", sshCfg.Endpoint(), sshConfig)
+	if err != nil {
+		return nil, nil, xerrors.Errorf("cannot ssh dial, %+v", err)
+	}
+	mysql.RegisterDialContext("mysql+tcp", (&MySQLViaSSHDialer{sshConn}).Dial)
+	conn, err := sql.Open("mysql", dsn)
+	if err != nil {
+		return nil, nil, xerrors.Errorf("cannot connect database, %+v", err)
+	}
+	return conn, sshConn, nil
+}
+
+func publicKeyFile(file, passPhrase string) (ssh.AuthMethod, error) {
+	buffer, err := ioutil.ReadFile(file)
+	if err != nil {
+		return nil, xerrors.Errorf("cannot read SSH private key file %s, %s", file, err)
+	}
+
+	var key ssh.Signer
+	if passPhrase != "" {
+		key, err = ssh.ParsePrivateKeyWithPassphrase(buffer, []byte(passPhrase))
+		if err != nil {
+			return nil, xerrors.Errorf("cannot parse SSH private key file with passphrase, %s, %s", file, err)
+		}
+	} else {
+		key, err = ssh.ParsePrivateKey(buffer)
+		if err != nil {
+			return nil, xerrors.Errorf("cannot parse SSH private key file, %s, %s", file, err)
+		}
+	}
+	return ssh.PublicKeys(key), nil
+}
+
 func (db *MySQLDB) Close() error {
-	return db.Conn.Close()
+	if err := db.Conn.Close(); err != nil {
+		return err
+	}
+	if db.SSHConn != nil {
+		if err := db.SSHConn.Close(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (db *MySQLDB) Databases() ([]string, error) {

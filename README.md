@@ -57,15 +57,61 @@ Coming soon.
 go get github.com/lighttiger2505/sqls
 ```
 
-### Editor Plugins
+## Editor Plugins
 
 - [sqls.vim](https://github.com/lighttiger2505/sqls.vim)
 - [vscode-sqls](https://github.com/lighttiger2505/vscode-sqls)
 
-### DB Configuration (For the Language Server Client)
+## DB Configuration (For the Language Server Client)
 
-Connecting to an RDBMS is indispensable for using sqls.
-sqls connects to the RDBMS at [initialization](https://microsoft.github.io/language-server-protocol/specifications/specification-current/#initialize), using the DB setting of `initializationOptions` set in your Language server client.
+The connection to the RDBMS is essential to take advantage of the functionality provided by `sqls`.
+You need to set the connection to the RDBMS.
+
+### Configuration Methods
+
+There are the following methods for RDBMS connection settings, and they are prioritized in order from the top.
+Whichever method you choose, the settings you make will remain the same.
+
+1. Configuration file specified by the `-config` flag
+1. `workspace/configuration` set to LSP client
+1. Configuration file located in the following location
+    - `$HOME`/.config/sqls/config.yml
+
+### Configuration file sample
+
+```yaml
+connections:
+  - alias: dsn_mysql
+    'driver': 'mysql',
+    'dataSourceName': 'root:root@tcp(127.0.0.1:13306)/world',
+  - alias: individual_mysql
+    driver: mysql
+    proto: tcp
+    user: root
+    passwd: root
+    host: 127.0.0.1
+    port: 13306
+    dbName: world
+    params:
+      autocommit: "true"
+      tls: skip-verify
+  - alias: mysql_via_ssh
+    driver: mysql
+    proto: tcp
+    user: admin
+    passwd: Q+ACgv12ABx/
+    host: 192.168.121.163
+    port: 3306
+    dbName: world
+    sshConfig:
+      host: 192.168.121.168
+      port: 22
+      user: sshuser
+      passPhrase: ssspass
+      privateKey: /home/lighttiger2505/.ssh/id_rsa
+```
+
+### Workspace configuration Sample
 
 Below is a setting example with vim-lsp.
 **I'm sorry. Please wait a little longer for other editor settings.**
@@ -97,29 +143,50 @@ if executable('sqls')
 endif
 ```
 
-#### MySQL
+### Configuratioin Params
 
-```vim
-{'driver': 'mysql', 'dataSourceName': 'mysql:mysqlpassword@tcp(127.0.0.1:3306)/world'}
-```
+The first setting in `connections` is the default connection.
 
-See also. https://github.com/go-sql-driver/mysql#dsn-data-source-name
+| Key         | Description          |
+|-------------|----------------------|
+| connections | Database connections |
 
-#### PostgreSQL
+### connections
 
-```vim
-{'driver': 'postgresql', 'dataSourceName': 'host=127.0.0.1 port=5432 user=postgres password=postgrespassword dbname=world sslmode=disable'}
-```
+`dataSourceName` takes precedence over the value set in `proto`, `user`, `passwd`, `host`, `port`, `dbName`, `params`.
 
-See also. https://godoc.org/github.com/lib/pq
+| Key            | Description                                 |
+|----------------|---------------------------------------------|
+| alias          | Connection alias name. Optional.            |
+| driver         | `mysql`, `postgresql`, `sqlite3`. Required. |
+| dataSourceName | Data source name.                           |
+| proto          | `tcp`, `udp`, `unix`.                       |
+| user           | User name                                   |
+| passwd         | Password                                    |
+| host           | Host                                        |
+| port           | Port                                        |
+| path           | unix socket path                            |
+| dbName         | Database name                               |
+| params         | Option params. Optional.                    |
+| sshConfig      | ssh config. Optional.                       |
 
-#### SQLite3
+#### sshConfig
 
-```vim
-{'driver': 'sqlite3', 'dataSourceName': 'file:chinook.db'}
-```
+| Key        | Description                 |
+|------------|-----------------------------|
+| host       | ssh host. Required.         |
+| port       | ssh port. Required.         |
+| user       | ssh user. Optional.         |
+| privateKey | private key path. Required. |
+| passPhrase | passPhrase. Optional.       |
 
-See also. https://github.com/mattn/go-sqlite3#connection-string
+#### DSN (Data Source Name)
+
+See also.
+
+- https://github.com/go-sql-driver/mysql#dsn-data-source-name
+- https://godoc.org/github.com/lib/pq
+- https://github.com/mattn/go-sqlite3#connection-string
 
 ## Special Thanks
 
