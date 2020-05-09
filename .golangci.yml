@@ -9,3 +9,8 @@ linters:
   presets:
     - bugs
   fast: false
+issues:
+  exclude-rules:
+    - linters:
+        - gosec
+      text: "G106:"
