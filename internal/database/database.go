@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"net"
 
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/xerrors"
@@ -122,12 +121,4 @@ func (s *SSHConfig) ClientConfig() (*ssh.ClientConfig, error) {
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 	return sshConfig, nil
-}
-
-type ViaSSHDialer struct {
-	client *ssh.Client
-}
-
-func (d *ViaSSHDialer) Dial(ctx context.Context, addr string) (net.Conn, error) {
-	return d.client.Dial("tcp", addr)
 }

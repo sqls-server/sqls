@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"strconv"
 
 	mysql "github.com/go-sql-driver/mysql"
@@ -39,7 +40,7 @@ func (db *MySQLDB) Open() error {
 	}
 
 	if db.Cfg.SSHCfg != nil {
-		dbConn, sshConn, err := openOverSSH(cfg.FormatDSN(), db.Cfg.SSHCfg)
+		dbConn, sshConn, err := openMySQLViaSSH(cfg.FormatDSN(), db.Cfg.SSHCfg)
 		if err != nil {
 			return err
 		}
@@ -67,7 +68,15 @@ func (db *MySQLDB) Open() error {
 	return nil
 }
 
-func openOverSSH(dsn string, sshCfg *SSHConfig) (*sql.DB, *ssh.Client, error) {
+type MySQLViaSSHDialer struct {
+	client *ssh.Client
+}
+
+func (d *MySQLViaSSHDialer) Dial(ctx context.Context, addr string) (net.Conn, error) {
+	return d.client.Dial("tcp", addr)
+}
+
+func openMySQLViaSSH(dsn string, sshCfg *SSHConfig) (*sql.DB, *ssh.Client, error) {
 	sshConfig, err := sshCfg.ClientConfig()
 	if err != nil {
 		return nil, nil, err
@@ -76,7 +85,7 @@ func openOverSSH(dsn string, sshCfg *SSHConfig) (*sql.DB, *ssh.Client, error) {
 	if err != nil {
 		return nil, nil, xerrors.Errorf("cannot ssh dial, %+v", err)
 	}
-	mysql.RegisterDialContext("mysql+tcp", (&ViaSSHDialer{sshConn}).Dial)
+	mysql.RegisterDialContext("mysql+tcp", (&MySQLViaSSHDialer{sshConn}).Dial)
 	conn, err := sql.Open("mysql", dsn)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("cannot connect database, %+v", err)
