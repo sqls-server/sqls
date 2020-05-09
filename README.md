@@ -62,7 +62,7 @@ go get github.com/lighttiger2505/sqls
 - [sqls.vim](https://github.com/lighttiger2505/sqls.vim)
 - [vscode-sqls](https://github.com/lighttiger2505/vscode-sqls)
 
-## DB Configuration (For the Language Server Client)
+## DB Configuration
 
 The connection to the RDBMS is essential to take advantage of the functionality provided by `sqls`.
 You need to set the connection to the RDBMS.
