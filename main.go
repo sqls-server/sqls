@@ -73,13 +73,13 @@ func main() {
 	if configFile != "" {
 		cfg, err := config.GetConfig()
 		if err != nil {
-			log.Fatal(err)
+			log.Fatalf("cannot read config, %+v", err)
 		}
 		if len(cfg.Connections) > 0 {
 			server.FileCfg = cfg
 		}
 		if err := server.ConnectDatabase(); err != nil {
-			log.Fatal(err)
+			log.Fatalf("cannot connection to database, %+v", err)
 		}
 	}
 
