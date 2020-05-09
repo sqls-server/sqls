@@ -128,6 +128,6 @@ type ViaSSHDialer struct {
 	client *ssh.Client
 }
 
-func (self *ViaSSHDialer) Dial(addr string) (net.Conn, error) {
-	return self.client.Dial("tcp", addr)
+func (d *ViaSSHDialer) Dial(ctx context.Context, addr string) (net.Conn, error) {
+	return d.client.Dial("tcp", addr)
 }

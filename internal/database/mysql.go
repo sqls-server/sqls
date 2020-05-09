@@ -76,7 +76,7 @@ func openOverSSH(dsn string, sshCfg *SSHConfig) (*sql.DB, *ssh.Client, error) {
 	if err != nil {
 		return nil, nil, xerrors.Errorf("cannot ssh dial, %+v", err)
 	}
-	mysql.RegisterDial("mysql+tcp", (&ViaSSHDialer{sshConn}).Dial)
+	mysql.RegisterDialContext("mysql+tcp", (&ViaSSHDialer{sshConn}).Dial)
 	conn, err := sql.Open("mysql", dsn)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("cannot connect database, %+v", err)
