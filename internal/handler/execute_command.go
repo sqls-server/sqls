@@ -272,7 +272,7 @@ func (s *Server) switchDatabase(params lsp.ExecuteCommandParams) (result interfa
 
 	// Reconnect database
 	s.curDBName = dbName
-	if err := s.ConnectDatabase(); err != nil {
+	if err := s.dbOpen(); err != nil {
 		return nil, err
 	}
 	return nil, nil
@@ -315,7 +315,7 @@ func (s *Server) switchConnections(params lsp.ExecuteCommandParams) (result inte
 
 	// Reconnect database
 	s.curConnectionIndex = index
-	if err := s.ConnectDatabase(); err != nil {
+	if err := s.dbOpen(); err != nil {
 		return nil, err
 	}
 	return nil, nil

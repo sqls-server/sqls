@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	ErrNotFoundConnection = errors.New("NotFound database connection")
+	ErrNoConnection = errors.New("no database connection")
 )
 
 type Server struct {
@@ -114,6 +114,10 @@ func (s *Server) handleInitialize(ctx context.Context, conn *jsonrpc2.Conn, req 
 
 	var params lsp.InitializeParams
 	if err := json.Unmarshal(*req.Params, &params); err != nil {
+		return nil, err
+	}
+
+	if err := s.dbOpen(); err != nil && err != ErrNoConnection {
 		return nil, err
 	}
 
@@ -254,17 +258,17 @@ func (s *Server) handleWorkspaceDidChangeConfiguration(ctx context.Context, conn
 	if s.db != nil {
 		return nil, nil
 	}
-	if err := s.ConnectDatabase(); err != nil {
+	if err := s.dbOpen(); err != nil && err != ErrNoConnection {
 		return nil, err
 	}
 	return nil, nil
 }
 
-func (s *Server) ConnectDatabase() error {
+func (s *Server) dbOpen() error {
 	// Get the most preferred DB connection settings
 	connCfg := s.topConnection()
 	if connCfg == nil {
-		return ErrNotFoundConnection
+		return ErrNoConnection
 	}
 	if s.curConnectionIndex != 0 {
 		connCfg = s.getConnection(s.curConnectionIndex)

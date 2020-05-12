@@ -84,10 +84,6 @@ func main() {
 		}
 		server.DefaultFileCfg = cfg
 	}
-	// DB Connection use file setting
-	if err := server.ConnectDatabase(); err != nil && err != handler.ErrNotFoundConnection {
-		log.Fatalf("cannot connection to database, %+v", err)
-	}
 
 	// Set connect option
 	var connOpt []jsonrpc2.ConnOpt
