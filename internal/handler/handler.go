@@ -10,7 +10,6 @@ import (
 
 	"github.com/sourcegraph/jsonrpc2"
 
-	"github.com/lighttiger2505/sqls/internal/completer"
 	"github.com/lighttiger2505/sqls/internal/config"
 	"github.com/lighttiger2505/sqls/internal/database"
 	"github.com/lighttiger2505/sqls/internal/lsp"
@@ -25,11 +24,11 @@ type Server struct {
 	DefaultFileCfg  *config.Config
 	WSCfg           *config.Config
 
-	db                 database.Database
+	dbConn             database.Database
+	dbCache            *database.DatabaseCache
 	curDBName          string
 	curConnectionIndex int
 	files              map[string]*File
-	completer          *completer.Completer
 }
 
 type File struct {
@@ -41,14 +40,6 @@ func NewServer() *Server {
 	return &Server{
 		files: make(map[string]*File),
 	}
-}
-
-func (s *Server) init() error {
-	s.completer = completer.NewCompleter(s.db)
-	if err := s.completer.Init(); err != nil {
-		return err
-	}
-	return nil
 }
 
 func panicf(r interface{}, format string, v ...interface{}) error {
@@ -141,8 +132,8 @@ func (s *Server) handleShutdown(ctx context.Context, conn *jsonrpc2.Conn, req *j
 		return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeInvalidParams}
 	}
 
-	if s.db != nil {
-		s.db.Close()
+	if s.dbConn != nil {
+		s.dbConn.Close()
 	}
 	return nil, nil
 }
@@ -255,7 +246,7 @@ func (s *Server) handleWorkspaceDidChangeConfiguration(ctx context.Context, conn
 	s.WSCfg = params.Settings.SQLS
 
 	// Initialize database database connection
-	if s.db != nil {
+	if s.dbConn != nil {
 		return nil, nil
 	}
 	if err := s.dbOpen(); err != nil && err != ErrNoConnection {
@@ -282,17 +273,19 @@ func (s *Server) dbOpen() error {
 	if err != nil {
 		return err
 	}
-	s.db = db
+	s.dbConn = db
 	if s.curDBName != "" {
-		if err := s.db.SwitchDB(s.curDBName); err != nil {
+		if err := s.dbConn.SwitchDB(s.curDBName); err != nil {
 			return err
 		}
 	}
 
 	// Get database infomations(databases, tables, columns) to complete
-	if err := s.init(); err != nil {
+	dbCache, err := database.GenerateDBCache(s.dbConn)
+	if err != nil {
 		return err
 	}
+	s.dbCache = dbCache
 	return nil
 }
 

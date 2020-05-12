@@ -97,7 +97,7 @@ func (s *Server) handleWorkspaceExecuteCommand(ctx context.Context, conn *jsonrp
 
 func (s *Server) executeQuery(params lsp.ExecuteCommandParams) (result interface{}, err error) {
 	// parse execute command arguments
-	if s.db == nil {
+	if s.dbConn == nil {
 		return nil, errors.New("database connection is not open")
 	}
 	if len(params.Arguments) == 0 {
@@ -122,10 +122,10 @@ func (s *Server) executeQuery(params lsp.ExecuteCommandParams) (result interface
 		}
 	}
 
-	if err := s.db.Open(); err != nil {
+	if err := s.dbConn.Open(); err != nil {
 		return nil, err
 	}
-	defer s.db.Close()
+	defer s.dbConn.Close()
 
 	// extract target query
 	text := f.Text
@@ -197,7 +197,7 @@ func extractRangeText(text string, startLine, startChar, endLine, endChar int) s
 }
 
 func (s *Server) query(query string, vertical bool) (string, error) {
-	rows, err := s.db.Query(context.Background(), query)
+	rows, err := s.dbConn.Query(context.Background(), query)
 	if err != nil {
 		return err.Error(), nil
 	}
@@ -233,7 +233,7 @@ func (s *Server) query(query string, vertical bool) (string, error) {
 }
 
 func (s *Server) exec(query string, vertical bool) (string, error) {
-	result, err := s.db.Exec(context.Background(), query)
+	result, err := s.dbConn.Exec(context.Background(), query)
 	if err != nil {
 		return err.Error(), nil
 	}
@@ -250,14 +250,14 @@ func (s *Server) exec(query string, vertical bool) (string, error) {
 }
 
 func (s *Server) showDatabases(params lsp.ExecuteCommandParams) (result interface{}, err error) {
-	if err := s.db.Open(); err != nil {
+	if err := s.dbConn.Open(); err != nil {
 		return nil, err
 	}
-	databases, err := s.db.Databases()
+	databases, err := s.dbConn.Databases()
 	if err != nil {
 		return nil, err
 	}
-	defer s.db.Close()
+	defer s.dbConn.Close()
 	return strings.Join(databases, "\n"), nil
 }
 

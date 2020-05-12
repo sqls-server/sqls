@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"fmt"
 	"regexp"
-	"sort"
 	"strings"
 
 	"github.com/lighttiger2505/sqls/ast"
@@ -86,107 +85,14 @@ var keywords = []string{
 	"USING", "VALUES", "VARCHAR", "VIEW", "WHEN", "WHERE", "WITH",
 }
 
-type DatabaseInfo struct {
-	Databases map[string]string
-	Tables    map[string]string
-	Columns   map[string][]*database.ColumnDesc
-}
-
-func (di *DatabaseInfo) Database(databaseName string) (db string, ok bool) {
-	db, ok = di.Databases[strings.ToUpper(databaseName)]
-	return
-}
-
-func (di *DatabaseInfo) SortedDatabases() []string {
-	dbs := []string{}
-	for _, db := range di.Databases {
-		dbs = append(dbs, db)
-	}
-	sort.Strings(dbs)
-	return dbs
-}
-
-func (di *DatabaseInfo) Table(databaseName string) (tbl string, ok bool) {
-	tbl, ok = di.Tables[strings.ToUpper(databaseName)]
-	return
-}
-
-func (di *DatabaseInfo) SortedTables() []string {
-	tbls := []string{}
-	for _, tbl := range di.Tables {
-		tbls = append(tbls, tbl)
-	}
-	sort.Strings(tbls)
-	return tbls
-}
-
-func (di *DatabaseInfo) ColumnDescs(databaseName string) (cols []*database.ColumnDesc, ok bool) {
-	cols, ok = di.Columns[strings.ToUpper(databaseName)]
-	return
-}
-
-func (di *DatabaseInfo) Column(databaseName, columnName string) (*database.ColumnDesc, bool) {
-	cols, ok := di.Columns[strings.ToUpper(databaseName)]
-	if !ok {
-		return nil, false
-	}
-	for _, col := range cols {
-		if strings.EqualFold(col.Name, columnName) {
-			return col, true
-		}
-	}
-	return nil, false
-}
-
 type Completer struct {
-	Conn   database.Database
-	DBInfo *DatabaseInfo
+	DBCache *database.DatabaseCache
 }
 
-func NewCompleter(db database.Database) *Completer {
+func NewCompleter(dbCache *database.DatabaseCache) *Completer {
 	return &Completer{
-		Conn:   db,
-		DBInfo: &DatabaseInfo{},
+		DBCache: dbCache,
 	}
-}
-
-func (c *Completer) Init() error {
-	if err := c.Conn.Open(); err != nil {
-		return err
-	}
-	defer c.Conn.Close()
-
-	dbs, err := c.Conn.Databases()
-	if err != nil {
-		return err
-	}
-	databaseMap := map[string]string{}
-	for _, db := range dbs {
-		databaseMap[strings.ToUpper(db)] = db
-	}
-	c.DBInfo.Databases = databaseMap
-
-	tbls, err := c.Conn.Tables()
-	if err != nil {
-		return err
-	}
-	tableMap := map[string]string{}
-	for _, tbl := range tbls {
-		tableMap[strings.ToUpper(tbl)] = tbl
-	}
-	c.DBInfo.Tables = tableMap
-
-	columnMap := map[string][]*database.ColumnDesc{}
-	for _, tbl := range tbls {
-		columnDescs, err := c.Conn.DescribeTable(tbl)
-		if err != nil {
-			return err
-		}
-		columnMap[strings.ToUpper(tbl)] = columnDescs
-	}
-	c.DBInfo.Columns = columnMap
-
-	return nil
 }
 
 func completionTypeIs(completionTypes []CompletionType, expect CompletionType) bool {
@@ -420,10 +326,10 @@ func (c *Completer) columnCandidates(targetTables []*parseutil.TableInfo, pare *
 			if info.Name == "" {
 				continue
 			}
-			if c.DBInfo == nil {
+			if c.DBCache == nil {
 				continue
 			}
-			columns, ok := c.DBInfo.ColumnDescs(info.Name)
+			columns, ok := c.DBCache.ColumnDescs(info.Name)
 			if !ok {
 				continue
 			}
@@ -442,10 +348,10 @@ func (c *Completer) columnCandidates(targetTables []*parseutil.TableInfo, pare *
 			if info.Name != pare.Name && info.Alias != pare.Name {
 				continue
 			}
-			if c.DBInfo == nil {
+			if c.DBCache == nil {
 				continue
 			}
-			columns, ok := c.DBInfo.ColumnDescs(info.Name)
+			columns, ok := c.DBCache.ColumnDescs(info.Name)
 			if !ok {
 				continue
 			}
@@ -466,10 +372,10 @@ var TableDetailTemplate = "Table"
 
 func (c *Completer) TableCandidates() []lsp.CompletionItem {
 	candidates := []lsp.CompletionItem{}
-	if c.DBInfo == nil {
+	if c.DBCache == nil {
 		return candidates
 	}
-	tables := c.DBInfo.SortedTables()
+	tables := c.DBCache.SortedTables()
 	for _, tableName := range tables {
 		candidate := lsp.CompletionItem{
 			Label:  tableName,
@@ -518,7 +424,7 @@ func (c *Completer) SubQueryColumnCandidates(info *parseutil.SubQueryInfo) []lsp
 
 func (c *Completer) DatabaseCandidates() []lsp.CompletionItem {
 	candidates := []lsp.CompletionItem{}
-	for _, databaseName := range c.DBInfo.SortedDatabases() {
+	for _, databaseName := range c.DBCache.SortedDatabases() {
 		candidate := lsp.CompletionItem{
 			Label:  databaseName,
 			Kind:   lsp.FieldCompletion,

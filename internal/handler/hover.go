@@ -10,7 +10,6 @@ import (
 	"github.com/lighttiger2505/sqls/ast"
 	"github.com/lighttiger2505/sqls/ast/astutil"
 	"github.com/lighttiger2505/sqls/dialect"
-	"github.com/lighttiger2505/sqls/internal/completer"
 	"github.com/lighttiger2505/sqls/internal/database"
 	"github.com/lighttiger2505/sqls/internal/lsp"
 	"github.com/lighttiger2505/sqls/parser"
@@ -37,7 +36,7 @@ func (s *Server) handleTextDocumentHover(ctx context.Context, conn *jsonrpc2.Con
 		return nil, fmt.Errorf("document not found: %s", params.TextDocument.URI)
 	}
 
-	res, err := hover(f.Text, params, s.completer.DBInfo)
+	res, err := hover(f.Text, params, s.dbCache)
 	if err != nil {
 		if err == ErrNoHover {
 			return nil, nil
@@ -54,7 +53,7 @@ var hoverTargetMatcher = astutil.NodeMatcher{
 	},
 }
 
-func hover(text string, params lsp.HoverParams, dbInfo *completer.DatabaseInfo) (*lsp.Hover, error) {
+func hover(text string, params lsp.HoverParams, dbCache *database.DatabaseCache) (*lsp.Hover, error) {
 	pos := token.Pos{
 		Line: params.Position.Line + 1,
 		Col:  params.Position.Character + 1,
@@ -84,7 +83,7 @@ func hover(text string, params lsp.HoverParams, dbInfo *completer.DatabaseInfo) 
 		// find column
 		hoverContents := []string{}
 		for _, table := range definedTables {
-			columnInfo, ok := dbInfo.Column(table.Name, identName)
+			columnInfo, ok := dbCache.Column(table.Name, identName)
 			if ok {
 				buf := new(bytes.Buffer)
 				fmt.Fprintf(buf, "%s.%s column", table.Name, identName)
@@ -112,7 +111,7 @@ func hover(text string, params lsp.HoverParams, dbInfo *completer.DatabaseInfo) 
 			}
 		}
 		// find table
-		columns, ok := dbInfo.ColumnDescs(tableIdent)
+		columns, ok := dbCache.ColumnDescs(tableIdent)
 		if ok {
 			buf := new(bytes.Buffer)
 			fmt.Fprintf(buf, "%s table", tableIdent)

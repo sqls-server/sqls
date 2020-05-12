@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/lighttiger2505/sqls/internal/completer"
 	"github.com/lighttiger2505/sqls/internal/lsp"
 	"github.com/sourcegraph/jsonrpc2"
 )
@@ -24,7 +25,8 @@ func (s *Server) handleTextDocumentCompletion(ctx context.Context, conn *jsonrpc
 		return nil, fmt.Errorf("document not found: %s", params.TextDocument.URI)
 	}
 
-	completionItems, err := s.completer.Complete(f.Text, params)
+	c := completer.NewCompleter(s.dbCache)
+	completionItems, err := c.Complete(f.Text, params)
 	if err != nil {
 		return nil, err
 	}
