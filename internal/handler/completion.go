@@ -25,6 +25,9 @@ func (s *Server) handleTextDocumentCompletion(ctx context.Context, conn *jsonrpc
 		return nil, fmt.Errorf("document not found: %s", params.TextDocument.URI)
 	}
 
+	if s.dbCache == nil {
+		return nil, fmt.Errorf("database cache not found")
+	}
 	c := completer.NewCompleter(s.dbCache)
 	completionItems, err := c.Complete(f.Text, params)
 	if err != nil {
