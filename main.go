@@ -73,14 +73,14 @@ func main() {
 	if configFile != "" {
 		cfg, err := config.GetConfig(configFile)
 		if err != nil {
-			log.Fatalf("cannot read config, %+v", err)
+			log.Printf("cannot read specificed config, %+v", err)
 		}
 		server.SpecificFileCfg = cfg
 	} else {
 		// Load default config
 		cfg, err := config.GetDefaultConfig()
 		if err != nil && err != config.ErrNotFoundConfig {
-			log.Fatalf("cannot read config, %+v", err)
+			log.Printf("cannot read default config, %+v", err)
 		}
 		server.DefaultFileCfg = cfg
 	}
