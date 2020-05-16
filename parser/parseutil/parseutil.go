@@ -82,7 +82,7 @@ func ExtractSubQueryView(parsed ast.TokenList, pos token.Pos) (*SubQueryInfo, er
 	matcher := astutil.NodeMatcher{NodeTypes: []ast.NodeType{ast.TypeAliased}}
 	aliases := reader.FindRecursive(matcher)
 	for _, node := range aliases {
-		if token.ComparePos(node.Pos(), pos) <= 0 {
+		if token.ComparePos(node.Pos(), pos) < 0 {
 			continue
 		}
 		alias, ok := node.(*ast.Aliased)

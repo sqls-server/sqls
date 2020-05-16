@@ -114,8 +114,8 @@ func NewTokenizer(src io.Reader, dialect dialect.Dialect) *Tokenizer {
 	return &Tokenizer{
 		Dialect: dialect,
 		Scanner: scan.Init(src),
-		Line:    1,
-		Col:     1,
+		Line:    0,
+		Col:     0,
 	}
 }
 

@@ -123,7 +123,7 @@ func (c *Completer) Complete(text string, params lsp.CompletionParams) ([]lsp.Co
 		return nil, err
 	}
 
-	pos := token.Pos{Line: params.Position.Line + 1, Col: params.Position.Character}
+	pos := token.Pos{Line: params.Position.Line, Col: params.Position.Character}
 	cTypes, pare, err := getCompletionTypes(text, pos)
 	if err != nil {
 		return nil, err

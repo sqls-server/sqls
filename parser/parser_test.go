@@ -44,11 +44,11 @@ func TestParseStatement(t *testing.T) {
 					t.Fatalf("Query does not contain 3 statements, got %d", len(stmts))
 				}
 				testStatement(t, stmts[0], 4, "select 1;")
-				testPos(t, stmts[0], genPosOneline(1), genPosOneline(10))
+				testPos(t, stmts[0], genPosOneline(0), genPosOneline(9))
 				testStatement(t, stmts[1], 4, "select 2;")
-				testPos(t, stmts[1], genPosOneline(10), genPosOneline(19))
+				testPos(t, stmts[1], genPosOneline(9), genPosOneline(18))
 				testStatement(t, stmts[2], 4, "select 3;")
-				testPos(t, stmts[2], genPosOneline(19), genPosOneline(28))
+				testPos(t, stmts[2], genPosOneline(18), genPosOneline(27))
 			},
 		},
 		{
@@ -59,11 +59,11 @@ func TestParseStatement(t *testing.T) {
 					t.Fatalf("Query does not contain 3 statements, got %d", len(stmts))
 				}
 				testStatement(t, stmts[0], 4, "select 1;")
-				testPos(t, stmts[0], genPosOneline(1), genPosOneline(10))
+				testPos(t, stmts[0], genPosOneline(0), genPosOneline(9))
 				testStatement(t, stmts[1], 4, "select 2;")
-				testPos(t, stmts[1], genPosOneline(10), genPosOneline(19))
+				testPos(t, stmts[1], genPosOneline(9), genPosOneline(18))
 				testStatement(t, stmts[2], 3, "select 3")
-				testPos(t, stmts[2], genPosOneline(19), genPosOneline(27))
+				testPos(t, stmts[2], genPosOneline(18), genPosOneline(26))
 			},
 		},
 	}
@@ -147,7 +147,7 @@ func TestParseParenthesis(t *testing.T) {
 				testStatement(t, stmts[0], 1, input)
 				list := stmts[0].GetTokens()
 				testParenthesis(t, list[0], input)
-				testPos(t, stmts[0], genPosOneline(1), genPosOneline(4))
+				testPos(t, stmts[0], genPosOneline(0), genPosOneline(3))
 			},
 		},
 		{
@@ -157,7 +157,7 @@ func TestParseParenthesis(t *testing.T) {
 				testStatement(t, stmts[0], 1, input)
 				list := stmts[0].GetTokens()
 				testParenthesis(t, list[0], input)
-				testPos(t, stmts[0], genPosOneline(1), genPosOneline(8))
+				testPos(t, stmts[0], genPosOneline(0), genPosOneline(7))
 			},
 		},
 		{
@@ -167,7 +167,7 @@ func TestParseParenthesis(t *testing.T) {
 				testStatement(t, stmts[0], 1, input)
 				list := stmts[0].GetTokens()
 				testParenthesis(t, list[0], input)
-				testPos(t, stmts[0], genPosOneline(1), genPosOneline(18))
+				testPos(t, stmts[0], genPosOneline(0), genPosOneline(17))
 			},
 		},
 		{
@@ -446,15 +446,15 @@ func TestMemberIdentifier(t *testing.T) {
 				testStatement(t, stmts[0], 7, input)
 				list := stmts[0].GetTokens()
 				testItem(t, list[0], "select")
-				testPos(t, list[0], genPosOneline(1), genPosOneline(7))
+				testPos(t, list[0], genPosOneline(0), genPosOneline(6))
 				testItem(t, list[1], " ")
-				testPos(t, list[1], genPosOneline(7), genPosOneline(8))
+				testPos(t, list[1], genPosOneline(6), genPosOneline(7))
 				testMemberIdentifier(t, list[2], "foo.", "foo", "")
-				testPos(t, list[2], genPosOneline(8), genPosOneline(12))
+				testPos(t, list[2], genPosOneline(7), genPosOneline(11))
 				testItem(t, list[3], " ")
-				testPos(t, list[3], genPosOneline(12), genPosOneline(13))
+				testPos(t, list[3], genPosOneline(11), genPosOneline(12))
 				testItem(t, list[4], "from")
-				testPos(t, list[4], genPosOneline(13), genPosOneline(17))
+				testPos(t, list[4], genPosOneline(12), genPosOneline(16))
 				testItem(t, list[5], " ")
 				testIdentifier(t, list[6], "abc")
 			},
@@ -496,7 +496,7 @@ func TestParseMultiKeyword(t *testing.T) {
 				testStatement(t, stmts[0], 1, input)
 				list := stmts[0].GetTokens()
 				testMultiKeyword(t, list[0], input)
-				testPos(t, stmts[0], genPosOneline(1), genPosOneline(9))
+				testPos(t, stmts[0], genPosOneline(0), genPosOneline(8))
 			},
 		},
 		{
@@ -506,7 +506,7 @@ func TestParseMultiKeyword(t *testing.T) {
 				testStatement(t, stmts[0], 1, input)
 				list := stmts[0].GetTokens()
 				testMultiKeyword(t, list[0], input)
-				testPos(t, stmts[0], genPosOneline(1), genPosOneline(9))
+				testPos(t, stmts[0], genPosOneline(0), genPosOneline(8))
 			},
 		},
 		{
@@ -1250,5 +1250,5 @@ func testPos(t *testing.T, node ast.Node, pos, end token.Pos) {
 }
 
 func genPosOneline(col int) token.Pos {
-	return token.Pos{Line: 1, Col: col}
+	return token.Pos{Line: 0, Col: col}
 }

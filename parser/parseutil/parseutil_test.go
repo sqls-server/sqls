@@ -21,15 +21,15 @@ func Test_extractFocusedStatement(t *testing.T) {
 		want  string
 	}{
 		{
-			name:  "",
+			name:  "before semicolon",
 			input: "select 1;select 2;select 3;",
-			pos:   token.Pos{Line: 1, Col: 9},
+			pos:   token.Pos{Line: 0, Col: 9},
 			want:  "select 1;",
 		},
 		{
-			name:  "",
+			name:  "after semicolon",
 			input: "select 1;select 2;select 3;",
-			pos:   token.Pos{Line: 1, Col: 10},
+			pos:   token.Pos{Line: 0, Col: 10},
 			want:  "select 2;",
 		},
 	}
@@ -57,19 +57,19 @@ func Test_encloseIsSubQuery(t *testing.T) {
 		{
 			name:  "outer sub query",
 			input: "select * from (select * from abc) as t",
-			pos:   token.Pos{Line: 1, Col: 14},
+			pos:   token.Pos{Line: 0, Col: 14},
 			want:  false,
 		},
 		{
 			name:  "inner sub query",
 			input: "select * from (select * from abc) as t",
-			pos:   token.Pos{Line: 1, Col: 15},
+			pos:   token.Pos{Line: 0, Col: 15},
 			want:  true,
 		},
 		{
 			name:  "operator",
 			input: "select (1 + 1)",
-			pos:   token.Pos{Line: 1, Col: 11},
+			pos:   token.Pos{Line: 0, Col: 11},
 			want:  false,
 		},
 	}
@@ -95,7 +95,7 @@ func TestExtractSubQueryView(t *testing.T) {
 		{
 			name:  "simple sub query",
 			input: "select * (select city.ID, city.Name from dbs.city as ci) as sub",
-			pos:   token.Pos{Line: 1, Col: 9},
+			pos:   token.Pos{Line: 0, Col: 9},
 			want: &SubQueryInfo{
 				Name: "sub",
 				Views: []*SubQueryView{
@@ -116,7 +116,7 @@ func TestExtractSubQueryView(t *testing.T) {
 		{
 			name:  "aliased column",
 			input: "select * (select city.ID as city_id, city.Name as city_name from dbs.city as ci) as sub",
-			pos:   token.Pos{Line: 1, Col: 9},
+			pos:   token.Pos{Line: 0, Col: 9},
 			want: &SubQueryInfo{
 				Name: "sub",
 				Views: []*SubQueryView{
@@ -137,13 +137,13 @@ func TestExtractSubQueryView(t *testing.T) {
 		{
 			name:  "not found sub query",
 			input: "select * (select city.ID, city.Name from dbs.city as ci) as sub",
-			pos:   token.Pos{Line: 1, Col: 10},
+			pos:   token.Pos{Line: 0, Col: 10},
 			want:  &SubQueryInfo{},
 		},
 		{
 			name:  "astrisk identifier",
 			input: "select * (select * from dbs.city as ci) as sub",
-			pos:   token.Pos{Line: 1, Col: 9},
+			pos:   token.Pos{Line: 0, Col: 9},
 			want: &SubQueryInfo{
 				Name: "sub",
 				Views: []*SubQueryView{
@@ -163,7 +163,7 @@ func TestExtractSubQueryView(t *testing.T) {
 		{
 			name:  "positoin of outer sub query",
 			input: "SELECT * FROM (SELECT t.ID, t.Name FROM (SELECT ci.ID, ci.Name, ci.CountryCode, ci.District, ci.Population FROM dbs.city AS ci) as it) as ot",
-			pos:   token.Pos{Line: 1, Col: 14},
+			pos:   token.Pos{Line: 0, Col: 14},
 			want: &SubQueryInfo{
 				Name: "ot",
 				Views: []*SubQueryView{
@@ -184,7 +184,7 @@ func TestExtractSubQueryView(t *testing.T) {
 		{
 			name:  "positoin of inner sub query",
 			input: "SELECT * FROM (SELECT t.ID, t.Name FROM (SELECT ci.ID, ci.Name, ci.CountryCode, ci.District, ci.Population FROM dbs.city AS ci) as it) as ot",
-			pos:   token.Pos{Line: 1, Col: 16},
+			pos:   token.Pos{Line: 0, Col: 16},
 			want: &SubQueryInfo{
 				Name: "it",
 				Views: []*SubQueryView{
@@ -208,13 +208,13 @@ func TestExtractSubQueryView(t *testing.T) {
 		{
 			name:  "positoin of sub query in sub query",
 			input: "SELECT * FROM (SELECT t.ID, t.Name FROM (SELECT ci.ID, ci.Name, ci.CountryCode, ci.District, ci.Population FROM dbs.city AS ci) as it) as ot",
-			pos:   token.Pos{Line: 1, Col: 42},
+			pos:   token.Pos{Line: 0, Col: 42},
 			want:  &SubQueryInfo{},
 		},
 		{
 			name:  "recurcive parse sub query",
 			input: "SELECT * FROM (SELECT * FROM (SELECT * FROM (SELECT ci.ID, ci.Name FROM dbs.city AS ci) as t) as t) as t",
-			pos:   token.Pos{Line: 1, Col: 1},
+			pos:   token.Pos{Line: 0, Col: 1},
 			want: &SubQueryInfo{
 				Name: "t",
 				Views: []*SubQueryView{
@@ -257,7 +257,7 @@ func TestExtractTable(t *testing.T) {
 		{
 			name:  "from only",
 			input: "from abc",
-			pos:   token.Pos{Line: 1, Col: 1},
+			pos:   token.Pos{Line: 0, Col: 1},
 			want: []*TableInfo{
 				{
 					Name: "abc",
@@ -267,7 +267,7 @@ func TestExtractTable(t *testing.T) {
 		{
 			name:  "join only",
 			input: "join abc",
-			pos:   token.Pos{Line: 1, Col: 1},
+			pos:   token.Pos{Line: 0, Col: 1},
 			want: []*TableInfo{
 				{
 					Name: "abc",
@@ -277,7 +277,7 @@ func TestExtractTable(t *testing.T) {
 		{
 			name:  "select table reference",
 			input: "select * from abc",
-			pos:   token.Pos{Line: 1, Col: 1},
+			pos:   token.Pos{Line: 0, Col: 1},
 			want: []*TableInfo{
 				{
 					Name: "abc",
@@ -287,7 +287,7 @@ func TestExtractTable(t *testing.T) {
 		{
 			name:  "select table references",
 			input: "select * from abc, def",
-			pos:   token.Pos{Line: 1, Col: 1},
+			pos:   token.Pos{Line: 0, Col: 1},
 			want: []*TableInfo{
 				{
 					Name: "abc",
@@ -300,7 +300,7 @@ func TestExtractTable(t *testing.T) {
 		{
 			name:  "select join table reference",
 			input: "select * from abc left join def on abc.id = def.id",
-			pos:   token.Pos{Line: 1, Col: 1},
+			pos:   token.Pos{Line: 0, Col: 1},
 			want: []*TableInfo{
 				{
 					Name: "abc",
@@ -313,7 +313,7 @@ func TestExtractTable(t *testing.T) {
 		{
 			name:  "multiple statement before",
 			input: "select * from abc;select * from def;select * from ghi",
-			pos:   token.Pos{Line: 1, Col: 1},
+			pos:   token.Pos{Line: 0, Col: 1},
 			want: []*TableInfo{
 				{
 					Name: "abc",
@@ -323,7 +323,7 @@ func TestExtractTable(t *testing.T) {
 		{
 			name:  "multiple statement center",
 			input: "select * from abc;select * from def;select * from ghi",
-			pos:   token.Pos{Line: 1, Col: 19},
+			pos:   token.Pos{Line: 0, Col: 19},
 			want: []*TableInfo{
 				{
 					Name: "def",
@@ -333,7 +333,7 @@ func TestExtractTable(t *testing.T) {
 		{
 			name:  "multiple statement after",
 			input: "select * from abc;select * from def;select * from ghi",
-			pos:   token.Pos{Line: 1, Col: 37},
+			pos:   token.Pos{Line: 0, Col: 37},
 			want: []*TableInfo{
 				{
 					Name: "ghi",
@@ -343,7 +343,7 @@ func TestExtractTable(t *testing.T) {
 		{
 			name:  "with database schema",
 			input: "select * from abc.def",
-			pos:   token.Pos{Line: 1, Col: 1},
+			pos:   token.Pos{Line: 0, Col: 1},
 			want: []*TableInfo{
 				{
 					DatabaseSchema: "abc",
@@ -354,7 +354,7 @@ func TestExtractTable(t *testing.T) {
 		{
 			name:  "with database schema and alias",
 			input: "select * from abc.def as ghi",
-			pos:   token.Pos{Line: 1, Col: 1},
+			pos:   token.Pos{Line: 0, Col: 1},
 			want: []*TableInfo{
 				{
 					DatabaseSchema: "abc",
@@ -366,7 +366,7 @@ func TestExtractTable(t *testing.T) {
 		{
 			name:  "focus outer sub query before",
 			input: "select t.* from (select city_id, city_name from (select city.ID as city_id, city.Name as city_name from city) as t) as t",
-			pos:   token.Pos{Line: 1, Col: 1},
+			pos:   token.Pos{Line: 0, Col: 1},
 			want: []*TableInfo{
 				{
 					DatabaseSchema: "",
@@ -378,7 +378,7 @@ func TestExtractTable(t *testing.T) {
 		{
 			name:  "focus outer sub query after",
 			input: "select t.* from (select city_id, city_name from (select city.ID as city_id, city.Name as city_name from city) as t) as t",
-			pos:   token.Pos{Line: 1, Col: 120},
+			pos:   token.Pos{Line: 0, Col: 120},
 			want: []*TableInfo{
 				{
 					DatabaseSchema: "",
@@ -390,7 +390,7 @@ func TestExtractTable(t *testing.T) {
 		{
 			name:  "focus middle sub query before",
 			input: "select t.* from (select city_id, city_name from (select city.ID as city_id, city.Name as city_name from city) as t) as t",
-			pos:   token.Pos{Line: 1, Col: 18},
+			pos:   token.Pos{Line: 0, Col: 18},
 			want: []*TableInfo{
 				{
 					DatabaseSchema: "",
@@ -402,7 +402,7 @@ func TestExtractTable(t *testing.T) {
 		{
 			name:  "focus middle sub query after",
 			input: "select t.* from (select city_id, city_name from (select city.ID as city_id, city.Name as city_name from city) as t) as t",
-			pos:   token.Pos{Line: 1, Col: 114},
+			pos:   token.Pos{Line: 0, Col: 114},
 			want: []*TableInfo{
 				{
 					DatabaseSchema: "",
@@ -414,7 +414,7 @@ func TestExtractTable(t *testing.T) {
 		{
 			name:  "focus deep sub query",
 			input: "select t.* from (select city_id, city_name from (select ci.ID as city_id, ci.Name as city_name from city as ci) as t) as t",
-			pos:   token.Pos{Line: 1, Col: 55},
+			pos:   token.Pos{Line: 0, Col: 55},
 			want: []*TableInfo{
 				{
 					DatabaseSchema: "",
@@ -426,7 +426,7 @@ func TestExtractTable(t *testing.T) {
 		{
 			name:  "insert",
 			input: "insert into abc",
-			pos:   token.Pos{Line: 1, Col: 1},
+			pos:   token.Pos{Line: 0, Col: 1},
 			want: []*TableInfo{
 				{
 					DatabaseSchema: "",
@@ -438,7 +438,7 @@ func TestExtractTable(t *testing.T) {
 		{
 			name:  "update",
 			input: "update abc",
-			pos:   token.Pos{Line: 1, Col: 1},
+			pos:   token.Pos{Line: 0, Col: 1},
 			want: []*TableInfo{
 				{
 					DatabaseSchema: "",
@@ -489,7 +489,7 @@ func TestNodeWalker_PrevNodesIs(t *testing.T) {
 		{
 			name:  "prev select",
 			input: "SELECT  FROM def",
-			pos:   token.Pos{Line: 1, Col: 7},
+			pos:   token.Pos{Line: 0, Col: 7},
 			matcher: astutil.NodeMatcher{
 				ExpectKeyword: []string{"SELECT"},
 			},
@@ -498,7 +498,7 @@ func TestNodeWalker_PrevNodesIs(t *testing.T) {
 		{
 			name:  "prev select on identifier",
 			input: "SELECT abc FROM def",
-			pos:   token.Pos{Line: 1, Col: 10},
+			pos:   token.Pos{Line: 0, Col: 10},
 			matcher: astutil.NodeMatcher{
 				ExpectKeyword: []string{"SELECT"},
 			},
@@ -507,7 +507,7 @@ func TestNodeWalker_PrevNodesIs(t *testing.T) {
 		{
 			name:  "prev select on member identifier",
 			input: "SELECT abc.xxx FROM def",
-			pos:   token.Pos{Line: 1, Col: 13},
+			pos:   token.Pos{Line: 0, Col: 13},
 			matcher: astutil.NodeMatcher{
 				ExpectKeyword: []string{"SELECT"},
 			},
@@ -516,7 +516,7 @@ func TestNodeWalker_PrevNodesIs(t *testing.T) {
 		{
 			name:  "prev select on invalid identifier",
 			input: "SELECT abc. FROM def",
-			pos:   token.Pos{Line: 1, Col: 11},
+			pos:   token.Pos{Line: 0, Col: 11},
 			matcher: astutil.NodeMatcher{
 				ExpectKeyword: []string{"SELECT"},
 			},
@@ -525,7 +525,7 @@ func TestNodeWalker_PrevNodesIs(t *testing.T) {
 		{
 			name:  "prev select on invalid identifier list",
 			input: "SELECT a, b,       FROM def",
-			pos:   token.Pos{Line: 1, Col: 18},
+			pos:   token.Pos{Line: 0, Col: 18},
 			matcher: astutil.NodeMatcher{
 				ExpectKeyword: []string{"SELECT"},
 			},
@@ -534,7 +534,7 @@ func TestNodeWalker_PrevNodesIs(t *testing.T) {
 		{
 			name:  "prev from",
 			input: "SELECT * FROM ",
-			pos:   token.Pos{Line: 1, Col: 14},
+			pos:   token.Pos{Line: 0, Col: 14},
 			matcher: astutil.NodeMatcher{
 				ExpectKeyword: []string{"FROM"},
 			},
@@ -543,7 +543,7 @@ func TestNodeWalker_PrevNodesIs(t *testing.T) {
 		{
 			name:  "prev from on identifier",
 			input: "SELECT * FROM def",
-			pos:   token.Pos{Line: 1, Col: 15},
+			pos:   token.Pos{Line: 0, Col: 15},
 			matcher: astutil.NodeMatcher{
 				ExpectKeyword: []string{"FROM"},
 			},
@@ -552,7 +552,7 @@ func TestNodeWalker_PrevNodesIs(t *testing.T) {
 		{
 			name:  "insert into",
 			input: "insert into city (abc",
-			pos:   token.Pos{Line: 1, Col: 21},
+			pos:   token.Pos{Line: 0, Col: 21},
 			matcher: astutil.NodeMatcher{
 				ExpectTokens: []token.Kind{token.LParen},
 			},
@@ -561,7 +561,7 @@ func TestNodeWalker_PrevNodesIs(t *testing.T) {
 		{
 			name:  "delete from",
 			input: "delete from city",
-			pos:   token.Pos{Line: 1, Col: 16},
+			pos:   token.Pos{Line: 0, Col: 16},
 			matcher: astutil.NodeMatcher{
 				ExpectKeyword: []string{"DELETE FROM"},
 			},

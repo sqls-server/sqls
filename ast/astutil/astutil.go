@@ -168,16 +168,8 @@ func (nr *NodeReader) CurNodeIs(nm NodeMatcher) bool {
 }
 
 func isEnclose(node ast.Node, pos token.Pos) bool {
-	_, isList := node.(ast.TokenList)
-	_, isMultiKeyword := node.(ast.TokenList)
-	if isList && !isMultiKeyword {
-		if 0 <= token.ComparePos(pos, node.Pos()) && 0 >= token.ComparePos(pos, node.End()) {
-			return true
-		}
-	} else {
-		if 0 <= token.ComparePos(pos, node.Pos()) && 0 > token.ComparePos(pos, node.End()) {
-			return true
-		}
+	if 0 <= token.ComparePos(pos, node.Pos()) && 0 >= token.ComparePos(pos, node.End()) {
+		return true
 	}
 	return false
 }

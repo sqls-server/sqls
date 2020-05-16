@@ -55,8 +55,8 @@ var hoverTargetMatcher = astutil.NodeMatcher{
 
 func hover(text string, params lsp.HoverParams, dbCache *database.DatabaseCache) (*lsp.Hover, error) {
 	pos := token.Pos{
-		Line: params.Position.Line + 1,
-		Col:  params.Position.Character + 1,
+		Line: params.Position.Line,
+		Col:  params.Position.Character,
 	}
 	parsed, err := parse(text)
 	if err != nil {
