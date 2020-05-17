@@ -71,25 +71,32 @@ func hover(text string, params lsp.HoverParams, dbCache *database.DatabaseCache)
 
 	// Create hover contents
 	var hoverContent *lsp.MarkupContent
-	if memIdent != nil {
+	if ident != nil && memIdent != nil {
 		hoverContent = hoverContentFromMemberIdent(ident, memIdent, dbCache, hoverEnv)
-	} else {
+	} else if ident == nil && memIdent != nil {
+		hoverContent = hoverContentFromMemberIdentOnly(memIdent, dbCache, hoverEnv)
+	} else if ident != nil && memIdent == nil {
 		hoverContent = hoverContentFromIdent(ident, dbCache, hoverEnv)
 	}
 	if hoverContent == nil {
 		return nil, ErrNoHover
 	}
 
+	var posIdent ast.Node
+	posIdent = ident
+	if ident == nil && memIdent != nil {
+		posIdent = memIdent
+	}
 	res := &lsp.Hover{
 		Contents: *hoverContent,
 		Range: lsp.Range{
 			Start: lsp.Position{
-				Line:      ident.Pos().Line,
-				Character: ident.Pos().Col,
+				Line:      posIdent.Pos().Line,
+				Character: posIdent.Pos().Col,
 			},
 			End: lsp.Position{
-				Line:      ident.End().Line,
-				Character: ident.End().Col,
+				Line:      posIdent.End().Line,
+				Character: posIdent.End().Col,
 			},
 		},
 	}
@@ -240,6 +247,32 @@ func hoverContentFromMemberIdent(ident *ast.Identifer, memIdent *ast.MemberIdent
 		}
 	}
 
+	return nil
+}
+
+func hoverContentFromMemberIdentOnly(memIdent *ast.MemberIdentifer, dbCache *database.DatabaseCache, hoverEnv *hoverEnvironment) *lsp.MarkupContent {
+	tableName := memIdent.Parent.String()
+	colName := memIdent.Child.String()
+
+	// translate to table alias
+	for _, table := range hoverEnv.tables {
+		if table.Alias == tableName {
+			tableName = table.Name
+		}
+	}
+
+	// find column
+	if columnInfo, ok := dbCache.Column(tableName, colName); ok {
+		buf := new(bytes.Buffer)
+		fmt.Fprintf(buf, "%s.%s column", tableName, colName)
+		fmt.Fprintln(buf)
+		fmt.Fprintln(buf)
+		fmt.Fprintln(buf, toHoverTextColumn(columnInfo))
+		return &lsp.MarkupContent{
+			Kind:  lsp.Markdown,
+			Value: buf.String(),
+		}
+	}
 	return nil
 }
 

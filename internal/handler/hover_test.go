@@ -104,6 +104,13 @@ func TestHover(t *testing.T) {
 			col:    19,
 		},
 		{
+			name:   "select member ident child dot",
+			input:  "SELECT city.ID, city.Name FROM city",
+			output: "city.ID column",
+			line:   0,
+			col:    11,
+		},
+		{
 			name:   "select member ident child head",
 			input:  "SELECT city.ID, city.Name FROM city",
 			output: "city.ID column",
@@ -130,6 +137,13 @@ func TestHover(t *testing.T) {
 			output: "city table",
 			line:   0,
 			col:    15,
+		},
+		{
+			name:   "select aliased member ident child head",
+			input:  "SELECT ci.ID, ci.Name FROM city AS ci",
+			output: "city.ID column",
+			line:   0,
+			col:    9,
 		},
 		{
 			name:   "select aliased member ident child head",
