@@ -16,7 +16,6 @@ import (
 	"github.com/lighttiger2505/sqls/parser/parseutil"
 	"github.com/lighttiger2505/sqls/token"
 	"github.com/sourcegraph/jsonrpc2"
-	"golang.org/x/xerrors"
 )
 
 var ErrNoHover = errors.New("no hover infomation found")
@@ -56,80 +55,36 @@ var hoverTargetMatcher = astutil.NodeMatcher{
 func hover(text string, params lsp.HoverParams, dbCache *database.DatabaseCache) (*lsp.Hover, error) {
 	pos := token.Pos{
 		Line: params.Position.Line,
-		Col:  params.Position.Character,
+		Col:  params.Position.Character + 1,
 	}
 	parsed, err := parse(text)
 	if err != nil {
 		return nil, err
 	}
 
+	// Find identifiers from focused statement
+	nodeWalker := parseutil.NewNodeWalker(parsed, pos)
+	focusedIdentNodes := nodeWalker.CurNodeMatches(hoverTargetMatcher)
+	if len(focusedIdentNodes) == 0 {
+		return nil, ErrNoHover
+	}
+	ident, memIdent := findIdent(focusedIdentNodes)
+
+	// Collect environment infomation
+	// TODO sub query
+	// TODO alias
 	definedTables, err := parseutil.ExtractTable(parsed, pos)
 	if err != nil {
 		return nil, err
 	}
 
-	nodeWalker := parseutil.NewNodeWalker(parsed, pos)
-	curNode := nodeWalker.CurNodeButtomMatched(hoverTargetMatcher)
-
-	if curNode == nil {
-		return nil, ErrNoHover
-	}
-
+	// Create hover contents
 	var hoverContent *lsp.MarkupContent
-	switch v := curNode.(type) {
-	case *ast.Identifer:
-		identName := v.String()
-
-		// find column
-		hoverContents := []string{}
-		for _, table := range definedTables {
-			columnInfo, ok := dbCache.Column(table.Name, identName)
-			if ok {
-				buf := new(bytes.Buffer)
-				fmt.Fprintf(buf, "%s.%s column", table.Name, identName)
-				fmt.Fprintln(buf)
-				fmt.Fprintln(buf)
-				fmt.Fprintln(buf, toHoverTextColumn(columnInfo))
-				hoverContents = append(hoverContents, buf.String())
-			}
-		}
-		if len(hoverContents) >= 2 {
-			return nil, ErrNoHover
-		}
-		if len(hoverContents) == 1 {
-			hoverContent = &lsp.MarkupContent{
-				Kind:  lsp.Markdown,
-				Value: hoverContents[0],
-			}
-		}
-
-		// translate table alias
-		tableIdent := identName
-		for _, table := range definedTables {
-			if table.Alias == tableIdent {
-				tableIdent = table.Name
-			}
-		}
-		// find table
-		columns, ok := dbCache.ColumnDescs(tableIdent)
-		if ok {
-			buf := new(bytes.Buffer)
-			fmt.Fprintf(buf, "%s table", tableIdent)
-			fmt.Fprintln(buf)
-			fmt.Fprintln(buf)
-			for _, col := range columns {
-				fmt.Fprintf(buf, "- %s", toHoverTextTable(col))
-				fmt.Fprintln(buf)
-			}
-			hoverContent = &lsp.MarkupContent{
-				Kind:  lsp.Markdown,
-				Value: buf.String(),
-			}
-		}
-	default:
-		return nil, xerrors.Errorf("unknown node type %T", v)
+	if memIdent != nil {
+		hoverContent = hoverContentFromMemberIdent(ident, memIdent, dbCache, definedTables)
+	} else {
+		hoverContent = hoverContentFromIdent(ident, dbCache, definedTables)
 	}
-
 	if hoverContent == nil {
 		return nil, ErrNoHover
 	}
@@ -138,16 +93,131 @@ func hover(text string, params lsp.HoverParams, dbCache *database.DatabaseCache)
 		Contents: *hoverContent,
 		Range: lsp.Range{
 			Start: lsp.Position{
-				Line:      curNode.Pos().Line,
-				Character: curNode.Pos().Col,
+				Line:      ident.Pos().Line,
+				Character: ident.Pos().Col,
 			},
 			End: lsp.Position{
-				Line:      curNode.End().Line,
-				Character: curNode.End().Col,
+				Line:      ident.End().Line,
+				Character: ident.End().Col,
 			},
 		},
 	}
 	return res, nil
+}
+
+func findIdent(nodes []ast.Node) (*ast.Identifer, *ast.MemberIdentifer) {
+	var (
+		ident    *ast.Identifer
+		memIdent *ast.MemberIdentifer
+	)
+	for _, node := range nodes {
+		switch v := node.(type) {
+		case *ast.Identifer:
+			ident = v
+		case *ast.MemberIdentifer:
+			memIdent = v
+		}
+	}
+	return ident, memIdent
+}
+
+func hoverContentFromIdent(ident *ast.Identifer, dbCache *database.DatabaseCache, definedTables []*parseutil.TableInfo) *lsp.MarkupContent {
+	identName := ident.String()
+	// find column
+	hoverContents := []string{}
+	for _, table := range definedTables {
+		columnInfo, ok := dbCache.Column(table.Name, identName)
+		if ok {
+			buf := new(bytes.Buffer)
+			fmt.Fprintf(buf, "%s.%s column", table.Name, identName)
+			fmt.Fprintln(buf)
+			fmt.Fprintln(buf)
+			fmt.Fprintln(buf, toHoverTextColumn(columnInfo))
+			hoverContents = append(hoverContents, buf.String())
+		}
+	}
+	if len(hoverContents) >= 2 {
+		return nil
+	}
+	if len(hoverContents) == 1 {
+		return &lsp.MarkupContent{
+			Kind:  lsp.Markdown,
+			Value: hoverContents[0],
+		}
+	}
+
+	// translate table alias
+	tableIdent := identName
+	for _, table := range definedTables {
+		if table.Alias == tableIdent {
+			tableIdent = table.Name
+		}
+	}
+	// find table
+	columns, ok := dbCache.ColumnDescs(tableIdent)
+	if ok {
+		buf := new(bytes.Buffer)
+		fmt.Fprintf(buf, "%s table", tableIdent)
+		fmt.Fprintln(buf)
+		fmt.Fprintln(buf)
+		for _, col := range columns {
+			fmt.Fprintf(buf, "- %s", toHoverTextTable(col))
+			fmt.Fprintln(buf)
+		}
+		return &lsp.MarkupContent{
+			Kind:  lsp.Markdown,
+			Value: buf.String(),
+		}
+	}
+	return nil
+}
+
+func hoverContentFromMemberIdent(ident *ast.Identifer, memIdent *ast.MemberIdentifer, dbCache *database.DatabaseCache, definedTables []*parseutil.TableInfo) *lsp.MarkupContent {
+	// TODO ADD FROM case
+	identName := ident.String()
+	tableName := memIdent.Parent.String()
+	colName := memIdent.Child.String()
+
+	// translate to table alias
+	for _, table := range definedTables {
+		if table.Alias == tableName {
+			tableName = table.Name
+		}
+	}
+
+	// find column
+	if identName == colName {
+		if columnInfo, ok := dbCache.Column(tableName, colName); ok {
+			buf := new(bytes.Buffer)
+			fmt.Fprintf(buf, "%s.%s column", tableName, colName)
+			fmt.Fprintln(buf)
+			fmt.Fprintln(buf)
+			fmt.Fprintln(buf, toHoverTextColumn(columnInfo))
+			return &lsp.MarkupContent{
+				Kind:  lsp.Markdown,
+				Value: buf.String(),
+			}
+		}
+	}
+
+	// find table
+	columns, ok := dbCache.ColumnDescs(tableName)
+	if ok {
+		buf := new(bytes.Buffer)
+		fmt.Fprintf(buf, "%s table", tableName)
+		fmt.Fprintln(buf)
+		fmt.Fprintln(buf)
+		for _, col := range columns {
+			fmt.Fprintf(buf, "- %s", toHoverTextTable(col))
+			fmt.Fprintln(buf)
+		}
+		return &lsp.MarkupContent{
+			Kind:  lsp.Markdown,
+			Value: buf.String(),
+		}
+	}
+
+	return nil
 }
 
 func toHoverTextTable(desc *database.ColumnDesc) string {
