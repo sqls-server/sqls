@@ -1,8 +1,6 @@
 package parseutil
 
 import (
-	"fmt"
-
 	"github.com/lighttiger2505/sqls/ast"
 	"github.com/lighttiger2505/sqls/ast/astutil"
 )
@@ -106,17 +104,14 @@ func ExtractAliasedIdentifer(parsed ast.TokenList) []ast.Node {
 		if !ok {
 			continue
 		}
-		fmt.Println("parse alias")
 		list, ok := alias.RealName.(ast.TokenList)
 		if !ok {
 			results = append(results, node)
 			continue
 		}
-		fmt.Println("parse list alias real name")
 		if isSubQuery(list) {
 			continue
 		}
-		fmt.Println("check sub query")
 		results = append(results, node)
 	}
 	return results
