@@ -183,3 +183,48 @@ func TestExtractWhereConditon(t *testing.T) {
 		})
 	}
 }
+
+func TestExtractAliasedIdentifer(t *testing.T) {
+	testcases := []struct {
+		name  string
+		input string
+		want  []string
+	}{
+		{
+			name:  "one alias",
+			input: "abc as a",
+			want: []string{
+				"abc as a",
+			},
+		},
+		{
+			name:  "two alias",
+			input: "abc as a, def as d",
+			want: []string{
+				"abc as a",
+				"def as d",
+			},
+		},
+		{
+			name:  "through sub query",
+			input: "(select * from abc) as t",
+			want:  []string{},
+		},
+	}
+	for _, tt := range testcases {
+		t.Run(tt.name, func(t *testing.T) {
+			query := initExtractTable(t, tt.input)
+			gots := ExtractAliasedIdentifer(query)
+
+			if len(gots) != len(tt.want) {
+				t.Errorf("contain nodes %d, got %d", len(tt.want), len(gots))
+				return
+			}
+			for i, got := range gots {
+				if tt.want[i] != got.String() {
+					t.Errorf("expected %q, got %q", tt.want[i], got.String())
+				}
+			}
+		})
+	}
+}

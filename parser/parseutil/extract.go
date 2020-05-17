@@ -1,6 +1,8 @@
 package parseutil
 
 import (
+	"fmt"
+
 	"github.com/lighttiger2505/sqls/ast"
 	"github.com/lighttiger2505/sqls/ast/astutil"
 )
@@ -91,6 +93,33 @@ func ExtractWhereCondition(parsed ast.TokenList) []ast.Node {
 		},
 	}
 	return filterPrefixGroup(astutil.NewNodeReader(parsed), prefixMatcher, peekMatcher)
+}
+
+func ExtractAliasedIdentifer(parsed ast.TokenList) []ast.Node {
+	reader := astutil.NewNodeReader(parsed)
+	matcher := astutil.NodeMatcher{NodeTypes: []ast.NodeType{ast.TypeAliased}}
+	aliases := reader.FindRecursive(matcher)
+
+	results := []ast.Node{}
+	for _, node := range aliases {
+		alias, ok := node.(*ast.Aliased)
+		if !ok {
+			continue
+		}
+		fmt.Println("parse alias")
+		list, ok := alias.RealName.(ast.TokenList)
+		if !ok {
+			results = append(results, node)
+			continue
+		}
+		fmt.Println("parse list alias real name")
+		if isSubQuery(list) {
+			continue
+		}
+		fmt.Println("check sub query")
+		results = append(results, node)
+	}
+	return results
 }
 
 func filterPrefixGroup(reader *astutil.NodeReader, prefixMatcher astutil.NodeMatcher, peekMatcher astutil.NodeMatcher) []ast.Node {
