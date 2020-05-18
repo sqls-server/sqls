@@ -135,6 +135,22 @@ func collectEnvirontment(parsed ast.TokenList, pos token.Pos) (*hoverEnvironment
 	return environment, nil
 }
 
+func (he *hoverEnvironment) getRealName(aliasedName string) (string, bool) {
+	for _, v := range he.aliases {
+		alias, _ := v.(*ast.Aliased)
+
+		if alias.AliasedName.String() == aliasedName {
+			switch v := alias.RealName.(type) {
+			case *ast.Identifer:
+				return v.String(), true
+			case *ast.MemberIdentifer:
+				return v.Child.String(), true
+			}
+		}
+	}
+	return "", false
+}
+
 func findIdent(nodes []ast.Node) (*ast.Identifer, *ast.MemberIdentifer) {
 	var (
 		ident    *ast.Identifer
@@ -153,6 +169,10 @@ func findIdent(nodes []ast.Node) (*ast.Identifer, *ast.MemberIdentifer) {
 
 func hoverContentFromIdent(ident *ast.Identifer, dbCache *database.DatabaseCache, hoverEnv *hoverEnvironment) *lsp.MarkupContent {
 	identName := ident.String()
+	if realName, ok := hoverEnv.getRealName(identName); ok {
+		identName = realName
+	}
+
 	// find column
 	hoverContents := []string{}
 	for _, table := range hoverEnv.tables {

@@ -187,6 +187,34 @@ func TestHover(t *testing.T) {
 			line:   0,
 			col:    20,
 		},
+		{
+			name:   "select aliased select identifer head",
+			input:  "SELECT ID AS city_id, Name AS city_name FROM city",
+			output: "city.ID column",
+			line:   0,
+			col:    13,
+		},
+		{
+			name:   "select aliased select identifer tail",
+			input:  "SELECT ID AS city_id, Name AS city_name FROM city",
+			output: "city.Name column",
+			line:   0,
+			col:    38,
+		},
+		{
+			name:   "select aliased select member identifer head",
+			input:  "SELECT city.ID AS city_id, city.Name AS city_name FROM city",
+			output: "city.ID column",
+			line:   0,
+			col:    18,
+		},
+		{
+			name:   "select aliased select member identifer tail",
+			input:  "SELECT city.ID AS city_id, city.Name AS city_name FROM city",
+			output: "city.Name column",
+			line:   0,
+			col:    48,
+		},
 	}
 
 	for _, tt := range testcases {
