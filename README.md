@@ -143,7 +143,7 @@ if executable('sqls')
 endif
 ```
 
-### Configuratioin Params
+### Configuration Params
 
 The first setting in `connections` is the default connection.
 
