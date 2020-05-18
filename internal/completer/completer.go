@@ -337,7 +337,7 @@ func (c *Completer) columnCandidates(targetTables []*parseutil.TableInfo, pare *
 				candidate := lsp.CompletionItem{
 					Label:  column.Name,
 					Kind:   lsp.FieldCompletion,
-					Detail: ColumnDetailTemplate,
+					Detail: ColumnDetailTemplate + " " + fmt.Sprintf("%q", info.Name),
 				}
 				candidates = append(candidates, candidate)
 			}
@@ -359,7 +359,7 @@ func (c *Completer) columnCandidates(targetTables []*parseutil.TableInfo, pare *
 				candidate := lsp.CompletionItem{
 					Label:  column.Name,
 					Kind:   lsp.FieldCompletion,
-					Detail: ColumnDetailTemplate,
+					Detail: ColumnDetailTemplate + " " + fmt.Sprintf("%q", info.Name),
 				}
 				candidates = append(candidates, candidate)
 			}
@@ -398,7 +398,7 @@ func (c *Completer) aliasCandidates(targetTables []*parseutil.TableInfo) []lsp.C
 		candidate := lsp.CompletionItem{
 			Label:  info.Alias,
 			Kind:   lsp.FieldCompletion,
-			Detail: AliasDetailTemplate,
+			Detail: AliasDetailTemplate + " " + fmt.Sprintf("%q", info.Name),
 		}
 		candidates = append(candidates, candidate)
 	}
