@@ -308,58 +308,72 @@ func (c *Completer) keywordCandidates() []lsp.CompletionItem {
 		candidate := lsp.CompletionItem{
 			Label:  k,
 			Kind:   lsp.KeywordCompletion,
-			Detail: "Keyword",
+			Detail: "keyword",
 		}
 		candidates = append(candidates, candidate)
 	}
 	return candidates
 }
 
-var ColumnDetailTemplate = "Column"
-
 func (c *Completer) columnCandidates(targetTables []*parseutil.TableInfo, pare *parent) []lsp.CompletionItem {
 	candidates := []lsp.CompletionItem{}
 
 	switch pare.Type {
 	case ParentTypeNone:
-		for _, info := range targetTables {
-			if info.Name == "" {
+		for _, table := range targetTables {
+			if table.Name == "" {
 				continue
 			}
 			if c.DBCache == nil {
 				continue
 			}
-			columns, ok := c.DBCache.ColumnDescs(info.Name)
+			columns, ok := c.DBCache.ColumnDescs(table.Name)
 			if !ok {
 				continue
 			}
 			for _, column := range columns {
+				detail := strings.Join(
+					[]string{
+						"column",
+						"`" + table.Name + "`",
+						"{" + column.OnelineDesc() + "}",
+					},
+					" ",
+				)
 				candidate := lsp.CompletionItem{
 					Label:  column.Name,
 					Kind:   lsp.FieldCompletion,
-					Detail: ColumnDetailTemplate + " " + fmt.Sprintf("%q", info.Name),
+					Detail: detail,
 				}
 				candidates = append(candidates, candidate)
 			}
 		}
 	case ParentTypeSchema:
 	case ParentTypeTable:
-		for _, info := range targetTables {
-			if info.Name != pare.Name && info.Alias != pare.Name {
+		for _, table := range targetTables {
+			if table.Name != pare.Name && table.Alias != pare.Name {
 				continue
 			}
 			if c.DBCache == nil {
 				continue
 			}
-			columns, ok := c.DBCache.ColumnDescs(info.Name)
+			columns, ok := c.DBCache.ColumnDescs(table.Name)
 			if !ok {
 				continue
 			}
 			for _, column := range columns {
+				detail := strings.Join(
+					[]string{
+						"column",
+						"`" + table.Name + "`",
+						"{" + column.OnelineDesc() + "}",
+					},
+					" ",
+				)
 				candidate := lsp.CompletionItem{
 					Label:  column.Name,
 					Kind:   lsp.FieldCompletion,
-					Detail: ColumnDetailTemplate + " " + fmt.Sprintf("%q", info.Name),
+					Detail: detail,
 				}
 				candidates = append(candidates, candidate)
 			}
@@ -367,8 +381,6 @@ func (c *Completer) columnCandidates(targetTables []*parseutil.TableInfo, pare *
 	}
 	return candidates
 }
-
-var TableDetailTemplate = "Table"
 
 func (c *Completer) TableCandidates() []lsp.CompletionItem {
 	candidates := []lsp.CompletionItem{}
@@ -380,32 +392,35 @@ func (c *Completer) TableCandidates() []lsp.CompletionItem {
 		candidate := lsp.CompletionItem{
 			Label:  tableName,
 			Kind:   lsp.FieldCompletion,
-			Detail: TableDetailTemplate,
+			Detail: "table",
 		}
 		candidates = append(candidates, candidate)
 	}
 	return candidates
 }
-
-var AliasDetailTemplate = "Alias"
 
 func (c *Completer) aliasCandidates(targetTables []*parseutil.TableInfo) []lsp.CompletionItem {
 	candidates := []lsp.CompletionItem{}
-	for _, info := range targetTables {
-		if info.Alias == "" {
+	for _, table := range targetTables {
+		if table.Alias == "" {
 			continue
 		}
+		detail := strings.Join(
+			[]string{
+				"alias",
+				"`" + table.Name + "`",
+			},
+			" ",
+		)
 		candidate := lsp.CompletionItem{
-			Label:  info.Alias,
+			Label:  table.Alias,
 			Kind:   lsp.FieldCompletion,
-			Detail: AliasDetailTemplate + " " + fmt.Sprintf("%q", info.Name),
+			Detail: detail,
 		}
 		candidates = append(candidates, candidate)
 	}
 	return candidates
 }
-
-var SubQueryColumnDetailTemplate = "Sub Query"
 
 func (c *Completer) SubQueryColumnCandidates(info *parseutil.SubQueryInfo) []lsp.CompletionItem {
 	candidates := []lsp.CompletionItem{}
@@ -414,7 +429,7 @@ func (c *Completer) SubQueryColumnCandidates(info *parseutil.SubQueryInfo) []lsp
 			candidate := lsp.CompletionItem{
 				Label:  colmun,
 				Kind:   lsp.FieldCompletion,
-				Detail: SubQueryColumnDetailTemplate,
+				Detail: "subQuery",
 			}
 			candidates = append(candidates, candidate)
 		}
