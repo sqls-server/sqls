@@ -45,6 +45,25 @@ type ColumnDesc struct {
 	Extra   string
 }
 
+func (cd *ColumnDesc) OnelineDesc() string {
+	return fmt.Sprintf(
+		"%s %s %s",
+		cd.Type,
+		cd.Key,
+		cd.Extra,
+	)
+}
+
+func (cd *ColumnDesc) OnelineDescWithName() string {
+	return fmt.Sprintf(
+		"%s: %s %s %s",
+		cd.Name,
+		cd.Type,
+		cd.Key,
+		cd.Extra,
+	)
+}
+
 type Opener func(*Config) Database
 
 var drivers = make(map[string]Opener)

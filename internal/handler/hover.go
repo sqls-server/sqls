@@ -182,7 +182,7 @@ func hoverContentFromIdent(ident *ast.Identifer, dbCache *database.DatabaseCache
 			fmt.Fprintf(buf, "%s.%s column", table.Name, identName)
 			fmt.Fprintln(buf)
 			fmt.Fprintln(buf)
-			fmt.Fprintln(buf, toHoverTextColumn(columnInfo))
+			fmt.Fprintln(buf, columnInfo.OnelineDesc())
 			hoverContents = append(hoverContents, buf.String())
 		}
 	}
@@ -211,7 +211,7 @@ func hoverContentFromIdent(ident *ast.Identifer, dbCache *database.DatabaseCache
 		fmt.Fprintln(buf)
 		fmt.Fprintln(buf)
 		for _, col := range columns {
-			fmt.Fprintf(buf, "- %s", toHoverTextTable(col))
+			fmt.Fprintf(buf, "- %s", col.OnelineDescWithName())
 			fmt.Fprintln(buf)
 		}
 		return &lsp.MarkupContent{
@@ -242,7 +242,7 @@ func hoverContentFromMemberIdent(ident *ast.Identifer, memIdent *ast.MemberIdent
 			fmt.Fprintf(buf, "%s.%s column", tableName, colName)
 			fmt.Fprintln(buf)
 			fmt.Fprintln(buf)
-			fmt.Fprintln(buf, toHoverTextColumn(columnInfo))
+			fmt.Fprintln(buf, columnInfo.OnelineDesc())
 			return &lsp.MarkupContent{
 				Kind:  lsp.Markdown,
 				Value: buf.String(),
@@ -258,7 +258,7 @@ func hoverContentFromMemberIdent(ident *ast.Identifer, memIdent *ast.MemberIdent
 		fmt.Fprintln(buf)
 		fmt.Fprintln(buf)
 		for _, col := range columns {
-			fmt.Fprintf(buf, "- %s", toHoverTextTable(col))
+			fmt.Fprintf(buf, "- %s", col.OnelineDescWithName())
 			fmt.Fprintln(buf)
 		}
 		return &lsp.MarkupContent{
@@ -287,32 +287,13 @@ func hoverContentFromMemberIdentOnly(memIdent *ast.MemberIdentifer, dbCache *dat
 		fmt.Fprintf(buf, "%s.%s column", tableName, colName)
 		fmt.Fprintln(buf)
 		fmt.Fprintln(buf)
-		fmt.Fprintln(buf, toHoverTextColumn(columnInfo))
+		fmt.Fprintln(buf, columnInfo.OnelineDesc())
 		return &lsp.MarkupContent{
 			Kind:  lsp.Markdown,
 			Value: buf.String(),
 		}
 	}
 	return nil
-}
-
-func toHoverTextTable(desc *database.ColumnDesc) string {
-	return fmt.Sprintf(
-		"%s: %s %s %s",
-		desc.Name,
-		desc.Type,
-		desc.Key,
-		desc.Extra,
-	)
-}
-
-func toHoverTextColumn(desc *database.ColumnDesc) string {
-	return fmt.Sprintf(
-		"%s %s %s",
-		desc.Type,
-		desc.Key,
-		desc.Extra,
-	)
 }
 
 func parse(text string) (ast.TokenList, error) {
