@@ -336,7 +336,7 @@ func (c *Completer) columnCandidates(targetTables []*parseutil.TableInfo, pare *
 					[]string{
 						"column",
 						"`" + table.Name + "`",
-						"{" + column.OnelineDesc() + "}",
+						"(" + column.OnelineDesc() + ")",
 					},
 					" ",
 				)
@@ -366,7 +366,7 @@ func (c *Completer) columnCandidates(targetTables []*parseutil.TableInfo, pare *
 					[]string{
 						"column",
 						"`" + table.Name + "`",
-						"{" + column.OnelineDesc() + "}",
+						"(" + column.OnelineDesc() + ")",
 					},
 					" ",
 				)
