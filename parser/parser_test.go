@@ -655,6 +655,15 @@ func TestParseOperator(t *testing.T) {
 				testOperator(t, list[0], input, "foo", "+", "")
 			},
 		},
+		{
+			name:  "invalid with space",
+			input: "foo + ",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testOperator(t, list[0], input, "foo", "+", "")
+			},
+		},
 	}
 	for _, tt := range testcases {
 		t.Run(tt.name, func(t *testing.T) {
@@ -731,6 +740,15 @@ func TestParseComparison(t *testing.T) {
 		{
 			name:  "invalid",
 			input: "foo=",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testComparison(t, list[0], input, "foo", "=", "")
+			},
+		},
+		{
+			name:  "invalid with space",
+			input: "foo = ",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, input)
 				list := stmts[0].GetTokens()

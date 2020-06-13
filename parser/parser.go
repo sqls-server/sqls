@@ -327,6 +327,19 @@ func parseOperator(reader *astutil.NodeReader) ast.Node {
 	}
 
 	if !reader.PeekNodeIs(true, operatorTargetMatcher) {
+		// Include white space after the comma
+		var endIndex int
+		peekIndex, peekNode := reader.PeekNode(true)
+		if peekNode != nil {
+			endIndex = peekIndex - 1
+			reader.Index = endIndex + 1
+		} else {
+			tailIndex, tailNode := reader.TailNode()
+			endIndex = tailIndex - 1
+			reader.Index = tailIndex
+			reader.CurNode = tailNode
+		}
+		operator.Toks = reader.NodesWithRange(startIndex, endIndex+1)
 		return operator
 	}
 	endIndex, right := reader.PeekNode(true)
@@ -398,6 +411,19 @@ func parseComparison(reader *astutil.NodeReader) ast.Node {
 	}
 
 	if !reader.PeekNodeIs(true, comparisonTargetMatcher) {
+		// Include white space after the comma
+		var endIndex int
+		peekIndex, peekNode := reader.PeekNode(true)
+		if peekNode != nil {
+			endIndex = peekIndex - 1
+			reader.Index = endIndex + 1
+		} else {
+			tailIndex, tailNode := reader.TailNode()
+			endIndex = tailIndex - 1
+			reader.Index = tailIndex
+			reader.CurNode = tailNode
+		}
+		comparison.Toks = reader.NodesWithRange(startIndex, endIndex+1)
 		return comparison
 	}
 	endIndex, right := reader.PeekNode(true)

@@ -219,6 +219,25 @@ func TestComplete(t *testing.T) {
 			},
 		},
 		{
+			name:  "join on identifier with equal",
+			input: "SELECT * FROM city inner join country on city.CountryCode = ",
+			line:  0,
+			col:   60,
+			want: []string{
+				"city",
+				"country",
+			},
+		},
+		{
+			name:  "join on identifier filterd with equal",
+			input: "SELECT * FROM city inner join country on city.CountryCode = co",
+			line:  0,
+			col:   62,
+			want: []string{
+				"country",
+			},
+		},
+		{
 			name:  "ORDER BY identifier",
 			input: "SELECT ID, Name FROM city ORDER BY ",
 			line:  0,
