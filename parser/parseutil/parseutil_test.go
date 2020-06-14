@@ -94,14 +94,14 @@ func TestExtractSubQueryView(t *testing.T) {
 	}{
 		{
 			name:  "simple sub query",
-			input: "select * (select city.ID, city.Name from dbs.city as ci) as sub",
-			pos:   token.Pos{Line: 0, Col: 9},
+			input: "SELECT * FROM (SELECT ci.ID, ci.Name FROM world.city AS ci) AS sub",
+			pos:   token.Pos{Line: 0, Col: 14},
 			want: &SubQueryInfo{
 				Name: "sub",
 				Views: []*SubQueryView{
 					{
 						Table: &TableInfo{
-							DatabaseSchema: "dbs",
+							DatabaseSchema: "world",
 							Name:           "city",
 							Alias:          "ci",
 						},
@@ -115,14 +115,14 @@ func TestExtractSubQueryView(t *testing.T) {
 		},
 		{
 			name:  "aliased column",
-			input: "select * (select city.ID as city_id, city.Name as city_name from dbs.city as ci) as sub",
-			pos:   token.Pos{Line: 0, Col: 9},
+			input: "SELECT * FROM (SELECT ci.ID AS city_id, ci.Name AS city_name FROM world.city AS ci) AS sub",
+			pos:   token.Pos{Line: 0, Col: 14},
 			want: &SubQueryInfo{
 				Name: "sub",
 				Views: []*SubQueryView{
 					{
 						Table: &TableInfo{
-							DatabaseSchema: "dbs",
+							DatabaseSchema: "world",
 							Name:           "city",
 							Alias:          "ci",
 						},
@@ -136,20 +136,20 @@ func TestExtractSubQueryView(t *testing.T) {
 		},
 		{
 			name:  "not found sub query",
-			input: "select * (select city.ID, city.Name from dbs.city as ci) as sub",
-			pos:   token.Pos{Line: 0, Col: 10},
+			input: "SELECT * FROM (SELECT ci.ID, ci.Name FROM world.city AS ci) AS sub",
+			pos:   token.Pos{Line: 0, Col: 15},
 			want:  &SubQueryInfo{},
 		},
 		{
 			name:  "astrisk identifier",
-			input: "select * (select * from dbs.city as ci) as sub",
-			pos:   token.Pos{Line: 0, Col: 9},
+			input: "SELECT * FROM (SELECT * FROM world.city AS ci) AS sub",
+			pos:   token.Pos{Line: 0, Col: 14},
 			want: &SubQueryInfo{
 				Name: "sub",
 				Views: []*SubQueryView{
 					{
 						Table: &TableInfo{
-							DatabaseSchema: "dbs",
+							DatabaseSchema: "world",
 							Name:           "city",
 							Alias:          "ci",
 						},
@@ -162,14 +162,14 @@ func TestExtractSubQueryView(t *testing.T) {
 		},
 		{
 			name:  "positoin of outer sub query",
-			input: "SELECT * FROM (SELECT t.ID, t.Name FROM (SELECT ci.ID, ci.Name, ci.CountryCode, ci.District, ci.Population FROM dbs.city AS ci) as it) as ot",
+			input: "SELECT * FROM (SELECT it.ID, it.Name FROM (SELECT ci.ID, ci.Name, ci.CountryCode, ci.District, ci.Population FROM world.city AS ci) AS it) AS ot",
 			pos:   token.Pos{Line: 0, Col: 14},
 			want: &SubQueryInfo{
 				Name: "ot",
 				Views: []*SubQueryView{
 					{
 						Table: &TableInfo{
-							DatabaseSchema: "dbs",
+							DatabaseSchema: "world",
 							Name:           "city",
 							Alias:          "it",
 						},
@@ -183,14 +183,14 @@ func TestExtractSubQueryView(t *testing.T) {
 		},
 		{
 			name:  "positoin of inner sub query",
-			input: "SELECT * FROM (SELECT t.ID, t.Name FROM (SELECT ci.ID, ci.Name, ci.CountryCode, ci.District, ci.Population FROM dbs.city AS ci) as it) as ot",
+			input: "SELECT * FROM (SELECT it.ID, it.Name FROM (SELECT ci.ID, ci.Name, ci.CountryCode, ci.District, ci.Population FROM world.city AS ci) AS it) AS ot",
 			pos:   token.Pos{Line: 0, Col: 16},
 			want: &SubQueryInfo{
 				Name: "it",
 				Views: []*SubQueryView{
 					{
 						Table: &TableInfo{
-							DatabaseSchema: "dbs",
+							DatabaseSchema: "world",
 							Name:           "city",
 							Alias:          "ci",
 						},
@@ -207,20 +207,20 @@ func TestExtractSubQueryView(t *testing.T) {
 		},
 		{
 			name:  "positoin of sub query in sub query",
-			input: "SELECT * FROM (SELECT t.ID, t.Name FROM (SELECT ci.ID, ci.Name, ci.CountryCode, ci.District, ci.Population FROM dbs.city AS ci) as it) as ot",
-			pos:   token.Pos{Line: 0, Col: 42},
+			input: "SELECT * FROM (SELECT it.ID, it.Name FROM (SELECT ci.ID, ci.Name, ci.CountryCode, ci.District, ci.Population FROM world.city AS ci) AS it) AS ot",
+			pos:   token.Pos{Line: 0, Col: 44},
 			want:  &SubQueryInfo{},
 		},
 		{
 			name:  "recurcive parse sub query",
-			input: "SELECT * FROM (SELECT * FROM (SELECT * FROM (SELECT ci.ID, ci.Name FROM dbs.city AS ci) as t) as t) as t",
+			input: "SELECT * FROM (SELECT * FROM (SELECT * FROM (SELECT ci.ID, ci.Name FROM world.city AS ci) AS t) AS t) AS t",
 			pos:   token.Pos{Line: 0, Col: 1},
 			want: &SubQueryInfo{
 				Name: "t",
 				Views: []*SubQueryView{
 					{
 						Table: &TableInfo{
-							DatabaseSchema: "dbs",
+							DatabaseSchema: "world",
 							Name:           "city",
 							Alias:          "t",
 						},
