@@ -269,57 +269,6 @@ func (fl *FunctionLiteral) SetTokens(toks []Node) { fl.Toks = toks }
 func (fl *FunctionLiteral) Pos() token.Pos        { return findFrom(fl) }
 func (fl *FunctionLiteral) End() token.Pos        { return findTo(fl) }
 
-type WhereClause struct {
-	Toks []Node
-}
-
-func (w *WhereClause) String() string {
-	var strs []string
-	for _, t := range w.Toks {
-		strs = append(strs, t.String())
-	}
-	return strings.Join(strs, "")
-}
-func (w *WhereClause) Type() NodeType        { return TypeWhereClause }
-func (w *WhereClause) GetTokens() []Node     { return w.Toks }
-func (w *WhereClause) SetTokens(toks []Node) { w.Toks = toks }
-func (w *WhereClause) Pos() token.Pos        { return findFrom(w) }
-func (w *WhereClause) End() token.Pos        { return findTo(w) }
-
-type FromClause struct {
-	Toks []Node
-}
-
-func (f *FromClause) String() string {
-	var strs []string
-	for _, t := range f.Toks {
-		strs = append(strs, t.String())
-	}
-	return strings.Join(strs, "")
-}
-func (f *FromClause) Type() NodeType        { return TypeFromClause }
-func (f *FromClause) GetTokens() []Node     { return f.Toks }
-func (f *FromClause) SetTokens(toks []Node) { f.Toks = toks }
-func (f *FromClause) Pos() token.Pos        { return findFrom(f) }
-func (f *FromClause) End() token.Pos        { return findTo(f) }
-
-type JoinClause struct {
-	Toks []Node
-}
-
-func (j *JoinClause) String() string {
-	var strs []string
-	for _, t := range j.Toks {
-		strs = append(strs, t.String())
-	}
-	return strings.Join(strs, "")
-}
-func (j *JoinClause) Type() NodeType        { return TypeJoinClause }
-func (j *JoinClause) GetTokens() []Node     { return j.Toks }
-func (j *JoinClause) SetTokens(toks []Node) { j.Toks = toks }
-func (j *JoinClause) Pos() token.Pos        { return findFrom(j) }
-func (j *JoinClause) End() token.Pos        { return findTo(j) }
-
 type Query struct {
 	Toks []Node
 }

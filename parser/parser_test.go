@@ -1187,39 +1187,6 @@ func testFunction(t *testing.T, node ast.Node, expect string) {
 	}
 }
 
-func testWhere(t *testing.T, node ast.Node, expect string) {
-	t.Helper()
-	_, ok := node.(*ast.WhereClause)
-	if !ok {
-		t.Errorf("invalid type want Where got %T", node)
-	}
-	if expect != node.String() {
-		t.Errorf("expected %q, got %q", expect, node.String())
-	}
-}
-
-func testFrom(t *testing.T, node ast.Node, expect string) {
-	t.Helper()
-	_, ok := node.(*ast.FromClause)
-	if !ok {
-		t.Errorf("invalid type want From got %T", node)
-	}
-	if expect != node.String() {
-		t.Errorf("expected %q, got %q", expect, node.String())
-	}
-}
-
-func testJoin(t *testing.T, node ast.Node, expect string) {
-	t.Helper()
-	_, ok := node.(*ast.JoinClause)
-	if !ok {
-		t.Errorf("invalid type want Join got %T", node)
-	}
-	if expect != node.String() {
-		t.Errorf("expected %q, got %q", expect, node.String())
-	}
-}
-
 func testAliased(t *testing.T, node ast.Node, expect string, realName, aliasedName string) {
 	t.Helper()
 	aliased, ok := node.(*ast.Aliased)
