@@ -347,6 +347,33 @@ func TestComplete(t *testing.T) {
 			},
 		},
 		{
+			name:  "select case after case",
+			input: "SELECT Language, CASE Is WHEN 'T' THEN 'official' WHEN 'F' THEN 'unofficial' END AS is_official FROM countrylanguage;",
+			line:  0,
+			col:   24,
+			want: []string{
+				"IsOfficial",
+			},
+		},
+		{
+			name:  "select case after when",
+			input: "SELECT Language, CASE IsOfficial WHEN Is THEN 'official' WHEN 'F' THEN 'unofficial' END AS is_official FROM countrylanguage;",
+			line:  0,
+			col:   40,
+			want: []string{
+				"IsOfficial",
+			},
+		},
+		{
+			name:  "select case after then",
+			input: "SELECT Language, CASE IsOfficial WHEN 'T' THEN Is WHEN 'F' THEN 'unofficial' END AS is_official FROM countrylanguage;",
+			line:  0,
+			col:   49,
+			want: []string{
+				"IsOfficial",
+			},
+		},
+		{
 			name:  "insert table reference",
 			input: "INSERT INTO ",
 			line:  0,
