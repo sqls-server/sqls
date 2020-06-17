@@ -546,6 +546,7 @@ var identifierListTargetMatcher = astutil.NodeMatcher{
 		ast.TypeAliased,
 		ast.TypeComparison,
 		ast.TypeOperator,
+		ast.TypeSwitchCase,
 	},
 }
 

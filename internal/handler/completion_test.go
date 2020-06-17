@@ -348,29 +348,38 @@ func TestComplete(t *testing.T) {
 		},
 		{
 			name:  "select case after case",
-			input: "SELECT Language, CASE Is WHEN 'T' THEN 'official' WHEN 'F' THEN 'unofficial' END AS is_official FROM countrylanguage;",
+			input: "SELECT `Language`, CASE Is WHEN 'T' THEN 'official' WHEN 'F' THEN 'unofficial' END AS is_official FROM countrylanguage;",
 			line:  0,
-			col:   24,
+			col:   26,
 			want: []string{
 				"IsOfficial",
 			},
 		},
 		{
 			name:  "select case after when",
-			input: "SELECT Language, CASE IsOfficial WHEN Is THEN 'official' WHEN 'F' THEN 'unofficial' END AS is_official FROM countrylanguage;",
+			input: "SELECT `Language`, CASE IsOfficial WHEN Is THEN 'official' WHEN 'F' THEN 'unofficial' END AS is_official FROM countrylanguage;",
 			line:  0,
-			col:   40,
+			col:   42,
 			want: []string{
 				"IsOfficial",
 			},
 		},
 		{
 			name:  "select case after then",
-			input: "SELECT Language, CASE IsOfficial WHEN 'T' THEN Is WHEN 'F' THEN 'unofficial' END AS is_official FROM countrylanguage;",
+			input: "SELECT `Language`, CASE IsOfficial WHEN 'T' THEN Is WHEN 'F' THEN 'unofficial' END AS is_official FROM countrylanguage;",
 			line:  0,
-			col:   49,
+			col:   51,
 			want: []string{
 				"IsOfficial",
+			},
+		},
+		{
+			name:  "select case identifier list",
+			input: "SELECT `Language`, CASE IsOfficial WHEN 'T' THEN Is WHEN 'F' THEN 'unofficial' END AS is_official, P FROM countrylanguage;",
+			line:  0,
+			col:   100,
+			want: []string{
+				"Percentage",
 			},
 		},
 		{

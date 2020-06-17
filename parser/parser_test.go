@@ -1033,7 +1033,7 @@ func TestParseCase(t *testing.T) {
 			},
 		},
 		{
-			name:  "case with alias with as",
+			name:  "case alias with as",
 			input: "CASE WHEN 1 THEN 2 ELSE 3 END as foo",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, input)
@@ -1042,12 +1042,21 @@ func TestParseCase(t *testing.T) {
 			},
 		},
 		{
-			name:  "case with alias without as",
+			name:  "case alias without as",
 			input: "CASE WHEN 1 THEN 2 ELSE 3 END foo",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, input)
 				list := stmts[0].GetTokens()
 				testAliased(t, list[0], input, "CASE WHEN 1 THEN 2 ELSE 3 END", "foo")
+			},
+		},
+		{
+			name:  "case identifer list",
+			input: "foo, CASE WHEN 1 THEN 2 ELSE 3 END as onetwothree, bar",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testIdentifierList(t, list[0], input)
 			},
 		},
 	}
