@@ -81,6 +81,7 @@ func (p *Parser) Parse() (ast.TokenList, error) {
 	root = parsePrefixGroup(astutil.NewNodeReader(root), parenthesisPrefixMatcher, parseParenthesis)
 	root = parsePrefixGroup(astutil.NewNodeReader(root), functionPrefixMatcher, parseFunctions)
 	root = parsePrefixGroup(astutil.NewNodeReader(root), identifierPrefixMatcher, parseIdentifier)
+	root = parsePrefixGroup(astutil.NewNodeReader(root), switchCaseOpenMatcher, parseCase)
 
 	root = parseInfixGroup(astutil.NewNodeReader(root), memberIdentifierInfixMatcher, false, parseMemberIdentifier)
 	root = parsePrefixGroup(astutil.NewNodeReader(root), multiKeywordPrefixMatcher, parseMultiKeyword)
@@ -454,6 +455,7 @@ var aliasLeftMatcher = astutil.NodeMatcher{
 		ast.TypeFunctionLiteral,
 		ast.TypeIdentifer,
 		ast.TypeMemberIdentifer,
+		ast.TypeSwitchCase,
 	},
 }
 
@@ -585,4 +587,35 @@ func parseIdentifierList(reader *astutil.NodeReader) ast.Node {
 	reader.Index = tmpReader.Index
 	reader.CurNode = tmpReader.CurNode
 	return &ast.IdentiferList{Toks: reader.NodesWithRange(startIndex, endIndex+1)}
+}
+
+var switchCaseOpenMatcher = astutil.NodeMatcher{
+	ExpectKeyword: []string{
+		"CASE",
+	},
+}
+var switchCaseCloseMatcher = astutil.NodeMatcher{
+	ExpectKeyword: []string{
+		"END",
+	},
+}
+
+func parseCase(reader *astutil.NodeReader) ast.Node {
+	nodes := []ast.Node{reader.CurNode}
+
+	tmpReader := reader.CopyReader()
+	for tmpReader.NextNode(false) {
+		if _, ok := reader.CurNode.(ast.TokenList); ok {
+			continue
+		}
+
+		if tmpReader.CurNodeIs(switchCaseCloseMatcher) {
+			reader.Index = tmpReader.Index
+			reader.CurNode = tmpReader.CurNode
+			return &ast.SwitchCase{Toks: append(nodes, tmpReader.CurNode)}
+		} else {
+			nodes = append(nodes, tmpReader.CurNode)
+		}
+	}
+	return reader.Node
 }

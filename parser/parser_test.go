@@ -1017,6 +1017,48 @@ func TestParseIdentifierList(t *testing.T) {
 	}
 }
 
+func TestParseCase(t *testing.T) {
+	testcases := []struct {
+		name    string
+		input   string
+		checkFn func(t *testing.T, stmts []*ast.Statement, input string)
+	}{
+		{
+			name:  "case only",
+			input: "CASE WHEN 1 THEN 2 ELSE 3 END",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testSwitchCase(t, list[0], input)
+			},
+		},
+		{
+			name:  "case with alias with as",
+			input: "CASE WHEN 1 THEN 2 ELSE 3 END as foo",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testAliased(t, list[0], input, "CASE WHEN 1 THEN 2 ELSE 3 END", "foo")
+			},
+		},
+		{
+			name:  "case with alias without as",
+			input: "CASE WHEN 1 THEN 2 ELSE 3 END foo",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testAliased(t, list[0], input, "CASE WHEN 1 THEN 2 ELSE 3 END", "foo")
+			},
+		},
+	}
+	for _, tt := range testcases {
+		t.Run(tt.name, func(t *testing.T) {
+			stmts := parseInit(t, tt.input)
+			tt.checkFn(t, stmts, tt.input)
+		})
+	}
+}
+
 func parseInit(t *testing.T, input string) []*ast.Statement {
 	t.Helper()
 	src := bytes.NewBuffer([]byte(input))
@@ -1218,6 +1260,17 @@ func testIdentifierList(t *testing.T, node ast.Node, expect string) {
 	_, ok := node.(*ast.IdentiferList)
 	if !ok {
 		t.Errorf("invalid type want IdentiferList got %T", node)
+	}
+	if expect != node.String() {
+		t.Errorf("expected %q, got %q", expect, node.String())
+	}
+}
+
+func testSwitchCase(t *testing.T, node ast.Node, expect string) {
+	t.Helper()
+	_, ok := node.(*ast.SwitchCase)
+	if !ok {
+		t.Errorf("invalid type want SwitchCase got %T", node)
 	}
 	if expect != node.String() {
 		t.Errorf("expected %q, got %q", expect, node.String())

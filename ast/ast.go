@@ -26,6 +26,7 @@ const (
 	TypeQuery
 	TypeStatement
 	TypeIdentiferList
+	TypeSwitchCase
 	TypeNull
 )
 
@@ -319,6 +320,23 @@ func (il *IdentiferList) GetTokens() []Node     { return il.Toks }
 func (il *IdentiferList) SetTokens(toks []Node) { il.Toks = toks }
 func (il *IdentiferList) Pos() token.Pos        { return findFrom(il) }
 func (il *IdentiferList) End() token.Pos        { return findTo(il) }
+
+type SwitchCase struct {
+	Toks []Node
+}
+
+func (il *SwitchCase) String() string {
+	var strs []string
+	for _, t := range il.Toks {
+		strs = append(strs, t.String())
+	}
+	return strings.Join(strs, "")
+}
+func (il *SwitchCase) Type() NodeType        { return TypeSwitchCase }
+func (il *SwitchCase) GetTokens() []Node     { return il.Toks }
+func (il *SwitchCase) SetTokens(toks []Node) { il.Toks = toks }
+func (il *SwitchCase) Pos() token.Pos        { return findFrom(il) }
+func (il *SwitchCase) End() token.Pos        { return findTo(il) }
 
 type SQLToken struct {
 	Node
