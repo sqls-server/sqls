@@ -113,8 +113,7 @@ connections:
 
 ### Workspace configuration Sample
 
-Below is a setting example with vim-lsp.
-**I'm sorry. Please wait a little longer for other editor settings.**
+* setting example with vim-lsp.
 
 ```vim
 if executable('sqls')
@@ -142,6 +141,24 @@ if executable('sqls')
     augroup END
 endif
 ```
+
+* setting example with coc.nvim.
+
+In `coc-settings.json` opened by `:CocConfig`
+
+```json
+{
+    "languageserver": {
+        "sql": {
+            "command": "sqls",
+            "args": ["-config", "$HOME/.config/sqls/config.yml"],
+            "filetypes": ["sql"]
+        }
+    }
+}
+```
+
+**I'm sorry. Please wait a little longer for other editor settings.**
 
 ### Configuration Params
 
