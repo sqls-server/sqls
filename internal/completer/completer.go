@@ -216,8 +216,8 @@ func getCompletionTypes(text string, pos token.Pos) ([]CompletionType, *parent, 
 			CompletionTypeFunction,
 			CompletionTypeKeyword,
 		}, noneParent, nil
-	// case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"AS"})):
-	// 	res = []CompletionType{}
+	case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"AS"})):
+		return []CompletionType{}, nil, nil
 	// case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"TO"})):
 	// 	res = []CompletionType{
 	// 		CompletionTypeChange,
