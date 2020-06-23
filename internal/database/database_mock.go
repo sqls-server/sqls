@@ -59,6 +59,13 @@ var dummyDatabases = []string{
 	"sys",
 	"world",
 }
+var dummyDatabaseTables = map[string][]string{
+	"world": []string{
+		"city",
+		"country",
+		"countrylanguage",
+	},
+}
 var dummyTables = []string{
 	"city",
 	"country",
@@ -350,10 +357,11 @@ func (m *MockResult) RowsAffected() (int64, error) {
 func init() {
 	Register("mock", func(cfg *Config) Database {
 		return &MockDB{
-			MockOpen:      func() error { return nil },
-			MockClose:     func() error { return nil },
-			MockDatabases: func() ([]string, error) { return dummyDatabases, nil },
-			MockTables:    func() ([]string, error) { return dummyTables, nil },
+			MockOpen:           func() error { return nil },
+			MockClose:          func() error { return nil },
+			MockDatabases:      func() ([]string, error) { return dummyDatabases, nil },
+			MockDatabaseTables: func() (map[string][]string, error) { return dummyDatabaseTables, nil },
+			MockTables:         func() ([]string, error) { return dummyTables, nil },
 			MockDescribeTable: func(tableName string) ([]*ColumnDesc, error) {
 				switch tableName {
 				case "city":
