@@ -20,6 +20,7 @@ type Database interface {
 	Open() error
 	Close() error
 	Databases() ([]string, error)
+	DatabaseTables() (map[string][]string, error)
 	Tables() ([]string, error)
 	DescribeTable(tableName string) ([]*ColumnDesc, error)
 	Exec(ctx context.Context, query string) (sql.Result, error)

@@ -49,6 +49,10 @@ func (db *SQLite3DB) Databases() ([]string, error) {
 	return []string{}, nil
 }
 
+func (db *SQLite3DB) DatabaseTables() (map[string][]string, error) {
+	return nil, nil
+}
+
 func (db *SQLite3DB) Tables() ([]string, error) {
 	rows, err := db.Conn.Query(`
 	SELECT

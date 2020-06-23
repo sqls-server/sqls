@@ -6,13 +6,14 @@ import (
 )
 
 type MockDB struct {
-	MockOpen          func() error
-	MockClose         func() error
-	MockDatabases     func() ([]string, error)
-	MockTables        func() ([]string, error)
-	MockDescribeTable func(string) ([]*ColumnDesc, error)
-	MockExec          func(context.Context, string) (sql.Result, error)
-	MockQuery         func(context.Context, string) (*sql.Rows, error)
+	MockOpen           func() error
+	MockClose          func() error
+	MockDatabases      func() ([]string, error)
+	MockDatabaseTables func() (map[string][]string, error)
+	MockTables         func() ([]string, error)
+	MockDescribeTable  func(string) ([]*ColumnDesc, error)
+	MockExec           func(context.Context, string) (sql.Result, error)
+	MockQuery          func(context.Context, string) (*sql.Rows, error)
 }
 
 func (m *MockDB) Open() error {
@@ -25,6 +26,10 @@ func (m *MockDB) Close() error {
 
 func (m *MockDB) Databases() ([]string, error) {
 	return m.MockDatabases()
+}
+
+func (m *MockDB) DatabaseTables() (map[string][]string, error) {
+	return m.MockDatabaseTables()
 }
 
 func (m *MockDB) Tables() ([]string, error) {

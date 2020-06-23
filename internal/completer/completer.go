@@ -148,6 +148,9 @@ func (c *Completer) Complete(text string, params lsp.CompletionParams) ([]lsp.Co
 	if completionTypeIs(cTypes, CompletionTypeTable) {
 		items = append(items, c.TableCandidates()...)
 	}
+	if completionTypeIs(cTypes, CompletionTypeDatabase) {
+		items = append(items, c.DatabaseCandidates()...)
+	}
 	if completionTypeIs(cTypes, CompletionTypeSubQueryColumn) {
 		items = append(items, c.SubQueryColumnCandidates(definedSubQuery)...)
 	}
@@ -256,6 +259,7 @@ func getCompletionTypes(text string, pos token.Pos) ([]CompletionType, *parent, 
 		return []CompletionType{
 			CompletionTypeColumn,
 			CompletionTypeTable,
+			CompletionTypeDatabase,
 			CompletionTypeView,
 			CompletionTypeSubQueryColumn,
 			CompletionTypeSubQueryView,
@@ -439,14 +443,17 @@ func (c *Completer) SubQueryColumnCandidates(info *parseutil.SubQueryInfo) []lsp
 
 func (c *Completer) DatabaseCandidates() []lsp.CompletionItem {
 	candidates := []lsp.CompletionItem{}
-	for _, databaseName := range c.DBCache.SortedDatabases() {
+	if c.DBCache == nil {
+		return candidates
+	}
+	dbs := c.DBCache.SortedDatabases()
+	for _, db := range dbs {
 		candidate := lsp.CompletionItem{
-			Label:  databaseName,
+			Label:  db,
 			Kind:   lsp.FieldCompletion,
-			Detail: "Database",
+			Detail: "database",
 		}
 		candidates = append(candidates, candidate)
-
 	}
 	return candidates
 }

@@ -153,6 +153,10 @@ func (db *PostgreSQLDB) Databases() ([]string, error) {
 	return databases, nil
 }
 
+func (db *PostgreSQLDB) DatabaseTables() (map[string][]string, error) {
+	return nil, nil
+}
+
 func (db *PostgreSQLDB) Tables() ([]string, error) {
 	rows, err := db.Conn.Query(`
 	SELECT

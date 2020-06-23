@@ -22,6 +22,12 @@ func GenerateDBCache(db Database) (*DatabaseCache, error) {
 	}
 	dbCache.Databases = databaseMap
 
+	dbTables, err := db.DatabaseTables()
+	if err != nil {
+		return nil, err
+	}
+	dbCache.DatabaseTables = dbTables
+
 	tbls, err := db.Tables()
 	if err != nil {
 		return nil, err
@@ -46,9 +52,10 @@ func GenerateDBCache(db Database) (*DatabaseCache, error) {
 }
 
 type DatabaseCache struct {
-	Databases map[string]string
-	Tables    map[string]string
-	Columns   map[string][]*ColumnDesc
+	Databases      map[string]string
+	DatabaseTables map[string][]string
+	Tables         map[string]string
+	Columns        map[string][]*ColumnDesc
 }
 
 func (dc *DatabaseCache) Database(dbName string) (db string, ok bool) {
@@ -65,8 +72,8 @@ func (dc *DatabaseCache) SortedDatabases() []string {
 	return dbs
 }
 
-func (dc *DatabaseCache) Table(dbName string) (tbl string, ok bool) {
-	tbl, ok = dc.Tables[strings.ToUpper(dbName)]
+func (dc *DatabaseCache) TablesWithDBName(dbName string) (tbls []string, ok bool) {
+	tbls, ok = dc.DatabaseTables[dbName]
 	return
 }
 
@@ -79,8 +86,8 @@ func (dc *DatabaseCache) SortedTables() []string {
 	return tbls
 }
 
-func (dc *DatabaseCache) ColumnDescs(dbName string) (cols []*ColumnDesc, ok bool) {
-	cols, ok = dc.Columns[strings.ToUpper(dbName)]
+func (dc *DatabaseCache) ColumnDescs(tableName string) (cols []*ColumnDesc, ok bool) {
+	cols, ok = dc.Columns[strings.ToUpper(tableName)]
 	return
 }
 

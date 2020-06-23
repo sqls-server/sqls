@@ -127,7 +127,7 @@ func (db *MySQLDB) Close() error {
 }
 
 func (db *MySQLDB) Databases() ([]string, error) {
-	rows, err := db.Conn.Query("SHOW DATABASES")
+	rows, err := db.Conn.Query("select SCHEMA_NAME from information_schema.SCHEMATA")
 	if err != nil {
 		return nil, err
 	}
@@ -140,6 +140,27 @@ func (db *MySQLDB) Databases() ([]string, error) {
 		databases = append(databases, database)
 	}
 	return databases, nil
+}
+
+func (db *MySQLDB) DatabaseTables() (map[string][]string, error) {
+	rows, err := db.Conn.Query("select TABLE_SCHEMA, TABLE_NAME from information_schema.TABLES")
+	if err != nil {
+		return nil, err
+	}
+	databaseTables := map[string][]string{}
+	for rows.Next() {
+		var schema, table string
+		if err := rows.Scan(&schema, &table); err != nil {
+			return nil, err
+		}
+
+		if arr, ok := databaseTables[schema]; ok {
+			databaseTables[schema] = append(arr, table)
+		} else {
+			databaseTables[schema] = []string{table}
+		}
+	}
+	return databaseTables, nil
 }
 
 func (db *MySQLDB) Tables() ([]string, error) {
