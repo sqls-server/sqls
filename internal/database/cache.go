@@ -72,8 +72,9 @@ func (dc *DatabaseCache) SortedDatabases() []string {
 	return dbs
 }
 
-func (dc *DatabaseCache) TablesWithDBName(dbName string) (tbls []string, ok bool) {
+func (dc *DatabaseCache) SortedTablesByDBName(dbName string) (tbls []string, ok bool) {
 	tbls, ok = dc.DatabaseTables[dbName]
+	sort.Strings(tbls)
 	return
 }
 
