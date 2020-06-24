@@ -168,6 +168,11 @@ func TestComplete(t *testing.T) {
 				"city",
 				"country",
 				"countrylanguage",
+				"information_schema",
+				"mysql",
+				"performance_schema",
+				"sys",
+				"world",
 			},
 		},
 		{
