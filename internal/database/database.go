@@ -23,6 +23,7 @@ type Database interface {
 	DatabaseTables() (map[string][]string, error)
 	Tables() ([]string, error)
 	DescribeTable(tableName string) ([]*ColumnDesc, error)
+	DescribeDatabaseTable() ([]*ColumnDesc, error)
 	Exec(ctx context.Context, query string) (sql.Result, error)
 	Query(ctx context.Context, query string) (*sql.Rows, error)
 	SwitchDB(dbName string) error
@@ -39,6 +40,8 @@ type DBOption struct {
 }
 
 type ColumnDesc struct {
+	Schema  string
+	Table   string
 	Name    string
 	Type    string
 	Null    string

@@ -336,35 +336,55 @@ func (c *Completer) keywordCandidates() []lsp.CompletionItem {
 
 func (c *Completer) columnCandidates(targetTables []*parseutil.TableInfo, pare *parent) []lsp.CompletionItem {
 	candidates := []lsp.CompletionItem{}
+	if c.DBCache == nil {
+		return candidates
+	}
 
 	switch pare.Type {
 	case ParentTypeNone:
 		for _, table := range targetTables {
-			if table.Name == "" {
-				continue
-			}
-			if c.DBCache == nil {
-				continue
-			}
-			columns, ok := c.DBCache.ColumnDescs(table.Name)
-			if !ok {
-				continue
-			}
-			for _, column := range columns {
-				detail := strings.Join(
-					[]string{
-						"column",
-						"`" + table.Name + "`",
-						"(" + column.OnelineDesc() + ")",
-					},
-					" ",
-				)
-				candidate := lsp.CompletionItem{
-					Label:  column.Name,
-					Kind:   lsp.FieldCompletion,
-					Detail: detail,
+			if table.DatabaseSchema != "" && table.Name != "" {
+				columns, ok := c.DBCache.ColumnDatabase(table.DatabaseSchema, table.Name)
+				if !ok {
+					continue
 				}
-				candidates = append(candidates, candidate)
+				for _, column := range columns {
+					detail := strings.Join(
+						[]string{
+							"column",
+							"`" + table.Name + "`",
+							"(" + column.OnelineDesc() + ")",
+						},
+						" ",
+					)
+					candidate := lsp.CompletionItem{
+						Label:  column.Name,
+						Kind:   lsp.FieldCompletion,
+						Detail: detail,
+					}
+					candidates = append(candidates, candidate)
+				}
+			} else if table.Name != "" {
+				columns, ok := c.DBCache.ColumnDescs(table.Name)
+				if !ok {
+					continue
+				}
+				for _, column := range columns {
+					detail := strings.Join(
+						[]string{
+							"column",
+							"`" + table.Name + "`",
+							"(" + column.OnelineDesc() + ")",
+						},
+						" ",
+					)
+					candidate := lsp.CompletionItem{
+						Label:  column.Name,
+						Kind:   lsp.FieldCompletion,
+						Detail: detail,
+					}
+					candidates = append(candidates, candidate)
+				}
 			}
 		}
 	case ParentTypeSchema:

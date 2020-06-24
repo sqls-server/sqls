@@ -6,14 +6,15 @@ import (
 )
 
 type MockDB struct {
-	MockOpen           func() error
-	MockClose          func() error
-	MockDatabases      func() ([]string, error)
-	MockDatabaseTables func() (map[string][]string, error)
-	MockTables         func() ([]string, error)
-	MockDescribeTable  func(string) ([]*ColumnDesc, error)
-	MockExec           func(context.Context, string) (sql.Result, error)
-	MockQuery          func(context.Context, string) (*sql.Rows, error)
+	MockOpen                  func() error
+	MockClose                 func() error
+	MockDatabases             func() ([]string, error)
+	MockDatabaseTables        func() (map[string][]string, error)
+	MockTables                func() ([]string, error)
+	MockDescribeTable         func(string) ([]*ColumnDesc, error)
+	MockDescribeDatabaseTable func() ([]*ColumnDesc, error)
+	MockExec                  func(context.Context, string) (sql.Result, error)
+	MockQuery                 func(context.Context, string) (*sql.Rows, error)
 }
 
 func (m *MockDB) Open() error {
@@ -38,6 +39,10 @@ func (m *MockDB) Tables() ([]string, error) {
 
 func (m *MockDB) DescribeTable(tableName string) ([]*ColumnDesc, error) {
 	return m.MockDescribeTable(tableName)
+}
+
+func (m *MockDB) DescribeDatabaseTable() ([]*ColumnDesc, error) {
+	return m.MockDescribeDatabaseTable()
 }
 
 func (m *MockDB) Exec(ctx context.Context, query string) (sql.Result, error) {
@@ -372,6 +377,14 @@ func init() {
 					return dummyCountryLanguageColumns, nil
 				}
 				return nil, nil
+			},
+			MockDescribeDatabaseTable: func() ([]*ColumnDesc, error) {
+				res := []*ColumnDesc{}
+				res = append(res, dummyCityColumns...)
+				res = append(res, dummyCountryColumns...)
+				res = append(res, dummyCountryLanguageColumns...)
+				return res, nil
+
 			},
 			MockExec: func(ctx context.Context, query string) (sql.Result, error) {
 				return &MockResult{

@@ -111,6 +111,10 @@ func (db *SQLite3DB) DescribeTable(tableName string) ([]*ColumnDesc, error) {
 	return tableInfos, nil
 }
 
+func (db *SQLite3DB) DescribeDatabaseTable() ([]*ColumnDesc, error) {
+	return nil, ErrNotImplementation
+}
+
 func (db *SQLite3DB) Exec(ctx context.Context, query string) (sql.Result, error) {
 	return db.Conn.ExecContext(ctx, query)
 }

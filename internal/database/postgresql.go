@@ -154,7 +154,7 @@ func (db *PostgreSQLDB) Databases() ([]string, error) {
 }
 
 func (db *PostgreSQLDB) DatabaseTables() (map[string][]string, error) {
-	return nil, nil
+	return nil, ErrNotImplementation
 }
 
 func (db *PostgreSQLDB) Tables() ([]string, error) {
@@ -181,6 +181,10 @@ func (db *PostgreSQLDB) Tables() ([]string, error) {
 		tables = append(tables, table)
 	}
 	return tables, nil
+}
+
+func (db *PostgreSQLDB) DescribeDatabaseTable() ([]*ColumnDesc, error) {
+	return nil, ErrNotImplementation
 }
 
 func (db *PostgreSQLDB) DescribeTable(tableName string) ([]*ColumnDesc, error) {

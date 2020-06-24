@@ -203,6 +203,43 @@ func (db *MySQLDB) DescribeTable(tableName string) ([]*ColumnDesc, error) {
 	return tableInfos, nil
 }
 
+func (db *MySQLDB) DescribeDatabaseTable() ([]*ColumnDesc, error) {
+	rows, err := db.Conn.Query(`
+SELECT
+	TABLE_SCHEMA,
+	TABLE_NAME,
+	COLUMN_NAME,
+	COLUMN_TYPE,
+	IS_NULLABLE,
+	COLUMN_KEY,
+	COLUMN_DEFAULT,
+	EXTRA
+FROM information_schema.COLUMNS
+`)
+	if err != nil {
+		return nil, err
+	}
+	tableInfos := []*ColumnDesc{}
+	for rows.Next() {
+		var tableInfo ColumnDesc
+		err := rows.Scan(
+			&tableInfo.Schema,
+			&tableInfo.Table,
+			&tableInfo.Name,
+			&tableInfo.Type,
+			&tableInfo.Null,
+			&tableInfo.Key,
+			&tableInfo.Default,
+			&tableInfo.Extra,
+		)
+		if err != nil {
+			return nil, err
+		}
+		tableInfos = append(tableInfos, &tableInfo)
+	}
+	return tableInfos, nil
+}
+
 func (db *MySQLDB) Exec(ctx context.Context, query string) (sql.Result, error) {
 	return db.Conn.ExecContext(ctx, query)
 }

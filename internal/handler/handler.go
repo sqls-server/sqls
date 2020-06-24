@@ -281,7 +281,7 @@ func (s *Server) dbOpen() error {
 	}
 
 	// Get database infomations(databases, tables, columns) to complete
-	dbCache, err := database.GenerateDBCache(s.dbConn)
+	dbCache, err := database.GenerateDBCache(s.dbConn, s.curDBName)
 	if err != nil {
 		return err
 	}
