@@ -19,6 +19,7 @@ var (
 type Database interface {
 	Open() error
 	Close() error
+	Database() (string, error)
 	Databases() ([]string, error)
 	DatabaseTables() (map[string][]string, error)
 	Tables() ([]string, error)

@@ -126,6 +126,15 @@ func (db *MySQLDB) Close() error {
 	return nil
 }
 
+func (db *MySQLDB) Database() (string, error) {
+	row := db.Conn.QueryRow("SELECT DATABASE()")
+	var database string
+	if err := row.Scan(&database); err != nil {
+		return "", err
+	}
+	return database, nil
+}
+
 func (db *MySQLDB) Databases() ([]string, error) {
 	rows, err := db.Conn.Query("select SCHEMA_NAME from information_schema.SCHEMATA")
 	if err != nil {

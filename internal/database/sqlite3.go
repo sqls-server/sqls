@@ -45,6 +45,10 @@ func (db *SQLite3DB) Close() error {
 	return db.Conn.Close()
 }
 
+func (db *SQLite3DB) Database() (string, error) {
+	return "", ErrNotImplementation
+}
+
 func (db *SQLite3DB) Databases() ([]string, error) {
 	return []string{}, nil
 }

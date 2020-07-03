@@ -135,6 +135,10 @@ func (db *PostgreSQLDB) Close() error {
 	return nil
 }
 
+func (db *PostgreSQLDB) Database() (string, error) {
+	return "", ErrNotImplementation
+}
+
 func (db *PostgreSQLDB) Databases() ([]string, error) {
 	rows, err := db.Conn.Query(`
 	SELECT datname FROM pg_database

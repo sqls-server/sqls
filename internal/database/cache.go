@@ -14,7 +14,10 @@ func GenerateDBCache(db Database, defaultSchema string) (*DatabaseCache, error) 
 	// Create caches
 	var err error
 	dbCache := &DatabaseCache{}
-	dbCache.defaultSchema = defaultSchema
+	dbCache.defaultSchema, err = db.Database()
+	if err != nil {
+		return nil, err
+	}
 	dbCache.Databases, err = genSchmeaCache(db)
 	if err != nil {
 		return nil, err
@@ -24,10 +27,6 @@ func GenerateDBCache(db Database, defaultSchema string) (*DatabaseCache, error) 
 		return nil, err
 	}
 	dbCache.Tables, err = genTableCache(db)
-	if err != nil {
-		return nil, err
-	}
-	dbCache.Columns, err = genColumnCache(db, dbCache.Tables)
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +96,6 @@ type DatabaseCache struct {
 	Databases         map[string]string
 	DatabaseTables    map[string][]string
 	Tables            map[string]string
-	Columns           map[string][]*ColumnDesc
 	ColumnsWithParent map[string][]*ColumnDesc
 }
 
@@ -131,18 +129,17 @@ func (dc *DatabaseCache) SortedTables() []string {
 }
 
 func (dc *DatabaseCache) ColumnDescs(tableName string) (cols []*ColumnDesc, ok bool) {
-	cols, ok = dc.Columns[strings.ToUpper(tableName)]
+	cols, ok = dc.ColumnsWithParent[columnDatabaseKey(dc.defaultSchema, tableName)]
 	return
 }
 
 func (dc *DatabaseCache) ColumnDatabase(dbName, tableName string) (cols []*ColumnDesc, ok bool) {
-	key := dbName + "\t" + tableName
-	cols, ok = dc.ColumnsWithParent[key]
+	cols, ok = dc.ColumnsWithParent[columnDatabaseKey(dbName, tableName)]
 	return
 }
 
-func (dc *DatabaseCache) Column(dbName, colName string) (*ColumnDesc, bool) {
-	cols, ok := dc.Columns[strings.ToUpper(dbName)]
+func (dc *DatabaseCache) Column(tableName, colName string) (*ColumnDesc, bool) {
+	cols, ok := dc.ColumnsWithParent[columnDatabaseKey(dc.defaultSchema, tableName)]
 	if !ok {
 		return nil, false
 	}
@@ -152,4 +149,8 @@ func (dc *DatabaseCache) Column(dbName, colName string) (*ColumnDesc, bool) {
 		}
 	}
 	return nil, false
+}
+
+func columnDatabaseKey(dbName, tableName string) string {
+	return dbName + "\t" + tableName
 }

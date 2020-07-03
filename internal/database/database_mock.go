@@ -8,6 +8,7 @@ import (
 type MockDB struct {
 	MockOpen                  func() error
 	MockClose                 func() error
+	MockDatabase              func() (string, error)
 	MockDatabases             func() ([]string, error)
 	MockDatabaseTables        func() (map[string][]string, error)
 	MockTables                func() ([]string, error)
@@ -23,6 +24,10 @@ func (m *MockDB) Open() error {
 
 func (m *MockDB) Close() error {
 	return m.MockClose()
+}
+
+func (m *MockDB) Database() (string, error) {
+	return m.MockDatabase()
 }
 
 func (m *MockDB) Databases() ([]string, error) {
@@ -364,6 +369,7 @@ func init() {
 		return &MockDB{
 			MockOpen:           func() error { return nil },
 			MockClose:          func() error { return nil },
+			MockDatabase:       func() (string, error) { return "world", nil },
 			MockDatabases:      func() ([]string, error) { return dummyDatabases, nil },
 			MockDatabaseTables: func() (map[string][]string, error) { return dummyDatabaseTables, nil },
 			MockTables:         func() ([]string, error) { return dummyTables, nil },
