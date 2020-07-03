@@ -232,54 +232,61 @@ func QueryExecType(prefix, sqlstr string) (string, bool) {
 		return "EXEC", false
 	}
 
-	s := strings.Split(prefix, " ")
-	pref := strings.ToUpper(s[0])
-	if len(s) > 0 {
-		// check query map
-		if _, ok := queryMap[pref]; ok {
-			typ := pref
-			switch {
-			case typ == "SELECT" && len(s) >= 2 && s[1] == "INTO":
-				return "SELECT INTO", false
-			case typ == "PRAGMA":
-				return typ, !strings.ContainsRune(sqlstr, '=')
-			}
-			return typ, true
-		}
-
-		// normalize prefixes
-		switch pref {
-		// CREATE statements have a large number of variants
-		case "CREATE":
-			n := []string{"CREATE"}
-			for _, x := range s[1:] {
-				if _, ok := createIgnore[x]; ok {
-					continue
-				}
-				n = append(n, x)
-			}
-			s = n
-
-		case "DROP":
-			// "DROP [PROCEDURAL] LANGUAGE" => "DROP LANGUAGE"
-			n := []string{"DROP"}
-			for _, x := range s[1:] {
-				if x == "PROCEDURAL" {
-					continue
-				}
-				n = append(n, x)
-			}
-			s = n
-		}
-
-		// find longest match
-		for i := len(s); i > 0; i-- {
-			typ := strings.Join(s[:i], " ")
-			if _, ok := execMap[typ]; ok {
-				return typ, false
-			}
+	var pref string
+	sp := strings.Split(prefix, " ")
+	if len(sp) == 0 {
+		return pref, false
+	}
+	for _, s := range sp {
+		trimed := strings.TrimSpace(s)
+		if trimed != "" {
+			pref = strings.ToUpper(trimed)
+			break
 		}
 	}
 
+	// check query map
+	if _, ok := queryMap[pref]; ok {
+		typ := pref
+		switch {
+		case typ == "SELECT" && len(sp) >= 2 && sp[1] == "INTO":
+			return "SELECT INTO", false
+		case typ == "PRAGMA":
+			return typ, !strings.ContainsRune(sqlstr, '=')
+		}
+		return typ, true
+	}
+
+	// normalize prefixes
+	switch pref {
+	// CREATE statements have a large number of variants
+	case "CREATE":
+		n := []string{"CREATE"}
+		for _, x := range sp[1:] {
+			if _, ok := createIgnore[x]; ok {
+				continue
+			}
+			n = append(n, x)
+		}
+		sp = n
+	case "DROP":
+		// "DROP [PROCEDURAL] LANGUAGE" => "DROP LANGUAGE"
+		n := []string{"DROP"}
+		for _, x := range sp[1:] {
+			if x == "PROCEDURAL" {
+				continue
+			}
+			n = append(n, x)
+		}
+		sp = n
+	}
+
+	// find longest match
+	for i := len(sp); i > 0; i-- {
+		typ := strings.Join(sp[:i], " ")
+		if _, ok := execMap[typ]; ok {
+			return typ, false
+		}
+	}
 	return pref, false
 }

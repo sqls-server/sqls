@@ -15,28 +15,36 @@ func TestQueryExecType(t *testing.T) {
 		wantExecType bool
 	}{
 		{
-			name:         "",
+			name:         "select",
 			prefix:       "select * from city",
 			sqlstr:       "",
 			wantPrefix:   "SELECT",
 			wantExecType: true,
 		},
 		{
-			name:         "",
+			name:         "select with space",
+			prefix:       "    select    * from city",
+			sqlstr:       "",
+			wantPrefix:   "SELECT",
+			wantExecType: true,
+		},
+
+		{
+			name:         "explain",
 			prefix:       "explain select * from city",
 			sqlstr:       "",
 			wantPrefix:   "EXPLAIN",
 			wantExecType: true,
 		},
 		{
-			name:         "",
+			name:         "insert",
 			prefix:       "insert into city values (8181, 'Kabul', 'AFG', 'Kabol', 1780000);",
 			sqlstr:       "",
 			wantPrefix:   "INSERT",
 			wantExecType: false,
 		},
 		{
-			name:         "",
+			name:         "delete",
 			prefix:       "delete from city where id = 8181;",
 			sqlstr:       "",
 			wantPrefix:   "DELETE",
