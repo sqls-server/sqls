@@ -146,7 +146,10 @@ func (c *Completer) Complete(text string, params lsp.CompletionParams) ([]lsp.Co
 		items = append(items, c.aliasCandidates(definedTables)...)
 	}
 	if completionTypeIs(cTypes, CompletionTypeTable) {
-		items = append(items, c.TableCandidates()...)
+		items = append(items, c.TableCandidates(pare)...)
+	}
+	if completionTypeIs(cTypes, CompletionTypeDatabase) {
+		items = append(items, c.DatabaseCandidates()...)
 	}
 	if completionTypeIs(cTypes, CompletionTypeSubQueryColumn) {
 		items = append(items, c.SubQueryColumnCandidates(definedSubQuery)...)
@@ -253,9 +256,25 @@ func getCompletionTypes(text string, pos token.Pos) ([]CompletionType, *parent, 
 			CompletionTypeKeyword,
 		}, noneParent, nil
 	case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"JOIN", "COPY", "FROM", "DELETE FROM", "UPDATE", "INSERT INTO", "DESCRIBE", "TRUNCATE", "DESC", "EXPLAIN", "AND", "OR", "XOR"})):
+		if nodeWalker.CurNodeIs(memberIdentifierMatcher) {
+			// has parent
+			mi := nodeWalker.CurNodeTopMatched(memberIdentifierMatcher).(*ast.MemberIdentifer)
+			cType := []CompletionType{
+				CompletionTypeTable,
+				CompletionTypeView,
+				CompletionTypeSubQueryColumn,
+				CompletionTypeFunction,
+			}
+			databaseParent := &parent{
+				Type: ParentTypeSchema,
+				Name: mi.Parent.String(),
+			}
+			return cType, databaseParent, nil
+		}
 		return []CompletionType{
 			CompletionTypeColumn,
 			CompletionTypeTable,
+			CompletionTypeDatabase,
 			CompletionTypeView,
 			CompletionTypeSubQueryColumn,
 			CompletionTypeSubQueryView,
@@ -317,35 +336,55 @@ func (c *Completer) keywordCandidates() []lsp.CompletionItem {
 
 func (c *Completer) columnCandidates(targetTables []*parseutil.TableInfo, pare *parent) []lsp.CompletionItem {
 	candidates := []lsp.CompletionItem{}
+	if c.DBCache == nil {
+		return candidates
+	}
 
 	switch pare.Type {
 	case ParentTypeNone:
 		for _, table := range targetTables {
-			if table.Name == "" {
-				continue
-			}
-			if c.DBCache == nil {
-				continue
-			}
-			columns, ok := c.DBCache.ColumnDescs(table.Name)
-			if !ok {
-				continue
-			}
-			for _, column := range columns {
-				detail := strings.Join(
-					[]string{
-						"column",
-						"`" + table.Name + "`",
-						"(" + column.OnelineDesc() + ")",
-					},
-					" ",
-				)
-				candidate := lsp.CompletionItem{
-					Label:  column.Name,
-					Kind:   lsp.FieldCompletion,
-					Detail: detail,
+			if table.DatabaseSchema != "" && table.Name != "" {
+				columns, ok := c.DBCache.ColumnDatabase(table.DatabaseSchema, table.Name)
+				if !ok {
+					continue
 				}
-				candidates = append(candidates, candidate)
+				for _, column := range columns {
+					detail := strings.Join(
+						[]string{
+							"column",
+							"`" + table.Name + "`",
+							"(" + column.OnelineDesc() + ")",
+						},
+						" ",
+					)
+					candidate := lsp.CompletionItem{
+						Label:  column.Name,
+						Kind:   lsp.FieldCompletion,
+						Detail: detail,
+					}
+					candidates = append(candidates, candidate)
+				}
+			} else if table.Name != "" {
+				columns, ok := c.DBCache.ColumnDescs(table.Name)
+				if !ok {
+					continue
+				}
+				for _, column := range columns {
+					detail := strings.Join(
+						[]string{
+							"column",
+							"`" + table.Name + "`",
+							"(" + column.OnelineDesc() + ")",
+						},
+						" ",
+					)
+					candidate := lsp.CompletionItem{
+						Label:  column.Name,
+						Kind:   lsp.FieldCompletion,
+						Detail: detail,
+					}
+					candidates = append(candidates, candidate)
+				}
 			}
 		}
 	case ParentTypeSchema:
@@ -382,19 +421,46 @@ func (c *Completer) columnCandidates(targetTables []*parseutil.TableInfo, pare *
 	return candidates
 }
 
-func (c *Completer) TableCandidates() []lsp.CompletionItem {
+func (c *Completer) TableCandidates(pare *parent) []lsp.CompletionItem {
 	candidates := []lsp.CompletionItem{}
 	if c.DBCache == nil {
 		return candidates
 	}
-	tables := c.DBCache.SortedTables()
-	for _, tableName := range tables {
-		candidate := lsp.CompletionItem{
-			Label:  tableName,
-			Kind:   lsp.FieldCompletion,
-			Detail: "table",
+
+	switch pare.Type {
+	case ParentTypeNone:
+		tables := c.DBCache.SortedTables()
+		for _, tableName := range tables {
+			candidate := lsp.CompletionItem{
+				Label:  tableName,
+				Kind:   lsp.FieldCompletion,
+				Detail: "table",
+			}
+			candidates = append(candidates, candidate)
 		}
-		candidates = append(candidates, candidate)
+	case ParentTypeSchema:
+		tables, ok := c.DBCache.SortedTablesByDBName(pare.Name)
+		if ok {
+			for _, tableName := range tables {
+				candidate := lsp.CompletionItem{
+					Label:  tableName,
+					Kind:   lsp.FieldCompletion,
+					Detail: "table",
+				}
+				candidates = append(candidates, candidate)
+			}
+		} else {
+			tables := c.DBCache.SortedTables()
+			for _, tableName := range tables {
+				candidate := lsp.CompletionItem{
+					Label:  tableName,
+					Kind:   lsp.FieldCompletion,
+					Detail: "table",
+				}
+				candidates = append(candidates, candidate)
+			}
+		}
+	case ParentTypeTable:
 	}
 	return candidates
 }
@@ -439,14 +505,17 @@ func (c *Completer) SubQueryColumnCandidates(info *parseutil.SubQueryInfo) []lsp
 
 func (c *Completer) DatabaseCandidates() []lsp.CompletionItem {
 	candidates := []lsp.CompletionItem{}
-	for _, databaseName := range c.DBCache.SortedDatabases() {
+	if c.DBCache == nil {
+		return candidates
+	}
+	dbs := c.DBCache.SortedDatabases()
+	for _, db := range dbs {
 		candidate := lsp.CompletionItem{
-			Label:  databaseName,
+			Label:  db,
 			Kind:   lsp.FieldCompletion,
-			Detail: "Database",
+			Detail: "database",
 		}
 		candidates = append(candidates, candidate)
-
 	}
 	return candidates
 }

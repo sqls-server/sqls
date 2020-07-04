@@ -40,7 +40,7 @@ func TestComplete(t *testing.T) {
 		want  []string
 	}{
 		{
-			name:  "select identifier",
+			name:  "columns of specific table",
 			input: "select  from city",
 			line:  0,
 			col:   7,
@@ -56,7 +56,34 @@ func TestComplete(t *testing.T) {
 			},
 		},
 		{
-			name:  "select identifier with table alias",
+			name:  "filterd columns of specific table",
+			input: "select Cou from city",
+			line:  0,
+			col:   10,
+			want: []string{
+				"CountryCode",
+				"country",
+				"countrylanguage",
+			},
+		},
+		{
+			name:  "columns of specific schema and table",
+			input: "select  from world.city",
+			line:  0,
+			col:   7,
+			want: []string{
+				"ID",
+				"Name",
+				"CountryCode",
+				"District",
+				"Population",
+				"city",
+				"country",
+				"countrylanguage",
+			},
+		},
+		{
+			name:  "columns of aliased table",
 			input: "select  from city as c",
 			line:  0,
 			col:   7,
@@ -73,7 +100,24 @@ func TestComplete(t *testing.T) {
 			},
 		},
 		{
-			name:  "select identifier with table alias without as",
+			name:  "columns of aliased schema and table",
+			input: "select  from world.city as c",
+			line:  0,
+			col:   7,
+			want: []string{
+				"ID",
+				"Name",
+				"CountryCode",
+				"District",
+				"Population",
+				"c",
+				"city",
+				"country",
+				"countrylanguage",
+			},
+		},
+		{
+			name:  "columns with aliased table without as",
 			input: "select  from city c",
 			line:  0,
 			col:   7,
@@ -90,18 +134,7 @@ func TestComplete(t *testing.T) {
 			},
 		},
 		{
-			name:  "select identifier filterd",
-			input: "select Cou from city",
-			line:  0,
-			col:   10,
-			want: []string{
-				"CountryCode",
-				"country",
-				"countrylanguage",
-			},
-		},
-		{
-			name:  "select identifier list",
+			name:  "identifier list in select expr",
 			input: "select id, cou from city",
 			line:  0,
 			col:   14,
@@ -112,7 +145,7 @@ func TestComplete(t *testing.T) {
 			},
 		},
 		{
-			name:  "select identifier with comparison",
+			name:  "comparison in select expr",
 			input: "select 1 = cou from city",
 			line:  0,
 			col:   14,
@@ -123,7 +156,7 @@ func TestComplete(t *testing.T) {
 			},
 		},
 		{
-			name:  "select identifier with operator",
+			name:  "operator in select expr",
 			input: "select 1 + cou from city",
 			line:  0,
 			col:   14,
@@ -168,6 +201,11 @@ func TestComplete(t *testing.T) {
 				"city",
 				"country",
 				"countrylanguage",
+				"information_schema",
+				"mysql",
+				"performance_schema",
+				"sys",
+				"world",
 			},
 		},
 		{

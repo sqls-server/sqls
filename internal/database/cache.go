@@ -5,14 +5,40 @@ import (
 	"strings"
 )
 
-func GenerateDBCache(db Database) (*DatabaseCache, error) {
-	dbCache := &DatabaseCache{}
+func GenerateDBCache(db Database, defaultSchema string) (*DatabaseCache, error) {
 	if err := db.Open(); err != nil {
 		return nil, err
 	}
 	defer db.Close()
 
-	dbs, err := db.Databases()
+	// Create caches
+	var err error
+	dbCache := &DatabaseCache{}
+	dbCache.defaultSchema, err = db.Schema()
+	if err != nil {
+		return nil, err
+	}
+	dbCache.Databases, err = genSchmeaCache(db)
+	if err != nil {
+		return nil, err
+	}
+	dbCache.DatabaseTables, err = db.DatabaseTables()
+	if err != nil {
+		return nil, err
+	}
+	dbCache.Tables, err = genTableCache(db)
+	if err != nil {
+		return nil, err
+	}
+	dbCache.ColumnsWithParent, err = genColumnsWithParentCache(db)
+	if err != nil {
+		return nil, err
+	}
+	return dbCache, nil
+}
+
+func genSchmeaCache(db Database) (map[string]string, error) {
+	dbs, err := db.Schemas()
 	if err != nil {
 		return nil, err
 	}
@@ -20,8 +46,10 @@ func GenerateDBCache(db Database) (*DatabaseCache, error) {
 	for _, db := range dbs {
 		databaseMap[strings.ToUpper(db)] = db
 	}
-	dbCache.Databases = databaseMap
+	return databaseMap, nil
+}
 
+func genTableCache(db Database) (map[string]string, error) {
 	tbls, err := db.Tables()
 	if err != nil {
 		return nil, err
@@ -30,8 +58,10 @@ func GenerateDBCache(db Database) (*DatabaseCache, error) {
 	for _, tbl := range tbls {
 		tableMap[strings.ToUpper(tbl)] = tbl
 	}
-	dbCache.Tables = tableMap
+	return tableMap, nil
+}
 
+func genColumnCache(db Database, tbls map[string]string) (map[string][]*ColumnDesc, error) {
 	columnMap := map[string][]*ColumnDesc{}
 	for _, tbl := range tbls {
 		columnDescs, err := db.DescribeTable(tbl)
@@ -40,15 +70,33 @@ func GenerateDBCache(db Database) (*DatabaseCache, error) {
 		}
 		columnMap[strings.ToUpper(tbl)] = columnDescs
 	}
-	dbCache.Columns = columnMap
+	return columnMap, nil
+}
 
-	return dbCache, nil
+func genColumnsWithParentCache(db Database) (map[string][]*ColumnDesc, error) {
+	columnMap := map[string][]*ColumnDesc{}
+	columnDescs, err := db.DescribeDatabaseTable()
+	if err != nil {
+		return nil, err
+	}
+	for _, desc := range columnDescs {
+		key := desc.Schema + "\t" + desc.Table
+		if _, ok := columnMap[key]; ok {
+			columnMap[key] = append(columnMap[key], desc)
+		} else {
+			arr := []*ColumnDesc{desc}
+			columnMap[key] = arr
+		}
+	}
+	return columnMap, nil
 }
 
 type DatabaseCache struct {
-	Databases map[string]string
-	Tables    map[string]string
-	Columns   map[string][]*ColumnDesc
+	defaultSchema     string
+	Databases         map[string]string
+	DatabaseTables    map[string][]string
+	Tables            map[string]string
+	ColumnsWithParent map[string][]*ColumnDesc
 }
 
 func (dc *DatabaseCache) Database(dbName string) (db string, ok bool) {
@@ -65,8 +113,9 @@ func (dc *DatabaseCache) SortedDatabases() []string {
 	return dbs
 }
 
-func (dc *DatabaseCache) Table(dbName string) (tbl string, ok bool) {
-	tbl, ok = dc.Tables[strings.ToUpper(dbName)]
+func (dc *DatabaseCache) SortedTablesByDBName(dbName string) (tbls []string, ok bool) {
+	tbls, ok = dc.DatabaseTables[dbName]
+	sort.Strings(tbls)
 	return
 }
 
@@ -79,13 +128,18 @@ func (dc *DatabaseCache) SortedTables() []string {
 	return tbls
 }
 
-func (dc *DatabaseCache) ColumnDescs(dbName string) (cols []*ColumnDesc, ok bool) {
-	cols, ok = dc.Columns[strings.ToUpper(dbName)]
+func (dc *DatabaseCache) ColumnDescs(tableName string) (cols []*ColumnDesc, ok bool) {
+	cols, ok = dc.ColumnsWithParent[columnDatabaseKey(dc.defaultSchema, tableName)]
 	return
 }
 
-func (dc *DatabaseCache) Column(dbName, colName string) (*ColumnDesc, bool) {
-	cols, ok := dc.Columns[strings.ToUpper(dbName)]
+func (dc *DatabaseCache) ColumnDatabase(dbName, tableName string) (cols []*ColumnDesc, ok bool) {
+	cols, ok = dc.ColumnsWithParent[columnDatabaseKey(dbName, tableName)]
+	return
+}
+
+func (dc *DatabaseCache) Column(tableName, colName string) (*ColumnDesc, bool) {
+	cols, ok := dc.ColumnsWithParent[columnDatabaseKey(dc.defaultSchema, tableName)]
 	if !ok {
 		return nil, false
 	}
@@ -95,4 +149,8 @@ func (dc *DatabaseCache) Column(dbName, colName string) (*ColumnDesc, bool) {
 		}
 	}
 	return nil, false
+}
+
+func columnDatabaseKey(dbName, tableName string) string {
+	return dbName + "\t" + tableName
 }

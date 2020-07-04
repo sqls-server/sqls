@@ -126,8 +126,17 @@ func (db *MySQLDB) Close() error {
 	return nil
 }
 
+func (db *MySQLDB) Database() (string, error) {
+	row := db.Conn.QueryRow("SELECT DATABASE()")
+	var database string
+	if err := row.Scan(&database); err != nil {
+		return "", err
+	}
+	return database, nil
+}
+
 func (db *MySQLDB) Databases() ([]string, error) {
-	rows, err := db.Conn.Query("SHOW DATABASES")
+	rows, err := db.Conn.Query("select SCHEMA_NAME from information_schema.SCHEMATA")
 	if err != nil {
 		return nil, err
 	}
@@ -140,6 +149,44 @@ func (db *MySQLDB) Databases() ([]string, error) {
 		databases = append(databases, database)
 	}
 	return databases, nil
+}
+
+func (db *MySQLDB) Schema() (string, error) {
+	return db.Database()
+}
+
+func (db *MySQLDB) Schemas() ([]string, error) {
+	return db.Databases()
+}
+
+func (db *MySQLDB) DatabaseTables() (map[string][]string, error) {
+	rows, err := db.Conn.Query(`
+	SELECT 
+		TABLE_SCHEMA,
+		TABLE_NAME
+	FROM
+		information_schema.TABLES
+	ORDER BY
+		TABLE_SCHEMA,
+		TABLE_NAME
+	`)
+	if err != nil {
+		return nil, err
+	}
+	databaseTables := map[string][]string{}
+	for rows.Next() {
+		var schema, table string
+		if err := rows.Scan(&schema, &table); err != nil {
+			return nil, err
+		}
+
+		if arr, ok := databaseTables[schema]; ok {
+			databaseTables[schema] = append(arr, table)
+		} else {
+			databaseTables[schema] = []string{table}
+		}
+	}
+	return databaseTables, nil
 }
 
 func (db *MySQLDB) Tables() ([]string, error) {
@@ -167,6 +214,43 @@ func (db *MySQLDB) DescribeTable(tableName string) ([]*ColumnDesc, error) {
 	for rows.Next() {
 		var tableInfo ColumnDesc
 		err := rows.Scan(
+			&tableInfo.Name,
+			&tableInfo.Type,
+			&tableInfo.Null,
+			&tableInfo.Key,
+			&tableInfo.Default,
+			&tableInfo.Extra,
+		)
+		if err != nil {
+			return nil, err
+		}
+		tableInfos = append(tableInfos, &tableInfo)
+	}
+	return tableInfos, nil
+}
+
+func (db *MySQLDB) DescribeDatabaseTable() ([]*ColumnDesc, error) {
+	rows, err := db.Conn.Query(`
+SELECT
+	TABLE_SCHEMA,
+	TABLE_NAME,
+	COLUMN_NAME,
+	COLUMN_TYPE,
+	IS_NULLABLE,
+	COLUMN_KEY,
+	COLUMN_DEFAULT,
+	EXTRA
+FROM information_schema.COLUMNS
+`)
+	if err != nil {
+		return nil, err
+	}
+	tableInfos := []*ColumnDesc{}
+	for rows.Next() {
+		var tableInfo ColumnDesc
+		err := rows.Scan(
+			&tableInfo.Schema,
+			&tableInfo.Table,
 			&tableInfo.Name,
 			&tableInfo.Type,
 			&tableInfo.Null,
