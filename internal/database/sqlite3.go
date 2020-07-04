@@ -46,19 +46,19 @@ func (db *SQLite3DB) Close() error {
 }
 
 func (db *SQLite3DB) Database() (string, error) {
-	return "", ErrNotImplementation
+	return "", nil
 }
 
 func (db *SQLite3DB) Databases() ([]string, error) {
-	return nil, ErrNotImplementation
+	return []string{}, nil
 }
 
 func (db *SQLite3DB) Schema() (string, error) {
-	return "", ErrNotImplementation
+	return db.Database()
 }
 
 func (db *SQLite3DB) Schemas() ([]string, error) {
-	return nil, ErrNotImplementation
+	return db.Databases()
 }
 
 func (db *SQLite3DB) DatabaseTables() (map[string][]string, error) {
@@ -113,6 +113,7 @@ func (db *SQLite3DB) DescribeTable(tableName string) ([]*ColumnDesc, error) {
 		if err != nil {
 			return nil, err
 		}
+		tableInfo.Table = tableName
 		if nonnull != 0 {
 			tableInfo.Null = "NO"
 		} else {
@@ -124,7 +125,21 @@ func (db *SQLite3DB) DescribeTable(tableName string) ([]*ColumnDesc, error) {
 }
 
 func (db *SQLite3DB) DescribeDatabaseTable() ([]*ColumnDesc, error) {
-	return nil, ErrNotImplementation
+	tables, err := db.Tables()
+	if err != nil {
+		return nil, err
+	}
+	log.Println(tables)
+	all := []*ColumnDesc{}
+	for _, table := range tables {
+		descs, err := db.DescribeTable(table)
+		if err != nil {
+			return nil, err
+		}
+		log.Println(descs)
+		all = append(all, descs...)
+	}
+	return all, nil
 }
 
 func (db *SQLite3DB) Exec(ctx context.Context, query string) (sql.Result, error) {
