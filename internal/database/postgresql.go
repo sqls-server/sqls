@@ -136,7 +136,12 @@ func (db *PostgreSQLDB) Close() error {
 }
 
 func (db *PostgreSQLDB) Database() (string, error) {
-	return "", ErrNotImplementation
+	row := db.Conn.QueryRow("SELECT current_database()")
+	var database string
+	if err := row.Scan(&database); err != nil {
+		return "", err
+	}
+	return database, nil
 }
 
 func (db *PostgreSQLDB) Databases() ([]string, error) {
@@ -157,8 +162,61 @@ func (db *PostgreSQLDB) Databases() ([]string, error) {
 	return databases, nil
 }
 
+func (db *PostgreSQLDB) Schema() (string, error) {
+	row := db.Conn.QueryRow("SELECT current_schema()")
+	var database string
+	if err := row.Scan(&database); err != nil {
+		return "", err
+	}
+	return database, nil
+}
+
+func (db *PostgreSQLDB) Schemas() ([]string, error) {
+	rows, err := db.Conn.Query(`
+	SELECT schema_name FROM information_schema.schemata
+	`)
+	if err != nil {
+		log.Fatal(err)
+	}
+	databases := []string{}
+	for rows.Next() {
+		var database string
+		if err := rows.Scan(&database); err != nil {
+			return nil, err
+		}
+		databases = append(databases, database)
+	}
+	return databases, nil
+}
+
 func (db *PostgreSQLDB) DatabaseTables() (map[string][]string, error) {
-	return nil, ErrNotImplementation
+	rows, err := db.Conn.Query(`
+	SELECT
+		table_schema,
+		table_name
+	FROM
+		information_schema.tables
+	ORDER BY
+		table_schema,
+		table_name
+	`)
+	if err != nil {
+		return nil, err
+	}
+	databaseTables := map[string][]string{}
+	for rows.Next() {
+		var schema, table string
+		if err := rows.Scan(&schema, &table); err != nil {
+			return nil, err
+		}
+
+		if arr, ok := databaseTables[schema]; ok {
+			databaseTables[schema] = append(arr, table)
+		} else {
+			databaseTables[schema] = []string{table}
+		}
+	}
+	return databaseTables, nil
 }
 
 func (db *PostgreSQLDB) Tables() ([]string, error) {
@@ -185,10 +243,6 @@ func (db *PostgreSQLDB) Tables() ([]string, error) {
 		tables = append(tables, table)
 	}
 	return tables, nil
-}
-
-func (db *PostgreSQLDB) DescribeDatabaseTable() ([]*ColumnDesc, error) {
-	return nil, ErrNotImplementation
 }
 
 func (db *PostgreSQLDB) DescribeTable(tableName string) ([]*ColumnDesc, error) {
@@ -226,6 +280,59 @@ func (db *PostgreSQLDB) DescribeTable(tableName string) ([]*ColumnDesc, error) {
 	for rows.Next() {
 		var tableInfo ColumnDesc
 		err := rows.Scan(
+			&tableInfo.Name,
+			&tableInfo.Type,
+			&tableInfo.Null,
+			&tableInfo.Key,
+			&tableInfo.Default,
+			&tableInfo.Extra,
+		)
+		if err != nil {
+			return nil, err
+		}
+		tableInfos = append(tableInfos, &tableInfo)
+	}
+	return tableInfos, nil
+}
+
+func (db *PostgreSQLDB) DescribeDatabaseTable() ([]*ColumnDesc, error) {
+	rows, err := db.Conn.Query(`
+	SELECT
+		c.table_schema,
+		c.table_name,
+		c.column_name,
+		c.data_type,
+		c.is_nullable,
+		CASE tc.constraint_type
+			WHEN 'PRIMARY KEY' THEN 'YES'
+			ELSE 'NO'
+		END,
+		c.column_default,
+		''
+	FROM
+		information_schema.columns c
+	LEFT JOIN
+		information_schema.constraint_column_usage ccu
+		ON c.table_name = ccu.table_name
+		AND c.column_name = ccu.column_name
+	LEFT JOIN information_schema.table_constraints tc ON
+		tc.table_catalog = c.table_catalog
+		AND tc.table_schema = c.table_schema
+		AND tc.table_name = c.table_name
+		AND tc.constraint_name = ccu.constraint_name
+	ORDER BY
+		c.table_name,
+		c.ordinal_position
+	`)
+	if err != nil {
+		log.Fatal(err)
+	}
+	tableInfos := []*ColumnDesc{}
+	for rows.Next() {
+		var tableInfo ColumnDesc
+		err := rows.Scan(
+			&tableInfo.Schema,
+			&tableInfo.Table,
 			&tableInfo.Name,
 			&tableInfo.Type,
 			&tableInfo.Null,

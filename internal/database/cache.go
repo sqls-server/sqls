@@ -14,7 +14,7 @@ func GenerateDBCache(db Database, defaultSchema string) (*DatabaseCache, error) 
 	// Create caches
 	var err error
 	dbCache := &DatabaseCache{}
-	dbCache.defaultSchema, err = db.Database()
+	dbCache.defaultSchema, err = db.Schema()
 	if err != nil {
 		return nil, err
 	}
@@ -38,7 +38,7 @@ func GenerateDBCache(db Database, defaultSchema string) (*DatabaseCache, error) 
 }
 
 func genSchmeaCache(db Database) (map[string]string, error) {
-	dbs, err := db.Databases()
+	dbs, err := db.Schemas()
 	if err != nil {
 		return nil, err
 	}

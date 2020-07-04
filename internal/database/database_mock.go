@@ -34,6 +34,14 @@ func (m *MockDB) Databases() ([]string, error) {
 	return m.MockDatabases()
 }
 
+func (m *MockDB) Schema() (string, error) {
+	return m.MockDatabase()
+}
+
+func (m *MockDB) Schemas() ([]string, error) {
+	return m.MockDatabases()
+}
+
 func (m *MockDB) DatabaseTables() (map[string][]string, error) {
 	return m.MockDatabaseTables()
 }

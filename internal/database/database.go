@@ -21,6 +21,8 @@ type Database interface {
 	Close() error
 	Database() (string, error)
 	Databases() ([]string, error)
+	Schema() (string, error)
+	Schemas() ([]string, error)
 	DatabaseTables() (map[string][]string, error)
 	Tables() ([]string, error)
 	DescribeTable(tableName string) ([]*ColumnDesc, error)

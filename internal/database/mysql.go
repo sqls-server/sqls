@@ -151,8 +151,25 @@ func (db *MySQLDB) Databases() ([]string, error) {
 	return databases, nil
 }
 
+func (db *MySQLDB) Schema() (string, error) {
+	return db.Database()
+}
+
+func (db *MySQLDB) Schemas() ([]string, error) {
+	return db.Databases()
+}
+
 func (db *MySQLDB) DatabaseTables() (map[string][]string, error) {
-	rows, err := db.Conn.Query("select TABLE_SCHEMA, TABLE_NAME from information_schema.TABLES")
+	rows, err := db.Conn.Query(`
+	SELECT 
+		TABLE_SCHEMA,
+		TABLE_NAME
+	FROM
+		information_schema.TABLES
+	ORDER BY
+		TABLE_SCHEMA,
+		TABLE_NAME
+	`)
 	if err != nil {
 		return nil, err
 	}

@@ -50,7 +50,15 @@ func (db *SQLite3DB) Database() (string, error) {
 }
 
 func (db *SQLite3DB) Databases() ([]string, error) {
-	return []string{}, nil
+	return nil, ErrNotImplementation
+}
+
+func (db *SQLite3DB) Schema() (string, error) {
+	return "", ErrNotImplementation
+}
+
+func (db *SQLite3DB) Schemas() ([]string, error) {
+	return nil, ErrNotImplementation
 }
 
 func (db *SQLite3DB) DatabaseTables() (map[string][]string, error) {
