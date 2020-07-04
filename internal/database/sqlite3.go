@@ -45,7 +45,7 @@ func (db *SQLite3DB) Close() error {
 	return db.Conn.Close()
 }
 
-func (db *SQLite3DB) Database() (string, error) {
+func (db *SQLite3DB) CurrentDatabase() (string, error) {
 	return "", nil
 }
 
@@ -53,15 +53,15 @@ func (db *SQLite3DB) Databases() ([]string, error) {
 	return []string{}, nil
 }
 
-func (db *SQLite3DB) Schema() (string, error) {
-	return db.Database()
+func (db *SQLite3DB) CurrentSchema() (string, error) {
+	return db.CurrentDatabase()
 }
 
 func (db *SQLite3DB) Schemas() ([]string, error) {
 	return db.Databases()
 }
 
-func (db *SQLite3DB) DatabaseTables() (map[string][]string, error) {
+func (db *SQLite3DB) SchemaTables() (map[string][]string, error) {
 	return nil, nil
 }
 

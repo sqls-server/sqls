@@ -31,7 +31,7 @@ const (
 	CompletionTypeSubQueryColumn
 	CompletionTypeChange
 	CompletionTypeUser
-	CompletionTypeDatabase
+	CompletionTypeSchema
 )
 
 func (ct CompletionType) String() string {
@@ -52,8 +52,8 @@ func (ct CompletionType) String() string {
 		return "Change"
 	case CompletionTypeUser:
 		return "User"
-	case CompletionTypeDatabase:
-		return "Database"
+	case CompletionTypeSchema:
+		return "Schema"
 	default:
 		return ""
 	}
@@ -148,8 +148,8 @@ func (c *Completer) Complete(text string, params lsp.CompletionParams) ([]lsp.Co
 	if completionTypeIs(cTypes, CompletionTypeTable) {
 		items = append(items, c.TableCandidates(pare)...)
 	}
-	if completionTypeIs(cTypes, CompletionTypeDatabase) {
-		items = append(items, c.DatabaseCandidates()...)
+	if completionTypeIs(cTypes, CompletionTypeSchema) {
+		items = append(items, c.SchemaCandidates()...)
 	}
 	if completionTypeIs(cTypes, CompletionTypeSubQueryColumn) {
 		items = append(items, c.SubQueryColumnCandidates(definedSubQuery)...)
@@ -265,16 +265,16 @@ func getCompletionTypes(text string, pos token.Pos) ([]CompletionType, *parent, 
 				CompletionTypeSubQueryColumn,
 				CompletionTypeFunction,
 			}
-			databaseParent := &parent{
+			schemaParent := &parent{
 				Type: ParentTypeSchema,
 				Name: mi.Parent.String(),
 			}
-			return cType, databaseParent, nil
+			return cType, schemaParent, nil
 		}
 		return []CompletionType{
 			CompletionTypeColumn,
 			CompletionTypeTable,
-			CompletionTypeDatabase,
+			CompletionTypeSchema,
 			CompletionTypeView,
 			CompletionTypeSubQueryColumn,
 			CompletionTypeSubQueryView,
@@ -503,17 +503,17 @@ func (c *Completer) SubQueryColumnCandidates(info *parseutil.SubQueryInfo) []lsp
 	return candidates
 }
 
-func (c *Completer) DatabaseCandidates() []lsp.CompletionItem {
+func (c *Completer) SchemaCandidates() []lsp.CompletionItem {
 	candidates := []lsp.CompletionItem{}
 	if c.DBCache == nil {
 		return candidates
 	}
-	dbs := c.DBCache.SortedDatabases()
+	dbs := c.DBCache.SortedSchemas()
 	for _, db := range dbs {
 		candidate := lsp.CompletionItem{
 			Label:  db,
 			Kind:   lsp.FieldCompletion,
-			Detail: "database",
+			Detail: "schema",
 		}
 		candidates = append(candidates, candidate)
 	}

@@ -26,7 +26,7 @@ func (m *MockDB) Close() error {
 	return m.MockClose()
 }
 
-func (m *MockDB) Database() (string, error) {
+func (m *MockDB) CurrentDatabase() (string, error) {
 	return m.MockDatabase()
 }
 
@@ -34,7 +34,7 @@ func (m *MockDB) Databases() ([]string, error) {
 	return m.MockDatabases()
 }
 
-func (m *MockDB) Schema() (string, error) {
+func (m *MockDB) CurrentSchema() (string, error) {
 	return m.MockDatabase()
 }
 
@@ -42,7 +42,7 @@ func (m *MockDB) Schemas() ([]string, error) {
 	return m.MockDatabases()
 }
 
-func (m *MockDB) DatabaseTables() (map[string][]string, error) {
+func (m *MockDB) SchemaTables() (map[string][]string, error) {
 	return m.MockDatabaseTables()
 }
 

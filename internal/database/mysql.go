@@ -126,7 +126,7 @@ func (db *MySQLDB) Close() error {
 	return nil
 }
 
-func (db *MySQLDB) Database() (string, error) {
+func (db *MySQLDB) CurrentDatabase() (string, error) {
 	row := db.Conn.QueryRow("SELECT DATABASE()")
 	var database string
 	if err := row.Scan(&database); err != nil {
@@ -151,15 +151,15 @@ func (db *MySQLDB) Databases() ([]string, error) {
 	return databases, nil
 }
 
-func (db *MySQLDB) Schema() (string, error) {
-	return db.Database()
+func (db *MySQLDB) CurrentSchema() (string, error) {
+	return db.CurrentDatabase()
 }
 
 func (db *MySQLDB) Schemas() ([]string, error) {
 	return db.Databases()
 }
 
-func (db *MySQLDB) DatabaseTables() (map[string][]string, error) {
+func (db *MySQLDB) SchemaTables() (map[string][]string, error) {
 	rows, err := db.Conn.Query(`
 	SELECT 
 		TABLE_SCHEMA,

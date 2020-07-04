@@ -19,11 +19,11 @@ var (
 type Database interface {
 	Open() error
 	Close() error
-	Database() (string, error)
+	CurrentDatabase() (string, error)
 	Databases() ([]string, error)
-	Schema() (string, error)
+	CurrentSchema() (string, error)
 	Schemas() ([]string, error)
-	DatabaseTables() (map[string][]string, error)
+	SchemaTables() (map[string][]string, error)
 	Tables() ([]string, error)
 	DescribeTable(tableName string) ([]*ColumnDesc, error)
 	DescribeDatabaseTable() ([]*ColumnDesc, error)

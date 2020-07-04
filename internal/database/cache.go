@@ -14,19 +14,15 @@ func GenerateDBCache(db Database, defaultSchema string) (*DatabaseCache, error) 
 	// Create caches
 	var err error
 	dbCache := &DatabaseCache{}
-	dbCache.defaultSchema, err = db.Schema()
+	dbCache.defaultSchema, err = db.CurrentSchema()
 	if err != nil {
 		return nil, err
 	}
-	dbCache.Databases, err = genSchmeaCache(db)
+	dbCache.Schemas, err = genSchmeaCache(db)
 	if err != nil {
 		return nil, err
 	}
-	dbCache.DatabaseTables, err = db.DatabaseTables()
-	if err != nil {
-		return nil, err
-	}
-	dbCache.Tables, err = genTableCache(db)
+	dbCache.SchemaTables, err = db.SchemaTables()
 	if err != nil {
 		return nil, err
 	}
@@ -93,20 +89,19 @@ func genColumnsWithParentCache(db Database) (map[string][]*ColumnDesc, error) {
 
 type DatabaseCache struct {
 	defaultSchema     string
-	Databases         map[string]string
-	DatabaseTables    map[string][]string
-	Tables            map[string]string
+	Schemas           map[string]string
+	SchemaTables      map[string][]string
 	ColumnsWithParent map[string][]*ColumnDesc
 }
 
 func (dc *DatabaseCache) Database(dbName string) (db string, ok bool) {
-	db, ok = dc.Databases[strings.ToUpper(dbName)]
+	db, ok = dc.Schemas[strings.ToUpper(dbName)]
 	return
 }
 
-func (dc *DatabaseCache) SortedDatabases() []string {
+func (dc *DatabaseCache) SortedSchemas() []string {
 	dbs := []string{}
-	for _, db := range dc.Databases {
+	for _, db := range dc.Schemas {
 		dbs = append(dbs, db)
 	}
 	sort.Strings(dbs)
@@ -114,17 +109,13 @@ func (dc *DatabaseCache) SortedDatabases() []string {
 }
 
 func (dc *DatabaseCache) SortedTablesByDBName(dbName string) (tbls []string, ok bool) {
-	tbls, ok = dc.DatabaseTables[dbName]
+	tbls, ok = dc.SchemaTables[dbName]
 	sort.Strings(tbls)
 	return
 }
 
 func (dc *DatabaseCache) SortedTables() []string {
-	tbls := []string{}
-	for _, tbl := range dc.Tables {
-		tbls = append(tbls, tbl)
-	}
-	sort.Strings(tbls)
+	tbls, _ := dc.SortedTablesByDBName(dc.defaultSchema)
 	return tbls
 }
 

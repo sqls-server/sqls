@@ -135,7 +135,7 @@ func (db *PostgreSQLDB) Close() error {
 	return nil
 }
 
-func (db *PostgreSQLDB) Database() (string, error) {
+func (db *PostgreSQLDB) CurrentDatabase() (string, error) {
 	row := db.Conn.QueryRow("SELECT current_database()")
 	var database string
 	if err := row.Scan(&database); err != nil {
@@ -162,7 +162,7 @@ func (db *PostgreSQLDB) Databases() ([]string, error) {
 	return databases, nil
 }
 
-func (db *PostgreSQLDB) Schema() (string, error) {
+func (db *PostgreSQLDB) CurrentSchema() (string, error) {
 	row := db.Conn.QueryRow("SELECT current_schema()")
 	var database string
 	if err := row.Scan(&database); err != nil {
@@ -189,7 +189,7 @@ func (db *PostgreSQLDB) Schemas() ([]string, error) {
 	return databases, nil
 }
 
-func (db *PostgreSQLDB) DatabaseTables() (map[string][]string, error) {
+func (db *PostgreSQLDB) SchemaTables() (map[string][]string, error) {
 	rows, err := db.Conn.Query(`
 	SELECT
 		table_schema,
