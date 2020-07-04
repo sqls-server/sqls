@@ -64,19 +64,19 @@ func Test_completionTypeIs(t *testing.T) {
 	}
 	tests := []struct {
 		name            string
-		completionTypes []CompletionType
-		expect          CompletionType
+		completionTypes []completionType
+		expect          completionType
 		want            bool
 	}{
 		{
-			completionTypes: []CompletionType{
+			completionTypes: []completionType{
 				CompletionTypeColumn,
 			},
 			expect: CompletionTypeColumn,
 			want:   true,
 		},
 		{
-			completionTypes: []CompletionType{
+			completionTypes: []completionType{
 				CompletionTypeTable,
 				CompletionTypeView,
 				CompletionTypeFunction,
@@ -86,7 +86,7 @@ func Test_completionTypeIs(t *testing.T) {
 			want:   true,
 		},
 		{
-			completionTypes: []CompletionType{
+			completionTypes: []completionType{
 				CompletionTypeTable,
 				CompletionTypeView,
 				CompletionTypeFunction,

@@ -17,10 +17,10 @@ import (
 	"github.com/lighttiger2505/sqls/token"
 )
 
-type CompletionType int
+type completionType int
 
 const (
-	_ CompletionType = iota
+	_ completionType = iota
 	CompletionTypeKeyword
 	CompletionTypeFunction
 	CompletionTypeAlias
@@ -34,7 +34,7 @@ const (
 	CompletionTypeSchema
 )
 
-func (ct CompletionType) String() string {
+func (ct completionType) String() string {
 	switch ct {
 	case CompletionTypeKeyword:
 		return "Keyword"
@@ -95,7 +95,7 @@ func NewCompleter(dbCache *database.DatabaseCache) *Completer {
 	}
 }
 
-func completionTypeIs(completionTypes []CompletionType, expect CompletionType) bool {
+func completionTypeIs(completionTypes []completionType, expect completionType) bool {
 	for _, t := range completionTypes {
 		if t == expect {
 			return true
@@ -124,7 +124,8 @@ func (c *Completer) Complete(text string, params lsp.CompletionParams) ([]lsp.Co
 	}
 
 	pos := token.Pos{Line: params.Position.Line, Col: params.Position.Character}
-	cTypes, pare, err := getCompletionTypes(text, pos)
+	nodeWalker := parseutil.NewNodeWalker(parsed, pos)
+	ctx := getCompletionTypes(nodeWalker)
 	if err != nil {
 		return nil, err
 	}
@@ -139,22 +140,22 @@ func (c *Completer) Complete(text string, params lsp.CompletionParams) ([]lsp.Co
 	}
 
 	items := []lsp.CompletionItem{}
-	if completionTypeIs(cTypes, CompletionTypeColumn) {
-		items = append(items, c.columnCandidates(definedTables, pare)...)
+	if completionTypeIs(ctx.types, CompletionTypeColumn) {
+		items = append(items, c.columnCandidates(definedTables, ctx.parent)...)
 	}
-	if completionTypeIs(cTypes, CompletionTypeAlias) {
+	if completionTypeIs(ctx.types, CompletionTypeAlias) {
 		items = append(items, c.aliasCandidates(definedTables)...)
 	}
-	if completionTypeIs(cTypes, CompletionTypeTable) {
-		items = append(items, c.TableCandidates(pare)...)
+	if completionTypeIs(ctx.types, CompletionTypeTable) {
+		items = append(items, c.TableCandidates(ctx.parent)...)
 	}
-	if completionTypeIs(cTypes, CompletionTypeSchema) {
+	if completionTypeIs(ctx.types, CompletionTypeSchema) {
 		items = append(items, c.SchemaCandidates()...)
 	}
-	if completionTypeIs(cTypes, CompletionTypeSubQueryColumn) {
+	if completionTypeIs(ctx.types, CompletionTypeSubQueryColumn) {
 		items = append(items, c.SubQueryColumnCandidates(definedSubQuery)...)
 	}
-	if completionTypeIs(cTypes, CompletionTypeKeyword) {
+	if completionTypeIs(ctx.types, CompletionTypeKeyword) {
 		items = append(items, c.keywordCandidates()...)
 	}
 
@@ -174,128 +175,150 @@ const (
 	ParentTypeSubQuery
 )
 
-type parent struct {
+type compltionParent struct {
 	Type ParentType
 	Name string
 }
 
-var noneParent = &parent{Type: ParentTypeNone}
+var noneParent = &compltionParent{Type: ParentTypeNone}
 
 var memberIdentifierMatcher = astutil.NodeMatcher{
 	NodeTypes: []ast.NodeType{ast.TypeMemberIdentifer},
 }
 
-func getCompletionTypes(text string, pos token.Pos) ([]CompletionType, *parent, error) {
-	parsed, err := parse(text)
-	if err != nil {
-		return nil, nil, err
-	}
-	nodeWalker := parseutil.NewNodeWalker(parsed, pos)
+type CompletionContext struct {
+	types  []completionType
+	parent *compltionParent
+}
 
+func getCompletionTypes(nw *parseutil.NodeWalker) *CompletionContext {
+	syntaxPos := checkSyntaxPosition(nw)
+	t := []completionType{}
+	p := noneParent
 	switch {
-	case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"SET", "ORDER BY", "GROUP BY", "DISTINCT"})):
-		if nodeWalker.CurNodeIs(memberIdentifierMatcher) {
+	case syntaxPos == ColName:
+		if nw.CurNodeIs(memberIdentifierMatcher) {
 			// has parent
-			mi := nodeWalker.CurNodeTopMatched(memberIdentifierMatcher).(*ast.MemberIdentifer)
-			cType := []CompletionType{
+			mi := nw.CurNodeTopMatched(memberIdentifierMatcher).(*ast.MemberIdentifer)
+			t = []completionType{
 				CompletionTypeColumn,
 				CompletionTypeSubQueryColumn,
 				CompletionTypeView,
 				CompletionTypeFunction,
 			}
-			tableParent := &parent{
+			p = &compltionParent{
 				Type: ParentTypeTable,
 				Name: mi.Parent.String(),
 			}
-			return cType, tableParent, nil
+		} else {
+			t = []completionType{
+				CompletionTypeColumn,
+				CompletionTypeTable,
+				CompletionTypeSubQueryColumn,
+				CompletionTypeSubQueryView,
+				CompletionTypeAlias,
+				CompletionTypeView,
+				CompletionTypeFunction,
+				CompletionTypeKeyword,
+			}
+			p = noneParent
 		}
-		return []CompletionType{
-			CompletionTypeColumn,
-			CompletionTypeTable,
-			CompletionTypeSubQueryColumn,
-			CompletionTypeSubQueryView,
-			CompletionTypeAlias,
-			CompletionTypeView,
-			CompletionTypeFunction,
-			CompletionTypeKeyword,
-		}, noneParent, nil
-	case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"AS"})):
-		return []CompletionType{}, nil, nil
-	// case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"TO"})):
-	// 	res = []CompletionType{
-	// 		CompletionTypeChange,
-	// 	}
-	// case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"USER", "FOR"})):
-	// 	res = []CompletionType{
-	// 		CompletionTypeUser,
-	// 	}
-	case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"SELECT", "WHERE", "HAVING", "ON", "CASE", "WHEN", "THEN", "ELSE"})):
-		if nodeWalker.CurNodeIs(memberIdentifierMatcher) {
+	case syntaxPos == AliasName:
+	case nw.PrevNodesIs(true, genKeywordMatcher([]string{"AS"})):
+		// pass
+	case syntaxPos == SelectExpr || syntaxPos == CaseValue:
+		if nw.CurNodeIs(memberIdentifierMatcher) {
 			// has parent
-			mi := nodeWalker.CurNodeTopMatched(memberIdentifierMatcher).(*ast.MemberIdentifer)
-			cType := []CompletionType{
+			mi := nw.CurNodeTopMatched(memberIdentifierMatcher).(*ast.MemberIdentifer)
+			t = []completionType{
 				CompletionTypeColumn,
 				CompletionTypeView,
 				CompletionTypeSubQueryColumn,
 				CompletionTypeFunction,
 			}
-			tableParent := &parent{
+			p = &compltionParent{
 				Type: ParentTypeTable,
 				Name: mi.Parent.String(),
 			}
-			return cType, tableParent, nil
+		} else {
+			t = []completionType{
+				CompletionTypeColumn,
+				CompletionTypeTable,
+				CompletionTypeAlias,
+				CompletionTypeView,
+				CompletionTypeSubQueryColumn,
+				CompletionTypeSubQueryView,
+				CompletionTypeFunction,
+				CompletionTypeKeyword,
+			}
 		}
-		return []CompletionType{
-			CompletionTypeColumn,
-			CompletionTypeTable,
-			CompletionTypeAlias,
-			CompletionTypeView,
-			CompletionTypeSubQueryColumn,
-			CompletionTypeSubQueryView,
-			CompletionTypeFunction,
-			CompletionTypeKeyword,
-		}, noneParent, nil
-	case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"JOIN", "COPY", "FROM", "DELETE FROM", "UPDATE", "INSERT INTO", "DESCRIBE", "TRUNCATE", "DESC", "EXPLAIN", "AND", "OR", "XOR"})):
-		if nodeWalker.CurNodeIs(memberIdentifierMatcher) {
+	case syntaxPos == TableReference:
+		if nw.CurNodeIs(memberIdentifierMatcher) {
 			// has parent
-			mi := nodeWalker.CurNodeTopMatched(memberIdentifierMatcher).(*ast.MemberIdentifer)
-			cType := []CompletionType{
+			mi := nw.CurNodeTopMatched(memberIdentifierMatcher).(*ast.MemberIdentifer)
+			t = []completionType{
 				CompletionTypeTable,
 				CompletionTypeView,
 				CompletionTypeSubQueryColumn,
 				CompletionTypeFunction,
 			}
-			schemaParent := &parent{
+			p = &compltionParent{
 				Type: ParentTypeSchema,
 				Name: mi.Parent.String(),
 			}
-			return cType, schemaParent, nil
+		} else {
+			t = []completionType{
+				CompletionTypeColumn,
+				CompletionTypeTable,
+				CompletionTypeSchema,
+				CompletionTypeView,
+				CompletionTypeSubQueryColumn,
+				CompletionTypeSubQueryView,
+				CompletionTypeFunction,
+				CompletionTypeKeyword,
+			}
 		}
-		return []CompletionType{
-			CompletionTypeColumn,
-			CompletionTypeTable,
-			CompletionTypeSchema,
-			CompletionTypeView,
-			CompletionTypeSubQueryColumn,
-			CompletionTypeSubQueryView,
-			CompletionTypeFunction,
-			CompletionTypeKeyword,
-		}, noneParent, nil
-	case nodeWalker.CurNodeIs(genTokenMatcher([]token.Kind{token.LParen})) || nodeWalker.PrevNodesIs(true, genTokenMatcher([]token.Kind{token.LParen})):
+	case syntaxPos == WhereCondition:
+		if nw.CurNodeIs(memberIdentifierMatcher) {
+			// has parent
+			mi := nw.CurNodeTopMatched(memberIdentifierMatcher).(*ast.MemberIdentifer)
+			t = []completionType{
+				CompletionTypeTable,
+				CompletionTypeView,
+				CompletionTypeSubQueryColumn,
+				CompletionTypeFunction,
+			}
+			p = &compltionParent{
+				Type: ParentTypeSchema,
+				Name: mi.Parent.String(),
+			}
+		} else {
+			t = []completionType{
+				CompletionTypeColumn,
+				CompletionTypeTable,
+				CompletionTypeSchema,
+				CompletionTypeView,
+				CompletionTypeSubQueryColumn,
+				CompletionTypeSubQueryView,
+				CompletionTypeFunction,
+				CompletionTypeKeyword,
+			}
+		}
+	case nw.CurNodeIs(genTokenMatcher([]token.Kind{token.LParen})) || nw.PrevNodesIs(true, genTokenMatcher([]token.Kind{token.LParen})):
 		// for insert columns
-		return []CompletionType{
+		t = []completionType{
 			CompletionTypeColumn,
 			CompletionTypeTable,
 			CompletionTypeView,
-		}, noneParent, nil
-	// case nodeWalker.PrevNodesIs(true, genKeywordMatcher([]string{"USE", "DATABASE", "TEMPLATE", "CONNECT"})):
-	// 	res = []CompletionType{
-	// 		CompletionTypeDatabase,
-	// 	}
+		}
 	default:
-		return []CompletionType{
+		t = []completionType{
 			CompletionTypeKeyword,
-		}, noneParent, nil
+		}
+	}
+	return &CompletionContext{
+		types:  t,
+		parent: p,
 	}
 }
 
@@ -360,4 +383,84 @@ func getBeforeCursorText(text string, line, char int) string {
 		i++
 	}
 	return writer.String()
+}
+
+type SyntaxPosition string
+
+const (
+	ColName        SyntaxPosition = "col_name"
+	SelectExpr     SyntaxPosition = "select_expr"
+	AliasName      SyntaxPosition = "alias_name"
+	WhereCondition SyntaxPosition = "where_conditon"
+	CaseValue      SyntaxPosition = "case_value"
+	TableReference SyntaxPosition = "table_reference"
+	Unknown        SyntaxPosition = "unknown"
+)
+
+func checkSyntaxPosition(nw *parseutil.NodeWalker) SyntaxPosition {
+	var res SyntaxPosition
+	switch {
+	case nw.PrevNodesIs(true, genKeywordMatcher([]string{
+		// INSERT Statement
+		"SET",
+		// SELECT Statement
+		"ORDER BY",
+		"GROUP BY",
+	})):
+		res = ColName
+	case nw.PrevNodesIs(true, genKeywordMatcher([]string{
+		// SELECT Statement
+		"ALL",
+		"DISTINCT",
+		"DISTINCTROW",
+		"SELECT",
+	})):
+		res = SelectExpr
+	case nw.PrevNodesIs(true, genKeywordMatcher([]string{
+		// Alias
+		"AS",
+	})):
+		res = AliasName
+	case nw.PrevNodesIs(true, genKeywordMatcher([]string{
+		// WHERE Clause
+		"WHERE",
+		"HAVING",
+		// JOIN Clause
+		"ON",
+		// Operator
+		"AND",
+		"OR",
+		"XOR",
+	})):
+		res = WhereCondition
+	case nw.PrevNodesIs(true, genKeywordMatcher([]string{
+		// CASE Statement
+		"CASE",
+		"WHEN",
+		"THEN",
+		"ELSE",
+	})):
+		res = CaseValue
+	case nw.PrevNodesIs(true, genKeywordMatcher([]string{
+		// SELECT Statement
+		"FROM",
+		// UPDATE Statement
+		"UPDATE",
+		// DELETE Statement
+		"DELETE FROM",
+		// INSERT Statement
+		"INSERT INTO",
+		// JOIN Clause
+		"JOIN",
+		// DESCRIBE Statement
+		"DESCRIBE",
+		"DESC",
+		// TRUNCATE Statement
+		"TRUNCATE",
+	})):
+		res = TableReference
+	default:
+		res = Unknown
+	}
+	return res
 }

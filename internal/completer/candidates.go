@@ -21,13 +21,13 @@ func (c *Completer) keywordCandidates() []lsp.CompletionItem {
 	return candidates
 }
 
-func (c *Completer) columnCandidates(targetTables []*parseutil.TableInfo, pare *parent) []lsp.CompletionItem {
+func (c *Completer) columnCandidates(targetTables []*parseutil.TableInfo, parent *compltionParent) []lsp.CompletionItem {
 	candidates := []lsp.CompletionItem{}
 	if c.DBCache == nil {
 		return candidates
 	}
 
-	switch pare.Type {
+	switch parent.Type {
 	case ParentTypeNone:
 		for _, table := range targetTables {
 			if table.DatabaseSchema != "" && table.Name != "" {
@@ -47,7 +47,7 @@ func (c *Completer) columnCandidates(targetTables []*parseutil.TableInfo, pare *
 	case ParentTypeSchema:
 	case ParentTypeTable:
 		for _, table := range targetTables {
-			if table.Name != pare.Name && table.Alias != pare.Name {
+			if table.Name != parent.Name && table.Alias != parent.Name {
 				continue
 			}
 			columns, ok := c.DBCache.ColumnDescs(table.Name)
@@ -85,18 +85,18 @@ func columnDetail(tableName string, column *database.ColumnDesc) string {
 	return detail
 }
 
-func (c *Completer) TableCandidates(pare *parent) []lsp.CompletionItem {
+func (c *Completer) TableCandidates(parent *compltionParent) []lsp.CompletionItem {
 	candidates := []lsp.CompletionItem{}
 	if c.DBCache == nil {
 		return candidates
 	}
 
-	switch pare.Type {
+	switch parent.Type {
 	case ParentTypeNone:
 		tables := c.DBCache.SortedTables()
 		candidates = append(candidates, generateTableCandidates(tables)...)
 	case ParentTypeSchema:
-		tables, ok := c.DBCache.SortedTablesByDBName(pare.Name)
+		tables, ok := c.DBCache.SortedTablesByDBName(parent.Name)
 		if ok {
 			candidates = append(candidates, generateTableCandidates(tables)...)
 		} else {
