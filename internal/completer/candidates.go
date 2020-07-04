@@ -3,6 +3,7 @@ package completer
 import (
 	"strings"
 
+	"github.com/lighttiger2505/sqls/internal/database"
 	"github.com/lighttiger2505/sqls/internal/lsp"
 	"github.com/lighttiger2505/sqls/parser/parseutil"
 )
@@ -34,43 +35,13 @@ func (c *Completer) columnCandidates(targetTables []*parseutil.TableInfo, pare *
 				if !ok {
 					continue
 				}
-				for _, column := range columns {
-					detail := strings.Join(
-						[]string{
-							"column",
-							"`" + table.Name + "`",
-							"(" + column.OnelineDesc() + ")",
-						},
-						" ",
-					)
-					candidate := lsp.CompletionItem{
-						Label:  column.Name,
-						Kind:   lsp.FieldCompletion,
-						Detail: detail,
-					}
-					candidates = append(candidates, candidate)
-				}
+				candidates = append(candidates, generateColumnCandidates(table.Name, columns)...)
 			} else if table.Name != "" {
 				columns, ok := c.DBCache.ColumnDescs(table.Name)
 				if !ok {
 					continue
 				}
-				for _, column := range columns {
-					detail := strings.Join(
-						[]string{
-							"column",
-							"`" + table.Name + "`",
-							"(" + column.OnelineDesc() + ")",
-						},
-						" ",
-					)
-					candidate := lsp.CompletionItem{
-						Label:  column.Name,
-						Kind:   lsp.FieldCompletion,
-						Detail: detail,
-					}
-					candidates = append(candidates, candidate)
-				}
+				candidates = append(candidates, generateColumnCandidates(table.Name, columns)...)
 			}
 		}
 	case ParentTypeSchema:
@@ -79,32 +50,39 @@ func (c *Completer) columnCandidates(targetTables []*parseutil.TableInfo, pare *
 			if table.Name != pare.Name && table.Alias != pare.Name {
 				continue
 			}
-			if c.DBCache == nil {
-				continue
-			}
 			columns, ok := c.DBCache.ColumnDescs(table.Name)
 			if !ok {
 				continue
 			}
-			for _, column := range columns {
-				detail := strings.Join(
-					[]string{
-						"column",
-						"`" + table.Name + "`",
-						"(" + column.OnelineDesc() + ")",
-					},
-					" ",
-				)
-				candidate := lsp.CompletionItem{
-					Label:  column.Name,
-					Kind:   lsp.FieldCompletion,
-					Detail: detail,
-				}
-				candidates = append(candidates, candidate)
-			}
+			candidates = append(candidates, generateColumnCandidates(table.Name, columns)...)
 		}
 	}
 	return candidates
+}
+
+func generateColumnCandidates(tableName string, columns []*database.ColumnDesc) []lsp.CompletionItem {
+	candidates := []lsp.CompletionItem{}
+	for _, column := range columns {
+		candidate := lsp.CompletionItem{
+			Label:  column.Name,
+			Kind:   lsp.FieldCompletion,
+			Detail: columnDetail(tableName, column),
+		}
+		candidates = append(candidates, candidate)
+	}
+	return candidates
+}
+
+func columnDetail(tableName string, column *database.ColumnDesc) string {
+	detail := strings.Join(
+		[]string{
+			"column",
+			"`" + tableName + "`",
+			"(" + column.OnelineDesc() + ")",
+		},
+		" ",
+	)
+	return detail
 }
 
 func (c *Completer) TableCandidates(pare *parent) []lsp.CompletionItem {
@@ -116,37 +94,29 @@ func (c *Completer) TableCandidates(pare *parent) []lsp.CompletionItem {
 	switch pare.Type {
 	case ParentTypeNone:
 		tables := c.DBCache.SortedTables()
-		for _, tableName := range tables {
-			candidate := lsp.CompletionItem{
-				Label:  tableName,
-				Kind:   lsp.FieldCompletion,
-				Detail: "table",
-			}
-			candidates = append(candidates, candidate)
-		}
+		candidates = append(candidates, generateTableCandidates(tables)...)
 	case ParentTypeSchema:
 		tables, ok := c.DBCache.SortedTablesByDBName(pare.Name)
 		if ok {
-			for _, tableName := range tables {
-				candidate := lsp.CompletionItem{
-					Label:  tableName,
-					Kind:   lsp.FieldCompletion,
-					Detail: "table",
-				}
-				candidates = append(candidates, candidate)
-			}
+			candidates = append(candidates, generateTableCandidates(tables)...)
 		} else {
 			tables := c.DBCache.SortedTables()
-			for _, tableName := range tables {
-				candidate := lsp.CompletionItem{
-					Label:  tableName,
-					Kind:   lsp.FieldCompletion,
-					Detail: "table",
-				}
-				candidates = append(candidates, candidate)
-			}
+			candidates = append(candidates, generateTableCandidates(tables)...)
 		}
 	case ParentTypeTable:
+	}
+	return candidates
+}
+
+func generateTableCandidates(tables []string) []lsp.CompletionItem {
+	candidates := []lsp.CompletionItem{}
+	for _, tableName := range tables {
+		candidate := lsp.CompletionItem{
+			Label:  tableName,
+			Kind:   lsp.FieldCompletion,
+			Detail: "table",
+		}
+		candidates = append(candidates, candidate)
 	}
 	return candidates
 }
