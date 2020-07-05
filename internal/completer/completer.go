@@ -192,11 +192,11 @@ type CompletionContext struct {
 }
 
 func getCompletionTypes(nw *parseutil.NodeWalker) *CompletionContext {
-	syntaxPos := checkSyntaxPosition(nw)
+	syntaxPos := parseutil.CheckSyntaxPosition(nw)
 	t := []completionType{}
 	p := noneParent
 	switch {
-	case syntaxPos == ColName:
+	case syntaxPos == parseutil.ColName:
 		if nw.CurNodeIs(memberIdentifierMatcher) {
 			// has parent
 			mi := nw.CurNodeTopMatched(memberIdentifierMatcher).(*ast.MemberIdentifer)
@@ -223,10 +223,9 @@ func getCompletionTypes(nw *parseutil.NodeWalker) *CompletionContext {
 			}
 			p = noneParent
 		}
-	case syntaxPos == AliasName:
-	case nw.PrevNodesIs(true, genKeywordMatcher([]string{"AS"})):
+	case syntaxPos == parseutil.AliasName:
 		// pass
-	case syntaxPos == SelectExpr || syntaxPos == CaseValue:
+	case syntaxPos == parseutil.SelectExpr || syntaxPos == parseutil.CaseValue:
 		if nw.CurNodeIs(memberIdentifierMatcher) {
 			// has parent
 			mi := nw.CurNodeTopMatched(memberIdentifierMatcher).(*ast.MemberIdentifer)
@@ -252,7 +251,7 @@ func getCompletionTypes(nw *parseutil.NodeWalker) *CompletionContext {
 				CompletionTypeKeyword,
 			}
 		}
-	case syntaxPos == TableReference:
+	case syntaxPos == parseutil.TableReference:
 		if nw.CurNodeIs(memberIdentifierMatcher) {
 			// has parent
 			mi := nw.CurNodeTopMatched(memberIdentifierMatcher).(*ast.MemberIdentifer)
@@ -278,7 +277,7 @@ func getCompletionTypes(nw *parseutil.NodeWalker) *CompletionContext {
 				CompletionTypeKeyword,
 			}
 		}
-	case syntaxPos == WhereCondition:
+	case syntaxPos == parseutil.WhereCondition:
 		if nw.CurNodeIs(memberIdentifierMatcher) {
 			// has parent
 			mi := nw.CurNodeTopMatched(memberIdentifierMatcher).(*ast.MemberIdentifer)
@@ -304,8 +303,7 @@ func getCompletionTypes(nw *parseutil.NodeWalker) *CompletionContext {
 				CompletionTypeKeyword,
 			}
 		}
-	case nw.CurNodeIs(genTokenMatcher([]token.Kind{token.LParen})) || nw.PrevNodesIs(true, genTokenMatcher([]token.Kind{token.LParen})):
-		// for insert columns
+	case syntaxPos == parseutil.InsertValue:
 		t = []completionType{
 			CompletionTypeColumn,
 			CompletionTypeTable,
@@ -319,18 +317,6 @@ func getCompletionTypes(nw *parseutil.NodeWalker) *CompletionContext {
 	return &CompletionContext{
 		types:  t,
 		parent: p,
-	}
-}
-
-func genTokenMatcher(tokens []token.Kind) astutil.NodeMatcher {
-	return astutil.NodeMatcher{
-		ExpectTokens: tokens,
-	}
-}
-
-func genKeywordMatcher(keywords []string) astutil.NodeMatcher {
-	return astutil.NodeMatcher{
-		ExpectKeyword: keywords,
 	}
 }
 
@@ -383,84 +369,4 @@ func getBeforeCursorText(text string, line, char int) string {
 		i++
 	}
 	return writer.String()
-}
-
-type SyntaxPosition string
-
-const (
-	ColName        SyntaxPosition = "col_name"
-	SelectExpr     SyntaxPosition = "select_expr"
-	AliasName      SyntaxPosition = "alias_name"
-	WhereCondition SyntaxPosition = "where_conditon"
-	CaseValue      SyntaxPosition = "case_value"
-	TableReference SyntaxPosition = "table_reference"
-	Unknown        SyntaxPosition = "unknown"
-)
-
-func checkSyntaxPosition(nw *parseutil.NodeWalker) SyntaxPosition {
-	var res SyntaxPosition
-	switch {
-	case nw.PrevNodesIs(true, genKeywordMatcher([]string{
-		// INSERT Statement
-		"SET",
-		// SELECT Statement
-		"ORDER BY",
-		"GROUP BY",
-	})):
-		res = ColName
-	case nw.PrevNodesIs(true, genKeywordMatcher([]string{
-		// SELECT Statement
-		"ALL",
-		"DISTINCT",
-		"DISTINCTROW",
-		"SELECT",
-	})):
-		res = SelectExpr
-	case nw.PrevNodesIs(true, genKeywordMatcher([]string{
-		// Alias
-		"AS",
-	})):
-		res = AliasName
-	case nw.PrevNodesIs(true, genKeywordMatcher([]string{
-		// WHERE Clause
-		"WHERE",
-		"HAVING",
-		// JOIN Clause
-		"ON",
-		// Operator
-		"AND",
-		"OR",
-		"XOR",
-	})):
-		res = WhereCondition
-	case nw.PrevNodesIs(true, genKeywordMatcher([]string{
-		// CASE Statement
-		"CASE",
-		"WHEN",
-		"THEN",
-		"ELSE",
-	})):
-		res = CaseValue
-	case nw.PrevNodesIs(true, genKeywordMatcher([]string{
-		// SELECT Statement
-		"FROM",
-		// UPDATE Statement
-		"UPDATE",
-		// DELETE Statement
-		"DELETE FROM",
-		// INSERT Statement
-		"INSERT INTO",
-		// JOIN Clause
-		"JOIN",
-		// DESCRIBE Statement
-		"DESCRIBE",
-		"DESC",
-		// TRUNCATE Statement
-		"TRUNCATE",
-	})):
-		res = TableReference
-	default:
-		res = Unknown
-	}
-	return res
 }
