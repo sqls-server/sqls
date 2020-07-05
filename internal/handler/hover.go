@@ -72,10 +72,16 @@ func hover(text string, params lsp.HoverParams, dbCache *database.DatabaseCache)
 	// Create hover contents
 	var hoverContent *lsp.MarkupContent
 	if ident != nil && memIdent != nil {
+		// The cursor is on the member identifier.
+		// example "world.c[i]ty"
 		hoverContent = hoverContentFromMemberIdent(ident, memIdent, dbCache, hoverEnv)
 	} else if ident == nil && memIdent != nil {
+		// The cursor is on the dot with the member identifier
+		// example "world[.]city"
 		hoverContent = hoverContentFromMemberIdentOnly(memIdent, dbCache, hoverEnv)
 	} else if ident != nil && memIdent == nil {
+		// The cursor is on the identifier
+		// example "c[i]ty"
 		hoverContent = hoverContentFromIdent(ident, dbCache, hoverEnv)
 	}
 	if hoverContent == nil {
@@ -174,50 +180,34 @@ func hoverContentFromIdent(ident *ast.Identifer, dbCache *database.DatabaseCache
 	}
 
 	// find column
-	hoverContents := []string{}
+	hoverContents := []*lsp.MarkupContent{}
 	for _, table := range hoverEnv.tables {
-		columnInfo, ok := dbCache.Column(table.Name, identName)
+		colDesc, ok := dbCache.Column(table.Name, identName)
 		if ok {
-			buf := new(bytes.Buffer)
-			fmt.Fprintf(buf, "%s.%s column", table.Name, identName)
-			fmt.Fprintln(buf)
-			fmt.Fprintln(buf)
-			fmt.Fprintln(buf, columnInfo.OnelineDesc())
-			hoverContents = append(hoverContents, buf.String())
+			hoverContents = append(
+				hoverContents,
+				columnHoverInfo(table.Name, identName, colDesc),
+			)
 		}
 	}
 	if len(hoverContents) >= 2 {
 		return nil
 	}
 	if len(hoverContents) == 1 {
-		return &lsp.MarkupContent{
-			Kind:  lsp.Markdown,
-			Value: hoverContents[0],
-		}
+		return hoverContents[0]
 	}
 
 	// translate table alias
-	tableIdent := identName
+	tableName := identName
 	for _, table := range hoverEnv.tables {
-		if table.Alias == tableIdent {
-			tableIdent = table.Name
+		if table.Alias == tableName {
+			tableName = table.Name
 		}
 	}
 	// find table
-	columns, ok := dbCache.ColumnDescs(tableIdent)
+	cols, ok := dbCache.ColumnDescs(tableName)
 	if ok {
-		buf := new(bytes.Buffer)
-		fmt.Fprintf(buf, "%s table", tableIdent)
-		fmt.Fprintln(buf)
-		fmt.Fprintln(buf)
-		for _, col := range columns {
-			fmt.Fprintf(buf, "- %s", col.OnelineDescWithName())
-			fmt.Fprintln(buf)
-		}
-		return &lsp.MarkupContent{
-			Kind:  lsp.Markdown,
-			Value: buf.String(),
-		}
+		return tableHoverInfo(tableName, cols)
 	}
 	return nil
 }
@@ -237,36 +227,15 @@ func hoverContentFromMemberIdent(ident *ast.Identifer, memIdent *ast.MemberIdent
 
 	// find column
 	if identName == colName {
-		if columnInfo, ok := dbCache.Column(tableName, colName); ok {
-			buf := new(bytes.Buffer)
-			fmt.Fprintf(buf, "%s.%s column", tableName, colName)
-			fmt.Fprintln(buf)
-			fmt.Fprintln(buf)
-			fmt.Fprintln(buf, columnInfo.OnelineDesc())
-			return &lsp.MarkupContent{
-				Kind:  lsp.Markdown,
-				Value: buf.String(),
-			}
+		if colDesc, ok := dbCache.Column(tableName, colName); ok {
+			return columnHoverInfo(tableName, colName, colDesc)
 		}
 	}
-
 	// find table
 	columns, ok := dbCache.ColumnDescs(tableName)
 	if ok {
-		buf := new(bytes.Buffer)
-		fmt.Fprintf(buf, "%s table", tableName)
-		fmt.Fprintln(buf)
-		fmt.Fprintln(buf)
-		for _, col := range columns {
-			fmt.Fprintf(buf, "- %s", col.OnelineDescWithName())
-			fmt.Fprintln(buf)
-		}
-		return &lsp.MarkupContent{
-			Kind:  lsp.Markdown,
-			Value: buf.String(),
-		}
+		return tableHoverInfo(tableName, columns)
 	}
-
 	return nil
 }
 
@@ -282,18 +251,37 @@ func hoverContentFromMemberIdentOnly(memIdent *ast.MemberIdentifer, dbCache *dat
 	}
 
 	// find column
-	if columnInfo, ok := dbCache.Column(tableName, colName); ok {
-		buf := new(bytes.Buffer)
-		fmt.Fprintf(buf, "%s.%s column", tableName, colName)
-		fmt.Fprintln(buf)
-		fmt.Fprintln(buf)
-		fmt.Fprintln(buf, columnInfo.OnelineDesc())
-		return &lsp.MarkupContent{
-			Kind:  lsp.Markdown,
-			Value: buf.String(),
-		}
+	if colDesc, ok := dbCache.Column(tableName, colName); ok {
+		return columnHoverInfo(tableName, colName, colDesc)
 	}
 	return nil
+}
+
+func columnHoverInfo(tableName, colName string, colDesc *database.ColumnDesc) *lsp.MarkupContent {
+	buf := new(bytes.Buffer)
+	fmt.Fprintf(buf, "%s.%s column", tableName, colName)
+	fmt.Fprintln(buf)
+	fmt.Fprintln(buf)
+	fmt.Fprintln(buf, colDesc.OnelineDesc())
+	return &lsp.MarkupContent{
+		Kind:  lsp.Markdown,
+		Value: buf.String(),
+	}
+}
+
+func tableHoverInfo(tableName string, cols []*database.ColumnDesc) *lsp.MarkupContent {
+	buf := new(bytes.Buffer)
+	fmt.Fprintf(buf, "%s table", tableName)
+	fmt.Fprintln(buf)
+	fmt.Fprintln(buf)
+	for _, col := range cols {
+		fmt.Fprintf(buf, "- %s", col.OnelineDescWithName())
+		fmt.Fprintln(buf)
+	}
+	return &lsp.MarkupContent{
+		Kind:  lsp.Markdown,
+		Value: buf.String(),
+	}
 }
 
 func parse(text string) (ast.TokenList, error) {
