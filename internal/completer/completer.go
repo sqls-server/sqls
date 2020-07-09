@@ -182,16 +182,16 @@ type completionParent struct {
 
 var noneParent = &completionParent{Type: ParentTypeNone}
 
-var memberIdentifierMatcher = astutil.NodeMatcher{
-	NodeTypes: []ast.NodeType{ast.TypeMemberIdentifer},
-}
-
 type CompletionContext struct {
 	types  []completionType
 	parent *completionParent
 }
 
 func getCompletionTypes(nw *parseutil.NodeWalker) *CompletionContext {
+	memberIdentifierMatcher := astutil.NodeMatcher{
+		NodeTypes: []ast.NodeType{ast.TypeMemberIdentifer},
+	}
+
 	syntaxPos := parseutil.CheckSyntaxPosition(nw)
 	t := []completionType{}
 	p := noneParent
