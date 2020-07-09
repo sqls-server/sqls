@@ -175,12 +175,12 @@ const (
 	ParentTypeSubQuery
 )
 
-type compltionParent struct {
+type completionParent struct {
 	Type ParentType
 	Name string
 }
 
-var noneParent = &compltionParent{Type: ParentTypeNone}
+var noneParent = &completionParent{Type: ParentTypeNone}
 
 var memberIdentifierMatcher = astutil.NodeMatcher{
 	NodeTypes: []ast.NodeType{ast.TypeMemberIdentifer},
@@ -188,7 +188,7 @@ var memberIdentifierMatcher = astutil.NodeMatcher{
 
 type CompletionContext struct {
 	types  []completionType
-	parent *compltionParent
+	parent *completionParent
 }
 
 func getCompletionTypes(nw *parseutil.NodeWalker) *CompletionContext {
@@ -206,7 +206,7 @@ func getCompletionTypes(nw *parseutil.NodeWalker) *CompletionContext {
 				CompletionTypeView,
 				CompletionTypeFunction,
 			}
-			p = &compltionParent{
+			p = &completionParent{
 				Type: ParentTypeTable,
 				Name: mi.Parent.String(),
 			}
@@ -235,7 +235,7 @@ func getCompletionTypes(nw *parseutil.NodeWalker) *CompletionContext {
 				CompletionTypeSubQueryColumn,
 				CompletionTypeFunction,
 			}
-			p = &compltionParent{
+			p = &completionParent{
 				Type: ParentTypeTable,
 				Name: mi.Parent.String(),
 			}
@@ -261,7 +261,7 @@ func getCompletionTypes(nw *parseutil.NodeWalker) *CompletionContext {
 				CompletionTypeSubQueryColumn,
 				CompletionTypeFunction,
 			}
-			p = &compltionParent{
+			p = &completionParent{
 				Type: ParentTypeSchema,
 				Name: mi.Parent.String(),
 			}
@@ -287,7 +287,7 @@ func getCompletionTypes(nw *parseutil.NodeWalker) *CompletionContext {
 				CompletionTypeSubQueryColumn,
 				CompletionTypeFunction,
 			}
-			p = &compltionParent{
+			p = &completionParent{
 				Type: ParentTypeSchema,
 				Name: mi.Parent.String(),
 			}
