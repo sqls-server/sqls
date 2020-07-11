@@ -87,11 +87,11 @@ func hover(text string, params lsp.HoverParams, dbCache *database.DatabaseCache)
 		if identName == parentName {
 			// The cursor is on the member identifier parent.
 			// example "w[o]rld.city"
-			hoverContent = hoverContentFromParentIdent(ctx, memIdent, dbCache, hoverEnv)
+			hoverContent = hoverContentFromParentIdent(ctx, identName, dbCache, hoverEnv)
 		} else if identName == childName {
 			// The cursor is on the member identifier child.
 			// example "world.c[i]ty"
-			hoverContent = hoverContentFromChildIdent(ctx, memIdent, dbCache, hoverEnv)
+			hoverContent = hoverContentFromChildIdent(ctx, identName, dbCache, hoverEnv)
 		} else {
 			// Invalid
 			hoverContent = nil
@@ -99,7 +99,7 @@ func hover(text string, params lsp.HoverParams, dbCache *database.DatabaseCache)
 	} else if ident == nil && memIdent != nil {
 		// The cursor is on the dot with the member identifier
 		// example "world[.]city"
-		hoverContent = hoverContentFromChildIdent(ctx, memIdent, dbCache, hoverEnv)
+		hoverContent = hoverContentFromChildIdent(ctx, memIdent.Child.String(), dbCache, hoverEnv)
 	} else if ident != nil && memIdent == nil {
 		// The cursor is on the identifier
 		// example "c[i]ty"
@@ -235,9 +235,7 @@ func hoverContentFromIdent(ident *ast.Identifer, dbCache *database.DatabaseCache
 	return nil
 }
 
-func hoverContentFromParentIdent(ctx *hoverContext, memIdent *ast.MemberIdentifer, dbCache *database.DatabaseCache, hoverEnv *hoverEnvironment) *lsp.MarkupContent {
-	identName := memIdent.Parent.String()
-	// For parent identifer
+func hoverContentFromParentIdent(ctx *hoverContext, identName string, dbCache *database.DatabaseCache, hoverEnv *hoverEnvironment) *lsp.MarkupContent {
 	switch ctx.parent.Type {
 	case parentTypeNone:
 		return nil
@@ -258,9 +256,7 @@ func hoverContentFromParentIdent(ctx *hoverContext, memIdent *ast.MemberIdentife
 	return nil
 }
 
-func hoverContentFromChildIdent(ctx *hoverContext, memIdent *ast.MemberIdentifer, dbCache *database.DatabaseCache, hoverEnv *hoverEnvironment) *lsp.MarkupContent {
-	identName := memIdent.Child.String()
-	// For child identifer
+func hoverContentFromChildIdent(ctx *hoverContext, identName string, dbCache *database.DatabaseCache, hoverEnv *hoverEnvironment) *lsp.MarkupContent {
 	switch ctx.parent.Type {
 	case parentTypeNone:
 		return nil
