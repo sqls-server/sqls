@@ -21,7 +21,7 @@ func (c *Completer) keywordCandidates() []lsp.CompletionItem {
 	return candidates
 }
 
-func (c *Completer) columnCandidates(targetTables []*parseutil.TableInfo, parent *compltionParent) []lsp.CompletionItem {
+func (c *Completer) columnCandidates(targetTables []*parseutil.TableInfo, parent *completionParent) []lsp.CompletionItem {
 	candidates := []lsp.CompletionItem{}
 	if c.DBCache == nil {
 		return candidates
@@ -85,7 +85,7 @@ func columnDetail(tableName string, column *database.ColumnDesc) string {
 	return detail
 }
 
-func (c *Completer) TableCandidates(parent *compltionParent) []lsp.CompletionItem {
+func (c *Completer) TableCandidates(parent *completionParent) []lsp.CompletionItem {
 	candidates := []lsp.CompletionItem{}
 	if c.DBCache == nil {
 		return candidates
