@@ -57,6 +57,12 @@ func hover(text string, params lsp.HoverParams, dbCache *database.DatabaseCache)
 
 	// Find identifiers from focused statement
 	nodeWalker := parseutil.NewNodeWalker(parsed, pos)
+	hoverTargetMatcher := astutil.NodeMatcher{
+		NodeTypes: []ast.NodeType{
+			ast.TypeMemberIdentifer,
+			ast.TypeIdentifer,
+		},
+	}
 	focusedIdentNodes := nodeWalker.CurNodeMatches(hoverTargetMatcher)
 	if len(focusedIdentNodes) == 0 {
 		return nil, ErrNoHover
@@ -69,16 +75,31 @@ func hover(text string, params lsp.HoverParams, dbCache *database.DatabaseCache)
 		return nil, err
 	}
 
+	// Check hover type
+	ctx := getHoverTypes(nodeWalker)
+
 	// Create hover contents
 	var hoverContent *lsp.MarkupContent
 	if ident != nil && memIdent != nil {
-		// The cursor is on the member identifier.
-		// example "world.c[i]ty"
-		hoverContent = hoverContentFromMemberIdent(ident, memIdent, dbCache, hoverEnv)
+		identName := ident.String()
+		parentName := memIdent.Parent.String()
+		childName := memIdent.Child.String()
+		if identName == parentName {
+			// The cursor is on the member identifier parent.
+			// example "w[o]rld.city"
+			hoverContent = hoverContentFromParentIdent(ctx, memIdent, dbCache, hoverEnv)
+		} else if identName == childName {
+			// The cursor is on the member identifier child.
+			// example "world.c[i]ty"
+			hoverContent = hoverContentFromChildIdent(ctx, memIdent, dbCache, hoverEnv)
+		} else {
+			// Invalid
+			hoverContent = nil
+		}
 	} else if ident == nil && memIdent != nil {
 		// The cursor is on the dot with the member identifier
 		// example "world[.]city"
-		hoverContent = hoverContentFromMemberIdentOnly(memIdent, dbCache, hoverEnv)
+		hoverContent = hoverContentFromChildIdent(ctx, memIdent, dbCache, hoverEnv)
 	} else if ident != nil && memIdent == nil {
 		// The cursor is on the identifier
 		// example "c[i]ty"
@@ -109,17 +130,19 @@ func hover(text string, params lsp.HoverParams, dbCache *database.DatabaseCache)
 	return res, nil
 }
 
-var hoverTargetMatcher = astutil.NodeMatcher{
-	NodeTypes: []ast.NodeType{
-		ast.TypeMemberIdentifer,
-		ast.TypeIdentifer,
-	},
-}
-
 type hoverEnvironment struct {
 	aliases    []ast.Node
 	tables     []*parseutil.TableInfo
 	subQueries *parseutil.SubQueryInfo
+}
+
+func (e *hoverEnvironment) getTableAlias(aliasName string) (string, bool) {
+	for _, table := range e.tables {
+		if table.Alias == aliasName {
+			return table.Name, true
+		}
+	}
+	return "", false
 }
 
 func collectEnvirontment(parsed ast.TokenList, pos token.Pos) (*hoverEnvironment, error) {
@@ -212,47 +235,52 @@ func hoverContentFromIdent(ident *ast.Identifer, dbCache *database.DatabaseCache
 	return nil
 }
 
-func hoverContentFromMemberIdent(ident *ast.Identifer, memIdent *ast.MemberIdentifer, dbCache *database.DatabaseCache, hoverEnv *hoverEnvironment) *lsp.MarkupContent {
-	// TODO ADD FROM case
-	identName := ident.String()
-	tableName := memIdent.Parent.String()
-	colName := memIdent.Child.String()
-
-	// translate to table alias
-	for _, table := range hoverEnv.tables {
-		if table.Alias == tableName {
-			tableName = table.Name
+func hoverContentFromParentIdent(ctx *hoverContext, memIdent *ast.MemberIdentifer, dbCache *database.DatabaseCache, hoverEnv *hoverEnvironment) *lsp.MarkupContent {
+	identName := memIdent.Parent.String()
+	// For parent identifer
+	switch ctx.parent.Type {
+	case parentTypeNone:
+		return nil
+	case parentTypeSchema:
+	case parentTypeTable:
+		tableName := identName
+		originName, ok := hoverEnv.getTableAlias(tableName)
+		if ok {
+			tableName = originName
 		}
-	}
-
-	// find column
-	if identName == colName {
-		if colDesc, ok := dbCache.Column(tableName, colName); ok {
-			return columnHoverInfo(tableName, colName, colDesc)
+		columns, ok := dbCache.ColumnDescs(tableName)
+		if ok {
+			return tableHoverInfo(tableName, columns)
 		}
-	}
-	// find table
-	columns, ok := dbCache.ColumnDescs(tableName)
-	if ok {
-		return tableHoverInfo(tableName, columns)
+	case parentTypeSubQuery:
+		return nil
 	}
 	return nil
 }
 
-func hoverContentFromMemberIdentOnly(memIdent *ast.MemberIdentifer, dbCache *database.DatabaseCache, hoverEnv *hoverEnvironment) *lsp.MarkupContent {
-	tableName := memIdent.Parent.String()
-	colName := memIdent.Child.String()
-
-	// translate to table alias
-	for _, table := range hoverEnv.tables {
-		if table.Alias == tableName {
-			tableName = table.Name
+func hoverContentFromChildIdent(ctx *hoverContext, memIdent *ast.MemberIdentifer, dbCache *database.DatabaseCache, hoverEnv *hoverEnvironment) *lsp.MarkupContent {
+	identName := memIdent.Child.String()
+	// For child identifer
+	switch ctx.parent.Type {
+	case parentTypeNone:
+		return nil
+	case parentTypeSchema:
+		columns, ok := dbCache.ColumnDescs(identName)
+		if ok {
+			return tableHoverInfo(identName, columns)
 		}
-	}
-
-	// find column
-	if colDesc, ok := dbCache.Column(tableName, colName); ok {
-		return columnHoverInfo(tableName, colName, colDesc)
+	case parentTypeTable:
+		tableName := ctx.parent.Name
+		originName, ok := hoverEnv.getTableAlias(tableName)
+		if ok {
+			tableName = originName
+		}
+		if colDesc, ok := dbCache.Column(tableName, identName); ok {
+			return columnHoverInfo(tableName, identName, colDesc)
+		}
+		return nil
+	case parentTypeSubQuery:
+		return nil
 	}
 	return nil
 }
@@ -295,4 +323,172 @@ func parse(text string) (ast.TokenList, error) {
 		return nil, err
 	}
 	return parsed, nil
+}
+
+type hoverType int
+
+const (
+	_ hoverType = iota
+	hoverTypeKeyword
+	hoverTypeFunction
+	hoverTypeAlias
+	hoverTypeColumn
+	hoverTypeTable
+	hoverTypeView
+	hoverTypeSubQueryView
+	hoverTypeSubQueryColumn
+	hoverTypeChange
+	hoverTypeUser
+	hoverTypeSchema
+)
+
+type parentType int
+
+const (
+	parentTypeNone parentType = iota
+	parentTypeSchema
+	parentTypeTable
+	parentTypeSubQuery
+)
+
+type hoverParent struct {
+	Type parentType
+	Name string
+}
+
+var noneParent = &hoverParent{Type: parentTypeNone}
+
+type hoverContext struct {
+	types  []hoverType
+	parent *hoverParent
+}
+
+func getHoverTypes(nw *parseutil.NodeWalker) *hoverContext {
+	memberIdentifierMatcher := astutil.NodeMatcher{
+		NodeTypes: []ast.NodeType{ast.TypeMemberIdentifer},
+	}
+	syntaxPos := parseutil.CheckSyntaxPosition(nw)
+
+	t := []hoverType{hoverTypeKeyword}
+	p := noneParent
+	switch {
+	case syntaxPos == parseutil.ColName:
+		if nw.CurNodeIs(memberIdentifierMatcher) {
+			// has parent
+			mi := nw.CurNodeTopMatched(memberIdentifierMatcher).(*ast.MemberIdentifer)
+			t = []hoverType{
+				hoverTypeColumn,
+				hoverTypeSubQueryColumn,
+				hoverTypeView,
+				hoverTypeFunction,
+			}
+			p = &hoverParent{
+				Type: parentTypeTable,
+				Name: mi.Parent.String(),
+			}
+		} else {
+			t = []hoverType{
+				hoverTypeColumn,
+				hoverTypeTable,
+				hoverTypeSubQueryColumn,
+				hoverTypeSubQueryView,
+				hoverTypeAlias,
+				hoverTypeView,
+				hoverTypeFunction,
+				hoverTypeKeyword,
+			}
+		}
+	case syntaxPos == parseutil.AliasName:
+		// pass
+	case syntaxPos == parseutil.SelectExpr || syntaxPos == parseutil.CaseValue:
+		if nw.CurNodeIs(memberIdentifierMatcher) {
+			// has parent
+			mi := nw.CurNodeTopMatched(memberIdentifierMatcher).(*ast.MemberIdentifer)
+			t = []hoverType{
+				hoverTypeColumn,
+				hoverTypeView,
+				hoverTypeSubQueryColumn,
+				hoverTypeFunction,
+			}
+			p = &hoverParent{
+				Type: parentTypeTable,
+				Name: mi.Parent.String(),
+			}
+		} else {
+			t = []hoverType{
+				hoverTypeColumn,
+				hoverTypeTable,
+				hoverTypeAlias,
+				hoverTypeView,
+				hoverTypeSubQueryColumn,
+				hoverTypeSubQueryView,
+				hoverTypeFunction,
+				hoverTypeKeyword,
+			}
+		}
+	case syntaxPos == parseutil.TableReference:
+		if nw.CurNodeIs(memberIdentifierMatcher) {
+			// has parent
+			mi := nw.CurNodeTopMatched(memberIdentifierMatcher).(*ast.MemberIdentifer)
+			t = []hoverType{
+				hoverTypeTable,
+				hoverTypeView,
+				hoverTypeSubQueryColumn,
+				hoverTypeFunction,
+			}
+			p = &hoverParent{
+				Type: parentTypeSchema,
+				Name: mi.Parent.String(),
+			}
+		} else {
+			t = []hoverType{
+				hoverTypeColumn,
+				hoverTypeTable,
+				hoverTypeSchema,
+				hoverTypeView,
+				hoverTypeSubQueryColumn,
+				hoverTypeSubQueryView,
+				hoverTypeFunction,
+				hoverTypeKeyword,
+			}
+		}
+	case syntaxPos == parseutil.WhereCondition:
+		if nw.CurNodeIs(memberIdentifierMatcher) {
+			// has parent
+			mi := nw.CurNodeTopMatched(memberIdentifierMatcher).(*ast.MemberIdentifer)
+			t = []hoverType{
+				hoverTypeTable,
+				hoverTypeView,
+				hoverTypeSubQueryColumn,
+				hoverTypeFunction,
+			}
+			p = &hoverParent{
+				Type: parentTypeTable,
+				Name: mi.Parent.String(),
+			}
+		} else {
+			t = []hoverType{
+				hoverTypeColumn,
+				hoverTypeTable,
+				hoverTypeSchema,
+				hoverTypeView,
+				hoverTypeSubQueryColumn,
+				hoverTypeSubQueryView,
+				hoverTypeFunction,
+				hoverTypeKeyword,
+			}
+		}
+	case syntaxPos == parseutil.InsertValue:
+		t = []hoverType{
+			hoverTypeColumn,
+			hoverTypeTable,
+			hoverTypeView,
+		}
+	default:
+		// pass
+	}
+	return &hoverContext{
+		types:  t,
+		parent: p,
+	}
 }
