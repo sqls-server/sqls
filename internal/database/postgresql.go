@@ -253,58 +253,6 @@ func (db *PostgreSQLDB) Tables(ctx context.Context) ([]string, error) {
 	return tables, nil
 }
 
-func (db *PostgreSQLDB) DescribeTable(ctx context.Context, tableName string) ([]*ColumnDesc, error) {
-	rows, err := db.Conn.QueryContext(
-		ctx,
-		`
-	SELECT
-	  c.column_name
-	  , c.data_type
-	  , c.is_nullable
-	  , CASE tc.constraint_type 
-		WHEN 'PRIMARY KEY' THEN 'YES' 
-		ELSE 'NO' 
-		END
-	  , c.column_default
-	  , '' 
-	FROM
-	  information_schema.columns c 
-	  LEFT JOIN information_schema.constraint_column_usage ccu 
-		ON c.table_name = ccu.table_name 
-		AND c.column_name = ccu.column_name 
-	  LEFT JOIN information_schema.table_constraints tc 
-		ON tc.table_catalog = c.table_catalog 
-		AND tc.table_schema = c.table_schema 
-		AND tc.table_name = c.table_name 
-		AND tc.constraint_name = ccu.constraint_name 
-	WHERE
-	  c.table_name = $1
-	ORDER BY
-	  c.table_name
-	  , c.ordinal_position
-	`, tableName)
-	if err != nil {
-		log.Fatal(err)
-	}
-	tableInfos := []*ColumnDesc{}
-	for rows.Next() {
-		var tableInfo ColumnDesc
-		err := rows.Scan(
-			&tableInfo.Name,
-			&tableInfo.Type,
-			&tableInfo.Null,
-			&tableInfo.Key,
-			&tableInfo.Default,
-			&tableInfo.Extra,
-		)
-		if err != nil {
-			return nil, err
-		}
-		tableInfos = append(tableInfos, &tableInfo)
-	}
-	return tableInfos, nil
-}
-
 func (db *PostgreSQLDB) DescribeDatabaseTable(ctx context.Context) ([]*ColumnDesc, error) {
 	rows, err := db.Conn.QueryContext(
 		ctx,

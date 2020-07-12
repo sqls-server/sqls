@@ -90,7 +90,7 @@ func (db *SQLite3DB) Tables(ctx context.Context) ([]string, error) {
 	return tables, nil
 }
 
-func (db *SQLite3DB) DescribeTable(ctx context.Context, tableName string) ([]*ColumnDesc, error) {
+func (db *SQLite3DB) describeTable(ctx context.Context, tableName string) ([]*ColumnDesc, error) {
 	rows, err := db.Conn.QueryContext(ctx, fmt.Sprintf("PRAGMA table_info(%s);", tableName))
 	if err != nil {
 		log.Fatal(err)
@@ -130,7 +130,7 @@ func (db *SQLite3DB) DescribeDatabaseTable(ctx context.Context) ([]*ColumnDesc, 
 	log.Println(tables)
 	all := []*ColumnDesc{}
 	for _, table := range tables {
-		descs, err := db.DescribeTable(ctx, table)
+		descs, err := db.describeTable(ctx, table)
 		if err != nil {
 			return nil, err
 		}

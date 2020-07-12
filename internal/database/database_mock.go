@@ -50,10 +50,6 @@ func (m *MockDB) Tables(ctx context.Context) ([]string, error) {
 	return m.MockTables(ctx)
 }
 
-func (m *MockDB) DescribeTable(ctx context.Context, tableName string) ([]*ColumnDesc, error) {
-	return m.MockDescribeTable(ctx, tableName)
-}
-
 func (m *MockDB) DescribeDatabaseTable(ctx context.Context) ([]*ColumnDesc, error) {
 	return m.MockDescribeDatabaseTable(ctx)
 }

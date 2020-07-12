@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"strconv"
 
@@ -91,27 +90,6 @@ func openMySQLViaSSH(dsn string, sshCfg *SSHConfig) (*sql.DB, *ssh.Client, error
 		return nil, nil, xerrors.Errorf("cannot connect database, %+v", err)
 	}
 	return conn, sshConn, nil
-}
-
-func publicKeyFile(file, passPhrase string) (ssh.AuthMethod, error) {
-	buffer, err := ioutil.ReadFile(file)
-	if err != nil {
-		return nil, xerrors.Errorf("cannot read SSH private key file %s, %s", file, err)
-	}
-
-	var key ssh.Signer
-	if passPhrase != "" {
-		key, err = ssh.ParsePrivateKeyWithPassphrase(buffer, []byte(passPhrase))
-		if err != nil {
-			return nil, xerrors.Errorf("cannot parse SSH private key file with passphrase, %s, %s", file, err)
-		}
-	} else {
-		key, err = ssh.ParsePrivateKey(buffer)
-		if err != nil {
-			return nil, xerrors.Errorf("cannot parse SSH private key file, %s, %s", file, err)
-		}
-	}
-	return ssh.PublicKeys(key), nil
 }
 
 func (db *MySQLDB) Close() error {
@@ -205,30 +183,6 @@ func (db *MySQLDB) Tables(ctx context.Context) ([]string, error) {
 		tables = append(tables, table)
 	}
 	return tables, nil
-}
-
-func (db *MySQLDB) DescribeTable(ctx context.Context, tableName string) ([]*ColumnDesc, error) {
-	rows, err := db.Conn.Query("DESC " + tableName)
-	if err != nil {
-		return nil, err
-	}
-	tableInfos := []*ColumnDesc{}
-	for rows.Next() {
-		var tableInfo ColumnDesc
-		err := rows.Scan(
-			&tableInfo.Name,
-			&tableInfo.Type,
-			&tableInfo.Null,
-			&tableInfo.Key,
-			&tableInfo.Default,
-			&tableInfo.Extra,
-		)
-		if err != nil {
-			return nil, err
-		}
-		tableInfos = append(tableInfos, &tableInfo)
-	}
-	return tableInfos, nil
 }
 
 func (db *MySQLDB) DescribeDatabaseTable(ctx context.Context) ([]*ColumnDesc, error) {

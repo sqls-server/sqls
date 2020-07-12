@@ -46,30 +46,6 @@ func genSchmeaCache(ctx context.Context, db Database) (map[string]string, error)
 	return databaseMap, nil
 }
 
-func genTableCache(ctx context.Context, db Database) (map[string]string, error) {
-	tbls, err := db.Tables(ctx)
-	if err != nil {
-		return nil, err
-	}
-	tableMap := map[string]string{}
-	for _, tbl := range tbls {
-		tableMap[strings.ToUpper(tbl)] = tbl
-	}
-	return tableMap, nil
-}
-
-func genColumnCache(ctx context.Context, db Database, tbls map[string]string) (map[string][]*ColumnDesc, error) {
-	columnMap := map[string][]*ColumnDesc{}
-	for _, tbl := range tbls {
-		columnDescs, err := db.DescribeTable(ctx, tbl)
-		if err != nil {
-			return nil, err
-		}
-		columnMap[strings.ToUpper(tbl)] = columnDescs
-	}
-	return columnMap, nil
-}
-
 func genColumnsWithParentCache(ctx context.Context, db Database) (map[string][]*ColumnDesc, error) {
 	columnMap := map[string][]*ColumnDesc{}
 	columnDescs, err := db.DescribeDatabaseTable(ctx)
