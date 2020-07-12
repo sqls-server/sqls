@@ -108,7 +108,7 @@ func (s *Server) handleInitialize(ctx context.Context, conn *jsonrpc2.Conn, req 
 		return nil, err
 	}
 
-	if err := s.dbOpen(ctx); err != nil && err != ErrNoConnection {
+	if err := s.generateDBCache(ctx); err != nil && err != ErrNoConnection {
 		return nil, err
 	}
 
@@ -249,13 +249,13 @@ func (s *Server) handleWorkspaceDidChangeConfiguration(ctx context.Context, conn
 	if s.dbConn != nil {
 		return nil, nil
 	}
-	if err := s.dbOpen(ctx); err != nil && err != ErrNoConnection {
+	if err := s.generateDBCache(ctx); err != nil && err != ErrNoConnection {
 		return nil, err
 	}
 	return nil, nil
 }
 
-func (s *Server) dbOpen(ctx context.Context) error {
+func (s *Server) generateDBCache(ctx context.Context) error {
 	// Get the most preferred DB connection settings
 	connCfg := s.topConnection()
 	if connCfg == nil {
