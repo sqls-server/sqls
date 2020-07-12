@@ -103,7 +103,7 @@ func hover(text string, params lsp.HoverParams, dbCache *database.DatabaseCache)
 	} else if ident != nil && memIdent == nil {
 		// The cursor is on the identifier
 		// example "c[i]ty"
-		hoverContent = hoverContentFromIdent(ident, dbCache, hoverEnv)
+		hoverContent = hoverContentFromIdent(ctx, ident.String(), dbCache, hoverEnv)
 	}
 	if hoverContent == nil {
 		return nil, ErrNoHover
@@ -136,10 +136,26 @@ type hoverEnvironment struct {
 	subQueries *parseutil.SubQueryInfo
 }
 
-func (e *hoverEnvironment) getTableAlias(aliasName string) (string, bool) {
+func (e *hoverEnvironment) getTableRealName(aliasName string) (string, bool) {
 	for _, table := range e.tables {
 		if table.Alias == aliasName {
 			return table.Name, true
+		}
+	}
+	return "", false
+}
+
+func (e *hoverEnvironment) getColumnRealName(aliasedName string) (string, bool) {
+	for _, v := range e.aliases {
+		alias, _ := v.(*ast.Aliased)
+
+		if alias.AliasedName.String() == aliasedName {
+			switch v := alias.RealName.(type) {
+			case *ast.Identifer:
+				return v.String(), true
+			case *ast.MemberIdentifer:
+				return v.Child.String(), true
+			}
 		}
 	}
 	return "", false
@@ -164,22 +180,6 @@ func collectEnvirontment(parsed ast.TokenList, pos token.Pos) (*hoverEnvironment
 	return environment, nil
 }
 
-func (he *hoverEnvironment) getRealName(aliasedName string) (string, bool) {
-	for _, v := range he.aliases {
-		alias, _ := v.(*ast.Aliased)
-
-		if alias.AliasedName.String() == aliasedName {
-			switch v := alias.RealName.(type) {
-			case *ast.Identifer:
-				return v.String(), true
-			case *ast.MemberIdentifer:
-				return v.Child.String(), true
-			}
-		}
-	}
-	return "", false
-}
-
 func findIdent(nodes []ast.Node) (*ast.Identifer, *ast.MemberIdentifer) {
 	var (
 		ident    *ast.Identifer
@@ -196,41 +196,42 @@ func findIdent(nodes []ast.Node) (*ast.Identifer, *ast.MemberIdentifer) {
 	return ident, memIdent
 }
 
-func hoverContentFromIdent(ident *ast.Identifer, dbCache *database.DatabaseCache, hoverEnv *hoverEnvironment) *lsp.MarkupContent {
-	identName := ident.String()
-	if realName, ok := hoverEnv.getRealName(identName); ok {
-		identName = realName
+func hoverContentFromIdent(ctx *hoverContext, identName string, dbCache *database.DatabaseCache, hoverEnv *hoverEnvironment) *lsp.MarkupContent {
+	if hoverTypeIs(ctx.types, hoverTypeColumn) {
+		columnName := identName
+		if realName, ok := hoverEnv.getColumnRealName(columnName); ok {
+			columnName = realName
+		}
+		hoverContents := []*lsp.MarkupContent{}
+		for _, table := range hoverEnv.tables {
+			colDesc, ok := dbCache.Column(table.Name, columnName)
+			if ok {
+				hoverContents = append(
+					hoverContents,
+					columnHoverInfo(table.Name, columnName, colDesc),
+				)
+			}
+		}
+		if len(hoverContents) >= 2 {
+			return nil
+		}
+		if len(hoverContents) == 1 {
+			return hoverContents[0]
+		}
 	}
-
-	// find column
-	hoverContents := []*lsp.MarkupContent{}
-	for _, table := range hoverEnv.tables {
-		colDesc, ok := dbCache.Column(table.Name, identName)
+	if hoverTypeIs(ctx.types, hoverTypeTable) {
+		// translate table alias
+		tableName := identName
+		for _, table := range hoverEnv.tables {
+			if table.Alias == tableName {
+				tableName = table.Name
+			}
+		}
+		// find table
+		cols, ok := dbCache.ColumnDescs(tableName)
 		if ok {
-			hoverContents = append(
-				hoverContents,
-				columnHoverInfo(table.Name, identName, colDesc),
-			)
+			return tableHoverInfo(tableName, cols)
 		}
-	}
-	if len(hoverContents) >= 2 {
-		return nil
-	}
-	if len(hoverContents) == 1 {
-		return hoverContents[0]
-	}
-
-	// translate table alias
-	tableName := identName
-	for _, table := range hoverEnv.tables {
-		if table.Alias == tableName {
-			tableName = table.Name
-		}
-	}
-	// find table
-	cols, ok := dbCache.ColumnDescs(tableName)
-	if ok {
-		return tableHoverInfo(tableName, cols)
 	}
 	return nil
 }
@@ -242,9 +243,9 @@ func hoverContentFromParentIdent(ctx *hoverContext, identName string, dbCache *d
 	case parentTypeSchema:
 	case parentTypeTable:
 		tableName := identName
-		originName, ok := hoverEnv.getTableAlias(tableName)
+		realName, ok := hoverEnv.getTableRealName(tableName)
 		if ok {
-			tableName = originName
+			tableName = realName
 		}
 		columns, ok := dbCache.ColumnDescs(tableName)
 		if ok {
@@ -267,9 +268,9 @@ func hoverContentFromChildIdent(ctx *hoverContext, identName string, dbCache *da
 		}
 	case parentTypeTable:
 		tableName := ctx.parent.Name
-		originName, ok := hoverEnv.getTableAlias(tableName)
+		realName, ok := hoverEnv.getTableRealName(tableName)
 		if ok {
-			tableName = originName
+			tableName = realName
 		}
 		if colDesc, ok := dbCache.Column(tableName, identName); ok {
 			return columnHoverInfo(tableName, identName, colDesc)
@@ -319,6 +320,15 @@ func parse(text string) (ast.TokenList, error) {
 		return nil, err
 	}
 	return parsed, nil
+}
+
+func hoverTypeIs(hoverTypes []hoverType, expect hoverType) bool {
+	for _, t := range hoverTypes {
+		if t == expect {
+			return true
+		}
+	}
+	return false
 }
 
 type hoverType int
