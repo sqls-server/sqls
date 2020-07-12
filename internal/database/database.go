@@ -19,14 +19,14 @@ var (
 type Database interface {
 	Open() error
 	Close() error
-	CurrentDatabase() (string, error)
-	Databases() ([]string, error)
-	CurrentSchema() (string, error)
-	Schemas() ([]string, error)
-	SchemaTables() (map[string][]string, error)
-	Tables() ([]string, error)
-	DescribeTable(tableName string) ([]*ColumnDesc, error)
-	DescribeDatabaseTable() ([]*ColumnDesc, error)
+	CurrentDatabase(ctx context.Context) (string, error)
+	Databases(ctx context.Context) ([]string, error)
+	CurrentSchema(ctx context.Context) (string, error)
+	Schemas(ctx context.Context) ([]string, error)
+	SchemaTables(ctx context.Context) (map[string][]string, error)
+	Tables(ctx context.Context) ([]string, error)
+	DescribeTable(ctx context.Context, tableName string) ([]*ColumnDesc, error)
+	DescribeDatabaseTable(ctx context.Context) ([]*ColumnDesc, error)
 	Exec(ctx context.Context, query string) (sql.Result, error)
 	Query(ctx context.Context, query string) (*sql.Rows, error)
 	SwitchDB(dbName string) error

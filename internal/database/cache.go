@@ -1,11 +1,12 @@
 package database
 
 import (
+	"context"
 	"sort"
 	"strings"
 )
 
-func GenerateDBCache(db Database, defaultSchema string) (*DatabaseCache, error) {
+func GenerateDBCache(ctx context.Context, db Database, defaultSchema string) (*DatabaseCache, error) {
 	if err := db.Open(); err != nil {
 		return nil, err
 	}
@@ -14,27 +15,27 @@ func GenerateDBCache(db Database, defaultSchema string) (*DatabaseCache, error) 
 	// Create caches
 	var err error
 	dbCache := &DatabaseCache{}
-	dbCache.defaultSchema, err = db.CurrentSchema()
+	dbCache.defaultSchema, err = db.CurrentSchema(ctx)
 	if err != nil {
 		return nil, err
 	}
-	dbCache.Schemas, err = genSchmeaCache(db)
+	dbCache.Schemas, err = genSchmeaCache(ctx, db)
 	if err != nil {
 		return nil, err
 	}
-	dbCache.SchemaTables, err = db.SchemaTables()
+	dbCache.SchemaTables, err = db.SchemaTables(ctx)
 	if err != nil {
 		return nil, err
 	}
-	dbCache.ColumnsWithParent, err = genColumnsWithParentCache(db)
+	dbCache.ColumnsWithParent, err = genColumnsWithParentCache(ctx, db)
 	if err != nil {
 		return nil, err
 	}
 	return dbCache, nil
 }
 
-func genSchmeaCache(db Database) (map[string]string, error) {
-	dbs, err := db.Schemas()
+func genSchmeaCache(ctx context.Context, db Database) (map[string]string, error) {
+	dbs, err := db.Schemas(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -45,8 +46,8 @@ func genSchmeaCache(db Database) (map[string]string, error) {
 	return databaseMap, nil
 }
 
-func genTableCache(db Database) (map[string]string, error) {
-	tbls, err := db.Tables()
+func genTableCache(ctx context.Context, db Database) (map[string]string, error) {
+	tbls, err := db.Tables(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -57,10 +58,10 @@ func genTableCache(db Database) (map[string]string, error) {
 	return tableMap, nil
 }
 
-func genColumnCache(db Database, tbls map[string]string) (map[string][]*ColumnDesc, error) {
+func genColumnCache(ctx context.Context, db Database, tbls map[string]string) (map[string][]*ColumnDesc, error) {
 	columnMap := map[string][]*ColumnDesc{}
 	for _, tbl := range tbls {
-		columnDescs, err := db.DescribeTable(tbl)
+		columnDescs, err := db.DescribeTable(ctx, tbl)
 		if err != nil {
 			return nil, err
 		}
@@ -69,9 +70,9 @@ func genColumnCache(db Database, tbls map[string]string) (map[string][]*ColumnDe
 	return columnMap, nil
 }
 
-func genColumnsWithParentCache(db Database) (map[string][]*ColumnDesc, error) {
+func genColumnsWithParentCache(ctx context.Context, db Database) (map[string][]*ColumnDesc, error) {
 	columnMap := map[string][]*ColumnDesc{}
-	columnDescs, err := db.DescribeDatabaseTable()
+	columnDescs, err := db.DescribeDatabaseTable(ctx)
 	if err != nil {
 		return nil, err
 	}

@@ -8,12 +8,12 @@ import (
 type MockDB struct {
 	MockOpen                  func() error
 	MockClose                 func() error
-	MockDatabase              func() (string, error)
-	MockDatabases             func() ([]string, error)
-	MockDatabaseTables        func() (map[string][]string, error)
-	MockTables                func() ([]string, error)
-	MockDescribeTable         func(string) ([]*ColumnDesc, error)
-	MockDescribeDatabaseTable func() ([]*ColumnDesc, error)
+	MockDatabase              func(context.Context) (string, error)
+	MockDatabases             func(context.Context) ([]string, error)
+	MockDatabaseTables        func(context.Context) (map[string][]string, error)
+	MockTables                func(context.Context) ([]string, error)
+	MockDescribeTable         func(context.Context, string) ([]*ColumnDesc, error)
+	MockDescribeDatabaseTable func(context.Context) ([]*ColumnDesc, error)
 	MockExec                  func(context.Context, string) (sql.Result, error)
 	MockQuery                 func(context.Context, string) (*sql.Rows, error)
 }
@@ -26,36 +26,36 @@ func (m *MockDB) Close() error {
 	return m.MockClose()
 }
 
-func (m *MockDB) CurrentDatabase() (string, error) {
-	return m.MockDatabase()
+func (m *MockDB) CurrentDatabase(ctx context.Context) (string, error) {
+	return m.MockDatabase(ctx)
 }
 
-func (m *MockDB) Databases() ([]string, error) {
-	return m.MockDatabases()
+func (m *MockDB) Databases(ctx context.Context) ([]string, error) {
+	return m.MockDatabases(ctx)
 }
 
-func (m *MockDB) CurrentSchema() (string, error) {
-	return m.MockDatabase()
+func (m *MockDB) CurrentSchema(ctx context.Context) (string, error) {
+	return m.MockDatabase(ctx)
 }
 
-func (m *MockDB) Schemas() ([]string, error) {
-	return m.MockDatabases()
+func (m *MockDB) Schemas(ctx context.Context) ([]string, error) {
+	return m.MockDatabases(ctx)
 }
 
-func (m *MockDB) SchemaTables() (map[string][]string, error) {
-	return m.MockDatabaseTables()
+func (m *MockDB) SchemaTables(ctx context.Context) (map[string][]string, error) {
+	return m.MockDatabaseTables(ctx)
 }
 
-func (m *MockDB) Tables() ([]string, error) {
-	return m.MockTables()
+func (m *MockDB) Tables(ctx context.Context) ([]string, error) {
+	return m.MockTables(ctx)
 }
 
-func (m *MockDB) DescribeTable(tableName string) ([]*ColumnDesc, error) {
-	return m.MockDescribeTable(tableName)
+func (m *MockDB) DescribeTable(ctx context.Context, tableName string) ([]*ColumnDesc, error) {
+	return m.MockDescribeTable(ctx, tableName)
 }
 
-func (m *MockDB) DescribeDatabaseTable() ([]*ColumnDesc, error) {
-	return m.MockDescribeDatabaseTable()
+func (m *MockDB) DescribeDatabaseTable(ctx context.Context) ([]*ColumnDesc, error) {
+	return m.MockDescribeDatabaseTable(ctx)
 }
 
 func (m *MockDB) Exec(ctx context.Context, query string) (sql.Result, error) {
@@ -425,11 +425,11 @@ func init() {
 		return &MockDB{
 			MockOpen:           func() error { return nil },
 			MockClose:          func() error { return nil },
-			MockDatabase:       func() (string, error) { return "world", nil },
-			MockDatabases:      func() ([]string, error) { return dummyDatabases, nil },
-			MockDatabaseTables: func() (map[string][]string, error) { return dummyDatabaseTables, nil },
-			MockTables:         func() ([]string, error) { return dummyTables, nil },
-			MockDescribeTable: func(tableName string) ([]*ColumnDesc, error) {
+			MockDatabase:       func(ctx context.Context) (string, error) { return "world", nil },
+			MockDatabases:      func(ctx context.Context) ([]string, error) { return dummyDatabases, nil },
+			MockDatabaseTables: func(ctx context.Context) (map[string][]string, error) { return dummyDatabaseTables, nil },
+			MockTables:         func(ctx context.Context) ([]string, error) { return dummyTables, nil },
+			MockDescribeTable: func(ctx context.Context, tableName string) ([]*ColumnDesc, error) {
 				switch tableName {
 				case "city":
 					return dummyCityColumns, nil
@@ -440,7 +440,7 @@ func init() {
 				}
 				return nil, nil
 			},
-			MockDescribeDatabaseTable: func() ([]*ColumnDesc, error) {
+			MockDescribeDatabaseTable: func(ctx context.Context) ([]*ColumnDesc, error) {
 				res := []*ColumnDesc{}
 				res = append(res, dummyCityColumns...)
 				res = append(res, dummyCountryColumns...)

@@ -45,28 +45,28 @@ func (db *SQLite3DB) Close() error {
 	return db.Conn.Close()
 }
 
-func (db *SQLite3DB) CurrentDatabase() (string, error) {
+func (db *SQLite3DB) CurrentDatabase(ctx context.Context) (string, error) {
 	return "", nil
 }
 
-func (db *SQLite3DB) Databases() ([]string, error) {
+func (db *SQLite3DB) Databases(ctx context.Context) ([]string, error) {
 	return []string{}, nil
 }
 
-func (db *SQLite3DB) CurrentSchema() (string, error) {
-	return db.CurrentDatabase()
+func (db *SQLite3DB) CurrentSchema(ctx context.Context) (string, error) {
+	return db.CurrentDatabase(ctx)
 }
 
-func (db *SQLite3DB) Schemas() ([]string, error) {
-	return db.Databases()
+func (db *SQLite3DB) Schemas(ctx context.Context) ([]string, error) {
+	return db.Databases(ctx)
 }
 
-func (db *SQLite3DB) SchemaTables() (map[string][]string, error) {
+func (db *SQLite3DB) SchemaTables(ctx context.Context) (map[string][]string, error) {
 	return nil, nil
 }
 
-func (db *SQLite3DB) Tables() ([]string, error) {
-	rows, err := db.Conn.Query(`
+func (db *SQLite3DB) Tables(ctx context.Context) ([]string, error) {
+	rows, err := db.Conn.QueryContext(ctx, `
 	SELECT
 	  name 
 	FROM
@@ -90,10 +90,8 @@ func (db *SQLite3DB) Tables() ([]string, error) {
 	return tables, nil
 }
 
-func (db *SQLite3DB) DescribeTable(tableName string) ([]*ColumnDesc, error) {
-	rows, err := db.Conn.Query(fmt.Sprintf(`
-	PRAGMA table_info(%s);
-	`, tableName))
+func (db *SQLite3DB) DescribeTable(ctx context.Context, tableName string) ([]*ColumnDesc, error) {
+	rows, err := db.Conn.QueryContext(ctx, fmt.Sprintf("PRAGMA table_info(%s);", tableName))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -124,15 +122,15 @@ func (db *SQLite3DB) DescribeTable(tableName string) ([]*ColumnDesc, error) {
 	return tableInfos, nil
 }
 
-func (db *SQLite3DB) DescribeDatabaseTable() ([]*ColumnDesc, error) {
-	tables, err := db.Tables()
+func (db *SQLite3DB) DescribeDatabaseTable(ctx context.Context) ([]*ColumnDesc, error) {
+	tables, err := db.Tables(ctx)
 	if err != nil {
 		return nil, err
 	}
 	log.Println(tables)
 	all := []*ColumnDesc{}
 	for _, table := range tables {
-		descs, err := db.DescribeTable(table)
+		descs, err := db.DescribeTable(ctx, table)
 		if err != nil {
 			return nil, err
 		}

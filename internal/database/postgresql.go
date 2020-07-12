@@ -135,8 +135,8 @@ func (db *PostgreSQLDB) Close() error {
 	return nil
 }
 
-func (db *PostgreSQLDB) CurrentDatabase() (string, error) {
-	row := db.Conn.QueryRow("SELECT current_database()")
+func (db *PostgreSQLDB) CurrentDatabase(ctx context.Context) (string, error) {
+	row := db.Conn.QueryRowContext(ctx, "SELECT current_database()")
 	var database string
 	if err := row.Scan(&database); err != nil {
 		return "", err
@@ -144,8 +144,10 @@ func (db *PostgreSQLDB) CurrentDatabase() (string, error) {
 	return database, nil
 }
 
-func (db *PostgreSQLDB) Databases() ([]string, error) {
-	rows, err := db.Conn.Query(`
+func (db *PostgreSQLDB) Databases(ctx context.Context) ([]string, error) {
+	rows, err := db.Conn.QueryContext(
+		ctx,
+		`
 	SELECT datname FROM pg_database
 	`)
 	if err != nil {
@@ -162,8 +164,8 @@ func (db *PostgreSQLDB) Databases() ([]string, error) {
 	return databases, nil
 }
 
-func (db *PostgreSQLDB) CurrentSchema() (string, error) {
-	row := db.Conn.QueryRow("SELECT current_schema()")
+func (db *PostgreSQLDB) CurrentSchema(ctx context.Context) (string, error) {
+	row := db.Conn.QueryRowContext(ctx, "SELECT current_schema()")
 	var database string
 	if err := row.Scan(&database); err != nil {
 		return "", err
@@ -171,8 +173,10 @@ func (db *PostgreSQLDB) CurrentSchema() (string, error) {
 	return database, nil
 }
 
-func (db *PostgreSQLDB) Schemas() ([]string, error) {
-	rows, err := db.Conn.Query(`
+func (db *PostgreSQLDB) Schemas(ctx context.Context) ([]string, error) {
+	rows, err := db.Conn.QueryContext(
+		ctx,
+		`
 	SELECT schema_name FROM information_schema.schemata
 	`)
 	if err != nil {
@@ -189,8 +193,10 @@ func (db *PostgreSQLDB) Schemas() ([]string, error) {
 	return databases, nil
 }
 
-func (db *PostgreSQLDB) SchemaTables() (map[string][]string, error) {
-	rows, err := db.Conn.Query(`
+func (db *PostgreSQLDB) SchemaTables(ctx context.Context) (map[string][]string, error) {
+	rows, err := db.Conn.QueryContext(
+		ctx,
+		`
 	SELECT
 		table_schema,
 		table_name
@@ -219,8 +225,10 @@ func (db *PostgreSQLDB) SchemaTables() (map[string][]string, error) {
 	return databaseTables, nil
 }
 
-func (db *PostgreSQLDB) Tables() ([]string, error) {
-	rows, err := db.Conn.Query(`
+func (db *PostgreSQLDB) Tables(ctx context.Context) ([]string, error) {
+	rows, err := db.Conn.QueryContext(
+		ctx,
+		`
 	SELECT
 	  table_name 
 	FROM
@@ -245,8 +253,10 @@ func (db *PostgreSQLDB) Tables() ([]string, error) {
 	return tables, nil
 }
 
-func (db *PostgreSQLDB) DescribeTable(tableName string) ([]*ColumnDesc, error) {
-	rows, err := db.Conn.Query(`
+func (db *PostgreSQLDB) DescribeTable(ctx context.Context, tableName string) ([]*ColumnDesc, error) {
+	rows, err := db.Conn.QueryContext(
+		ctx,
+		`
 	SELECT
 	  c.column_name
 	  , c.data_type
@@ -295,8 +305,10 @@ func (db *PostgreSQLDB) DescribeTable(tableName string) ([]*ColumnDesc, error) {
 	return tableInfos, nil
 }
 
-func (db *PostgreSQLDB) DescribeDatabaseTable() ([]*ColumnDesc, error) {
-	rows, err := db.Conn.Query(`
+func (db *PostgreSQLDB) DescribeDatabaseTable(ctx context.Context) ([]*ColumnDesc, error) {
+	rows, err := db.Conn.QueryContext(
+		ctx,
+		`
 	SELECT
 		c.table_schema,
 		c.table_name,

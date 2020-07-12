@@ -126,8 +126,8 @@ func (db *MySQLDB) Close() error {
 	return nil
 }
 
-func (db *MySQLDB) CurrentDatabase() (string, error) {
-	row := db.Conn.QueryRow("SELECT DATABASE()")
+func (db *MySQLDB) CurrentDatabase(ctx context.Context) (string, error) {
+	row := db.Conn.QueryRowContext(ctx, "SELECT DATABASE()")
 	var database string
 	if err := row.Scan(&database); err != nil {
 		return "", err
@@ -135,8 +135,8 @@ func (db *MySQLDB) CurrentDatabase() (string, error) {
 	return database, nil
 }
 
-func (db *MySQLDB) Databases() ([]string, error) {
-	rows, err := db.Conn.Query("select SCHEMA_NAME from information_schema.SCHEMATA")
+func (db *MySQLDB) Databases(ctx context.Context) ([]string, error) {
+	rows, err := db.Conn.QueryContext(ctx, "select SCHEMA_NAME from information_schema.SCHEMATA")
 	if err != nil {
 		return nil, err
 	}
@@ -151,16 +151,18 @@ func (db *MySQLDB) Databases() ([]string, error) {
 	return databases, nil
 }
 
-func (db *MySQLDB) CurrentSchema() (string, error) {
-	return db.CurrentDatabase()
+func (db *MySQLDB) CurrentSchema(ctx context.Context) (string, error) {
+	return db.CurrentDatabase(ctx)
 }
 
-func (db *MySQLDB) Schemas() ([]string, error) {
-	return db.Databases()
+func (db *MySQLDB) Schemas(ctx context.Context) ([]string, error) {
+	return db.Databases(ctx)
 }
 
-func (db *MySQLDB) SchemaTables() (map[string][]string, error) {
-	rows, err := db.Conn.Query(`
+func (db *MySQLDB) SchemaTables(ctx context.Context) (map[string][]string, error) {
+	rows, err := db.Conn.QueryContext(
+		ctx,
+		`
 	SELECT 
 		TABLE_SCHEMA,
 		TABLE_NAME
@@ -189,8 +191,8 @@ func (db *MySQLDB) SchemaTables() (map[string][]string, error) {
 	return databaseTables, nil
 }
 
-func (db *MySQLDB) Tables() ([]string, error) {
-	rows, err := db.Conn.Query("SHOW TABLES")
+func (db *MySQLDB) Tables(ctx context.Context) ([]string, error) {
+	rows, err := db.Conn.QueryContext(ctx, "SHOW TABLES")
 	if err != nil {
 		return nil, err
 	}
@@ -205,7 +207,7 @@ func (db *MySQLDB) Tables() ([]string, error) {
 	return tables, nil
 }
 
-func (db *MySQLDB) DescribeTable(tableName string) ([]*ColumnDesc, error) {
+func (db *MySQLDB) DescribeTable(ctx context.Context, tableName string) ([]*ColumnDesc, error) {
 	rows, err := db.Conn.Query("DESC " + tableName)
 	if err != nil {
 		return nil, err
@@ -229,8 +231,10 @@ func (db *MySQLDB) DescribeTable(tableName string) ([]*ColumnDesc, error) {
 	return tableInfos, nil
 }
 
-func (db *MySQLDB) DescribeDatabaseTable() ([]*ColumnDesc, error) {
-	rows, err := db.Conn.Query(`
+func (db *MySQLDB) DescribeDatabaseTable(ctx context.Context) ([]*ColumnDesc, error) {
+	rows, err := db.Conn.QueryContext(
+		ctx,
+		`
 SELECT
 	TABLE_SCHEMA,
 	TABLE_NAME,

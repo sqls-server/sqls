@@ -82,20 +82,20 @@ func (s *Server) handleWorkspaceExecuteCommand(ctx context.Context, conn *jsonrp
 
 	switch params.Command {
 	case CommandExecuteQuery:
-		return s.executeQuery(params)
+		return s.executeQuery(ctx, params)
 	case CommandShowDatabases:
-		return s.showDatabases(params)
+		return s.showDatabases(ctx, params)
 	case CommandShowConnections:
-		return s.showConnections(params)
+		return s.showConnections(ctx, params)
 	case CommandSwitchDatabase:
-		return s.switchDatabase(params)
+		return s.switchDatabase(ctx, params)
 	case CommandSwitchConnection:
-		return s.switchConnections(params)
+		return s.switchConnections(ctx, params)
 	}
 	return nil, fmt.Errorf("unsupported command: %v", params.Command)
 }
 
-func (s *Server) executeQuery(params lsp.ExecuteCommandParams) (result interface{}, err error) {
+func (s *Server) executeQuery(ctx context.Context, params lsp.ExecuteCommandParams) (result interface{}, err error) {
 	// parse execute command arguments
 	if s.dbConn == nil {
 		return nil, errors.New("database connection is not open")
@@ -249,11 +249,11 @@ func (s *Server) exec(query string, vertical bool) (string, error) {
 	return buf.String(), nil
 }
 
-func (s *Server) showDatabases(params lsp.ExecuteCommandParams) (result interface{}, err error) {
+func (s *Server) showDatabases(ctx context.Context, params lsp.ExecuteCommandParams) (result interface{}, err error) {
 	if err := s.dbConn.Open(); err != nil {
 		return nil, err
 	}
-	databases, err := s.dbConn.Databases()
+	databases, err := s.dbConn.Databases(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -261,7 +261,7 @@ func (s *Server) showDatabases(params lsp.ExecuteCommandParams) (result interfac
 	return strings.Join(databases, "\n"), nil
 }
 
-func (s *Server) switchDatabase(params lsp.ExecuteCommandParams) (result interface{}, err error) {
+func (s *Server) switchDatabase(ctx context.Context, params lsp.ExecuteCommandParams) (result interface{}, err error) {
 	if len(params.Arguments) != 1 {
 		return nil, fmt.Errorf("required arguments were not provided: <DB Name>")
 	}
@@ -272,13 +272,13 @@ func (s *Server) switchDatabase(params lsp.ExecuteCommandParams) (result interfa
 
 	// Reconnect database
 	s.curDBName = dbName
-	if err := s.dbOpen(); err != nil {
+	if err := s.dbOpen(ctx); err != nil {
 		return nil, err
 	}
 	return nil, nil
 }
 
-func (s *Server) showConnections(params lsp.ExecuteCommandParams) (result interface{}, err error) {
+func (s *Server) showConnections(ctx context.Context, params lsp.ExecuteCommandParams) (result interface{}, err error) {
 	results := []string{}
 	conns := s.getConfig().Connections
 	for i, conn := range conns {
@@ -299,7 +299,7 @@ func (s *Server) showConnections(params lsp.ExecuteCommandParams) (result interf
 	return strings.Join(results, "\n"), nil
 }
 
-func (s *Server) switchConnections(params lsp.ExecuteCommandParams) (result interface{}, err error) {
+func (s *Server) switchConnections(ctx context.Context, params lsp.ExecuteCommandParams) (result interface{}, err error) {
 	if len(params.Arguments) != 1 {
 		return nil, fmt.Errorf("required arguments were not provided: <Connection Index>")
 	}
@@ -315,7 +315,7 @@ func (s *Server) switchConnections(params lsp.ExecuteCommandParams) (result inte
 
 	// Reconnect database
 	s.curConnectionIndex = index
-	if err := s.dbOpen(); err != nil {
+	if err := s.dbOpen(ctx); err != nil {
 		return nil, err
 	}
 	return nil, nil
