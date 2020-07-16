@@ -82,8 +82,8 @@ Whichever method you choose, the settings you make will remain the same.
 ```yaml
 connections:
   - alias: dsn_mysql
-    'driver': 'mysql',
-    'dataSourceName': 'root:root@tcp(127.0.0.1:13306)/world',
+    driver: mysql
+    dataSourceName: root:root@tcp(127.0.0.1:13306)/world
   - alias: individual_mysql
     driver: mysql
     proto: tcp
