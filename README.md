@@ -152,7 +152,8 @@ In `coc-settings.json` opened by `:CocConfig`
         "sql": {
             "command": "sqls",
             "args": ["-config", "$HOME/.config/sqls/config.yml"],
-            "filetypes": ["sql"]
+            "filetypes": ["sql"],
+            "shell": true
         }
     }
 }
