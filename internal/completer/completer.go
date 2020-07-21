@@ -282,20 +282,20 @@ func getCompletionTypes(nw *parseutil.NodeWalker) *CompletionContext {
 			// has parent
 			mi := nw.CurNodeTopMatched(memberIdentifierMatcher).(*ast.MemberIdentifer)
 			t = []completionType{
-				CompletionTypeTable,
+				CompletionTypeColumn,
 				CompletionTypeView,
 				CompletionTypeSubQueryColumn,
 				CompletionTypeFunction,
 			}
 			p = &completionParent{
-				Type: ParentTypeSchema,
+				Type: ParentTypeTable,
 				Name: mi.Parent.String(),
 			}
 		} else {
 			t = []completionType{
 				CompletionTypeColumn,
 				CompletionTypeTable,
-				CompletionTypeSchema,
+				CompletionTypeAlias,
 				CompletionTypeView,
 				CompletionTypeSubQueryColumn,
 				CompletionTypeSubQueryView,

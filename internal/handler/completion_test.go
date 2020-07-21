@@ -246,6 +246,19 @@ func TestComplete(t *testing.T) {
 			},
 		},
 		{
+			name:  "join on member identifier",
+			input: "select CountryCode from city left join country on city.",
+			line:  0,
+			col:   55,
+			want: []string{
+				"ID",
+				"Name",
+				"CountryCode",
+				"District",
+				"Population",
+			},
+		},
+		{
 			name:  "join on identifier filterd",
 			input: "select CountryCode from city left join country on co",
 			line:  0,
