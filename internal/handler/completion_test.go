@@ -224,11 +224,6 @@ func TestComplete(t *testing.T) {
 			line:  0,
 			col:   39,
 			want: []string{
-				"ID",
-				"Name",
-				"CountryCode",
-				"District",
-				"Population",
 				"city",
 				"country",
 				"countrylanguage",
@@ -240,7 +235,6 @@ func TestComplete(t *testing.T) {
 			line:  0,
 			col:   41,
 			want: []string{
-				"CountryCode",
 				"country",
 				"countrylanguage",
 			},

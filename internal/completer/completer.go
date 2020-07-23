@@ -267,13 +267,10 @@ func getCompletionTypes(nw *parseutil.NodeWalker) *CompletionContext {
 			}
 		} else {
 			t = []completionType{
-				CompletionTypeColumn,
 				CompletionTypeTable,
 				CompletionTypeSchema,
 				CompletionTypeView,
-				CompletionTypeSubQueryColumn,
 				CompletionTypeSubQueryView,
-				CompletionTypeFunction,
 				CompletionTypeKeyword,
 			}
 		}
