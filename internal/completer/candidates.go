@@ -76,8 +76,8 @@ func generateColumnCandidates(tableName string, columns []*database.ColumnDesc) 
 func columnDetail(tableName string, column *database.ColumnDesc) string {
 	detail := strings.Join(
 		[]string{
-			"column",
-			"`" + tableName + "`",
+			"column from",
+			"\"" + tableName + "\"",
 			"(" + column.OnelineDesc() + ")",
 		},
 		" ",
