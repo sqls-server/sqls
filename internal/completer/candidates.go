@@ -85,7 +85,28 @@ func columnDetail(tableName string, column *database.ColumnDesc) string {
 	return detail
 }
 
-func (c *Completer) TableCandidates(parent *completionParent) []lsp.CompletionItem {
+func (c *Completer) ReferencedTableCandidates(targetTables []*parseutil.TableInfo) []lsp.CompletionItem {
+	candidates := []lsp.CompletionItem{}
+	if c.DBCache == nil {
+		return candidates
+	}
+
+	for _, targetTable := range targetTables {
+		for _, table := range c.DBCache.SortedTables() {
+			if table == targetTable.Name {
+				candidate := lsp.CompletionItem{
+					Label:  table,
+					Kind:   lsp.FieldCompletion,
+					Detail: "referenced table",
+				}
+				candidates = append(candidates, candidate)
+			}
+		}
+	}
+	return candidates
+}
+
+func (c *Completer) TableCandidates(parent *completionParent, targetTables []*parseutil.TableInfo) []lsp.CompletionItem {
 	candidates := []lsp.CompletionItem{}
 	if c.DBCache == nil {
 		return candidates
@@ -93,8 +114,20 @@ func (c *Completer) TableCandidates(parent *completionParent) []lsp.CompletionIt
 
 	switch parent.Type {
 	case ParentTypeNone:
-		tables := c.DBCache.SortedTables()
-		candidates = append(candidates, generateTableCandidates(tables)...)
+		excludeTables := []string{}
+		for _, table := range c.DBCache.SortedTables() {
+			isExclude := false
+			for _, targetTable := range targetTables {
+				if table == targetTable.Name {
+					isExclude = true
+				}
+			}
+			if isExclude {
+				continue
+			}
+			excludeTables = append(excludeTables, table)
+		}
+		candidates = append(candidates, generateTableCandidates(excludeTables)...)
 	case ParentTypeSchema:
 		tables, ok := c.DBCache.SortedTablesByDBName(parent.Name)
 		if ok {
@@ -111,14 +144,17 @@ func (c *Completer) TableCandidates(parent *completionParent) []lsp.CompletionIt
 func generateTableCandidates(tables []string) []lsp.CompletionItem {
 	candidates := []lsp.CompletionItem{}
 	for _, tableName := range tables {
-		candidate := lsp.CompletionItem{
-			Label:  tableName,
-			Kind:   lsp.FieldCompletion,
-			Detail: "table",
-		}
-		candidates = append(candidates, candidate)
+		candidates = append(candidates, generateTableCandidate(tableName))
 	}
 	return candidates
+}
+
+func generateTableCandidate(tableName string) lsp.CompletionItem {
+	return lsp.CompletionItem{
+		Label:  tableName,
+		Kind:   lsp.FieldCompletion,
+		Detail: "table",
+	}
 }
 
 func (c *Completer) aliasCandidates(targetTables []*parseutil.TableInfo) []lsp.CompletionItem {

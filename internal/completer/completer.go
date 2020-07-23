@@ -26,6 +26,7 @@ const (
 	CompletionTypeAlias
 	CompletionTypeColumn
 	CompletionTypeTable
+	CompletionTypeReferencedTable
 	CompletionTypeView
 	CompletionTypeSubQueryView
 	CompletionTypeSubQueryColumn
@@ -46,6 +47,8 @@ func (ct completionType) String() string {
 		return "Column"
 	case CompletionTypeTable:
 		return "Table"
+	case CompletionTypeReferencedTable:
+		return "ReferencedTable"
 	case CompletionTypeView:
 		return "View"
 	case CompletionTypeChange:
@@ -146,8 +149,11 @@ func (c *Completer) Complete(text string, params lsp.CompletionParams) ([]lsp.Co
 	if completionTypeIs(ctx.types, CompletionTypeAlias) {
 		items = append(items, c.aliasCandidates(definedTables)...)
 	}
+	if completionTypeIs(ctx.types, CompletionTypeReferencedTable) {
+		items = append(items, c.ReferencedTableCandidates(definedTables)...)
+	}
 	if completionTypeIs(ctx.types, CompletionTypeTable) {
-		items = append(items, c.TableCandidates(ctx.parent)...)
+		items = append(items, c.TableCandidates(ctx.parent, definedTables)...)
 	}
 	if completionTypeIs(ctx.types, CompletionTypeSchema) {
 		items = append(items, c.SchemaCandidates()...)
@@ -214,6 +220,7 @@ func getCompletionTypes(nw *parseutil.NodeWalker) *CompletionContext {
 			t = []completionType{
 				CompletionTypeColumn,
 				CompletionTypeTable,
+				CompletionTypeReferencedTable,
 				CompletionTypeSubQueryColumn,
 				CompletionTypeSubQueryView,
 				CompletionTypeAlias,
@@ -243,6 +250,7 @@ func getCompletionTypes(nw *parseutil.NodeWalker) *CompletionContext {
 			t = []completionType{
 				CompletionTypeColumn,
 				CompletionTypeTable,
+				CompletionTypeReferencedTable,
 				CompletionTypeAlias,
 				CompletionTypeView,
 				CompletionTypeSubQueryColumn,
@@ -268,6 +276,7 @@ func getCompletionTypes(nw *parseutil.NodeWalker) *CompletionContext {
 		} else {
 			t = []completionType{
 				CompletionTypeTable,
+				CompletionTypeReferencedTable,
 				CompletionTypeSchema,
 				CompletionTypeView,
 				CompletionTypeSubQueryView,
@@ -292,6 +301,7 @@ func getCompletionTypes(nw *parseutil.NodeWalker) *CompletionContext {
 			t = []completionType{
 				CompletionTypeColumn,
 				CompletionTypeTable,
+				CompletionTypeReferencedTable,
 				CompletionTypeAlias,
 				CompletionTypeView,
 				CompletionTypeSubQueryColumn,
