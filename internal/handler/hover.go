@@ -283,29 +283,16 @@ func hoverContentFromChildIdent(ctx *hoverContext, identName string, dbCache *da
 }
 
 func columnHoverInfo(tableName, colName string, colDesc *database.ColumnDesc) *lsp.MarkupContent {
-	buf := new(bytes.Buffer)
-	fmt.Fprintf(buf, "%s.%s column", tableName, colName)
-	fmt.Fprintln(buf)
-	fmt.Fprintln(buf)
-	fmt.Fprintln(buf, colDesc.OnelineDesc())
 	return &lsp.MarkupContent{
 		Kind:  lsp.Markdown,
-		Value: buf.String(),
+		Value: database.ColumnDoc(tableName, colDesc),
 	}
 }
 
 func tableHoverInfo(tableName string, cols []*database.ColumnDesc) *lsp.MarkupContent {
-	buf := new(bytes.Buffer)
-	fmt.Fprintf(buf, "%s table", tableName)
-	fmt.Fprintln(buf)
-	fmt.Fprintln(buf)
-	for _, col := range cols {
-		fmt.Fprintf(buf, "- %s", col.OnelineDescWithName())
-		fmt.Fprintln(buf)
-	}
 	return &lsp.MarkupContent{
 		Kind:  lsp.Markdown,
-		Value: buf.String(),
+		Value: database.TableDoc(tableName, cols),
 	}
 }
 

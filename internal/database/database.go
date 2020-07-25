@@ -1,6 +1,7 @@
 package database
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"errors"
@@ -67,6 +68,27 @@ func (cd *ColumnDesc) OnelineDesc() string {
 
 func (cd *ColumnDesc) OnelineDescWithName() string {
 	return fmt.Sprintf("%s: %s", cd.Name, cd.OnelineDesc())
+}
+
+func ColumnDoc(tableName string, colDesc *ColumnDesc) string {
+	buf := new(bytes.Buffer)
+	fmt.Fprintf(buf, "%s.%s column", tableName, colDesc.Name)
+	fmt.Fprintln(buf)
+	fmt.Fprintln(buf)
+	fmt.Fprintln(buf, colDesc.OnelineDesc())
+	return buf.String()
+}
+
+func TableDoc(tableName string, cols []*ColumnDesc) string {
+	buf := new(bytes.Buffer)
+	fmt.Fprintf(buf, "%s table", tableName)
+	fmt.Fprintln(buf)
+	fmt.Fprintln(buf)
+	for _, col := range cols {
+		fmt.Fprintf(buf, "- %s", col.OnelineDescWithName())
+		fmt.Fprintln(buf)
+	}
+	return buf.String()
 }
 
 type Opener func(*Config) Database
