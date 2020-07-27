@@ -215,6 +215,28 @@ func TestHover(t *testing.T) {
 			line:   0,
 			col:    49,
 		},
+		{
+			name: "multi line head",
+			input: `SELECT
+  ID,
+  Name
+FROM city
+`,
+			output: "city.Name column",
+			line:   2,
+			col:    3,
+		},
+		{
+			name: "multi line tail",
+			input: `SELECT
+  ID,
+  Name
+FROM city
+`,
+			output: "city.Name column",
+			line:   2,
+			col:    6,
+		},
 	}
 
 	for _, tt := range testcases {
