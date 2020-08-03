@@ -71,21 +71,27 @@ func extractFocusedSubQuery(stmt ast.TokenList, pos token.Pos) ast.TokenList {
 	return parenthesis.(ast.TokenList)
 }
 
-func ExtractSubQueryView(parsed ast.TokenList, pos token.Pos) (*SubQueryInfo, error) {
+func ExtractSubQueryViews(parsed ast.TokenList, pos token.Pos) ([]*SubQueryInfo, error) {
 	stmt, err := extractFocusedStatement(parsed, pos)
 	if err != nil {
 		return nil, err
 	}
 
-	var firstSubQuery *ast.Aliased
 	reader := astutil.NewNodeReader(parsed)
 	matcher := astutil.NodeMatcher{NodeTypes: []ast.NodeType{ast.TypeAliased}}
 	aliases := reader.FindRecursive(matcher)
-	for _, node := range aliases {
-		if token.ComparePos(node.Pos(), pos) < 0 {
+
+	var subQueries []*ast.Aliased
+	var before *ast.Aliased
+	for _, alias := range aliases {
+		if token.ComparePos(alias.Pos(), pos) < 0 {
 			continue
 		}
-		alias, ok := node.(*ast.Aliased)
+		if before != nil && token.ComparePos(alias.End(), before.End()) < 0 {
+			continue
+		}
+
+		alias, ok := alias.(*ast.Aliased)
 		if !ok {
 			continue
 		}
@@ -94,38 +100,43 @@ func ExtractSubQueryView(parsed ast.TokenList, pos token.Pos) (*SubQueryInfo, er
 			continue
 		}
 		if isSubQuery(list) {
-			firstSubQuery = alias
-			break
+			subQueries = append(subQueries, alias)
+			before = alias
 		}
 	}
-	if firstSubQuery == nil {
-		return &SubQueryInfo{}, nil
+	if len(subQueries) == 0 {
+		return nil, nil
 	}
 
-	parenthesis, ok := firstSubQuery.RealName.(*ast.Parenthesis)
-	if !ok {
-		return nil, xerrors.Errorf("is not sub query, query: %q, type: %T", stmt, stmt)
-	}
+	results := []*SubQueryInfo{}
+	for _, subQuery := range subQueries {
+		parenthesis, ok := subQuery.RealName.(*ast.Parenthesis)
+		if !ok {
+			return nil, xerrors.Errorf("is not sub query, query: %q, type: %T", stmt, stmt)
+		}
 
-	idents, err := extractSelectIdentifier(parenthesis.Inner())
-	if err != nil {
-		return nil, err
-	}
+		idents, err := extractSelectIdentifier(parenthesis.Inner())
+		if err != nil {
+			return nil, err
+		}
 
-	tables, err := extractTableIdentifier(parenthesis.Inner())
-	if err != nil {
-		return nil, err
-	}
+		tables, err := extractTableIdentifier(parenthesis.Inner())
+		if err != nil {
+			return nil, err
+		}
 
-	return &SubQueryInfo{
-		Name: firstSubQuery.AliasedName.String(),
-		Views: []*SubQueryView{
-			&SubQueryView{
-				Table:   tables[0],
-				Columns: idents,
+		info := &SubQueryInfo{
+			Name: subQuery.AliasedName.String(),
+			Views: []*SubQueryView{
+				{
+					Table:   tables[0],
+					Columns: idents,
+				},
 			},
-		},
-	}, nil
+		}
+		results = append(results, info)
+	}
+	return results, nil
 }
 
 func ExtractTable(parsed ast.TokenList, pos token.Pos) ([]*TableInfo, error) {

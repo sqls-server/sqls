@@ -184,16 +184,18 @@ func (c *Completer) aliasCandidates(targetTables []*parseutil.TableInfo) []lsp.C
 	return candidates
 }
 
-func (c *Completer) SubQueryColumnCandidates(info *parseutil.SubQueryInfo) []lsp.CompletionItem {
+func (c *Completer) SubQueryColumnCandidates(infos []*parseutil.SubQueryInfo) []lsp.CompletionItem {
 	candidates := []lsp.CompletionItem{}
-	for _, view := range info.Views {
-		for _, colmun := range view.Columns {
-			candidate := lsp.CompletionItem{
-				Label:  colmun,
-				Kind:   lsp.FieldCompletion,
-				Detail: "subQuery",
+	for _, info := range infos {
+		for _, view := range info.Views {
+			for _, colmun := range view.Columns {
+				candidate := lsp.CompletionItem{
+					Label:  colmun,
+					Kind:   lsp.FieldCompletion,
+					Detail: "subQuery",
+				}
+				candidates = append(candidates, candidate)
 			}
-			candidates = append(candidates, candidate)
 		}
 	}
 	return candidates

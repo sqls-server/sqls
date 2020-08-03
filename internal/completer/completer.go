@@ -137,7 +137,7 @@ func (c *Completer) Complete(text string, params lsp.CompletionParams) ([]lsp.Co
 	if err != nil {
 		return nil, err
 	}
-	definedSubQuery, err := parseutil.ExtractSubQueryView(parsed, pos)
+	definedSubQuerys, err := parseutil.ExtractSubQueryViews(parsed, pos)
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +159,7 @@ func (c *Completer) Complete(text string, params lsp.CompletionParams) ([]lsp.Co
 		items = append(items, c.SchemaCandidates()...)
 	}
 	if completionTypeIs(ctx.types, CompletionTypeSubQueryColumn) {
-		items = append(items, c.SubQueryColumnCandidates(definedSubQuery)...)
+		items = append(items, c.SubQueryColumnCandidates(definedSubQuerys)...)
 	}
 	if completionTypeIs(ctx.types, CompletionTypeKeyword) {
 		items = append(items, c.keywordCandidates()...)

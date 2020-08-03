@@ -142,7 +142,7 @@ func hover(text string, params lsp.HoverParams, dbCache *database.DatabaseCache)
 type hoverEnvironment struct {
 	aliases    []ast.Node
 	tables     []*parseutil.TableInfo
-	subQueries *parseutil.SubQueryInfo
+	subQueries []*parseutil.SubQueryInfo
 }
 
 func (e *hoverEnvironment) getTableRealName(aliasName string) (string, bool) {
@@ -177,7 +177,7 @@ func collectEnvirontment(parsed ast.TokenList, pos token.Pos) (*hoverEnvironment
 	if err != nil {
 		return nil, err
 	}
-	subQueries, err := parseutil.ExtractSubQueryView(parsed, pos)
+	subQueries, err := parseutil.ExtractSubQueryViews(parsed, pos)
 	if err != nil {
 		return nil, err
 	}
