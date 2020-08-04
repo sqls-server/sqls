@@ -66,7 +66,7 @@ func generateColumnCandidates(tableName string, columns []*database.ColumnDesc) 
 		candidate := lsp.CompletionItem{
 			Label:  column.Name,
 			Kind:   lsp.FieldCompletion,
-			Detail: columnDetail(tableName, column),
+			Detail: columnDetail(tableName),
 			Documentation: lsp.MarkupContent{
 				Kind:  lsp.Markdown,
 				Value: database.ColumnDoc(tableName, column),
@@ -77,7 +77,7 @@ func generateColumnCandidates(tableName string, columns []*database.ColumnDesc) 
 	return candidates
 }
 
-func columnDetail(tableName string, column *database.ColumnDesc) string {
+func columnDetail(tableName string) string {
 	detail := strings.Join(
 		[]string{
 			"column from",
@@ -192,13 +192,24 @@ func (c *Completer) SubQueryColumnCandidates(infos []*parseutil.SubQueryInfo) []
 				candidate := lsp.CompletionItem{
 					Label:  colmun,
 					Kind:   lsp.FieldCompletion,
-					Detail: "subQuery",
+					Detail: subQueryColumnDetail(info.Name),
 				}
 				candidates = append(candidates, candidate)
 			}
 		}
 	}
 	return candidates
+}
+
+func subQueryColumnDetail(subQueryAliasName string) string {
+	detail := strings.Join(
+		[]string{
+			"column from",
+			"\"" + subQueryAliasName + "\"",
+		},
+		" ",
+	)
+	return detail
 }
 
 func (c *Completer) SchemaCandidates() []lsp.CompletionItem {
