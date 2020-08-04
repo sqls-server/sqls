@@ -27,7 +27,7 @@ const (
 	CompletionTypeTable
 	CompletionTypeReferencedTable
 	CompletionTypeView
-	CompletionTypeSubQueryView
+	CompletionTypeSubQuery
 	CompletionTypeSubQueryColumn
 	CompletionTypeChange
 	CompletionTypeUser
@@ -165,6 +165,9 @@ func (c *Completer) Complete(text string, params lsp.CompletionParams) ([]lsp.Co
 	if completionTypeIs(ctx.types, CompletionTypeSchema) {
 		items = append(items, c.SchemaCandidates()...)
 	}
+	if completionTypeIs(ctx.types, CompletionTypeSubQuery) {
+		items = append(items, c.SubQueryCandidates(definedSubQuerys)...)
+	}
 	if completionTypeIs(ctx.types, CompletionTypeSubQueryColumn) {
 		items = append(items, c.SubQueryColumnCandidates(definedSubQuerys)...)
 	}
@@ -229,7 +232,7 @@ func getCompletionTypes(nw *parseutil.NodeWalker) *CompletionContext {
 				CompletionTypeTable,
 				CompletionTypeReferencedTable,
 				CompletionTypeSubQueryColumn,
-				CompletionTypeSubQueryView,
+				CompletionTypeSubQuery,
 				CompletionTypeView,
 				CompletionTypeFunction,
 				CompletionTypeKeyword,
@@ -259,7 +262,7 @@ func getCompletionTypes(nw *parseutil.NodeWalker) *CompletionContext {
 				CompletionTypeReferencedTable,
 				CompletionTypeView,
 				CompletionTypeSubQueryColumn,
-				CompletionTypeSubQueryView,
+				CompletionTypeSubQuery,
 				CompletionTypeFunction,
 				CompletionTypeKeyword,
 			}
@@ -284,7 +287,7 @@ func getCompletionTypes(nw *parseutil.NodeWalker) *CompletionContext {
 				CompletionTypeReferencedTable,
 				CompletionTypeSchema,
 				CompletionTypeView,
-				CompletionTypeSubQueryView,
+				CompletionTypeSubQuery,
 				CompletionTypeKeyword,
 			}
 		}
@@ -309,7 +312,7 @@ func getCompletionTypes(nw *parseutil.NodeWalker) *CompletionContext {
 				CompletionTypeReferencedTable,
 				CompletionTypeView,
 				CompletionTypeSubQueryColumn,
-				CompletionTypeSubQueryView,
+				CompletionTypeSubQuery,
 				CompletionTypeFunction,
 				CompletionTypeKeyword,
 			}

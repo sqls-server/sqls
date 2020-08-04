@@ -585,7 +585,7 @@ var caseValueCase = []completionTestCase{
 
 var subQueryCase = []completionTestCase{
 	{
-		name:  "filterd SELECT identifiers in the sub query",
+		name:  "in subquery table columns",
 		input: "SELECT * FROM (SELECT Cou FROM city)",
 		line:  0,
 		col:   25,
@@ -596,17 +596,7 @@ var subQueryCase = []completionTestCase{
 		},
 	},
 	{
-		name:  "SELECT identifiers by sub query",
-		input: "SELECT  FROM (SELECT ID as city_id, Name as city_name FROM city) as t",
-		line:  0,
-		col:   7,
-		want: []string{
-			"city_id",
-			"city_name",
-		},
-	},
-	{
-		name:  "FROM identifiers in the sub query",
+		name:  "in subquery table references",
 		input: "SELECT * FROM (SELECT * FROM ",
 		line:  0,
 		col:   29,
@@ -617,13 +607,46 @@ var subQueryCase = []completionTestCase{
 		},
 	},
 	{
-		name:  "filterd FROM identifiers in the sub query",
+		name:  "in subquery filterd table references",
 		input: "SELECT * FROM (SELECT * FROM co",
 		line:  0,
 		col:   29,
 		want: []string{
 			"country",
 			"countrylanguage",
+		},
+	},
+	{
+		name:  "subquery columns",
+		input: "SELECT  FROM (SELECT ID as city_id, Name as city_name FROM city) as t",
+		line:  0,
+		col:   7,
+		want: []string{
+			"t",
+			"city_id",
+			"city_name",
+		},
+	},
+	{
+		name:  "subquery columns",
+		input: "SELECT t. FROM (SELECT ID as city_id, Name as city_name FROM city) as t",
+		line:  0,
+		col:   9,
+		want: []string{
+			"city_id",
+			"city_name",
+		},
+	},
+	{
+		name:  "columns of multiple subquery",
+		input: "SELECT  FROM (SELECT Name as city_name FROM city) AS sub1, (SELECT LocalName as country_name FROM country) AS sub2 limit 1",
+		line:  0,
+		col:   7,
+		want: []string{
+			"sub1",
+			"sub2",
+			"city_name",
+			"country_name",
 		},
 	},
 }

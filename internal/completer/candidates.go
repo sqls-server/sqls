@@ -187,6 +187,15 @@ func generateTableCandidatesByInfos(tables []*parseutil.TableInfo, dbCache *data
 	}
 	return candidates
 }
+
+func (c *Completer) SubQueryCandidates(infos []*parseutil.SubQueryInfo) []lsp.CompletionItem {
+	candidates := []lsp.CompletionItem{}
+	for _, info := range infos {
+		candidate := lsp.CompletionItem{
+			Label:  info.Name,
+			Kind:   lsp.FieldCompletion,
+			Detail: "sub query",
+		}
 		candidates = append(candidates, candidate)
 	}
 	return candidates

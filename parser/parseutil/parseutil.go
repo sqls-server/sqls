@@ -307,6 +307,8 @@ func identifierListToTableInfo(il *ast.IdentiferList) ([]*TableInfo, error) {
 				Name:           v.GetChild().String(),
 			}
 			tis = append(tis, ti)
+		case *ast.Aliased:
+			// pass
 		default:
 			return nil, xerrors.Errorf("failed parse table info, unknown node type %T, value %q in %q", ident, ident, il)
 		}
