@@ -23,7 +23,6 @@ const (
 	_ completionType = iota
 	CompletionTypeKeyword
 	CompletionTypeFunction
-	CompletionTypeAlias
 	CompletionTypeColumn
 	CompletionTypeTable
 	CompletionTypeReferencedTable
@@ -41,8 +40,6 @@ func (ct completionType) String() string {
 		return "Keyword"
 	case CompletionTypeFunction:
 		return "Function"
-	case CompletionTypeAlias:
-		return "Alias"
 	case CompletionTypeColumn:
 		return "Column"
 	case CompletionTypeTable:
@@ -159,9 +156,6 @@ func (c *Completer) Complete(text string, params lsp.CompletionParams) ([]lsp.Co
 	if completionTypeIs(ctx.types, CompletionTypeColumn) {
 		items = append(items, c.columnCandidates(definedTables, ctx.parent)...)
 	}
-	if completionTypeIs(ctx.types, CompletionTypeAlias) {
-		items = append(items, c.aliasCandidates(definedTables)...)
-	}
 	if completionTypeIs(ctx.types, CompletionTypeReferencedTable) {
 		items = append(items, c.ReferencedTableCandidates(definedTables)...)
 	}
@@ -236,7 +230,6 @@ func getCompletionTypes(nw *parseutil.NodeWalker) *CompletionContext {
 				CompletionTypeReferencedTable,
 				CompletionTypeSubQueryColumn,
 				CompletionTypeSubQueryView,
-				CompletionTypeAlias,
 				CompletionTypeView,
 				CompletionTypeFunction,
 				CompletionTypeKeyword,
@@ -264,7 +257,6 @@ func getCompletionTypes(nw *parseutil.NodeWalker) *CompletionContext {
 				CompletionTypeColumn,
 				CompletionTypeTable,
 				CompletionTypeReferencedTable,
-				CompletionTypeAlias,
 				CompletionTypeView,
 				CompletionTypeSubQueryColumn,
 				CompletionTypeSubQueryView,
@@ -315,7 +307,6 @@ func getCompletionTypes(nw *parseutil.NodeWalker) *CompletionContext {
 				CompletionTypeColumn,
 				CompletionTypeTable,
 				CompletionTypeReferencedTable,
-				CompletionTypeAlias,
 				CompletionTypeView,
 				CompletionTypeSubQueryColumn,
 				CompletionTypeSubQueryView,

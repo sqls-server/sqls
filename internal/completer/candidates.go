@@ -95,13 +95,14 @@ func (c *Completer) ReferencedTableCandidates(targetTables []*parseutil.TableInf
 	}
 
 	for _, targetTable := range targetTables {
-		includeTables := []string{}
+		includeTables := []*parseutil.TableInfo{}
 		for _, table := range c.DBCache.SortedTables() {
 			if table == targetTable.Name {
-				includeTables = append(includeTables, table)
+				includeTables = append(includeTables, targetTable)
 			}
 		}
-		candidates = append(candidates, generateTableCandidates(includeTables, c.DBCache, "referenced table")...)
+		genCands := generateTableCandidatesByInfos(includeTables, c.DBCache)
+		candidates = append(candidates, genCands...)
 	}
 	return candidates
 }
@@ -127,27 +128,27 @@ func (c *Completer) TableCandidates(parent *completionParent, targetTables []*pa
 			}
 			excludeTables = append(excludeTables, table)
 		}
-		candidates = append(candidates, generateTableCandidates(excludeTables, c.DBCache, "table")...)
+		candidates = append(candidates, generateTableCandidates(excludeTables, c.DBCache)...)
 	case ParentTypeSchema:
 		tables, ok := c.DBCache.SortedTablesByDBName(parent.Name)
 		if ok {
-			candidates = append(candidates, generateTableCandidates(tables, c.DBCache, "table")...)
+			candidates = append(candidates, generateTableCandidates(tables, c.DBCache)...)
 		} else {
 			tables := c.DBCache.SortedTables()
-			candidates = append(candidates, generateTableCandidates(tables, c.DBCache, "table")...)
+			candidates = append(candidates, generateTableCandidates(tables, c.DBCache)...)
 		}
 	case ParentTypeTable:
 	}
 	return candidates
 }
 
-func generateTableCandidates(tables []string, dbCache *database.DatabaseCache, detail string) []lsp.CompletionItem {
+func generateTableCandidates(tables []string, dbCache *database.DatabaseCache) []lsp.CompletionItem {
 	candidates := []lsp.CompletionItem{}
 	for _, tableName := range tables {
 		candidate := lsp.CompletionItem{
 			Label:  tableName,
 			Kind:   lsp.FieldCompletion,
-			Detail: detail,
+			Detail: "table",
 		}
 		cols, ok := dbCache.ColumnDescs(tableName)
 		if ok {
@@ -161,24 +162,31 @@ func generateTableCandidates(tables []string, dbCache *database.DatabaseCache, d
 	return candidates
 }
 
-func (c *Completer) aliasCandidates(targetTables []*parseutil.TableInfo) []lsp.CompletionItem {
+func generateTableCandidatesByInfos(tables []*parseutil.TableInfo, dbCache *database.DatabaseCache) []lsp.CompletionItem {
 	candidates := []lsp.CompletionItem{}
-	for _, table := range targetTables {
-		if table.Alias == "" {
-			continue
+	for _, table := range tables {
+		name := table.Name
+		detail := "referenced table"
+		if table.Alias != "" {
+			name = table.Alias
+			detail = "aliased table"
 		}
-		detail := strings.Join(
-			[]string{
-				"alias",
-				"`" + table.Name + "`",
-			},
-			" ",
-		)
 		candidate := lsp.CompletionItem{
-			Label:  table.Alias,
+			Label:  name,
 			Kind:   lsp.FieldCompletion,
 			Detail: detail,
 		}
+		cols, ok := dbCache.ColumnDescs(table.Name)
+		if ok {
+			candidate.Documentation = lsp.MarkupContent{
+				Kind:  lsp.Markdown,
+				Value: database.TableDoc(table.Name, cols),
+			}
+		}
+		candidates = append(candidates, candidate)
+	}
+	return candidates
+}
 		candidates = append(candidates, candidate)
 	}
 	return candidates
