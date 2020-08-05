@@ -61,6 +61,18 @@ func isSubQuery(tokenList ast.TokenList) bool {
 	return true
 }
 
+func isSubQueryByNode(node ast.Node) bool {
+	alias, ok := node.(*ast.Aliased)
+	if !ok {
+		return false
+	}
+	list, ok := alias.RealName.(ast.TokenList)
+	if !ok {
+		return false
+	}
+	return isSubQuery(list)
+}
+
 func extractFocusedSubQuery(stmt ast.TokenList, pos token.Pos) ast.TokenList {
 	nodeWalker := NewNodeWalker(stmt, pos)
 	matcher := astutil.NodeMatcher{NodeTypes: []ast.NodeType{ast.TypeParenthesis}}
@@ -120,7 +132,7 @@ func ExtractSubQueryViews(parsed ast.TokenList, pos token.Pos) ([]*SubQueryInfo,
 			return nil, err
 		}
 
-		tables, err := extractTableIdentifier(parenthesis.Inner())
+		tables, err := extractTableIdentifier(parenthesis.Inner(), true)
 		if err != nil {
 			return nil, err
 		}
@@ -148,7 +160,7 @@ func ExtractTable(parsed ast.TokenList, pos token.Pos) ([]*TableInfo, error) {
 	if encloseIsSubQuery(stmt, pos) {
 		list = extractFocusedSubQuery(stmt, pos)
 	}
-	return extractTableIdentifier(list)
+	return extractTableIdentifier(list, false)
 }
 
 var identifierMatcher = astutil.NodeMatcher{
@@ -220,13 +232,16 @@ func extractSelectIdentifier(selectStmt ast.TokenList) ([]string, error) {
 	return realIdents, nil
 }
 
-func extractTableIdentifier(list ast.TokenList) ([]*TableInfo, error) {
+func extractTableIdentifier(list ast.TokenList, isSubQuery bool) ([]*TableInfo, error) {
 	nodes := []ast.Node{}
 	nodes = append(nodes, ExtractTableReferences(list)...)
 	nodes = append(nodes, ExtractTableReference(list)...)
 	nodes = append(nodes, ExtractTableFactor(list)...)
 	res := []*TableInfo{}
 	for _, ident := range nodes {
+		if !isSubQuery && isSubQueryByNode(ident) {
+			continue
+		}
 		infos, err := parseTableInfo(ident)
 		if err != nil {
 			return nil, err
@@ -326,7 +341,7 @@ func aliasedToTableInfo(aliased *ast.Aliased) (*TableInfo, error) {
 		ti.DatabaseSchema = v.Parent.String()
 		ti.Name = v.GetChild().String()
 	case *ast.Parenthesis:
-		tables, err := extractTableIdentifier(v.Inner())
+		tables, err := extractTableIdentifier(v.Inner(), true)
 		if err != nil {
 			panic(err)
 		}

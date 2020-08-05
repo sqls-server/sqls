@@ -413,52 +413,34 @@ func TestExtractTable(t *testing.T) {
 			},
 		},
 		{
+			name:  "sub query",
+			input: "FROM (SELECT ID as city_id, Name as city_name FROM city) as t",
+			pos:   token.Pos{Line: 0, Col: 1},
+			want:  []*TableInfo{},
+		},
+		{
 			name:  "focus outer sub query before",
 			input: "select t.* from (select city_id, city_name from (select city.ID as city_id, city.Name as city_name from city) as t) as t",
 			pos:   token.Pos{Line: 0, Col: 1},
-			want: []*TableInfo{
-				{
-					DatabaseSchema: "",
-					Name:           "city",
-					Alias:          "t",
-				},
-			},
+			want:  []*TableInfo{},
 		},
 		{
 			name:  "focus outer sub query after",
 			input: "select t.* from (select city_id, city_name from (select city.ID as city_id, city.Name as city_name from city) as t) as t",
 			pos:   token.Pos{Line: 0, Col: 120},
-			want: []*TableInfo{
-				{
-					DatabaseSchema: "",
-					Name:           "city",
-					Alias:          "t",
-				},
-			},
+			want:  []*TableInfo{},
 		},
 		{
 			name:  "focus middle sub query before",
 			input: "select t.* from (select city_id, city_name from (select city.ID as city_id, city.Name as city_name from city) as t) as t",
 			pos:   token.Pos{Line: 0, Col: 18},
-			want: []*TableInfo{
-				{
-					DatabaseSchema: "",
-					Name:           "city",
-					Alias:          "t",
-				},
-			},
+			want:  []*TableInfo{},
 		},
 		{
 			name:  "focus middle sub query after",
 			input: "select t.* from (select city_id, city_name from (select city.ID as city_id, city.Name as city_name from city) as t) as t",
 			pos:   token.Pos{Line: 0, Col: 114},
-			want: []*TableInfo{
-				{
-					DatabaseSchema: "",
-					Name:           "city",
-					Alias:          "t",
-				},
-			},
+			want:  []*TableInfo{},
 		},
 		{
 			name:  "focus deep sub query",
