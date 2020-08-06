@@ -6,16 +6,17 @@ import (
 )
 
 type MockDB struct {
-	MockOpen                  func() error
-	MockClose                 func() error
-	MockDatabase              func(context.Context) (string, error)
-	MockDatabases             func(context.Context) ([]string, error)
-	MockDatabaseTables        func(context.Context) (map[string][]string, error)
-	MockTables                func(context.Context) ([]string, error)
-	MockDescribeTable         func(context.Context, string) ([]*ColumnDesc, error)
-	MockDescribeDatabaseTable func(context.Context) ([]*ColumnDesc, error)
-	MockExec                  func(context.Context, string) (sql.Result, error)
-	MockQuery                 func(context.Context, string) (*sql.Rows, error)
+	MockOpen                          func() error
+	MockClose                         func() error
+	MockDatabase                      func(context.Context) (string, error)
+	MockDatabases                     func(context.Context) ([]string, error)
+	MockDatabaseTables                func(context.Context) (map[string][]string, error)
+	MockTables                        func(context.Context) ([]string, error)
+	MockDescribeTable                 func(context.Context, string) ([]*ColumnDesc, error)
+	MockDescribeDatabaseTable         func(context.Context) ([]*ColumnDesc, error)
+	MockDescribeDatabaseTableBySchema func(context.Context, string) ([]*ColumnDesc, error)
+	MockExec                          func(context.Context, string) (sql.Result, error)
+	MockQuery                         func(context.Context, string) (*sql.Rows, error)
 }
 
 func (m *MockDB) Open() error {
@@ -52,6 +53,10 @@ func (m *MockDB) Tables(ctx context.Context) ([]string, error) {
 
 func (m *MockDB) DescribeDatabaseTable(ctx context.Context) ([]*ColumnDesc, error) {
 	return m.MockDescribeDatabaseTable(ctx)
+}
+
+func (m *MockDB) DescribeDatabaseTableBySchema(ctx context.Context, schemaName string) ([]*ColumnDesc, error) {
+	return m.MockDescribeDatabaseTableBySchema(ctx, schemaName)
 }
 
 func (m *MockDB) Exec(ctx context.Context, query string) (sql.Result, error) {
@@ -441,6 +446,12 @@ func init() {
 				res = append(res, dummyCityColumns...)
 				res = append(res, dummyCountryColumns...)
 				res = append(res, dummyCountryLanguageColumns...)
+				return res, nil
+
+			},
+			MockDescribeDatabaseTableBySchema: func(ctx context.Context, schemaName string) ([]*ColumnDesc, error) {
+				res := []*ColumnDesc{}
+				res = append(res, dummyCityColumns...)
 				return res, nil
 
 			},

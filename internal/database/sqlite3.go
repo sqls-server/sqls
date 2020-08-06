@@ -140,6 +140,10 @@ func (db *SQLite3DB) DescribeDatabaseTable(ctx context.Context) ([]*ColumnDesc, 
 	return all, nil
 }
 
+func (db *SQLite3DB) DescribeDatabaseTableBySchema(ctx context.Context, schemaName string) ([]*ColumnDesc, error) {
+	return nil, ErrNotImplementation
+}
+
 func (db *SQLite3DB) Exec(ctx context.Context, query string) (sql.Result, error) {
 	return db.Conn.ExecContext(ctx, query)
 }

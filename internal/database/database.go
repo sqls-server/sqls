@@ -26,6 +26,7 @@ type Database interface {
 	Schemas(ctx context.Context) ([]string, error)
 	SchemaTables(ctx context.Context) (map[string][]string, error)
 	DescribeDatabaseTable(ctx context.Context) ([]*ColumnDesc, error)
+	DescribeDatabaseTableBySchema(ctx context.Context, schemaName string) ([]*ColumnDesc, error)
 	Exec(ctx context.Context, query string) (sql.Result, error)
 	Query(ctx context.Context, query string) (*sql.Rows, error)
 	SwitchDB(dbName string) error
