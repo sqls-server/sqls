@@ -67,6 +67,7 @@ func main() {
 
 	// Initialize language server
 	server := handler.NewServer()
+	defer server.Close()
 	h := jsonrpc2.HandlerWithError(server.Handle)
 
 	// Load specific config

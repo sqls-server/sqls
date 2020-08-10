@@ -24,11 +24,13 @@ type Server struct {
 	DefaultFileCfg  *config.Config
 	WSCfg           *config.Config
 
-	dbConn             database.Database
-	dbCache            *database.DatabaseCache
+	dbConn           *database.DBConn
+	dbCacheGenerator *database.DBCacheGenerator
+
 	curDBName          string
 	curConnectionIndex int
-	files              map[string]*File
+
+	files map[string]*File
 }
 
 type File struct {
@@ -53,6 +55,10 @@ func panicf(r interface{}, format string, v ...interface{}) error {
 		return fmt.Errorf("unexpected panic: %v", r)
 	}
 	return nil
+}
+
+func (s *Server) Close() error {
+	return s.dbConn.Close()
 }
 
 func (s *Server) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
@@ -108,9 +114,17 @@ func (s *Server) handleInitialize(ctx context.Context, conn *jsonrpc2.Conn, req 
 		return nil, err
 	}
 
-	if err := s.generateDBCache(ctx); err != nil && err != ErrNoConnection {
+	s.Close()
+	dbConn, err := s.newDBConn(ctx)
+	if err != nil {
 		return nil, err
 	}
+	s.dbConn = dbConn
+	dbCacheGenerator, err := s.newDBCacheGenerator(ctx)
+	if err != nil {
+		return nil, err
+	}
+	s.dbCacheGenerator = dbCacheGenerator
 
 	return lsp.InitializeResult{
 		Capabilities: lsp.ServerCapabilities{
@@ -245,48 +259,61 @@ func (s *Server) handleWorkspaceDidChangeConfiguration(ctx context.Context, conn
 	}
 	s.WSCfg = params.Settings.SQLS
 
-	// Initialize database database connection
+	// Skip database connection
 	if s.dbConn != nil {
 		return nil, nil
 	}
-	if err := s.generateDBCache(ctx); err != nil && err != ErrNoConnection {
+
+	// Initialize database database connection
+	dbConn, err := s.newDBConn(ctx)
+	if err != nil {
 		return nil, err
 	}
+	s.dbConn = dbConn
+	dbCacheGenerator, err := s.newDBCacheGenerator(ctx)
+	if err != nil {
+		return nil, err
+	}
+	s.dbCacheGenerator = dbCacheGenerator
+
 	return nil, nil
 }
 
-func (s *Server) generateDBCache(ctx context.Context) error {
+func (s *Server) newDBConn(ctx context.Context) (*database.DBConn, error) {
 	// Get the most preferred DB connection settings
 	connCfg := s.topConnection()
 	if connCfg == nil {
-		return ErrNoConnection
+		return nil, ErrNoConnection
 	}
 	if s.curConnectionIndex != 0 {
 		connCfg = s.getConnection(s.curConnectionIndex)
 	}
 	if connCfg == nil {
-		return fmt.Errorf("not found database connection config, index %d", s.curConnectionIndex+1)
+		return nil, fmt.Errorf("not found database connection config, index %d", s.curConnectionIndex+1)
+	}
+	if s.curDBName != "" {
+		connCfg.DBName = s.curDBName
 	}
 
 	// Connect database
-	db, err := database.Open(connCfg)
+	conn, err := database.OpenConn(connCfg)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	s.dbConn = db
-	if s.curDBName != "" {
-		if err := s.dbConn.SwitchDB(s.curDBName); err != nil {
-			return err
-		}
-	}
+	return conn, nil
+}
 
+func (s *Server) newRepository() database.DBRepository {
+	return database.NewMySQLDBRepository(s.dbConn.Conn)
+}
+
+func (s *Server) newDBCacheGenerator(ctx context.Context) (*database.DBCacheGenerator, error) {
 	// Get database infomations(databases, tables, columns) to complete
-	dbCache, err := database.GenerateDBCache(ctx, s.dbConn, s.curDBName)
-	if err != nil {
-		return err
+	generator := database.NewDBCacheUpdater(s.newRepository())
+	if err := generator.GenerateDBCache(ctx, s.curDBName); err != nil {
+		return nil, err
 	}
-	s.dbCache = dbCache
-	return nil
+	return generator, nil
 }
 
 func (s *Server) topConnection() *database.Config {
