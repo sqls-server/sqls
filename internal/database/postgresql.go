@@ -19,64 +19,47 @@ import (
 	"golang.org/x/xerrors"
 )
 
-type PostgreSQLDB struct {
-	Cfg     *Config
-	Option  *DBOption
-	Conn    *sql.DB
-	SSHConn *ssh.Client
-	curDB   string
-}
-
 func init() {
-	Register("postgresql", func(cfg *Config) Database {
-		return &PostgreSQLDB{
-			Cfg:    cfg,
-			Option: &DBOption{},
-		}
-	})
+	RegisterConn("postgresql", postgreSQLConn)
+	RegisterFactory("postgresql", NewPostgreSQLDBRepository)
 }
 
-func (db *PostgreSQLDB) Open() error {
-	dsn, err := genPostgresConfig(db.Cfg)
+func postgreSQLConn(connCfg *Config) (*DBConn, error) {
+	var (
+		conn    *sql.DB
+		sshConn *ssh.Client
+	)
+	dsn, err := genPostgresConfig(connCfg)
 	if err != nil {
-		return err
-	}
-	if db.curDB != "" {
-		dsn, err = replaceDBName(dsn, db.curDB)
-		if err != nil {
-			return err
-		}
+		return nil, err
 	}
 
-	if db.Cfg.SSHCfg != nil {
-		log.Println("via ssh connection")
-		dbConn, sshConn, err := openPostgreSQLViaSSH(dsn, db.Cfg.SSHCfg)
+	if connCfg.SSHCfg != nil {
+		dbConn, dbSSHConn, err := openPostgreSQLViaSSH(dsn, connCfg.SSHCfg)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		db.Conn = dbConn
-		db.SSHConn = sshConn
+		conn = dbConn
+		sshConn = dbSSHConn
 	} else {
 		log.Println("normal connection")
 		dbConn, err := sql.Open("postgres", dsn)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		db.Conn = dbConn
+		conn = dbConn
 	}
-	if err := db.Conn.Ping(); err != nil {
-		return err
+	if err := conn.Ping(); err != nil {
+		return nil, err
 	}
 
-	db.Conn.SetMaxIdleConns(DefaultMaxIdleConns)
-	if db.Option.MaxIdleConns != 0 {
-		db.Conn.SetMaxIdleConns(db.Option.MaxIdleConns)
-	}
-	db.Conn.SetMaxOpenConns(DefaultMaxOpenConns)
-	if db.Option.MaxOpenConns != 0 {
-		db.Conn.SetMaxOpenConns(db.Option.MaxOpenConns)
-	}
-	return nil
+	conn.SetMaxIdleConns(DefaultMaxIdleConns)
+	conn.SetMaxOpenConns(DefaultMaxOpenConns)
+
+	return &DBConn{
+		Conn:    conn,
+		SSHConn: sshConn,
+	}, nil
 }
 
 type PostgreSQLViaSSHDialer struct {
@@ -123,19 +106,15 @@ func openPostgreSQLViaSSH(dsn string, sshCfg *SSHConfig) (*sql.DB, *ssh.Client, 
 	return conn, sshConn, nil
 }
 
-func (db *PostgreSQLDB) Close() error {
-	if err := db.Conn.Close(); err != nil {
-		return err
-	}
-	if db.SSHConn != nil {
-		if err := db.SSHConn.Close(); err != nil {
-			return err
-		}
-	}
-	return nil
+type PostgreSQLDBRepository struct {
+	Conn *sql.DB
 }
 
-func (db *PostgreSQLDB) CurrentDatabase(ctx context.Context) (string, error) {
+func NewPostgreSQLDBRepository(conn *sql.DB) DBRepository {
+	return &PostgreSQLDBRepository{Conn: conn}
+}
+
+func (db *PostgreSQLDBRepository) CurrentDatabase(ctx context.Context) (string, error) {
 	row := db.Conn.QueryRowContext(ctx, "SELECT current_database()")
 	var database string
 	if err := row.Scan(&database); err != nil {
@@ -144,7 +123,7 @@ func (db *PostgreSQLDB) CurrentDatabase(ctx context.Context) (string, error) {
 	return database, nil
 }
 
-func (db *PostgreSQLDB) Databases(ctx context.Context) ([]string, error) {
+func (db *PostgreSQLDBRepository) Databases(ctx context.Context) ([]string, error) {
 	rows, err := db.Conn.QueryContext(
 		ctx,
 		`
@@ -164,7 +143,7 @@ func (db *PostgreSQLDB) Databases(ctx context.Context) ([]string, error) {
 	return databases, nil
 }
 
-func (db *PostgreSQLDB) CurrentSchema(ctx context.Context) (string, error) {
+func (db *PostgreSQLDBRepository) CurrentSchema(ctx context.Context) (string, error) {
 	row := db.Conn.QueryRowContext(ctx, "SELECT current_schema()")
 	var database string
 	if err := row.Scan(&database); err != nil {
@@ -173,7 +152,7 @@ func (db *PostgreSQLDB) CurrentSchema(ctx context.Context) (string, error) {
 	return database, nil
 }
 
-func (db *PostgreSQLDB) Schemas(ctx context.Context) ([]string, error) {
+func (db *PostgreSQLDBRepository) Schemas(ctx context.Context) ([]string, error) {
 	rows, err := db.Conn.QueryContext(
 		ctx,
 		`
@@ -193,7 +172,7 @@ func (db *PostgreSQLDB) Schemas(ctx context.Context) ([]string, error) {
 	return databases, nil
 }
 
-func (db *PostgreSQLDB) SchemaTables(ctx context.Context) (map[string][]string, error) {
+func (db *PostgreSQLDBRepository) SchemaTables(ctx context.Context) (map[string][]string, error) {
 	rows, err := db.Conn.QueryContext(
 		ctx,
 		`
@@ -225,7 +204,7 @@ func (db *PostgreSQLDB) SchemaTables(ctx context.Context) (map[string][]string, 
 	return databaseTables, nil
 }
 
-func (db *PostgreSQLDB) Tables(ctx context.Context) ([]string, error) {
+func (db *PostgreSQLDBRepository) Tables(ctx context.Context) ([]string, error) {
 	rows, err := db.Conn.QueryContext(
 		ctx,
 		`
@@ -253,7 +232,7 @@ func (db *PostgreSQLDB) Tables(ctx context.Context) ([]string, error) {
 	return tables, nil
 }
 
-func (db *PostgreSQLDB) DescribeDatabaseTable(ctx context.Context) ([]*ColumnDesc, error) {
+func (db *PostgreSQLDBRepository) DescribeDatabaseTable(ctx context.Context) ([]*ColumnDesc, error) {
 	rows, err := db.Conn.QueryContext(
 		ctx,
 		`
@@ -308,7 +287,7 @@ func (db *PostgreSQLDB) DescribeDatabaseTable(ctx context.Context) ([]*ColumnDes
 	return tableInfos, nil
 }
 
-func (db *PostgreSQLDB) DescribeDatabaseTableBySchema(ctx context.Context, schemaName string) ([]*ColumnDesc, error) {
+func (db *PostgreSQLDBRepository) DescribeDatabaseTableBySchema(ctx context.Context, schemaName string) ([]*ColumnDesc, error) {
 	rows, err := db.Conn.QueryContext(
 		ctx,
 		`
@@ -365,17 +344,12 @@ func (db *PostgreSQLDB) DescribeDatabaseTableBySchema(ctx context.Context, schem
 	return tableInfos, nil
 }
 
-func (db *PostgreSQLDB) Exec(ctx context.Context, query string) (sql.Result, error) {
+func (db *PostgreSQLDBRepository) Exec(ctx context.Context, query string) (sql.Result, error) {
 	return db.Conn.ExecContext(ctx, query)
 }
 
-func (db *PostgreSQLDB) Query(ctx context.Context, query string) (*sql.Rows, error) {
+func (db *PostgreSQLDBRepository) Query(ctx context.Context, query string) (*sql.Rows, error) {
 	return db.Conn.QueryContext(ctx, query)
-}
-
-func (db *PostgreSQLDB) SwitchDB(dbName string) error {
-	db.curDB = dbName
-	return nil
 }
 
 func genPostgresConfig(connCfg *Config) (string, error) {

@@ -27,6 +27,7 @@ type Server struct {
 	dbConn           *database.DBConn
 	dbCacheGenerator *database.DBCacheGenerator
 
+	curDBCfg           *database.Config
 	curDBName          string
 	curConnectionIndex int
 
@@ -70,7 +71,7 @@ func (s *Server) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.
 	}()
 	res, err := s.handle(ctx, conn, req)
 	if err != nil {
-		log.Printf("error serving %+v\n", err)
+		log.Printf("error serving, %+v\n", err)
 	}
 	return res, err
 }
@@ -294,6 +295,7 @@ func (s *Server) newDBConn(ctx context.Context) (*database.DBConn, error) {
 	if s.curDBName != "" {
 		connCfg.DBName = s.curDBName
 	}
+	s.curDBCfg = connCfg
 
 	// Connect database
 	conn, err := database.OpenConn(connCfg)
@@ -304,7 +306,8 @@ func (s *Server) newDBConn(ctx context.Context) (*database.DBConn, error) {
 }
 
 func (s *Server) newRepository() database.DBRepository {
-	return database.NewMySQLDBRepository(s.dbConn.Conn)
+	repo, _ := database.CreateRepository(s.curDBCfg.Driver, s.dbConn.Conn)
+	return repo
 }
 
 func (s *Server) newDBCacheGenerator(ctx context.Context) (*database.DBCacheGenerator, error) {

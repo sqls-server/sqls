@@ -2,7 +2,6 @@ package database
 
 import (
 	"bytes"
-	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -16,21 +15,6 @@ import (
 var (
 	ErrNotImplementation error = errors.New("not implementation")
 )
-
-type Database interface {
-	Open() error
-	Close() error
-	CurrentDatabase(ctx context.Context) (string, error)
-	Databases(ctx context.Context) ([]string, error)
-	CurrentSchema(ctx context.Context) (string, error)
-	Schemas(ctx context.Context) ([]string, error)
-	SchemaTables(ctx context.Context) (map[string][]string, error)
-	DescribeDatabaseTable(ctx context.Context) ([]*ColumnDesc, error)
-	DescribeDatabaseTableBySchema(ctx context.Context, schemaName string) ([]*ColumnDesc, error)
-	Exec(ctx context.Context, query string) (sql.Result, error)
-	Query(ctx context.Context, query string) (*sql.Rows, error)
-	SwitchDB(dbName string) error
-}
 
 const (
 	DefaultMaxIdleConns = 10
@@ -90,22 +74,6 @@ func TableDoc(tableName string, cols []*ColumnDesc) string {
 		fmt.Fprintln(buf)
 	}
 	return buf.String()
-}
-
-type Opener func(*Config) Database
-
-var drivers = make(map[string]Opener)
-
-func Register(name string, f Opener) {
-	drivers[name] = f
-}
-
-func Open(cfg *Config) (Database, error) {
-	d, ok := drivers[cfg.Driver]
-	if !ok {
-		return nil, xerrors.Errorf("driver not found, %v", cfg.Driver)
-	}
-	return d(cfg), nil
 }
 
 type Proto string

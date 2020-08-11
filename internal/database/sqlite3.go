@@ -9,63 +9,52 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-type SQLite3DB struct {
-	Cfg    *Config
-	Option *DBOption
-	Conn   *sql.DB
-}
-
 func init() {
-	Register("sqlite3", func(cfg *Config) Database {
-		return &SQLite3DB{
-			Cfg:    cfg,
-			Option: &DBOption{},
-		}
-	})
+	RegisterConn("sqlite3", sqlite3Conn)
+	RegisterFactory("sqlite3", NewSQLite3DBRepository)
 }
 
-func (db *SQLite3DB) Open() error {
-	conn, err := sql.Open("sqlite3", db.Cfg.DataSourceName)
+func sqlite3Conn(connCfg *Config) (*DBConn, error) {
+	conn, err := sql.Open("sqlite3", connCfg.DataSourceName)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	conn.SetMaxIdleConns(DefaultMaxIdleConns)
-	if db.Option.MaxIdleConns != 0 {
-		conn.SetMaxIdleConns(db.Option.MaxIdleConns)
-	}
 	conn.SetMaxOpenConns(DefaultMaxOpenConns)
-	if db.Option.MaxOpenConns != 0 {
-		conn.SetMaxOpenConns(db.Option.MaxOpenConns)
-	}
-	db.Conn = conn
-	return nil
+	return &DBConn{
+		Conn: conn,
+	}, nil
 }
 
-func (db *SQLite3DB) Close() error {
-	return db.Conn.Close()
+type SQLite3DBRepository struct {
+	Conn *sql.DB
 }
 
-func (db *SQLite3DB) CurrentDatabase(ctx context.Context) (string, error) {
+func NewSQLite3DBRepository(conn *sql.DB) DBRepository {
+	return &SQLite3DBRepository{Conn: conn}
+}
+
+func (db *SQLite3DBRepository) CurrentDatabase(ctx context.Context) (string, error) {
 	return "", nil
 }
 
-func (db *SQLite3DB) Databases(ctx context.Context) ([]string, error) {
+func (db *SQLite3DBRepository) Databases(ctx context.Context) ([]string, error) {
 	return []string{}, nil
 }
 
-func (db *SQLite3DB) CurrentSchema(ctx context.Context) (string, error) {
+func (db *SQLite3DBRepository) CurrentSchema(ctx context.Context) (string, error) {
 	return db.CurrentDatabase(ctx)
 }
 
-func (db *SQLite3DB) Schemas(ctx context.Context) ([]string, error) {
+func (db *SQLite3DBRepository) Schemas(ctx context.Context) ([]string, error) {
 	return db.Databases(ctx)
 }
 
-func (db *SQLite3DB) SchemaTables(ctx context.Context) (map[string][]string, error) {
+func (db *SQLite3DBRepository) SchemaTables(ctx context.Context) (map[string][]string, error) {
 	return nil, nil
 }
 
-func (db *SQLite3DB) Tables(ctx context.Context) ([]string, error) {
+func (db *SQLite3DBRepository) Tables(ctx context.Context) ([]string, error) {
 	rows, err := db.Conn.QueryContext(ctx, `
 	SELECT
 	  name 
@@ -90,7 +79,7 @@ func (db *SQLite3DB) Tables(ctx context.Context) ([]string, error) {
 	return tables, nil
 }
 
-func (db *SQLite3DB) describeTable(ctx context.Context, tableName string) ([]*ColumnDesc, error) {
+func (db *SQLite3DBRepository) describeTable(ctx context.Context, tableName string) ([]*ColumnDesc, error) {
 	rows, err := db.Conn.QueryContext(ctx, fmt.Sprintf("PRAGMA table_info(%s);", tableName))
 	if err != nil {
 		log.Fatal(err)
@@ -122,7 +111,7 @@ func (db *SQLite3DB) describeTable(ctx context.Context, tableName string) ([]*Co
 	return tableInfos, nil
 }
 
-func (db *SQLite3DB) DescribeDatabaseTable(ctx context.Context) ([]*ColumnDesc, error) {
+func (db *SQLite3DBRepository) DescribeDatabaseTable(ctx context.Context) ([]*ColumnDesc, error) {
 	tables, err := db.Tables(ctx)
 	if err != nil {
 		return nil, err
@@ -140,18 +129,14 @@ func (db *SQLite3DB) DescribeDatabaseTable(ctx context.Context) ([]*ColumnDesc, 
 	return all, nil
 }
 
-func (db *SQLite3DB) DescribeDatabaseTableBySchema(ctx context.Context, schemaName string) ([]*ColumnDesc, error) {
+func (db *SQLite3DBRepository) DescribeDatabaseTableBySchema(ctx context.Context, schemaName string) ([]*ColumnDesc, error) {
 	return nil, ErrNotImplementation
 }
 
-func (db *SQLite3DB) Exec(ctx context.Context, query string) (sql.Result, error) {
+func (db *SQLite3DBRepository) Exec(ctx context.Context, query string) (sql.Result, error) {
 	return db.Conn.ExecContext(ctx, query)
 }
 
-func (db *SQLite3DB) Query(ctx context.Context, query string) (*sql.Rows, error) {
+func (db *SQLite3DBRepository) Query(ctx context.Context, query string) (*sql.Rows, error) {
 	return db.Conn.QueryContext(ctx, query)
-}
-
-func (db *SQLite3DB) SwitchDB(dbName string) error {
-	return ErrNotImplementation
 }
