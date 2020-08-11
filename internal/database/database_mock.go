@@ -451,6 +451,6 @@ func (m *MockResult) RowsAffected() (int64, error) {
 }
 
 func init() {
-	RegisterConn("mock", func(connCfg *Config) (*DBConn, error) { return nil, nil })
+	RegisterConn("mock", func(connCfg *Config) (*DBConn, error) { return &DBConn{}, nil })
 	RegisterFactory("mock", NewMockDBRepository)
 }

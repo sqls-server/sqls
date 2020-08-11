@@ -653,7 +653,7 @@ var subQueryCase = []completionTestCase{
 
 func TestComplete(t *testing.T) {
 	tx := newTestContext()
-	tx.setup(t)
+	tx.initServer(t)
 	defer tx.tearDown()
 
 	didChangeConfigurationParams := lsp.DidChangeConfigurationParams{

@@ -9,6 +9,7 @@ import (
 	"runtime"
 
 	"github.com/sourcegraph/jsonrpc2"
+	"golang.org/x/xerrors"
 
 	"github.com/lighttiger2505/sqls/internal/config"
 	"github.com/lighttiger2505/sqls/internal/database"
@@ -115,19 +116,7 @@ func (s *Server) handleInitialize(ctx context.Context, conn *jsonrpc2.Conn, req 
 		return nil, err
 	}
 
-	s.Close()
-	dbConn, err := s.newDBConn(ctx)
-	if err != nil {
-		return nil, err
-	}
-	s.dbConn = dbConn
-	dbCacheGenerator, err := s.newDBCacheGenerator(ctx)
-	if err != nil {
-		return nil, err
-	}
-	s.dbCacheGenerator = dbCacheGenerator
-
-	return lsp.InitializeResult{
+	result = lsp.InitializeResult{
 		Capabilities: lsp.ServerCapabilities{
 			TextDocumentSync:   lsp.TDSKFull,
 			HoverProvider:      true,
@@ -139,7 +128,24 @@ func (s *Server) handleInitialize(ctx context.Context, conn *jsonrpc2.Conn, req 
 			DocumentFormattingProvider:      false,
 			DocumentRangeFormattingProvider: false,
 		},
-	}, nil
+	}
+
+	s.Close()
+	dbConn, err := s.newDBConn(ctx)
+	if err != nil {
+		if ErrNoConnection != nil {
+			return result, nil
+		}
+		return nil, err
+	}
+	s.dbConn = dbConn
+	dbCacheGenerator, err := s.newDBCacheGenerator(ctx)
+	if err != nil {
+		return nil, err
+	}
+	s.dbCacheGenerator = dbCacheGenerator
+
+	return result, nil
 }
 
 func (s *Server) handleShutdown(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
@@ -290,7 +296,7 @@ func (s *Server) newDBConn(ctx context.Context) (*database.DBConn, error) {
 		connCfg = s.getConnection(s.curConnectionIndex)
 	}
 	if connCfg == nil {
-		return nil, fmt.Errorf("not found database connection config, index %d", s.curConnectionIndex+1)
+		return nil, xerrors.Errorf("not found database connection config, index %d", s.curConnectionIndex+1)
 	}
 	if s.curDBName != "" {
 		connCfg.DBName = s.curDBName
@@ -305,14 +311,13 @@ func (s *Server) newDBConn(ctx context.Context) (*database.DBConn, error) {
 	return conn, nil
 }
 
-func (s *Server) newRepository() database.DBRepository {
-	repo, _ := database.CreateRepository(s.curDBCfg.Driver, s.dbConn.Conn)
-	return repo
-}
-
 func (s *Server) newDBCacheGenerator(ctx context.Context) (*database.DBCacheGenerator, error) {
 	// Get database infomations(databases, tables, columns) to complete
-	generator := database.NewDBCacheUpdater(s.newRepository())
+	repo, err := database.CreateRepository(s.curDBCfg.Driver, s.dbConn.Conn)
+	if err != nil {
+		return nil, err
+	}
+	generator := database.NewDBCacheUpdater(repo)
 	if err := generator.GenerateDBCache(ctx, s.curDBName); err != nil {
 		return nil, err
 	}
