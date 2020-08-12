@@ -17,7 +17,7 @@ func NewDBCacheUpdater(repo DBRepository) *DBCacheGenerator {
 	}
 }
 
-func (u *DBCacheGenerator) GenerateDBCache(ctx context.Context, defaultSchema string) error {
+func (u *DBCacheGenerator) GenerateDBCachePrimary(ctx context.Context, defaultSchema string) error {
 	var err error
 	dbCache := &DatabaseCache{}
 	dbCache.defaultSchema, err = u.repo.CurrentSchema(ctx)
@@ -32,11 +32,20 @@ func (u *DBCacheGenerator) GenerateDBCache(ctx context.Context, defaultSchema st
 	if err != nil {
 		return err
 	}
-	dbCache.ColumnsWithParent, err = u.genColumnsWithParentCache(ctx)
+	dbCache.ColumnsWithParent, err = u.genColumnCacheCurrent(ctx, dbCache.defaultSchema)
 	if err != nil {
 		return err
 	}
 	u.Cache = dbCache
+	return nil
+}
+
+func (u *DBCacheGenerator) GenerateDBCacheSecondary(ctx context.Context, defaultSchema string) error {
+	var err error
+	u.Cache.ColumnsWithParent, err = u.genColumnCacheAll(ctx)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -52,12 +61,24 @@ func (u *DBCacheGenerator) genSchmeaCache(ctx context.Context) (map[string]strin
 	return databaseMap, nil
 }
 
-func (u *DBCacheGenerator) genColumnsWithParentCache(ctx context.Context) (map[string][]*ColumnDesc, error) {
-	columnMap := map[string][]*ColumnDesc{}
+func (u *DBCacheGenerator) genColumnCacheCurrent(ctx context.Context, schemaName string) (map[string][]*ColumnDesc, error) {
+	columnDescs, err := u.repo.DescribeDatabaseTableBySchema(ctx, schemaName)
+	if err != nil {
+		return nil, err
+	}
+	return genColumnMap(columnDescs), nil
+}
+
+func (u *DBCacheGenerator) genColumnCacheAll(ctx context.Context) (map[string][]*ColumnDesc, error) {
 	columnDescs, err := u.repo.DescribeDatabaseTable(ctx)
 	if err != nil {
 		return nil, err
 	}
+	return genColumnMap(columnDescs), nil
+}
+
+func genColumnMap(columnDescs []*ColumnDesc) map[string][]*ColumnDesc {
+	columnMap := map[string][]*ColumnDesc{}
 	for _, desc := range columnDescs {
 		key := desc.Schema + "\t" + desc.Table
 		if _, ok := columnMap[key]; ok {
@@ -67,7 +88,7 @@ func (u *DBCacheGenerator) genColumnsWithParentCache(ctx context.Context) (map[s
 			columnMap[key] = arr
 		}
 	}
-	return columnMap, nil
+	return columnMap
 }
 
 type DatabaseCache struct {

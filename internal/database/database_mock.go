@@ -45,6 +45,8 @@ func NewMockDBRepository(conn *sql.DB) DBRepository {
 		MockDescribeDatabaseTableBySchema: func(ctx context.Context, schemaName string) ([]*ColumnDesc, error) {
 			res := []*ColumnDesc{}
 			res = append(res, dummyCityColumns...)
+			res = append(res, dummyCountryColumns...)
+			res = append(res, dummyCountryLanguageColumns...)
 			return res, nil
 
 		},

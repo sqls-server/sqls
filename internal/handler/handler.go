@@ -318,7 +318,7 @@ func (s *Server) newDBCacheGenerator(ctx context.Context) (*database.DBCacheGene
 		return nil, err
 	}
 	generator := database.NewDBCacheUpdater(repo)
-	if err := generator.GenerateDBCache(ctx, s.curDBName); err != nil {
+	if err := generator.GenerateDBCachePrimary(ctx, s.curDBName); err != nil {
 		return nil, err
 	}
 	return generator, nil
