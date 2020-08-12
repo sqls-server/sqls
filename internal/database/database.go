@@ -2,14 +2,11 @@ package database
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"strings"
-
-	"golang.org/x/crypto/ssh"
-	"golang.org/x/xerrors"
 )
 
 var (
@@ -20,6 +17,18 @@ const (
 	DefaultMaxIdleConns = 10
 	DefaultMaxOpenConns = 5
 )
+
+type DBRepository interface {
+	CurrentDatabase(ctx context.Context) (string, error)
+	Databases(ctx context.Context) ([]string, error)
+	CurrentSchema(ctx context.Context) (string, error)
+	Schemas(ctx context.Context) ([]string, error)
+	SchemaTables(ctx context.Context) (map[string][]string, error)
+	DescribeDatabaseTable(ctx context.Context) ([]*ColumnDesc, error)
+	DescribeDatabaseTableBySchema(ctx context.Context, schemaName string) ([]*ColumnDesc, error)
+	Exec(ctx context.Context, query string) (sql.Result, error)
+	Query(ctx context.Context, query string) (*sql.Rows, error)
+}
 
 type DBOption struct {
 	MaxIdleConns int
