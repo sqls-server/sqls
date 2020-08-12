@@ -28,7 +28,7 @@ type Server struct {
 	dbConn           *database.DBConnection
 	dbCacheGenerator *database.DBCacheGenerator
 
-	curDBCfg           *database.Config
+	curDBCfg           *database.DBConfig
 	curDBName          string
 	curConnectionIndex int
 
@@ -324,7 +324,7 @@ func (s *Server) newDBCacheGenerator(ctx context.Context) (*database.DBCacheGene
 	return generator, nil
 }
 
-func (s *Server) topConnection() *database.Config {
+func (s *Server) topConnection() *database.DBConfig {
 	cfg := s.getConfig()
 	if cfg == nil || len(cfg.Connections) == 0 {
 		return nil
@@ -332,7 +332,7 @@ func (s *Server) topConnection() *database.Config {
 	return cfg.Connections[0]
 }
 
-func (s *Server) getConnection(index int) *database.Config {
+func (s *Server) getConnection(index int) *database.DBConfig {
 	cfg := s.getConfig()
 	if cfg == nil || (index < 0 && len(cfg.Connections) <= index) {
 		return nil

@@ -19,7 +19,7 @@ func TestHover(t *testing.T) {
 			SQLS *config.Config "json:\"sqls\""
 		}{
 			SQLS: &config.Config{
-				Connections: []*database.Config{
+				Connections: []*database.DBConfig{
 					{
 						Driver:         "mock",
 						DataSourceName: "",
