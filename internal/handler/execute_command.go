@@ -269,7 +269,7 @@ func (s *Server) switchDatabase(ctx context.Context, params lsp.ExecuteCommandPa
 
 	// Reconnect database
 	s.Close()
-	dbConn, err := s.newDBConn(ctx)
+	dbConn, err := s.newDBConnection(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -323,7 +323,7 @@ func (s *Server) switchConnections(ctx context.Context, params lsp.ExecuteComman
 
 	// Reconnect database
 	s.Close()
-	dbConn, err := s.newDBConn(ctx)
+	dbConn, err := s.newDBConnection(ctx)
 	if err != nil {
 		return nil, err
 	}

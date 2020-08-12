@@ -131,7 +131,7 @@ func (s *Server) handleInitialize(ctx context.Context, conn *jsonrpc2.Conn, req 
 	}
 
 	s.Close()
-	dbConn, err := s.newDBConn(ctx)
+	dbConn, err := s.newDBConnection(ctx)
 	if err != nil {
 		if ErrNoConnection != nil {
 			return result, nil
@@ -272,7 +272,7 @@ func (s *Server) handleWorkspaceDidChangeConfiguration(ctx context.Context, conn
 	}
 
 	// Initialize database database connection
-	dbConn, err := s.newDBConn(ctx)
+	dbConn, err := s.newDBConnection(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -286,7 +286,7 @@ func (s *Server) handleWorkspaceDidChangeConfiguration(ctx context.Context, conn
 	return nil, nil
 }
 
-func (s *Server) newDBConn(ctx context.Context) (*database.DBConnection, error) {
+func (s *Server) newDBConnection(ctx context.Context) (*database.DBConnection, error) {
 	// Get the most preferred DB connection settings
 	connCfg := s.topConnection()
 	if connCfg == nil {
