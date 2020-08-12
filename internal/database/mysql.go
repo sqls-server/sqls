@@ -13,22 +13,22 @@ import (
 )
 
 func init() {
-	RegisterConn("mysql", mysqlConn)
+	RegisterOpen("mysql", mysqlOpen)
 	RegisterFactory("mysql", NewMySQLDBRepository)
 }
 
-func mysqlConn(connCfg *Config) (*DBConn, error) {
+func mysqlOpen(dbConnCfg *DBConfig) (*DBConnection, error) {
 	var (
 		conn    *sql.DB
 		sshConn *ssh.Client
 	)
-	cfg, err := genMysqlConfig(connCfg)
+	cfg, err := genMysqlConfig(dbConnCfg)
 	if err != nil {
 		return nil, err
 	}
 
-	if connCfg.SSHCfg != nil {
-		dbConn, dbSSHConn, err := openMySQLViaSSH(cfg.FormatDSN(), connCfg.SSHCfg)
+	if dbConnCfg.SSHCfg != nil {
+		dbConn, dbSSHConn, err := openMySQLViaSSH(cfg.FormatDSN(), dbConnCfg.SSHCfg)
 		if err != nil {
 			return nil, err
 		}
@@ -48,7 +48,7 @@ func mysqlConn(connCfg *Config) (*DBConn, error) {
 	conn.SetMaxIdleConns(DefaultMaxIdleConns)
 	conn.SetMaxOpenConns(DefaultMaxOpenConns)
 
-	return &DBConn{
+	return &DBConnection{
 		Conn:    conn,
 		SSHConn: sshConn,
 	}, nil
@@ -79,7 +79,7 @@ func openMySQLViaSSH(dsn string, sshCfg *SSHConfig) (*sql.DB, *ssh.Client, error
 	return conn, sshConn, nil
 }
 
-func genMysqlConfig(connCfg *Config) (*mysql.Config, error) {
+func genMysqlConfig(connCfg *DBConfig) (*mysql.Config, error) {
 	cfg := mysql.NewConfig()
 
 	if connCfg.DataSourceName != "" {

@@ -25,7 +25,7 @@ type Server struct {
 	DefaultFileCfg  *config.Config
 	WSCfg           *config.Config
 
-	dbConn           *database.DBConn
+	dbConn           *database.DBConnection
 	dbCacheGenerator *database.DBCacheGenerator
 
 	curDBCfg           *database.Config
@@ -286,7 +286,7 @@ func (s *Server) handleWorkspaceDidChangeConfiguration(ctx context.Context, conn
 	return nil, nil
 }
 
-func (s *Server) newDBConn(ctx context.Context) (*database.DBConn, error) {
+func (s *Server) newDBConn(ctx context.Context) (*database.DBConnection, error) {
 	// Get the most preferred DB connection settings
 	connCfg := s.topConnection()
 	if connCfg == nil {
@@ -304,7 +304,7 @@ func (s *Server) newDBConn(ctx context.Context) (*database.DBConn, error) {
 	s.curDBCfg = connCfg
 
 	// Connect database
-	conn, err := database.OpenConn(connCfg)
+	conn, err := database.Open(connCfg)
 	if err != nil {
 		return nil, err
 	}

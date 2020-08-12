@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"database/sql/driver"
-	"fmt"
 	"log"
 	"net"
 	"net/url"
@@ -20,22 +19,22 @@ import (
 )
 
 func init() {
-	RegisterConn("postgresql", postgreSQLConn)
+	RegisterOpen("postgresql", postgreSQLOpen)
 	RegisterFactory("postgresql", NewPostgreSQLDBRepository)
 }
 
-func postgreSQLConn(connCfg *Config) (*DBConn, error) {
+func postgreSQLOpen(dbConnCfg *DBConfig) (*DBConnection, error) {
 	var (
 		conn    *sql.DB
 		sshConn *ssh.Client
 	)
-	dsn, err := genPostgresConfig(connCfg)
+	dsn, err := genPostgresConfig(dbConnCfg)
 	if err != nil {
 		return nil, err
 	}
 
-	if connCfg.SSHCfg != nil {
-		dbConn, dbSSHConn, err := openPostgreSQLViaSSH(dsn, connCfg.SSHCfg)
+	if dbConnCfg.SSHCfg != nil {
+		dbConn, dbSSHConn, err := openPostgreSQLViaSSH(dsn, dbConnCfg.SSHCfg)
 		if err != nil {
 			return nil, err
 		}
@@ -56,7 +55,7 @@ func postgreSQLConn(connCfg *Config) (*DBConn, error) {
 	conn.SetMaxIdleConns(DefaultMaxIdleConns)
 	conn.SetMaxOpenConns(DefaultMaxOpenConns)
 
-	return &DBConn{
+	return &DBConnection{
 		Conn:    conn,
 		SSHConn: sshConn,
 	}, nil
@@ -352,7 +351,7 @@ func (db *PostgreSQLDBRepository) Query(ctx context.Context, query string) (*sql
 	return db.Conn.QueryContext(ctx, query)
 }
 
-func genPostgresConfig(connCfg *Config) (string, error) {
+func genPostgresConfig(connCfg *DBConfig) (string, error) {
 	if connCfg.DataSourceName != "" {
 		return connCfg.DataSourceName, nil
 	}
@@ -465,111 +464,4 @@ func (s *scanner) SkipSpaces() (rune, bool) {
 		r, ok = s.Next()
 	}
 	return r, ok
-}
-
-// The parsing code is based on conninfo_parse from libpq's fe-connect.c
-func parseOpts(name string, o values) error {
-	s := newScanner(name)
-
-	for {
-		var (
-			keyRunes, valRunes []rune
-			r                  rune
-			ok                 bool
-		)
-
-		if r, ok = s.SkipSpaces(); !ok {
-			break
-		}
-
-		// Scan the key
-		for !unicode.IsSpace(r) && r != '=' {
-			keyRunes = append(keyRunes, r)
-			if r, ok = s.Next(); !ok {
-				break
-			}
-		}
-
-		// Skip any whitespace if we're not at the = yet
-		if r != '=' {
-			r, ok = s.SkipSpaces()
-		}
-
-		// The current character should be =
-		if r != '=' || !ok {
-			return fmt.Errorf(`missing "=" after %q in connection info string"`, string(keyRunes))
-		}
-
-		// Skip any whitespace after the =
-		if r, ok = s.SkipSpaces(); !ok {
-			// If we reach the end here, the last value is just an empty string as per libpq.
-			o[string(keyRunes)] = ""
-			break
-		}
-
-		if r != '\'' {
-			for !unicode.IsSpace(r) {
-				if r == '\\' {
-					if r, ok = s.Next(); !ok {
-						return fmt.Errorf(`missing character after backslash`)
-					}
-				}
-				valRunes = append(valRunes, r)
-
-				if r, ok = s.Next(); !ok {
-					break
-				}
-			}
-		} else {
-		quote:
-			for {
-				if r, ok = s.Next(); !ok {
-					return fmt.Errorf(`unterminated quoted string literal in connection string`)
-				}
-				switch r {
-				case '\'':
-					break quote
-				case '\\':
-					r, _ = s.Next()
-					fallthrough
-				default:
-					valRunes = append(valRunes, r)
-				}
-			}
-		}
-
-		o[string(keyRunes)] = string(valRunes)
-	}
-
-	return nil
-}
-
-func parseURL(opts values) (string, error) {
-	var kvs []string
-	escaper := strings.NewReplacer(` `, `\ `, `'`, `\'`, `\`, `\\`)
-	accrue := func(k, v string) {
-		if v != "" {
-			kvs = append(kvs, k+"="+escaper.Replace(v))
-		}
-	}
-
-	for k, v := range opts {
-		accrue(k, v)
-	}
-
-	sort.Strings(kvs) // Makes testing easier (not a performance concern)
-	return strings.Join(kvs, " "), nil
-}
-
-func replaceDBName(dsn, dbName string) (string, error) {
-	o := make(values)
-	if err := parseOpts(dsn, o); err != nil {
-		return "", err
-	}
-	o["dbname"] = dbName
-	newDSN, err := parseURL(o)
-	if err != nil {
-		return "", err
-	}
-	return newDSN, nil
 }

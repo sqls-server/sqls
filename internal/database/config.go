@@ -16,7 +16,7 @@ const (
 	ProtoUnix Proto = "unix"
 )
 
-type Config struct {
+type DBConfig struct {
 	Alias          string            `json:"alias" yaml:"alias"`
 	Driver         string            `json:"driver" yaml:"driver"`
 	DataSourceName string            `json:"dataSourceName" yaml:"dataSourceName"`

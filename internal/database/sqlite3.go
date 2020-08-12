@@ -10,18 +10,18 @@ import (
 )
 
 func init() {
-	RegisterConn("sqlite3", sqlite3Conn)
+	RegisterOpen("sqlite3", sqlite3Open)
 	RegisterFactory("sqlite3", NewSQLite3DBRepository)
 }
 
-func sqlite3Conn(connCfg *Config) (*DBConn, error) {
+func sqlite3Open(connCfg *DBConfig) (*DBConnection, error) {
 	conn, err := sql.Open("sqlite3", connCfg.DataSourceName)
 	if err != nil {
 		return nil, err
 	}
 	conn.SetMaxIdleConns(DefaultMaxIdleConns)
 	conn.SetMaxOpenConns(DefaultMaxOpenConns)
-	return &DBConn{
+	return &DBConnection{
 		Conn: conn,
 	}, nil
 }
