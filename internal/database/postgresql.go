@@ -41,7 +41,6 @@ func postgreSQLOpen(dbConnCfg *DBConfig) (*DBConnection, error) {
 		conn = dbConn
 		sshConn = dbSSHConn
 	} else {
-		log.Println("normal connection")
 		dbConn, err := sql.Open("postgres", dsn)
 		if err != nil {
 			return nil, err

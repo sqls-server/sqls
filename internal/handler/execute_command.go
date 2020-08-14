@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"strconv"
 	"strings"
 
@@ -141,7 +140,6 @@ func (s *Server) executeQuery(ctx context.Context, params lsp.ExecuteCommandPara
 	// execute statements
 	buf := new(bytes.Buffer)
 	for _, stmt := range stmts {
-		log.Println(text)
 		query := strings.TrimSpace(stmt.String())
 		if query == "" {
 			continue

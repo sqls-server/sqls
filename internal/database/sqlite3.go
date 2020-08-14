@@ -116,14 +116,12 @@ func (db *SQLite3DBRepository) DescribeDatabaseTable(ctx context.Context) ([]*Co
 	if err != nil {
 		return nil, err
 	}
-	log.Println(tables)
 	all := []*ColumnDesc{}
 	for _, table := range tables {
 		descs, err := db.describeTable(ctx, table)
 		if err != nil {
 			return nil, err
 		}
-		log.Println(descs)
 		all = append(all, descs...)
 	}
 	return all, nil
