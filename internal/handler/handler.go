@@ -25,14 +25,15 @@ type Server struct {
 	DefaultFileCfg  *config.Config
 	WSCfg           *config.Config
 
-	dbConn           *database.DBConnection
-	dbCacheGenerator *database.DBCacheGenerator
+	dbConn *database.DBConnection
+	// dbCacheGenerator *database.DBCacheGenerator
 
 	curDBCfg           *database.DBConfig
 	curDBName          string
 	curConnectionIndex int
 
-	files map[string]*File
+	worker *database.Worker
+	files  map[string]*File
 }
 
 type File struct {
@@ -40,9 +41,10 @@ type File struct {
 	Text       string
 }
 
-func NewServer() *Server {
+func NewServer(worker *database.Worker) *Server {
 	return &Server{
-		files: make(map[string]*File),
+		files:  make(map[string]*File),
+		worker: worker,
 	}
 }
 
@@ -59,7 +61,7 @@ func panicf(r interface{}, format string, v ...interface{}) error {
 	return nil
 }
 
-func (s *Server) Close() error {
+func (s *Server) Stop() error {
 	return s.dbConn.Close()
 }
 
@@ -130,7 +132,7 @@ func (s *Server) handleInitialize(ctx context.Context, conn *jsonrpc2.Conn, req 
 		},
 	}
 
-	s.Close()
+	s.Stop()
 	dbConn, err := s.newDBConnection(ctx)
 	if err != nil {
 		if ErrNoConnection != nil {
@@ -139,11 +141,10 @@ func (s *Server) handleInitialize(ctx context.Context, conn *jsonrpc2.Conn, req 
 		return nil, err
 	}
 	s.dbConn = dbConn
-	dbCacheGenerator, err := s.newDBCacheGenerator(ctx)
-	if err != nil {
+	if err := s.worker.Update(ctx, s.curDBCfg, s.dbConn.Conn); err != nil {
 		return nil, err
 	}
-	s.dbCacheGenerator = dbCacheGenerator
+	s.worker.UpdateAsync(s.curDBCfg, s.dbConn.Conn)
 
 	return result, nil
 }
@@ -277,11 +278,10 @@ func (s *Server) handleWorkspaceDidChangeConfiguration(ctx context.Context, conn
 		return nil, err
 	}
 	s.dbConn = dbConn
-	dbCacheGenerator, err := s.newDBCacheGenerator(ctx)
-	if err != nil {
+	if err := s.worker.Update(ctx, s.curDBCfg, s.dbConn.Conn); err != nil {
 		return nil, err
 	}
-	s.dbCacheGenerator = dbCacheGenerator
+	s.worker.UpdateAsync(s.curDBCfg, s.dbConn.Conn)
 
 	return nil, nil
 }
@@ -318,7 +318,7 @@ func (s *Server) newDBCacheGenerator(ctx context.Context) (*database.DBCacheGene
 		return nil, err
 	}
 	generator := database.NewDBCacheUpdater(repo)
-	if err := generator.GenerateDBCachePrimary(ctx, s.curDBName); err != nil {
+	if err := generator.GenerateDBCachePrimary(ctx); err != nil {
 		return nil, err
 	}
 	return generator, nil

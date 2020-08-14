@@ -17,7 +17,7 @@ func NewDBCacheUpdater(repo DBRepository) *DBCacheGenerator {
 	}
 }
 
-func (u *DBCacheGenerator) GenerateDBCachePrimary(ctx context.Context, defaultSchema string) error {
+func (u *DBCacheGenerator) GenerateDBCachePrimary(ctx context.Context) error {
 	var err error
 	dbCache := &DatabaseCache{}
 	dbCache.defaultSchema, err = u.repo.CurrentSchema(ctx)
@@ -40,13 +40,8 @@ func (u *DBCacheGenerator) GenerateDBCachePrimary(ctx context.Context, defaultSc
 	return nil
 }
 
-func (u *DBCacheGenerator) GenerateDBCacheSecondary(ctx context.Context, defaultSchema string) error {
-	var err error
-	u.Cache.ColumnsWithParent, err = u.genColumnCacheAll(ctx)
-	if err != nil {
-		return err
-	}
-	return nil
+func (u *DBCacheGenerator) GenerateDBCacheSecondary(ctx context.Context) (map[string][]*ColumnDesc, error) {
+	return u.genColumnCacheAll(ctx)
 }
 
 func (u *DBCacheGenerator) genSchmeaCache(ctx context.Context) (map[string]string, error) {

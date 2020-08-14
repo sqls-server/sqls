@@ -266,17 +266,16 @@ func (s *Server) switchDatabase(ctx context.Context, params lsp.ExecuteCommandPa
 	s.curDBName = dbName
 
 	// Reconnect database
-	s.Close()
+	s.Stop()
 	dbConn, err := s.newDBConnection(ctx)
 	if err != nil {
 		return nil, err
 	}
 	s.dbConn = dbConn
-	dbCacheGenerator, err := s.newDBCacheGenerator(ctx)
-	if err != nil {
+	if err := s.worker.Update(ctx, s.curDBCfg, s.dbConn.Conn); err != nil {
 		return nil, err
 	}
-	s.dbCacheGenerator = dbCacheGenerator
+	s.worker.UpdateAsync(s.curDBCfg, s.dbConn.Conn)
 
 	return nil, nil
 }
@@ -320,17 +319,16 @@ func (s *Server) switchConnections(ctx context.Context, params lsp.ExecuteComman
 	s.curConnectionIndex = index
 
 	// Reconnect database
-	s.Close()
+	s.Stop()
 	dbConn, err := s.newDBConnection(ctx)
 	if err != nil {
 		return nil, err
 	}
 	s.dbConn = dbConn
-	dbCacheGenerator, err := s.newDBCacheGenerator(ctx)
-	if err != nil {
+	if err := s.worker.Update(ctx, s.curDBCfg, s.dbConn.Conn); err != nil {
 		return nil, err
 	}
-	s.dbCacheGenerator = dbCacheGenerator
+	s.worker.UpdateAsync(s.curDBCfg, s.dbConn.Conn)
 	return nil, nil
 }
 

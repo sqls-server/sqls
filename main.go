@@ -11,6 +11,7 @@ import (
 	"github.com/sourcegraph/jsonrpc2"
 
 	"github.com/lighttiger2505/sqls/internal/config"
+	"github.com/lighttiger2505/sqls/internal/database"
 	"github.com/lighttiger2505/sqls/internal/handler"
 )
 
@@ -65,9 +66,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	worker := database.NewWorker()
+	worker.Start()
+	defer worker.Stop()
+
 	// Initialize language server
-	server := handler.NewServer()
-	defer server.Close()
+	server := handler.NewServer(worker)
+	defer server.Stop()
 	h := jsonrpc2.HandlerWithError(server.Handle)
 
 	// Load specific config
