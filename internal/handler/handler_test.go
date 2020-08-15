@@ -9,6 +9,7 @@ import (
 
 	"github.com/sourcegraph/jsonrpc2"
 
+	"github.com/lighttiger2505/sqls/internal/database"
 	"github.com/lighttiger2505/sqls/internal/lsp"
 )
 
@@ -21,7 +22,11 @@ type TestContext struct {
 }
 
 func newTestContext() *TestContext {
-	server := NewServer()
+	worker := database.NewWorker()
+	worker.Start()
+	defer worker.Stop()
+
+	server := NewServer(worker)
 	handler := jsonrpc2.HandlerWithError(server.Handle)
 	ctx := context.Background()
 	return &TestContext{

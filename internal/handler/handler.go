@@ -132,7 +132,8 @@ func (s *Server) handleInitialize(ctx context.Context, conn *jsonrpc2.Conn, req 
 	}
 
 	// Initialize database database connection
-	if err := s.reconnectionDB(ctx); err != nil {
+	// NOTE: If no connection is found at this point, it is possible that the connection settings are sent to workspace config, so don't make an error
+	if err := s.reconnectionDB(ctx); err != nil && err != ErrNoConnection {
 		return nil, err
 	}
 
