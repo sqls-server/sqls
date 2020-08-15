@@ -40,7 +40,10 @@ type File struct {
 	Text       string
 }
 
-func NewServer(worker *database.Worker) *Server {
+func NewServer() *Server {
+	worker := database.NewWorker()
+	worker.Start()
+
 	return &Server{
 		files:  make(map[string]*File),
 		worker: worker,
@@ -61,7 +64,11 @@ func panicf(r interface{}, format string, v ...interface{}) error {
 }
 
 func (s *Server) Stop() error {
-	return s.dbConn.Close()
+	if err := s.dbConn.Close(); err != nil {
+		return err
+	}
+	s.worker.Stop()
+	return nil
 }
 
 func (s *Server) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {

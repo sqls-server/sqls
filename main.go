@@ -11,7 +11,6 @@ import (
 	"github.com/sourcegraph/jsonrpc2"
 
 	"github.com/lighttiger2505/sqls/internal/config"
-	"github.com/lighttiger2505/sqls/internal/database"
 	"github.com/lighttiger2505/sqls/internal/handler"
 )
 
@@ -66,13 +65,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Initialize db cache generate worker
-	worker := database.NewWorker()
-	worker.Start()
-	defer worker.Stop()
-
 	// Initialize language server
-	server := handler.NewServer(worker)
+	server := handler.NewServer()
 	defer func() {
 		if err := server.Stop(); err != nil {
 			log.Println(err)
