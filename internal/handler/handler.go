@@ -272,7 +272,7 @@ func (s *Server) handleWorkspaceDidChangeConfiguration(ctx context.Context, conn
 }
 
 func (s *Server) reconnectionDB(ctx context.Context) error {
-	if err := s.Stop(); err != nil {
+	if err := s.dbConn.Close(); err != nil {
 		return err
 	}
 
