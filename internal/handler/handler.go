@@ -132,7 +132,9 @@ func (s *Server) handleInitialize(ctx context.Context, conn *jsonrpc2.Conn, req 
 	}
 
 	// Initialize database database connection
-	s.reconnectionDB(ctx)
+	if err := s.reconnectionDB(ctx); err != nil {
+		return nil, err
+	}
 
 	return result, nil
 }
@@ -261,13 +263,17 @@ func (s *Server) handleWorkspaceDidChangeConfiguration(ctx context.Context, conn
 	}
 
 	// Initialize database database connection
-	s.reconnectionDB(ctx)
+	if err := s.reconnectionDB(ctx); err != nil {
+		return nil, err
+	}
 
 	return nil, nil
 }
 
 func (s *Server) reconnectionDB(ctx context.Context) error {
-	s.Stop()
+	if err := s.Stop(); err != nil {
+		return err
+	}
 
 	dbConn, err := s.newDBConnection(ctx)
 	if err != nil {

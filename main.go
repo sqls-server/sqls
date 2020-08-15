@@ -66,13 +66,18 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Initialize db cache generate worker
 	worker := database.NewWorker()
 	worker.Start()
 	defer worker.Stop()
 
 	// Initialize language server
 	server := handler.NewServer(worker)
-	defer server.Stop()
+	defer func() {
+		if err := server.Stop(); err != nil {
+			log.Println(err)
+		}
+	}()
 	h := jsonrpc2.HandlerWithError(server.Handle)
 
 	// Load specific config
