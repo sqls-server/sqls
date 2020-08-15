@@ -265,17 +265,8 @@ func (s *Server) switchDatabase(ctx context.Context, params lsp.ExecuteCommandPa
 	// Change current database
 	s.curDBName = dbName
 
-	// Reconnect database
-	s.Stop()
-	dbConn, err := s.newDBConnection(ctx)
-	if err != nil {
-		return nil, err
-	}
-	s.dbConn = dbConn
-	if err := s.worker.Update(ctx, s.curDBCfg, s.dbConn.Conn); err != nil {
-		return nil, err
-	}
-	s.worker.UpdateAsync(s.curDBCfg, s.dbConn.Conn)
+	// close and reconnection to database
+	s.reconnectionDB(ctx)
 
 	return nil, nil
 }
@@ -318,17 +309,9 @@ func (s *Server) switchConnections(ctx context.Context, params lsp.ExecuteComman
 	// Reconnect database
 	s.curConnectionIndex = index
 
-	// Reconnect database
-	s.Stop()
-	dbConn, err := s.newDBConnection(ctx)
-	if err != nil {
-		return nil, err
-	}
-	s.dbConn = dbConn
-	if err := s.worker.Update(ctx, s.curDBCfg, s.dbConn.Conn); err != nil {
-		return nil, err
-	}
-	s.worker.UpdateAsync(s.curDBCfg, s.dbConn.Conn)
+	// close and reconnection to database
+	s.reconnectionDB(ctx)
+
 	return nil, nil
 }
 

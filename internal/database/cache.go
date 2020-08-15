@@ -7,8 +7,7 @@ import (
 )
 
 type DBCacheGenerator struct {
-	Cache *DatabaseCache
-	repo  DBRepository
+	repo DBRepository
 }
 
 func NewDBCacheUpdater(repo DBRepository) *DBCacheGenerator {
@@ -17,27 +16,26 @@ func NewDBCacheUpdater(repo DBRepository) *DBCacheGenerator {
 	}
 }
 
-func (u *DBCacheGenerator) GenerateDBCachePrimary(ctx context.Context) error {
+func (u *DBCacheGenerator) GenerateDBCachePrimary(ctx context.Context) (*DatabaseCache, error) {
 	var err error
 	dbCache := &DatabaseCache{}
 	dbCache.defaultSchema, err = u.repo.CurrentSchema(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	dbCache.Schemas, err = u.genSchmeaCache(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	dbCache.SchemaTables, err = u.repo.SchemaTables(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	dbCache.ColumnsWithParent, err = u.genColumnCacheCurrent(ctx, dbCache.defaultSchema)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	u.Cache = dbCache
-	return nil
+	return dbCache, nil
 }
 
 func (u *DBCacheGenerator) GenerateDBCacheSecondary(ctx context.Context) (map[string][]*ColumnDesc, error) {

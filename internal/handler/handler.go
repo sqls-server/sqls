@@ -26,7 +26,6 @@ type Server struct {
 	WSCfg           *config.Config
 
 	dbConn *database.DBConnection
-	// dbCacheGenerator *database.DBCacheGenerator
 
 	curDBCfg           *database.DBConfig
 	curDBName          string
@@ -132,19 +131,8 @@ func (s *Server) handleInitialize(ctx context.Context, conn *jsonrpc2.Conn, req 
 		},
 	}
 
-	s.Stop()
-	dbConn, err := s.newDBConnection(ctx)
-	if err != nil {
-		if ErrNoConnection != nil {
-			return result, nil
-		}
-		return nil, err
-	}
-	s.dbConn = dbConn
-	if err := s.worker.Update(ctx, s.curDBCfg, s.dbConn.Conn); err != nil {
-		return nil, err
-	}
-	s.worker.UpdateAsync(s.curDBCfg, s.dbConn.Conn)
+	// Initialize database database connection
+	s.reconnectionDB(ctx)
 
 	return result, nil
 }
@@ -273,17 +261,27 @@ func (s *Server) handleWorkspaceDidChangeConfiguration(ctx context.Context, conn
 	}
 
 	// Initialize database database connection
-	dbConn, err := s.newDBConnection(ctx)
-	if err != nil {
-		return nil, err
-	}
-	s.dbConn = dbConn
-	if err := s.worker.Update(ctx, s.curDBCfg, s.dbConn.Conn); err != nil {
-		return nil, err
-	}
-	s.worker.UpdateAsync(s.curDBCfg, s.dbConn.Conn)
+	s.reconnectionDB(ctx)
 
 	return nil, nil
+}
+
+func (s *Server) reconnectionDB(ctx context.Context) error {
+	s.Stop()
+
+	dbConn, err := s.newDBConnection(ctx)
+	if err != nil {
+		return err
+	}
+	s.dbConn = dbConn
+	dbRepo, err := s.newDBRepository(ctx)
+	if err != nil {
+		return err
+	}
+	if err := s.worker.ReCache(ctx, dbRepo); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *Server) newDBConnection(ctx context.Context) (*database.DBConnection, error) {
@@ -311,17 +309,12 @@ func (s *Server) newDBConnection(ctx context.Context) (*database.DBConnection, e
 	return conn, nil
 }
 
-func (s *Server) newDBCacheGenerator(ctx context.Context) (*database.DBCacheGenerator, error) {
-	// Get database infomations(databases, tables, columns) to complete
+func (s *Server) newDBRepository(ctx context.Context) (database.DBRepository, error) {
 	repo, err := database.CreateRepository(s.curDBCfg.Driver, s.dbConn.Conn)
 	if err != nil {
 		return nil, err
 	}
-	generator := database.NewDBCacheUpdater(repo)
-	if err := generator.GenerateDBCachePrimary(ctx); err != nil {
-		return nil, err
-	}
-	return generator, nil
+	return repo, nil
 }
 
 func (s *Server) topConnection() *database.DBConfig {

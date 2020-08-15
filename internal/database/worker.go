@@ -2,18 +2,17 @@ package database
 
 import (
 	"context"
-	"database/sql"
 	"log"
+	"sync"
 )
 
 type Worker struct {
-	dbCfg  *DBConfig
-	dbConn *sql.DB
-
+	dbRepo  DBRepository
 	dbCache *DatabaseCache
 
 	done   chan struct{}
 	update chan struct{}
+	lock   sync.Mutex
 }
 
 func NewWorker() *Worker {
@@ -28,10 +27,14 @@ func (w *Worker) Cache() *DatabaseCache {
 }
 
 func (w *Worker) setCache(c *DatabaseCache) {
+	w.lock.Lock()
+	defer w.lock.Unlock()
 	w.dbCache = c
 }
 
 func (w *Worker) setColumnCache(col map[string][]*ColumnDesc) {
+	w.lock.Lock()
+	defer w.lock.Unlock()
 	if w.dbCache != nil {
 		w.dbCache.ColumnsWithParent = col
 	}
@@ -46,10 +49,7 @@ func (w *Worker) Start() {
 				log.Println("db worker: done")
 				return
 			case <-w.update:
-				generator, err := w.newDBCacheGenerator()
-				if err != nil {
-					log.Println(err)
-				}
+				generator := NewDBCacheUpdater(w.dbRepo)
 				col, err := generator.GenerateDBCacheSecondary(context.Background())
 				if err != nil {
 					log.Println(err)
@@ -65,34 +65,26 @@ func (w *Worker) Stop() {
 	close(w.done)
 }
 
-func (w *Worker) Update(ctx context.Context, dbCfg *DBConfig, dbConn *sql.DB) error {
-	w.dbCfg = dbCfg
-	w.dbConn = dbConn
+func (w *Worker) ReCache(ctx context.Context, repo DBRepository) error {
+	w.dbRepo = repo
+	if err := w.updateAllCache(ctx); err != nil {
+		return err
+	}
+	w.updateAdditionalCache()
+	return nil
+}
 
-	generator, err := w.newDBCacheGenerator()
+func (w *Worker) updateAllCache(ctx context.Context) error {
+	generator := NewDBCacheUpdater(w.dbRepo)
+	cache, err := generator.GenerateDBCachePrimary(ctx)
 	if err != nil {
 		return err
 	}
-	if err := generator.GenerateDBCachePrimary(ctx); err != nil {
-		return err
-	}
-	w.setCache(generator.Cache)
+	w.setCache(cache)
 	log.Println("db worker: Update db chache primary complete")
 	return nil
 }
 
-func (w *Worker) UpdateAsync(dbCfg *DBConfig, dbConn *sql.DB) {
-	w.dbCfg = dbCfg
-	w.dbConn = dbConn
-
+func (w *Worker) updateAdditionalCache() {
 	w.update <- struct{}{}
-}
-
-func (w *Worker) newDBCacheGenerator() (*DBCacheGenerator, error) {
-	repo, err := CreateRepository(w.dbCfg.Driver, w.dbConn)
-	if err != nil {
-		return nil, err
-	}
-	generator := NewDBCacheUpdater(repo)
-	return generator, nil
 }
