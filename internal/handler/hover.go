@@ -45,7 +45,7 @@ func (s *Server) handleTextDocumentHover(ctx context.Context, conn *jsonrpc2.Con
 	return res, nil
 }
 
-func hover(text string, params lsp.HoverParams, dbCache *database.DatabaseCache) (*lsp.Hover, error) {
+func hover(text string, params lsp.HoverParams, dbCache *database.DBCache) (*lsp.Hover, error) {
 	var pos token.Pos
 	// NOTE work around
 	if params.Position.Line == 0 {
@@ -205,7 +205,7 @@ func findIdent(nodes []ast.Node) (*ast.Identifer, *ast.MemberIdentifer) {
 	return ident, memIdent
 }
 
-func hoverContentFromIdent(ctx *hoverContext, identName string, dbCache *database.DatabaseCache, hoverEnv *hoverEnvironment) *lsp.MarkupContent {
+func hoverContentFromIdent(ctx *hoverContext, identName string, dbCache *database.DBCache, hoverEnv *hoverEnvironment) *lsp.MarkupContent {
 	if hoverTypeIs(ctx.types, hoverTypeColumn) {
 		columnName := identName
 		if realName, ok := hoverEnv.getColumnRealName(columnName); ok {
@@ -245,7 +245,7 @@ func hoverContentFromIdent(ctx *hoverContext, identName string, dbCache *databas
 	return nil
 }
 
-func hoverContentFromParentIdent(ctx *hoverContext, identName string, dbCache *database.DatabaseCache, hoverEnv *hoverEnvironment) *lsp.MarkupContent {
+func hoverContentFromParentIdent(ctx *hoverContext, identName string, dbCache *database.DBCache, hoverEnv *hoverEnvironment) *lsp.MarkupContent {
 	switch ctx.parent.Type {
 	case parentTypeNone:
 		return nil
@@ -266,7 +266,7 @@ func hoverContentFromParentIdent(ctx *hoverContext, identName string, dbCache *d
 	return nil
 }
 
-func hoverContentFromChildIdent(ctx *hoverContext, identName string, dbCache *database.DatabaseCache, hoverEnv *hoverEnvironment) *lsp.MarkupContent {
+func hoverContentFromChildIdent(ctx *hoverContext, identName string, dbCache *database.DBCache, hoverEnv *hoverEnvironment) *lsp.MarkupContent {
 	switch ctx.parent.Type {
 	case parentTypeNone:
 		return nil

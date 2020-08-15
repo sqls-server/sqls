@@ -8,7 +8,7 @@ import (
 
 type Worker struct {
 	dbRepo  DBRepository
-	dbCache *DatabaseCache
+	dbCache *DBCache
 
 	done   chan struct{}
 	update chan struct{}
@@ -22,11 +22,11 @@ func NewWorker() *Worker {
 	}
 }
 
-func (w *Worker) Cache() *DatabaseCache {
+func (w *Worker) Cache() *DBCache {
 	return w.dbCache
 }
 
-func (w *Worker) setCache(c *DatabaseCache) {
+func (w *Worker) setCache(c *DBCache) {
 	w.lock.Lock()
 	defer w.lock.Unlock()
 	w.dbCache = c

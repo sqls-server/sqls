@@ -16,9 +16,9 @@ func NewDBCacheUpdater(repo DBRepository) *DBCacheGenerator {
 	}
 }
 
-func (u *DBCacheGenerator) GenerateDBCachePrimary(ctx context.Context) (*DatabaseCache, error) {
+func (u *DBCacheGenerator) GenerateDBCachePrimary(ctx context.Context) (*DBCache, error) {
 	var err error
-	dbCache := &DatabaseCache{}
+	dbCache := &DBCache{}
 	dbCache.defaultSchema, err = u.repo.CurrentSchema(ctx)
 	if err != nil {
 		return nil, err
@@ -84,19 +84,19 @@ func genColumnMap(columnDescs []*ColumnDesc) map[string][]*ColumnDesc {
 	return columnMap
 }
 
-type DatabaseCache struct {
+type DBCache struct {
 	defaultSchema     string
 	Schemas           map[string]string
 	SchemaTables      map[string][]string
 	ColumnsWithParent map[string][]*ColumnDesc
 }
 
-func (dc *DatabaseCache) Database(dbName string) (db string, ok bool) {
+func (dc *DBCache) Database(dbName string) (db string, ok bool) {
 	db, ok = dc.Schemas[strings.ToUpper(dbName)]
 	return
 }
 
-func (dc *DatabaseCache) SortedSchemas() []string {
+func (dc *DBCache) SortedSchemas() []string {
 	dbs := []string{}
 	for _, db := range dc.Schemas {
 		dbs = append(dbs, db)
@@ -105,28 +105,28 @@ func (dc *DatabaseCache) SortedSchemas() []string {
 	return dbs
 }
 
-func (dc *DatabaseCache) SortedTablesByDBName(dbName string) (tbls []string, ok bool) {
+func (dc *DBCache) SortedTablesByDBName(dbName string) (tbls []string, ok bool) {
 	tbls, ok = dc.SchemaTables[dbName]
 	sort.Strings(tbls)
 	return
 }
 
-func (dc *DatabaseCache) SortedTables() []string {
+func (dc *DBCache) SortedTables() []string {
 	tbls, _ := dc.SortedTablesByDBName(dc.defaultSchema)
 	return tbls
 }
 
-func (dc *DatabaseCache) ColumnDescs(tableName string) (cols []*ColumnDesc, ok bool) {
+func (dc *DBCache) ColumnDescs(tableName string) (cols []*ColumnDesc, ok bool) {
 	cols, ok = dc.ColumnsWithParent[columnDatabaseKey(dc.defaultSchema, tableName)]
 	return
 }
 
-func (dc *DatabaseCache) ColumnDatabase(dbName, tableName string) (cols []*ColumnDesc, ok bool) {
+func (dc *DBCache) ColumnDatabase(dbName, tableName string) (cols []*ColumnDesc, ok bool) {
 	cols, ok = dc.ColumnsWithParent[columnDatabaseKey(dbName, tableName)]
 	return
 }
 
-func (dc *DatabaseCache) Column(tableName, colName string) (*ColumnDesc, bool) {
+func (dc *DBCache) Column(tableName, colName string) (*ColumnDesc, bool) {
 	cols, ok := dc.ColumnsWithParent[columnDatabaseKey(dc.defaultSchema, tableName)]
 	if !ok {
 		return nil, false

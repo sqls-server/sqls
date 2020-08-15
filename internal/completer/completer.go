@@ -86,10 +86,10 @@ var keywords = []string{
 }
 
 type Completer struct {
-	DBCache *database.DatabaseCache
+	DBCache *database.DBCache
 }
 
-func NewCompleter(dbCache *database.DatabaseCache) *Completer {
+func NewCompleter(dbCache *database.DBCache) *Completer {
 	return &Completer{
 		DBCache: dbCache,
 	}
