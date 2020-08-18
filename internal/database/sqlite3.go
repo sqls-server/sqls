@@ -51,7 +51,11 @@ func (db *SQLite3DBRepository) Schemas(ctx context.Context) ([]string, error) {
 }
 
 func (db *SQLite3DBRepository) SchemaTables(ctx context.Context) (map[string][]string, error) {
-	return nil, nil
+	tables, err := db.Tables(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return map[string][]string{"": tables}, nil
 }
 
 func (db *SQLite3DBRepository) Tables(ctx context.Context) ([]string, error) {
@@ -128,7 +132,7 @@ func (db *SQLite3DBRepository) DescribeDatabaseTable(ctx context.Context) ([]*Co
 }
 
 func (db *SQLite3DBRepository) DescribeDatabaseTableBySchema(ctx context.Context, schemaName string) ([]*ColumnDesc, error) {
-	return nil, ErrNotImplementation
+	return db.DescribeDatabaseTable(ctx)
 }
 
 func (db *SQLite3DBRepository) Exec(ctx context.Context, query string) (sql.Result, error) {
