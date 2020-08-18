@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"strconv"
 	"strings"
 
@@ -122,11 +121,6 @@ func (s *Server) executeQuery(ctx context.Context, params lsp.ExecuteCommandPara
 		}
 	}
 
-	if err := s.dbConn.Open(); err != nil {
-		return nil, err
-	}
-	defer s.dbConn.Close()
-
 	// extract target query
 	text := f.Text
 	if params.Range != nil {
@@ -146,7 +140,6 @@ func (s *Server) executeQuery(ctx context.Context, params lsp.ExecuteCommandPara
 	// execute statements
 	buf := new(bytes.Buffer)
 	for _, stmt := range stmts {
-		log.Println(text)
 		query := strings.TrimSpace(stmt.String())
 		if query == "" {
 			continue
@@ -197,7 +190,8 @@ func extractRangeText(text string, startLine, startChar, endLine, endChar int) s
 }
 
 func (s *Server) query(query string, vertical bool) (string, error) {
-	rows, err := s.dbConn.Query(context.Background(), query)
+	repo := database.NewMySQLDBRepository(s.dbConn.Conn)
+	rows, err := repo.Query(context.Background(), query)
 	if err != nil {
 		return err.Error(), nil
 	}
@@ -233,7 +227,8 @@ func (s *Server) query(query string, vertical bool) (string, error) {
 }
 
 func (s *Server) exec(query string, vertical bool) (string, error) {
-	result, err := s.dbConn.Exec(context.Background(), query)
+	repo := database.NewMySQLDBRepository(s.dbConn.Conn)
+	result, err := repo.Exec(context.Background(), query)
 	if err != nil {
 		return err.Error(), nil
 	}
@@ -250,14 +245,11 @@ func (s *Server) exec(query string, vertical bool) (string, error) {
 }
 
 func (s *Server) showDatabases(ctx context.Context, params lsp.ExecuteCommandParams) (result interface{}, err error) {
-	if err := s.dbConn.Open(); err != nil {
-		return nil, err
-	}
-	databases, err := s.dbConn.Databases(ctx)
+	repo := database.NewMySQLDBRepository(s.dbConn.Conn)
+	databases, err := repo.Databases(ctx)
 	if err != nil {
 		return nil, err
 	}
-	defer s.dbConn.Close()
 	return strings.Join(databases, "\n"), nil
 }
 
@@ -270,11 +262,14 @@ func (s *Server) switchDatabase(ctx context.Context, params lsp.ExecuteCommandPa
 		return nil, fmt.Errorf("specify the db name as a string")
 	}
 
-	// Reconnect database
+	// Change current database
 	s.curDBName = dbName
-	if err := s.generateDBCache(ctx); err != nil {
+
+	// close and reconnection to database
+	if err := s.reconnectionDB(ctx); err != nil {
 		return nil, err
 	}
+
 	return nil, nil
 }
 
@@ -315,9 +310,12 @@ func (s *Server) switchConnections(ctx context.Context, params lsp.ExecuteComman
 
 	// Reconnect database
 	s.curConnectionIndex = index
-	if err := s.generateDBCache(ctx); err != nil {
+
+	// close and reconnection to database
+	if err := s.reconnectionDB(ctx); err != nil {
 		return nil, err
 	}
+
 	return nil, nil
 }
 

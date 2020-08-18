@@ -142,7 +142,7 @@ func (c *Completer) TableCandidates(parent *completionParent, targetTables []*pa
 	return candidates
 }
 
-func generateTableCandidates(tables []string, dbCache *database.DatabaseCache) []lsp.CompletionItem {
+func generateTableCandidates(tables []string, dbCache *database.DBCache) []lsp.CompletionItem {
 	candidates := []lsp.CompletionItem{}
 	for _, tableName := range tables {
 		candidate := lsp.CompletionItem{
@@ -162,7 +162,7 @@ func generateTableCandidates(tables []string, dbCache *database.DatabaseCache) [
 	return candidates
 }
 
-func generateTableCandidatesByInfos(tables []*parseutil.TableInfo, dbCache *database.DatabaseCache) []lsp.CompletionItem {
+func generateTableCandidatesByInfos(tables []*parseutil.TableInfo, dbCache *database.DBCache) []lsp.CompletionItem {
 	candidates := []lsp.CompletionItem{}
 	for _, table := range tables {
 		name := table.Name

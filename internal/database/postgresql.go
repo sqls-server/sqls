@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"database/sql/driver"
-	"fmt"
 	"log"
 	"net"
 	"net/url"
@@ -19,64 +18,46 @@ import (
 	"golang.org/x/xerrors"
 )
 
-type PostgreSQLDB struct {
-	Cfg     *Config
-	Option  *DBOption
-	Conn    *sql.DB
-	SSHConn *ssh.Client
-	curDB   string
-}
-
 func init() {
-	Register("postgresql", func(cfg *Config) Database {
-		return &PostgreSQLDB{
-			Cfg:    cfg,
-			Option: &DBOption{},
-		}
-	})
+	RegisterOpen("postgresql", postgreSQLOpen)
+	RegisterFactory("postgresql", NewPostgreSQLDBRepository)
 }
 
-func (db *PostgreSQLDB) Open() error {
-	dsn, err := genPostgresConfig(db.Cfg)
+func postgreSQLOpen(dbConnCfg *DBConfig) (*DBConnection, error) {
+	var (
+		conn    *sql.DB
+		sshConn *ssh.Client
+	)
+	dsn, err := genPostgresConfig(dbConnCfg)
 	if err != nil {
-		return err
-	}
-	if db.curDB != "" {
-		dsn, err = replaceDBName(dsn, db.curDB)
-		if err != nil {
-			return err
-		}
+		return nil, err
 	}
 
-	if db.Cfg.SSHCfg != nil {
-		log.Println("via ssh connection")
-		dbConn, sshConn, err := openPostgreSQLViaSSH(dsn, db.Cfg.SSHCfg)
+	if dbConnCfg.SSHCfg != nil {
+		dbConn, dbSSHConn, err := openPostgreSQLViaSSH(dsn, dbConnCfg.SSHCfg)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		db.Conn = dbConn
-		db.SSHConn = sshConn
+		conn = dbConn
+		sshConn = dbSSHConn
 	} else {
-		log.Println("normal connection")
 		dbConn, err := sql.Open("postgres", dsn)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		db.Conn = dbConn
+		conn = dbConn
 	}
-	if err := db.Conn.Ping(); err != nil {
-		return err
+	if err := conn.Ping(); err != nil {
+		return nil, err
 	}
 
-	db.Conn.SetMaxIdleConns(DefaultMaxIdleConns)
-	if db.Option.MaxIdleConns != 0 {
-		db.Conn.SetMaxIdleConns(db.Option.MaxIdleConns)
-	}
-	db.Conn.SetMaxOpenConns(DefaultMaxOpenConns)
-	if db.Option.MaxOpenConns != 0 {
-		db.Conn.SetMaxOpenConns(db.Option.MaxOpenConns)
-	}
-	return nil
+	conn.SetMaxIdleConns(DefaultMaxIdleConns)
+	conn.SetMaxOpenConns(DefaultMaxOpenConns)
+
+	return &DBConnection{
+		Conn:    conn,
+		SSHConn: sshConn,
+	}, nil
 }
 
 type PostgreSQLViaSSHDialer struct {
@@ -123,19 +104,15 @@ func openPostgreSQLViaSSH(dsn string, sshCfg *SSHConfig) (*sql.DB, *ssh.Client, 
 	return conn, sshConn, nil
 }
 
-func (db *PostgreSQLDB) Close() error {
-	if err := db.Conn.Close(); err != nil {
-		return err
-	}
-	if db.SSHConn != nil {
-		if err := db.SSHConn.Close(); err != nil {
-			return err
-		}
-	}
-	return nil
+type PostgreSQLDBRepository struct {
+	Conn *sql.DB
 }
 
-func (db *PostgreSQLDB) CurrentDatabase(ctx context.Context) (string, error) {
+func NewPostgreSQLDBRepository(conn *sql.DB) DBRepository {
+	return &PostgreSQLDBRepository{Conn: conn}
+}
+
+func (db *PostgreSQLDBRepository) CurrentDatabase(ctx context.Context) (string, error) {
 	row := db.Conn.QueryRowContext(ctx, "SELECT current_database()")
 	var database string
 	if err := row.Scan(&database); err != nil {
@@ -144,7 +121,7 @@ func (db *PostgreSQLDB) CurrentDatabase(ctx context.Context) (string, error) {
 	return database, nil
 }
 
-func (db *PostgreSQLDB) Databases(ctx context.Context) ([]string, error) {
+func (db *PostgreSQLDBRepository) Databases(ctx context.Context) ([]string, error) {
 	rows, err := db.Conn.QueryContext(
 		ctx,
 		`
@@ -164,7 +141,7 @@ func (db *PostgreSQLDB) Databases(ctx context.Context) ([]string, error) {
 	return databases, nil
 }
 
-func (db *PostgreSQLDB) CurrentSchema(ctx context.Context) (string, error) {
+func (db *PostgreSQLDBRepository) CurrentSchema(ctx context.Context) (string, error) {
 	row := db.Conn.QueryRowContext(ctx, "SELECT current_schema()")
 	var database string
 	if err := row.Scan(&database); err != nil {
@@ -173,7 +150,7 @@ func (db *PostgreSQLDB) CurrentSchema(ctx context.Context) (string, error) {
 	return database, nil
 }
 
-func (db *PostgreSQLDB) Schemas(ctx context.Context) ([]string, error) {
+func (db *PostgreSQLDBRepository) Schemas(ctx context.Context) ([]string, error) {
 	rows, err := db.Conn.QueryContext(
 		ctx,
 		`
@@ -193,7 +170,7 @@ func (db *PostgreSQLDB) Schemas(ctx context.Context) ([]string, error) {
 	return databases, nil
 }
 
-func (db *PostgreSQLDB) SchemaTables(ctx context.Context) (map[string][]string, error) {
+func (db *PostgreSQLDBRepository) SchemaTables(ctx context.Context) (map[string][]string, error) {
 	rows, err := db.Conn.QueryContext(
 		ctx,
 		`
@@ -225,7 +202,7 @@ func (db *PostgreSQLDB) SchemaTables(ctx context.Context) (map[string][]string, 
 	return databaseTables, nil
 }
 
-func (db *PostgreSQLDB) Tables(ctx context.Context) ([]string, error) {
+func (db *PostgreSQLDBRepository) Tables(ctx context.Context) ([]string, error) {
 	rows, err := db.Conn.QueryContext(
 		ctx,
 		`
@@ -253,7 +230,7 @@ func (db *PostgreSQLDB) Tables(ctx context.Context) ([]string, error) {
 	return tables, nil
 }
 
-func (db *PostgreSQLDB) DescribeDatabaseTable(ctx context.Context) ([]*ColumnDesc, error) {
+func (db *PostgreSQLDBRepository) DescribeDatabaseTable(ctx context.Context) ([]*ColumnDesc, error) {
 	rows, err := db.Conn.QueryContext(
 		ctx,
 		`
@@ -308,7 +285,7 @@ func (db *PostgreSQLDB) DescribeDatabaseTable(ctx context.Context) ([]*ColumnDes
 	return tableInfos, nil
 }
 
-func (db *PostgreSQLDB) DescribeDatabaseTableBySchema(ctx context.Context, schemaName string) ([]*ColumnDesc, error) {
+func (db *PostgreSQLDBRepository) DescribeDatabaseTableBySchema(ctx context.Context, schemaName string) ([]*ColumnDesc, error) {
 	rows, err := db.Conn.QueryContext(
 		ctx,
 		`
@@ -365,20 +342,15 @@ func (db *PostgreSQLDB) DescribeDatabaseTableBySchema(ctx context.Context, schem
 	return tableInfos, nil
 }
 
-func (db *PostgreSQLDB) Exec(ctx context.Context, query string) (sql.Result, error) {
+func (db *PostgreSQLDBRepository) Exec(ctx context.Context, query string) (sql.Result, error) {
 	return db.Conn.ExecContext(ctx, query)
 }
 
-func (db *PostgreSQLDB) Query(ctx context.Context, query string) (*sql.Rows, error) {
+func (db *PostgreSQLDBRepository) Query(ctx context.Context, query string) (*sql.Rows, error) {
 	return db.Conn.QueryContext(ctx, query)
 }
 
-func (db *PostgreSQLDB) SwitchDB(dbName string) error {
-	db.curDB = dbName
-	return nil
-}
-
-func genPostgresConfig(connCfg *Config) (string, error) {
+func genPostgresConfig(connCfg *DBConfig) (string, error) {
 	if connCfg.DataSourceName != "" {
 		return connCfg.DataSourceName, nil
 	}
@@ -491,111 +463,4 @@ func (s *scanner) SkipSpaces() (rune, bool) {
 		r, ok = s.Next()
 	}
 	return r, ok
-}
-
-// The parsing code is based on conninfo_parse from libpq's fe-connect.c
-func parseOpts(name string, o values) error {
-	s := newScanner(name)
-
-	for {
-		var (
-			keyRunes, valRunes []rune
-			r                  rune
-			ok                 bool
-		)
-
-		if r, ok = s.SkipSpaces(); !ok {
-			break
-		}
-
-		// Scan the key
-		for !unicode.IsSpace(r) && r != '=' {
-			keyRunes = append(keyRunes, r)
-			if r, ok = s.Next(); !ok {
-				break
-			}
-		}
-
-		// Skip any whitespace if we're not at the = yet
-		if r != '=' {
-			r, ok = s.SkipSpaces()
-		}
-
-		// The current character should be =
-		if r != '=' || !ok {
-			return fmt.Errorf(`missing "=" after %q in connection info string"`, string(keyRunes))
-		}
-
-		// Skip any whitespace after the =
-		if r, ok = s.SkipSpaces(); !ok {
-			// If we reach the end here, the last value is just an empty string as per libpq.
-			o[string(keyRunes)] = ""
-			break
-		}
-
-		if r != '\'' {
-			for !unicode.IsSpace(r) {
-				if r == '\\' {
-					if r, ok = s.Next(); !ok {
-						return fmt.Errorf(`missing character after backslash`)
-					}
-				}
-				valRunes = append(valRunes, r)
-
-				if r, ok = s.Next(); !ok {
-					break
-				}
-			}
-		} else {
-		quote:
-			for {
-				if r, ok = s.Next(); !ok {
-					return fmt.Errorf(`unterminated quoted string literal in connection string`)
-				}
-				switch r {
-				case '\'':
-					break quote
-				case '\\':
-					r, _ = s.Next()
-					fallthrough
-				default:
-					valRunes = append(valRunes, r)
-				}
-			}
-		}
-
-		o[string(keyRunes)] = string(valRunes)
-	}
-
-	return nil
-}
-
-func parseURL(opts values) (string, error) {
-	var kvs []string
-	escaper := strings.NewReplacer(` `, `\ `, `'`, `\'`, `\`, `\\`)
-	accrue := func(k, v string) {
-		if v != "" {
-			kvs = append(kvs, k+"="+escaper.Replace(v))
-		}
-	}
-
-	for k, v := range opts {
-		accrue(k, v)
-	}
-
-	sort.Strings(kvs) // Makes testing easier (not a performance concern)
-	return strings.Join(kvs, " "), nil
-}
-
-func replaceDBName(dsn, dbName string) (string, error) {
-	o := make(values)
-	if err := parseOpts(dsn, o); err != nil {
-		return "", err
-	}
-	o["dbname"] = dbName
-	newDSN, err := parseURL(o)
-	if err != nil {
-		return "", err
-	}
-	return newDSN, nil
 }

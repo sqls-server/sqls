@@ -20,7 +20,7 @@ var (
 )
 
 type Config struct {
-	Connections []*database.Config `json:"connections" yaml:"connections"`
+	Connections []*database.DBConfig `json:"connections" yaml:"connections"`
 }
 
 func newConfig() *Config {

@@ -9,6 +9,7 @@ import (
 	"runtime"
 
 	"github.com/sourcegraph/jsonrpc2"
+	"golang.org/x/xerrors"
 
 	"github.com/lighttiger2505/sqls/internal/config"
 	"github.com/lighttiger2505/sqls/internal/database"
@@ -24,11 +25,14 @@ type Server struct {
 	DefaultFileCfg  *config.Config
 	WSCfg           *config.Config
 
-	dbConn             database.Database
-	dbCache            *database.DatabaseCache
+	dbConn *database.DBConnection
+
+	curDBCfg           *database.DBConfig
 	curDBName          string
 	curConnectionIndex int
-	files              map[string]*File
+
+	worker *database.Worker
+	files  map[string]*File
 }
 
 type File struct {
@@ -37,8 +41,12 @@ type File struct {
 }
 
 func NewServer() *Server {
+	worker := database.NewWorker()
+	worker.Start()
+
 	return &Server{
-		files: make(map[string]*File),
+		files:  make(map[string]*File),
+		worker: worker,
 	}
 }
 
@@ -55,6 +63,14 @@ func panicf(r interface{}, format string, v ...interface{}) error {
 	return nil
 }
 
+func (s *Server) Stop() error {
+	if err := s.dbConn.Close(); err != nil {
+		return err
+	}
+	s.worker.Stop()
+	return nil
+}
+
 func (s *Server) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
 	// Prevent any uncaught panics from taking the entire server down.
 	defer func() {
@@ -64,7 +80,7 @@ func (s *Server) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.
 	}()
 	res, err := s.handle(ctx, conn, req)
 	if err != nil {
-		log.Printf("error serving %+v\n", err)
+		log.Printf("error serving, %+v\n", err)
 	}
 	return res, err
 }
@@ -108,11 +124,7 @@ func (s *Server) handleInitialize(ctx context.Context, conn *jsonrpc2.Conn, req 
 		return nil, err
 	}
 
-	if err := s.generateDBCache(ctx); err != nil && err != ErrNoConnection {
-		return nil, err
-	}
-
-	return lsp.InitializeResult{
+	result = lsp.InitializeResult{
 		Capabilities: lsp.ServerCapabilities{
 			TextDocumentSync:   lsp.TDSKFull,
 			HoverProvider:      true,
@@ -124,7 +136,15 @@ func (s *Server) handleInitialize(ctx context.Context, conn *jsonrpc2.Conn, req 
 			DocumentFormattingProvider:      false,
 			DocumentRangeFormattingProvider: false,
 		},
-	}, nil
+	}
+
+	// Initialize database database connection
+	// NOTE: If no connection is found at this point, it is possible that the connection settings are sent to workspace config, so don't make an error
+	if err := s.reconnectionDB(ctx); err != nil && err != ErrNoConnection {
+		return nil, err
+	}
+
+	return result, nil
 }
 
 func (s *Server) handleShutdown(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
@@ -245,51 +265,73 @@ func (s *Server) handleWorkspaceDidChangeConfiguration(ctx context.Context, conn
 	}
 	s.WSCfg = params.Settings.SQLS
 
-	// Initialize database database connection
+	// Skip database connection
 	if s.dbConn != nil {
 		return nil, nil
 	}
-	if err := s.generateDBCache(ctx); err != nil && err != ErrNoConnection {
+
+	// Initialize database database connection
+	if err := s.reconnectionDB(ctx); err != nil {
 		return nil, err
 	}
+
 	return nil, nil
 }
 
-func (s *Server) generateDBCache(ctx context.Context) error {
+func (s *Server) reconnectionDB(ctx context.Context) error {
+	if err := s.dbConn.Close(); err != nil {
+		return err
+	}
+
+	dbConn, err := s.newDBConnection(ctx)
+	if err != nil {
+		return err
+	}
+	s.dbConn = dbConn
+	dbRepo, err := s.newDBRepository(ctx)
+	if err != nil {
+		return err
+	}
+	if err := s.worker.ReCache(ctx, dbRepo); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Server) newDBConnection(ctx context.Context) (*database.DBConnection, error) {
 	// Get the most preferred DB connection settings
 	connCfg := s.topConnection()
 	if connCfg == nil {
-		return ErrNoConnection
+		return nil, ErrNoConnection
 	}
 	if s.curConnectionIndex != 0 {
 		connCfg = s.getConnection(s.curConnectionIndex)
 	}
 	if connCfg == nil {
-		return fmt.Errorf("not found database connection config, index %d", s.curConnectionIndex+1)
+		return nil, xerrors.Errorf("not found database connection config, index %d", s.curConnectionIndex+1)
 	}
+	if s.curDBName != "" {
+		connCfg.DBName = s.curDBName
+	}
+	s.curDBCfg = connCfg
 
 	// Connect database
-	db, err := database.Open(connCfg)
+	conn, err := database.Open(connCfg)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	s.dbConn = db
-	if s.curDBName != "" {
-		if err := s.dbConn.SwitchDB(s.curDBName); err != nil {
-			return err
-		}
-	}
-
-	// Get database infomations(databases, tables, columns) to complete
-	dbCache, err := database.GenerateDBCache(ctx, s.dbConn, s.curDBName)
-	if err != nil {
-		return err
-	}
-	s.dbCache = dbCache
-	return nil
+	return conn, nil
 }
 
-func (s *Server) topConnection() *database.Config {
+func (s *Server) newDBRepository(ctx context.Context) (database.DBRepository, error) {
+	repo, err := database.CreateRepository(s.curDBCfg.Driver, s.dbConn.Conn)
+	if err != nil {
+		return nil, err
+	}
+	return repo, nil
+}
+
+func (s *Server) topConnection() *database.DBConfig {
 	cfg := s.getConfig()
 	if cfg == nil || len(cfg.Connections) == 0 {
 		return nil
@@ -297,7 +339,7 @@ func (s *Server) topConnection() *database.Config {
 	return cfg.Connections[0]
 }
 
-func (s *Server) getConnection(index int) *database.Config {
+func (s *Server) getConnection(index int) *database.DBConfig {
 	cfg := s.getConfig()
 	if cfg == nil || (index < 0 && len(cfg.Connections) <= index) {
 		return nil

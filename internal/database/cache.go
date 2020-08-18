@@ -6,36 +6,44 @@ import (
 	"strings"
 )
 
-func GenerateDBCache(ctx context.Context, db Database, defaultSchema string) (*DatabaseCache, error) {
-	if err := db.Open(); err != nil {
-		return nil, err
-	}
-	defer db.Close()
+type DBCacheGenerator struct {
+	repo DBRepository
+}
 
-	// Create caches
+func NewDBCacheUpdater(repo DBRepository) *DBCacheGenerator {
+	return &DBCacheGenerator{
+		repo: repo,
+	}
+}
+
+func (u *DBCacheGenerator) GenerateDBCachePrimary(ctx context.Context) (*DBCache, error) {
 	var err error
-	dbCache := &DatabaseCache{}
-	dbCache.defaultSchema, err = db.CurrentSchema(ctx)
+	dbCache := &DBCache{}
+	dbCache.defaultSchema, err = u.repo.CurrentSchema(ctx)
 	if err != nil {
 		return nil, err
 	}
-	dbCache.Schemas, err = genSchmeaCache(ctx, db)
+	dbCache.Schemas, err = u.genSchmeaCache(ctx)
 	if err != nil {
 		return nil, err
 	}
-	dbCache.SchemaTables, err = db.SchemaTables(ctx)
+	dbCache.SchemaTables, err = u.repo.SchemaTables(ctx)
 	if err != nil {
 		return nil, err
 	}
-	dbCache.ColumnsWithParent, err = genColumnsWithParentCache(ctx, db)
+	dbCache.ColumnsWithParent, err = u.genColumnCacheCurrent(ctx, dbCache.defaultSchema)
 	if err != nil {
 		return nil, err
 	}
 	return dbCache, nil
 }
 
-func genSchmeaCache(ctx context.Context, db Database) (map[string]string, error) {
-	dbs, err := db.Schemas(ctx)
+func (u *DBCacheGenerator) GenerateDBCacheSecondary(ctx context.Context) (map[string][]*ColumnDesc, error) {
+	return u.genColumnCacheAll(ctx)
+}
+
+func (u *DBCacheGenerator) genSchmeaCache(ctx context.Context) (map[string]string, error) {
+	dbs, err := u.repo.Schemas(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -46,12 +54,24 @@ func genSchmeaCache(ctx context.Context, db Database) (map[string]string, error)
 	return databaseMap, nil
 }
 
-func genColumnsWithParentCache(ctx context.Context, db Database) (map[string][]*ColumnDesc, error) {
-	columnMap := map[string][]*ColumnDesc{}
-	columnDescs, err := db.DescribeDatabaseTable(ctx)
+func (u *DBCacheGenerator) genColumnCacheCurrent(ctx context.Context, schemaName string) (map[string][]*ColumnDesc, error) {
+	columnDescs, err := u.repo.DescribeDatabaseTableBySchema(ctx, schemaName)
 	if err != nil {
 		return nil, err
 	}
+	return genColumnMap(columnDescs), nil
+}
+
+func (u *DBCacheGenerator) genColumnCacheAll(ctx context.Context) (map[string][]*ColumnDesc, error) {
+	columnDescs, err := u.repo.DescribeDatabaseTable(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return genColumnMap(columnDescs), nil
+}
+
+func genColumnMap(columnDescs []*ColumnDesc) map[string][]*ColumnDesc {
+	columnMap := map[string][]*ColumnDesc{}
 	for _, desc := range columnDescs {
 		key := desc.Schema + "\t" + desc.Table
 		if _, ok := columnMap[key]; ok {
@@ -61,22 +81,22 @@ func genColumnsWithParentCache(ctx context.Context, db Database) (map[string][]*
 			columnMap[key] = arr
 		}
 	}
-	return columnMap, nil
+	return columnMap
 }
 
-type DatabaseCache struct {
+type DBCache struct {
 	defaultSchema     string
 	Schemas           map[string]string
 	SchemaTables      map[string][]string
 	ColumnsWithParent map[string][]*ColumnDesc
 }
 
-func (dc *DatabaseCache) Database(dbName string) (db string, ok bool) {
+func (dc *DBCache) Database(dbName string) (db string, ok bool) {
 	db, ok = dc.Schemas[strings.ToUpper(dbName)]
 	return
 }
 
-func (dc *DatabaseCache) SortedSchemas() []string {
+func (dc *DBCache) SortedSchemas() []string {
 	dbs := []string{}
 	for _, db := range dc.Schemas {
 		dbs = append(dbs, db)
@@ -85,28 +105,28 @@ func (dc *DatabaseCache) SortedSchemas() []string {
 	return dbs
 }
 
-func (dc *DatabaseCache) SortedTablesByDBName(dbName string) (tbls []string, ok bool) {
+func (dc *DBCache) SortedTablesByDBName(dbName string) (tbls []string, ok bool) {
 	tbls, ok = dc.SchemaTables[dbName]
 	sort.Strings(tbls)
 	return
 }
 
-func (dc *DatabaseCache) SortedTables() []string {
+func (dc *DBCache) SortedTables() []string {
 	tbls, _ := dc.SortedTablesByDBName(dc.defaultSchema)
 	return tbls
 }
 
-func (dc *DatabaseCache) ColumnDescs(tableName string) (cols []*ColumnDesc, ok bool) {
+func (dc *DBCache) ColumnDescs(tableName string) (cols []*ColumnDesc, ok bool) {
 	cols, ok = dc.ColumnsWithParent[columnDatabaseKey(dc.defaultSchema, tableName)]
 	return
 }
 
-func (dc *DatabaseCache) ColumnDatabase(dbName, tableName string) (cols []*ColumnDesc, ok bool) {
+func (dc *DBCache) ColumnDatabase(dbName, tableName string) (cols []*ColumnDesc, ok bool) {
 	cols, ok = dc.ColumnsWithParent[columnDatabaseKey(dbName, tableName)]
 	return
 }
 
-func (dc *DatabaseCache) Column(tableName, colName string) (*ColumnDesc, bool) {
+func (dc *DBCache) Column(tableName, colName string) (*ColumnDesc, bool) {
 	cols, ok := dc.ColumnsWithParent[columnDatabaseKey(dc.defaultSchema, tableName)]
 	if !ok {
 		return nil, false

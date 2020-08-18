@@ -7,64 +7,51 @@ import (
 	"net"
 	"strconv"
 
-	mysql "github.com/go-sql-driver/mysql"
+	"github.com/go-sql-driver/mysql"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/xerrors"
 )
 
-type MySQLDB struct {
-	Cfg     *Config
-	Option  *DBOption
-	Conn    *sql.DB
-	SSHConn *ssh.Client
-	curDB   string
-}
-
 func init() {
-	Register("mysql", func(cfg *Config) Database {
-		return &MySQLDB{
-			Cfg:    cfg,
-			Option: &DBOption{},
-		}
-	})
+	RegisterOpen("mysql", mysqlOpen)
+	RegisterFactory("mysql", NewMySQLDBRepository)
 }
 
-func (db *MySQLDB) Open() error {
-	cfg, err := genMysqlConfig(db.Cfg)
+func mysqlOpen(dbConnCfg *DBConfig) (*DBConnection, error) {
+	var (
+		conn    *sql.DB
+		sshConn *ssh.Client
+	)
+	cfg, err := genMysqlConfig(dbConnCfg)
 	if err != nil {
-		return err
-	}
-	if db.curDB != "" {
-		cfg.DBName = db.curDB
+		return nil, err
 	}
 
-	if db.Cfg.SSHCfg != nil {
-		dbConn, sshConn, err := openMySQLViaSSH(cfg.FormatDSN(), db.Cfg.SSHCfg)
+	if dbConnCfg.SSHCfg != nil {
+		dbConn, dbSSHConn, err := openMySQLViaSSH(cfg.FormatDSN(), dbConnCfg.SSHCfg)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		db.Conn = dbConn
-		db.SSHConn = sshConn
+		conn = dbConn
+		sshConn = dbSSHConn
 	} else {
 		dbConn, err := sql.Open("mysql", cfg.FormatDSN())
 		if err != nil {
-			return err
+			return nil, err
 		}
-		db.Conn = dbConn
+		conn = dbConn
 	}
-	if err := db.Conn.Ping(); err != nil {
-		return err
+	if err := conn.Ping(); err != nil {
+		return nil, err
 	}
 
-	db.Conn.SetMaxIdleConns(DefaultMaxIdleConns)
-	if db.Option.MaxIdleConns != 0 {
-		db.Conn.SetMaxIdleConns(db.Option.MaxIdleConns)
-	}
-	db.Conn.SetMaxOpenConns(DefaultMaxOpenConns)
-	if db.Option.MaxOpenConns != 0 {
-		db.Conn.SetMaxOpenConns(db.Option.MaxOpenConns)
-	}
-	return nil
+	conn.SetMaxIdleConns(DefaultMaxIdleConns)
+	conn.SetMaxOpenConns(DefaultMaxOpenConns)
+
+	return &DBConnection{
+		Conn:    conn,
+		SSHConn: sshConn,
+	}, nil
 }
 
 type MySQLViaSSHDialer struct {
@@ -92,19 +79,53 @@ func openMySQLViaSSH(dsn string, sshCfg *SSHConfig) (*sql.DB, *ssh.Client, error
 	return conn, sshConn, nil
 }
 
-func (db *MySQLDB) Close() error {
-	if err := db.Conn.Close(); err != nil {
-		return err
+func genMysqlConfig(connCfg *DBConfig) (*mysql.Config, error) {
+	cfg := mysql.NewConfig()
+
+	if connCfg.DataSourceName != "" {
+		return mysql.ParseDSN(connCfg.DataSourceName)
 	}
-	if db.SSHConn != nil {
-		if err := db.SSHConn.Close(); err != nil {
-			return err
+
+	cfg.User = connCfg.User
+	cfg.Passwd = connCfg.Passwd
+	cfg.DBName = connCfg.DBName
+
+	switch connCfg.Proto {
+	case ProtoTCP, ProtoUDP:
+		host, port := connCfg.Host, connCfg.Port
+		if host == "" {
+			host = "127.0.0.1"
 		}
+		if port == 0 {
+			port = 3306
+		}
+		cfg.Addr = host + ":" + strconv.Itoa(port)
+		cfg.Net = string(connCfg.Proto)
+	case ProtoUnix:
+		if connCfg.Path != "" {
+			cfg.Addr = "/tmp/mysql.sock"
+			break
+		}
+		cfg.Addr = connCfg.Path
+		cfg.Net = string(connCfg.Proto)
+	default:
+		return nil, fmt.Errorf("default addr for network %s unknown", connCfg.Proto)
 	}
-	return nil
+
+	cfg.Params = connCfg.Params
+
+	return cfg, nil
 }
 
-func (db *MySQLDB) CurrentDatabase(ctx context.Context) (string, error) {
+type MySQLDBRepository struct {
+	Conn *sql.DB
+}
+
+func NewMySQLDBRepository(conn *sql.DB) DBRepository {
+	return &MySQLDBRepository{Conn: conn}
+}
+
+func (db *MySQLDBRepository) CurrentDatabase(ctx context.Context) (string, error) {
 	row := db.Conn.QueryRowContext(ctx, "SELECT DATABASE()")
 	var database string
 	if err := row.Scan(&database); err != nil {
@@ -113,7 +134,7 @@ func (db *MySQLDB) CurrentDatabase(ctx context.Context) (string, error) {
 	return database, nil
 }
 
-func (db *MySQLDB) Databases(ctx context.Context) ([]string, error) {
+func (db *MySQLDBRepository) Databases(ctx context.Context) ([]string, error) {
 	rows, err := db.Conn.QueryContext(ctx, "select SCHEMA_NAME from information_schema.SCHEMATA")
 	if err != nil {
 		return nil, err
@@ -129,15 +150,15 @@ func (db *MySQLDB) Databases(ctx context.Context) ([]string, error) {
 	return databases, nil
 }
 
-func (db *MySQLDB) CurrentSchema(ctx context.Context) (string, error) {
+func (db *MySQLDBRepository) CurrentSchema(ctx context.Context) (string, error) {
 	return db.CurrentDatabase(ctx)
 }
 
-func (db *MySQLDB) Schemas(ctx context.Context) ([]string, error) {
+func (db *MySQLDBRepository) Schemas(ctx context.Context) ([]string, error) {
 	return db.Databases(ctx)
 }
 
-func (db *MySQLDB) SchemaTables(ctx context.Context) (map[string][]string, error) {
+func (db *MySQLDBRepository) SchemaTables(ctx context.Context) (map[string][]string, error) {
 	rows, err := db.Conn.QueryContext(
 		ctx,
 		`
@@ -169,7 +190,7 @@ func (db *MySQLDB) SchemaTables(ctx context.Context) (map[string][]string, error
 	return databaseTables, nil
 }
 
-func (db *MySQLDB) Tables(ctx context.Context) ([]string, error) {
+func (db *MySQLDBRepository) Tables(ctx context.Context) ([]string, error) {
 	rows, err := db.Conn.QueryContext(ctx, "SHOW TABLES")
 	if err != nil {
 		return nil, err
@@ -185,7 +206,7 @@ func (db *MySQLDB) Tables(ctx context.Context) ([]string, error) {
 	return tables, nil
 }
 
-func (db *MySQLDB) DescribeDatabaseTable(ctx context.Context) ([]*ColumnDesc, error) {
+func (db *MySQLDBRepository) DescribeDatabaseTable(ctx context.Context) ([]*ColumnDesc, error) {
 	rows, err := db.Conn.QueryContext(
 		ctx,
 		`
@@ -224,7 +245,7 @@ FROM information_schema.COLUMNS
 	return tableInfos, nil
 }
 
-func (db *MySQLDB) DescribeDatabaseTableBySchema(ctx context.Context, schemaName string) ([]*ColumnDesc, error) {
+func (db *MySQLDBRepository) DescribeDatabaseTableBySchema(ctx context.Context, schemaName string) ([]*ColumnDesc, error) {
 	rows, err := db.Conn.QueryContext(
 		ctx,
 		`
@@ -264,53 +285,10 @@ WHERE information_schema.COLUMNS.TABLE_SCHEMA = ?
 	return tableInfos, nil
 }
 
-func (db *MySQLDB) Exec(ctx context.Context, query string) (sql.Result, error) {
+func (db *MySQLDBRepository) Exec(ctx context.Context, query string) (sql.Result, error) {
 	return db.Conn.ExecContext(ctx, query)
 }
 
-func (db *MySQLDB) Query(ctx context.Context, query string) (*sql.Rows, error) {
+func (db *MySQLDBRepository) Query(ctx context.Context, query string) (*sql.Rows, error) {
 	return db.Conn.QueryContext(ctx, query)
-}
-
-func (db *MySQLDB) SwitchDB(dbName string) error {
-	db.curDB = dbName
-	return nil
-}
-
-func genMysqlConfig(connCfg *Config) (*mysql.Config, error) {
-	cfg := mysql.NewConfig()
-
-	if connCfg.DataSourceName != "" {
-		return mysql.ParseDSN(connCfg.DataSourceName)
-	}
-
-	cfg.User = connCfg.User
-	cfg.Passwd = connCfg.Passwd
-	cfg.DBName = connCfg.DBName
-
-	switch connCfg.Proto {
-	case ProtoTCP, ProtoUDP:
-		host, port := connCfg.Host, connCfg.Port
-		if host == "" {
-			host = "127.0.0.1"
-		}
-		if port == 0 {
-			port = 3306
-		}
-		cfg.Addr = host + ":" + strconv.Itoa(port)
-		cfg.Net = string(connCfg.Proto)
-	case ProtoUnix:
-		if connCfg.Path != "" {
-			cfg.Addr = "/tmp/mysql.sock"
-			break
-		}
-		cfg.Addr = connCfg.Path
-		cfg.Net = string(connCfg.Proto)
-	default:
-		return nil, fmt.Errorf("default addr for network %s unknown", connCfg.Proto)
-	}
-
-	cfg.Params = connCfg.Params
-
-	return cfg, nil
 }
