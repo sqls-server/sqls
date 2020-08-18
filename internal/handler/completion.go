@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 
 	"github.com/lighttiger2505/sqls/internal/completer"
 	"github.com/lighttiger2505/sqls/internal/lsp"
@@ -26,7 +25,6 @@ func (s *Server) handleTextDocumentCompletion(ctx context.Context, conn *jsonrpc
 		return nil, fmt.Errorf("document not found: %s", params.TextDocument.URI)
 	}
 
-	log.Println(s.worker.Cache())
 	if s.worker.Cache() == nil {
 		return nil, fmt.Errorf("database cache not found")
 	}
