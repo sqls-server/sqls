@@ -81,8 +81,8 @@ func TestInitialized(t *testing.T) {
 			},
 			CodeActionProvider:              true,
 			DefinitionProvider:              false,
-			DocumentFormattingProvider:      false,
-			DocumentRangeFormattingProvider: false,
+			DocumentFormattingProvider:      true,
+			DocumentRangeFormattingProvider: true,
 		},
 	}
 	var got lsp.InitializeResult

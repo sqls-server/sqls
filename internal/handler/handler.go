@@ -110,6 +110,10 @@ func (s *Server) handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.
 		return s.handleWorkspaceExecuteCommand(ctx, conn, req)
 	case "workspace/didChangeConfiguration":
 		return s.handleWorkspaceDidChangeConfiguration(ctx, conn, req)
+	case "textDocument/formatting":
+		return s.handleTextDocumentFormatting(ctx, conn, req)
+	case "textDocument/rangeFormatting":
+		return s.handleTextDocumentRangeFormatting(ctx, conn, req)
 	}
 	return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeMethodNotFound, Message: fmt.Sprintf("method not supported: %s", req.Method)}
 }
@@ -133,8 +137,8 @@ func (s *Server) handleInitialize(ctx context.Context, conn *jsonrpc2.Conn, req 
 				TriggerCharacters: []string{"."},
 			},
 			DefinitionProvider:              false,
-			DocumentFormattingProvider:      false,
-			DocumentRangeFormattingProvider: false,
+			DocumentFormattingProvider:      true,
+			DocumentRangeFormattingProvider: true,
 		},
 	}
 
