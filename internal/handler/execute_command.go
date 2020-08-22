@@ -12,7 +12,6 @@ import (
 	"strings"
 
 	"github.com/lighttiger2505/sqls/ast"
-	"github.com/lighttiger2505/sqls/dialect"
 	"github.com/lighttiger2505/sqls/internal/database"
 	"github.com/lighttiger2505/sqls/internal/lsp"
 	"github.com/lighttiger2505/sqls/parser"
@@ -349,12 +348,7 @@ func (s *Server) switchConnections(ctx context.Context, params lsp.ExecuteComman
 }
 
 func getStatements(text string) ([]*ast.Statement, error) {
-	src := bytes.NewBuffer([]byte(text))
-	p, err := parser.NewParser(src, &dialect.GenericSQLDialect{})
-	if err != nil {
-		return nil, err
-	}
-	parsed, err := p.Parse()
+	parsed, err := parser.Parse(text)
 	if err != nil {
 		return nil, err
 	}

@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"bytes"
 	"io"
 	"strings"
 
@@ -46,6 +47,19 @@ func parseInfixGroup(reader *astutil.NodeReader, matcher astutil.NodeMatcher, ig
 	}
 	reader.Node.SetTokens(replaceNodes)
 	return reader.Node
+}
+
+func Parse(text string) (ast.TokenList, error) {
+	src := bytes.NewBuffer([]byte(text))
+	p, err := NewParser(src, &dialect.GenericSQLDialect{})
+	if err != nil {
+		return nil, err
+	}
+	parsed, err := p.Parse()
+	if err != nil {
+		return nil, err
+	}
+	return parsed, nil
 }
 
 type Parser struct {

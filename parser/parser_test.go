@@ -1,12 +1,10 @@
 package parser
 
 import (
-	"bytes"
 	"reflect"
 	"testing"
 
 	"github.com/lighttiger2505/sqls/ast"
-	"github.com/lighttiger2505/sqls/dialect"
 	"github.com/lighttiger2505/sqls/token"
 )
 
@@ -1070,13 +1068,7 @@ func TestParseCase(t *testing.T) {
 
 func parseInit(t *testing.T, input string) []*ast.Statement {
 	t.Helper()
-	src := bytes.NewBuffer([]byte(input))
-	parser, err := NewParser(src, &dialect.GenericSQLDialect{})
-	if err != nil {
-		t.Fatalf("error %+v\n", err)
-	}
-
-	parsed, err := parser.Parse()
+	parsed, err := Parse(input)
 	if err != nil {
 		t.Fatalf("error %+v\n", err)
 	}
