@@ -23,15 +23,8 @@ func TestFormatting(t *testing.T) {
 	}
 	testCase := []formattingTestCase{
 		{
-			// before
-			// SELECT ID, Name FROM city
-
-			// after
-			// SELECT ID,
-			//        Name
-			// FROM city
-			name:  "",
-			input: "SELECT ID, Name FROM city",
+			name:  "select",
+			input: "SELECT ID, Name FROM city;",
 			want: []lsp.TextEdit{
 				{
 					Range: lsp.Range{
@@ -41,12 +34,29 @@ func TestFormatting(t *testing.T) {
 						},
 						End: lsp.Position{
 							Line:      0,
-							Character: 25,
+							Character: 26,
 						},
 					},
-					NewText: `SELECT ID,
-       Name
-FROM city`,
+					NewText: "SELECT \n\tID , Name \nFROM city ;",
+				},
+			},
+		},
+		{
+			name:  "member ident",
+			input: "select ci.ID, ci.Name, co.Code, co.Name from city ci join country co on ci.CountryCode = co.Code;",
+			want: []lsp.TextEdit{
+				{
+					Range: lsp.Range{
+						Start: lsp.Position{
+							Line:      0,
+							Character: 0,
+						},
+						End: lsp.Position{
+							Line:      0,
+							Character: 97,
+						},
+					},
+					NewText: "select \n\tci.ID , ci.Name , co.Code , co.Name \nfrom city ci \njoin country co \n\ton ci.CountryCode = co.Code ;",
 				},
 			},
 		},
