@@ -98,7 +98,7 @@ func (p *Parser) Parse() (ast.TokenList, error) {
 	root = parsePrefixGroup(astutil.NewNodeReader(root), switchCaseOpenMatcher, parseCase)
 
 	root = parseInfixGroup(astutil.NewNodeReader(root), memberIdentifierInfixMatcher, false, parseMemberIdentifier)
-	root = parsePrefixGroup(astutil.NewNodeReader(root), multiKeywordPrefixMatcher, parseMultiKeyword)
+	root = parsePrefixGroup(astutil.NewNodeReader(root), genMultiKeywordPrefixMatcher(), parseMultiKeyword)
 	root = parseInfixGroup(astutil.NewNodeReader(root), operatorInfixMatcher, true, parseOperator)
 	root = parseInfixGroup(astutil.NewNodeReader(root), comparisonInfixMatcher, true, parseComparison)
 	root = parsePrefixGroup(astutil.NewNodeReader(root), aliasLeftMatcher, parseAliasedWithoutAs)
@@ -245,14 +245,18 @@ var multiKeywordMap = map[string]string{
 	"GROUP":  "BY",
 	"INSERT": "INTO",
 	"DELETE": "FROM",
+	"INNER":  "JOIN",
+	"CROSS":  "JOIN",
+	"LEFT":   "JOIN",
+	"RIGHT":  "JOIN",
 }
-var multiKeywordPrefixMatcher = astutil.NodeMatcher{
-	ExpectKeyword: []string{
-		"ORDER",
-		"GROUP",
-		"INSERT",
-		"DELETE",
-	},
+
+func genMultiKeywordPrefixMatcher() astutil.NodeMatcher {
+	keywords := []string{}
+	for k := range multiKeywordMap {
+		keywords = append(keywords, k)
+	}
+	return astutil.NodeMatcher{ExpectKeyword: keywords}
 }
 
 func parseMultiKeyword(reader *astutil.NodeReader) ast.Node {
