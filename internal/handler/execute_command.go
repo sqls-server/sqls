@@ -146,13 +146,13 @@ func (s *Server) executeQuery(ctx context.Context, params lsp.ExecuteCommandPara
 		}
 
 		if _, isQuery := database.QueryExecType(query, ""); isQuery {
-			res, err := s.query(query, showVertical)
+			res, err := s.query(ctx, query, showVertical)
 			if err != nil {
 				return nil, err
 			}
 			fmt.Fprintln(buf, res)
 		} else {
-			res, err := s.exec(query, showVertical)
+			res, err := s.exec(ctx, query, showVertical)
 			if err != nil {
 				return nil, err
 			}
@@ -189,8 +189,11 @@ func extractRangeText(text string, startLine, startChar, endLine, endChar int) s
 	return writer.String()
 }
 
-func (s *Server) query(query string, vertical bool) (string, error) {
-	repo := database.NewMySQLDBRepository(s.dbConn.Conn)
+func (s *Server) query(ctx context.Context, query string, vertical bool) (string, error) {
+	repo, err := s.newDBRepository(ctx)
+	if err != nil {
+		return "", err
+	}
 	rows, err := repo.Query(context.Background(), query)
 	if err != nil {
 		return err.Error(), nil
@@ -226,8 +229,11 @@ func (s *Server) query(query string, vertical bool) (string, error) {
 	return buf.String(), nil
 }
 
-func (s *Server) exec(query string, vertical bool) (string, error) {
-	repo := database.NewMySQLDBRepository(s.dbConn.Conn)
+func (s *Server) exec(ctx context.Context, query string, vertical bool) (string, error) {
+	repo, err := s.newDBRepository(ctx)
+	if err != nil {
+		return "", err
+	}
 	result, err := repo.Exec(context.Background(), query)
 	if err != nil {
 		return err.Error(), nil
@@ -245,7 +251,10 @@ func (s *Server) exec(query string, vertical bool) (string, error) {
 }
 
 func (s *Server) showDatabases(ctx context.Context, params lsp.ExecuteCommandParams) (result interface{}, err error) {
-	repo := database.NewMySQLDBRepository(s.dbConn.Conn)
+	repo, err := s.newDBRepository(ctx)
+	if err != nil {
+		return "", err
+	}
 	databases, err := repo.Databases(ctx)
 	if err != nil {
 		return nil, err
