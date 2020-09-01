@@ -24,6 +24,7 @@ import (
 const (
 	CommandExecuteQuery     = "executeQuery"
 	CommandShowDatabases    = "showDatabases"
+	CommandShowSchemas      = "showSchemas"
 	CommandShowConnections  = "showConnections"
 	CommandSwitchDatabase   = "switchDatabase"
 	CommandSwitchConnection = "switchConnections"
@@ -48,6 +49,11 @@ func (h *Server) handleTextDocumentCodeAction(ctx context.Context, conn *jsonrpc
 		{
 			Title:     "Show Databases",
 			Command:   CommandShowDatabases,
+			Arguments: []interface{}{},
+		},
+		{
+			Title:     "Show Schemas",
+			Command:   CommandShowSchemas,
 			Arguments: []interface{}{},
 		},
 		{
@@ -84,6 +90,8 @@ func (s *Server) handleWorkspaceExecuteCommand(ctx context.Context, conn *jsonrp
 		return s.executeQuery(ctx, params)
 	case CommandShowDatabases:
 		return s.showDatabases(ctx, params)
+	case CommandShowSchemas:
+		return s.showSchemas(ctx, params)
 	case CommandShowConnections:
 		return s.showConnections(ctx, params)
 	case CommandSwitchDatabase:
@@ -260,6 +268,18 @@ func (s *Server) showDatabases(ctx context.Context, params lsp.ExecuteCommandPar
 		return nil, err
 	}
 	return strings.Join(databases, "\n"), nil
+}
+
+func (s *Server) showSchemas(ctx context.Context, params lsp.ExecuteCommandParams) (result interface{}, err error) {
+	repo, err := s.newDBRepository(ctx)
+	if err != nil {
+		return "", err
+	}
+	schemas, err := repo.Schemas(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return strings.Join(schemas, "\n"), nil
 }
 
 func (s *Server) switchDatabase(ctx context.Context, params lsp.ExecuteCommandParams) (result interface{}, err error) {
