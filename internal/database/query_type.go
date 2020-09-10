@@ -225,6 +225,19 @@ var createIgnore = map[string]bool{
 	"UNLOGGED":   true,
 }
 
+func splitMultiSep(s string, sep []string) []string {
+	var ret []string
+	ret = strings.Split(s, sep[0])
+	if len(sep) > 1 {
+		ret2 := []string{}
+		for _, r := range ret {
+			ret2 = append(ret2, splitMultiSep(r, sep[1:])...)
+		}
+		ret = ret2
+	}
+	return ret
+}
+
 // QueryExecType is the default way to determine the "EXEC" prefix for a SQL
 // query and whether or not it should be Exec'd or Query'd.
 func QueryExecType(prefix, sqlstr string) (string, bool) {
@@ -233,7 +246,7 @@ func QueryExecType(prefix, sqlstr string) (string, bool) {
 	}
 
 	var pref string
-	sp := strings.Split(prefix, " ")
+	sp := splitMultiSep(prefix, []string{" ", "\t", "\n"})
 	if len(sp) == 0 {
 		return pref, false
 	}

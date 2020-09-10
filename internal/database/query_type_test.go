@@ -28,7 +28,34 @@ func TestQueryExecType(t *testing.T) {
 			wantPrefix:   "SELECT",
 			wantExecType: true,
 		},
-
+		{
+			name:         "start linebreak",
+			prefix:       "\nselect * from city",
+			sqlstr:       "",
+			wantPrefix:   "SELECT",
+			wantExecType: true,
+		},
+		{
+			name:         "with linebreak",
+			prefix:       "select\n* from city",
+			sqlstr:       "",
+			wantPrefix:   "SELECT",
+			wantExecType: true,
+		},
+		{
+			name:         "start tab",
+			prefix:       "\tselect * from city",
+			sqlstr:       "",
+			wantPrefix:   "SELECT",
+			wantExecType: true,
+		},
+		{
+			name:         "with tab",
+			prefix:       "select\t* from city",
+			sqlstr:       "",
+			wantPrefix:   "SELECT",
+			wantExecType: true,
+		},
 		{
 			name:         "explain",
 			prefix:       "explain select * from city",
