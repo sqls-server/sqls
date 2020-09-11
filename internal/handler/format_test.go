@@ -19,46 +19,18 @@ func TestFormatting(t *testing.T) {
 		input string
 		line  int
 		col   int
-		want  []lsp.TextEdit
+		want  string
 	}
 	testCase := []formattingTestCase{
 		{
 			name:  "select",
-			input: "SELECT ID, Name FROM city;",
-			want: []lsp.TextEdit{
-				{
-					Range: lsp.Range{
-						Start: lsp.Position{
-							Line:      0,
-							Character: 0,
-						},
-						End: lsp.Position{
-							Line:      0,
-							Character: 26,
-						},
-					},
-					NewText: "SELECT \n\tID , Name \nFROM city ;",
-				},
-			},
+			input: "SELECT ID , Name FROM city;",
+			want:  "SELECT \n\tID, \n\tName \nFROM city;",
 		},
 		{
 			name:  "member ident",
 			input: "select ci.ID, ci.Name, co.Code, co.Name from city ci join country co on ci.CountryCode = co.Code;",
-			want: []lsp.TextEdit{
-				{
-					Range: lsp.Range{
-						Start: lsp.Position{
-							Line:      0,
-							Character: 0,
-						},
-						End: lsp.Position{
-							Line:      0,
-							Character: 97,
-						},
-					},
-					NewText: "select \n\tci.ID , ci.Name , co.Code , co.Name \nfrom city ci \njoin country co \n\ton ci.CountryCode = co.Code ;",
-				},
-			},
+			want:  "select \n\tci.ID, \n\tci.Name, \n\tco.Code, \n\tco.Name \nfrom city ci \njoin country co \n\ton ci.CountryCode = co.Code;",
 		},
 	}
 
@@ -98,8 +70,8 @@ func TestFormatting(t *testing.T) {
 			if err := tx.conn.Call(tx.ctx, "textDocument/formatting", formattingParams, &got); err != nil {
 				t.Fatal("conn.Call textDocument/formatting:", err)
 			}
-			if diff := cmp.Diff(tt.want, got); diff != "" {
-				t.Errorf("unmatch:\n%s", diff)
+			if diff := cmp.Diff(tt.want, got[0].NewText); diff != "" {
+				t.Errorf("unmatch (- want, + got):\n%s", diff)
 			}
 		})
 	}

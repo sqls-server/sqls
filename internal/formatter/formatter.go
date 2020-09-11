@@ -53,16 +53,40 @@ func format(parsed ast.TokenList) string {
 			formatter: formatLinebreakBefore,
 		},
 		{
+			matcher:   &linebreakAfterMatcher,
+			formatter: formatLinebreakAfter,
+		},
+		{
 			matcher:   &indentBeforeMatcher,
 			formatter: formatIndentBefore,
 		},
 	}
-	formatted := formattingProcess(astutil.NewNodeReader(parsed), ms)
+	formatted := formattingProcess(astutil.NewNodeReader(parsed), ms, formatEnvironment{})
 	return formatted.String()
 }
 
 type formatEnvironment struct {
 	indentLevel int
+}
+
+func (e *formatEnvironment) indentLevelReset() {
+	e.indentLevel = 0
+}
+
+func (e *formatEnvironment) indentLevelUp() {
+	e.indentLevel++
+}
+
+func (e *formatEnvironment) indentLevelDown() {
+	e.indentLevel--
+}
+
+func (e *formatEnvironment) genIndent() []ast.Node {
+	nodes := []ast.Node{}
+	for i := 0; i < e.indentLevel; i++ {
+		nodes = append(nodes, indentNode)
+	}
+	return nodes
 }
 
 type prefixFormatFn func(nodes []ast.Node, reader *astutil.NodeReader, env formatEnvironment) ([]ast.Node, formatEnvironment)
@@ -88,8 +112,7 @@ func (pfm *prefixFormatMap) isMatch(reader *astutil.NodeReader) bool {
 	return false
 }
 
-func formattingProcess(reader *astutil.NodeReader, ms []prefixFormatMap) ast.TokenList {
-	env := formatEnvironment{}
+func formattingProcess(reader *astutil.NodeReader, ms []prefixFormatMap, env formatEnvironment) ast.TokenList {
 	var formattedNodes []ast.Node
 	for reader.NextNode(true) {
 		additionalNodes := []ast.Node{reader.CurNode}
@@ -100,7 +123,9 @@ func formattingProcess(reader *astutil.NodeReader, ms []prefixFormatMap) ast.Tok
 				isIgnore = true
 			}
 			if s.isMatch(reader) {
-				additionalNodes, env = s.formatter(additionalNodes, reader, env)
+				newNodes, newEnv := s.formatter(additionalNodes, reader, env)
+				additionalNodes = newNodes
+				env = newEnv
 				isFormatted = true
 			}
 		}
@@ -115,7 +140,7 @@ func formattingProcess(reader *astutil.NodeReader, ms []prefixFormatMap) ast.Tok
 
 		if list, ok := reader.CurNode.(ast.TokenList); ok {
 			newReader := astutil.NewNodeReader(list)
-			formattedNodes = append(formattedNodes, formattingProcess(newReader, ms))
+			formattedNodes = append(formattedNodes, formattingProcess(newReader, ms, env))
 		} else {
 			formattedNodes = append(formattedNodes, reader.CurNode)
 		}
@@ -143,14 +168,6 @@ var indentNode = ast.NewItem(&token.Token{
 	Value: "\t",
 })
 
-func genIndent(indentLevel int) []ast.Node {
-	nodes := []ast.Node{}
-	for i := 0; i < indentLevel; i++ {
-		nodes = append(nodes, indentNode)
-	}
-	return nodes
-}
-
 var whitespaceMatcher = astutil.NodeMatcher{
 	NodeTypes: []ast.NodeType{
 		ast.TypeMemberIdentifer,
@@ -165,6 +182,15 @@ var whitespaceMatcher = astutil.NodeMatcher{
 }
 
 func formatWhiteSpace(nodes []ast.Node, reader *astutil.NodeReader, env formatEnvironment) ([]ast.Node, formatEnvironment) {
+	pass := astutil.NodeMatcher{
+		ExpectTokens: []token.Kind{
+			token.Comma,
+			token.Semicolon,
+		},
+	}
+	if reader.PeekNodeIs(true, pass) {
+		return nodes, env
+	}
 	return append(nodes, whitespaceNode), env
 }
 
@@ -176,8 +202,8 @@ var indentAfterMatcher = astutil.NodeMatcher{
 
 func formatIndentAfter(nodes []ast.Node, reader *astutil.NodeReader, env formatEnvironment) ([]ast.Node, formatEnvironment) {
 	nodes = append(nodes, linebreakNode)
-	env.indentLevel++
-	nodes = append(nodes, genIndent(env.indentLevel)...)
+	env.indentLevelUp()
+	nodes = append(nodes, env.genIndent()...)
 	return nodes, env
 }
 
@@ -201,8 +227,20 @@ var linebreakBeforeMatcher = astutil.NodeMatcher{
 }
 
 func formatLinebreakBefore(nodes []ast.Node, reader *astutil.NodeReader, env formatEnvironment) ([]ast.Node, formatEnvironment) {
-	env.indentLevel = 0
+	env.indentLevelReset()
 	nodes = unshift(nodes, linebreakNode)
+	return nodes, env
+}
+
+var linebreakAfterMatcher = astutil.NodeMatcher{
+	ExpectTokens: []token.Kind{
+		token.Comma,
+	},
+}
+
+func formatLinebreakAfter(nodes []ast.Node, reader *astutil.NodeReader, env formatEnvironment) ([]ast.Node, formatEnvironment) {
+	nodes = append(nodes, linebreakNode)
+	nodes = append(nodes, env.genIndent()...)
 	return nodes, env
 }
 
@@ -215,8 +253,8 @@ var indentBeforeMatcher = astutil.NodeMatcher{
 }
 
 func formatIndentBefore(nodes []ast.Node, reader *astutil.NodeReader, env formatEnvironment) ([]ast.Node, formatEnvironment) {
-	env.indentLevel++
-	nodes = unshift(nodes, genIndent(env.indentLevel)...)
+	env.indentLevelUp()
+	nodes = unshift(nodes, env.genIndent()...)
 	nodes = unshift(nodes, linebreakNode)
 	return nodes, env
 }
