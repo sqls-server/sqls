@@ -512,6 +512,7 @@ func parseAliasedWithoutAs(reader *astutil.NodeReader) ast.Node {
 		Toks:        reader.NodesWithRange(startIndex, endIndex+1),
 		RealName:    realName,
 		AliasedName: aliasedName,
+		IsAs:        false,
 	}
 }
 
@@ -545,6 +546,7 @@ func parseAliased(reader *astutil.NodeReader) ast.Node {
 		Toks:        reader.NodesWithRange(startIndex, endIndex+1),
 		RealName:    realName,
 		AliasedName: aliasedName,
+		IsAs:        true,
 	}
 }
 

@@ -20,9 +20,6 @@ const (
 	TypeParenthesis
 	TypeParenthesisInner
 	TypeFunctionLiteral
-	TypeWhereClause
-	TypeFromClause
-	TypeJoinClause
 	TypeQuery
 	TypeStatement
 	TypeIdentiferList
@@ -67,6 +64,23 @@ func (i *Item) Type() NodeType      { return TypeItem }
 func (i *Item) GetToken() *SQLToken { return i.Tok }
 func (i *Item) Pos() token.Pos      { return i.Tok.From }
 func (i *Item) End() token.Pos      { return i.Tok.To }
+
+type ItemWith struct {
+	Toks []Node
+}
+
+func (iw *ItemWith) String() string {
+	var strs []string
+	for _, t := range iw.Toks {
+		strs = append(strs, t.String())
+	}
+	return strings.Join(strs, "")
+}
+func (iw *ItemWith) Type() NodeType        { return TypeMultiKeyword }
+func (iw *ItemWith) GetTokens() []Node     { return iw.Toks }
+func (iw *ItemWith) SetTokens(toks []Node) { iw.Toks = toks }
+func (iw *ItemWith) Pos() token.Pos        { return findFrom(iw) }
+func (iw *ItemWith) End() token.Pos        { return findTo(iw) }
 
 type MultiKeyword struct {
 	Toks []Node
@@ -114,6 +128,7 @@ type Aliased struct {
 	Toks        []Node
 	RealName    Node
 	AliasedName Node
+	IsAs        bool
 }
 
 func (a *Aliased) String() string {

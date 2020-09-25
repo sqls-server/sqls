@@ -1,9 +1,6 @@
 package formatter
 
 import (
-	"fmt"
-	"os"
-
 	"github.com/lighttiger2505/sqls/ast"
 	"github.com/lighttiger2505/sqls/ast/astutil"
 	"github.com/lighttiger2505/sqls/internal/lsp"
@@ -25,6 +22,8 @@ func Format(text string, params lsp.DocumentFormattingParams) ([]lsp.TextEdit, e
 		Line:      parsed.End().Line,
 		Character: parsed.End().Col,
 	}
+	formatted := Eval(parsed, &formatEnvironment{})
+	dPrintln("formatted", formatted)
 
 	res := []lsp.TextEdit{
 		{
@@ -32,40 +31,15 @@ func Format(text string, params lsp.DocumentFormattingParams) ([]lsp.TextEdit, e
 				Start: st,
 				End:   en,
 			},
-			NewText: format(parsed),
+			// NewText: format(parsed),
+			NewText: formatted.String(),
 		},
 	}
 	return res, nil
 }
 
-func format(parsed ast.TokenList) string {
-	ms := []prefixFormatMap{
-		{
-			matcher:   &whitespaceMatcher,
-			formatter: formatWhiteSpace,
-		},
-		{
-			matcher:   &indentAfterMatcher,
-			formatter: formatIndentAfter,
-		},
-		{
-			matcher:   &linebreakBeforeMatcher,
-			formatter: formatLinebreakBefore,
-		},
-		{
-			matcher:   &linebreakAfterMatcher,
-			formatter: formatLinebreakAfter,
-		},
-		{
-			matcher:   &indentBeforeMatcher,
-			formatter: formatIndentBefore,
-		},
-	}
-	formatted := formattingProcess(astutil.NewNodeReader(parsed), ms, formatEnvironment{})
-	return formatted.String()
-}
-
 type formatEnvironment struct {
+	reader      *astutil.NodeReader
 	indentLevel int
 }
 
@@ -93,16 +67,7 @@ type prefixFormatFn func(nodes []ast.Node, reader *astutil.NodeReader, env forma
 
 type prefixFormatMap struct {
 	matcher   *astutil.NodeMatcher
-	ignore    *astutil.NodeMatcher
 	formatter prefixFormatFn
-}
-
-func (pfm *prefixFormatMap) isIgnore(reader *astutil.NodeReader) bool {
-	if pfm.ignore != nil && reader.CurNodeIs(*pfm.ignore) {
-		dPrintln("ignore node", reader.CurNode)
-		return true
-	}
-	return false
 }
 
 func (pfm *prefixFormatMap) isMatch(reader *astutil.NodeReader) bool {
@@ -112,157 +77,210 @@ func (pfm *prefixFormatMap) isMatch(reader *astutil.NodeReader) bool {
 	return false
 }
 
-func formattingProcess(reader *astutil.NodeReader, ms []prefixFormatMap, env formatEnvironment) ast.TokenList {
-	var formattedNodes []ast.Node
-	for reader.NextNode(true) {
-		additionalNodes := []ast.Node{reader.CurNode}
-		isFormatted := false
-		isIgnore := false
-		for _, s := range ms {
-			if s.isIgnore(reader) {
-				isIgnore = true
-			}
-			if s.isMatch(reader) {
-				newNodes, newEnv := s.formatter(additionalNodes, reader, env)
-				additionalNodes = newNodes
-				env = newEnv
-				isFormatted = true
-			}
-		}
-		if isIgnore {
-			formattedNodes = append(formattedNodes, reader.CurNode)
-			continue
-		}
-		if isFormatted {
-			formattedNodes = append(formattedNodes, additionalNodes...)
-			continue
-		}
-
-		if list, ok := reader.CurNode.(ast.TokenList); ok {
-			newReader := astutil.NewNodeReader(list)
-			formattedNodes = append(formattedNodes, formattingProcess(newReader, ms, env))
+func Eval(node ast.Node, env *formatEnvironment) ast.Node {
+	switch node := node.(type) {
+	// case *ast.Query:
+	// 	return formatQuery(node, env)
+	// case *ast.Statement:
+	// 	return formatStatement(node, env)
+	case *ast.Item:
+		return formatItem(node, env)
+	case *ast.MultiKeyword:
+		return formatMultiKeyword(node, env)
+	case *ast.Aliased:
+		return formatAliased(node, env)
+	case *ast.Identifer:
+		return formatIdentifer(node, env)
+	case *ast.MemberIdentifer:
+		return formatMemberIdentifer(node, env)
+	case *ast.Operator:
+		return formatOperator(node, env)
+	case *ast.Comparison:
+		return formatComparison(node, env)
+	// case *ast.Parenthesis:
+	// 	return formatParenthesis(node, env)
+	// case *ast.ParenthesisInner:
+	// case *ast.FunctionLiteral:
+	// case *ast.IdentiferList:
+	// case *ast.SwitchCase:
+	// case *ast.Null:
+	default:
+		if list, ok := node.(ast.TokenList); ok {
+			return formatTokenList(list, env)
 		} else {
-			formattedNodes = append(formattedNodes, reader.CurNode)
+			return formatNode(node, env)
 		}
 	}
-	reader.Node.SetTokens(formattedNodes)
+}
+
+func formatItem(node ast.Node, env *formatEnvironment) ast.Node {
+	results := []ast.Node{node}
+
+	whitespaceMatcher := astutil.NodeMatcher{
+		ExpectKeyword: []string{
+			"JOIN",
+			"ON",
+		},
+	}
+	if whitespaceMatcher.IsMatch(node) {
+		results = append(results, whitespaceNode)
+	}
+
+	linebreakBeforeMatcher := astutil.NodeMatcher{
+		ExpectKeyword: []string{
+			"FROM",
+			"JOIN",
+			"INNER JOIN",
+			"CROSS JOIN",
+			"LEFT JOIN",
+			"RIGHT JOIN",
+			"WHERE",
+			"HAVING",
+			"LIMIT",
+			"UNION",
+			"VALUES",
+			"SET",
+			"EXCEPT",
+		},
+	}
+	if linebreakBeforeMatcher.IsMatch(node) {
+		env.indentLevelDown()
+		results = unshift(results, linebreakNode)
+	}
+
+	indentAfterMatcher := astutil.NodeMatcher{
+		ExpectKeyword: []string{
+			"SELECT",
+			"FROM",
+			"WHERE",
+		},
+		ExpectTokens: []token.Kind{
+			token.LParen,
+		},
+	}
+	if indentAfterMatcher.IsMatch(node) {
+		results = append(results, linebreakNode)
+		env.indentLevelUp()
+		results = append(results, env.genIndent()...)
+	}
+
+	indentBeforeMatcher := astutil.NodeMatcher{
+		ExpectKeyword: []string{
+			"ON",
+			"AND",
+			"OR",
+		},
+	}
+	if indentBeforeMatcher.IsMatch(node) {
+		env.indentLevelUp()
+		results = unshift(results, env.genIndent()...)
+		results = unshift(results, linebreakNode)
+	}
+
+	linebreakAfterMatcher := astutil.NodeMatcher{
+		ExpectTokens: []token.Kind{
+			token.Comma,
+		},
+	}
+	if linebreakAfterMatcher.IsMatch(node) {
+		results = append(results, linebreakNode)
+		results = append(results, env.genIndent()...)
+	}
+
+	return &ast.ItemWith{Toks: results}
+}
+
+func formatMultiKeyword(node ast.Node, env *formatEnvironment) ast.Node {
+	linebreakBeforeMatcher := astutil.NodeMatcher{
+		ExpectKeyword: []string{
+			"INNER JOIN",
+			"CROSS JOIN",
+			"LEFT JOIN",
+			"RIGHT JOIN",
+		},
+	}
+	results := []ast.Node{node}
+	if linebreakBeforeMatcher.IsMatch(node) {
+		results = unshift(results, linebreakNode)
+	}
+	return &ast.ItemWith{Toks: results}
+}
+
+func formatAliased(node *ast.Aliased, env *formatEnvironment) ast.Node {
+	var results []ast.Node
+	if node.IsAs {
+		results = []ast.Node{
+			node.RealName,
+			asNode,
+			node.AliasedName,
+		}
+	} else {
+		results = []ast.Node{
+			node.RealName,
+			whitespaceNode,
+			node.AliasedName,
+		}
+	}
+	return &ast.ItemWith{Toks: results}
+}
+
+func formatIdentifer(node ast.Node, env *formatEnvironment) ast.Node {
+	results := []ast.Node{node}
+
+	// commaMatcher := astutil.NodeMatcher{
+	// 	ExpectTokens: []token.Kind{
+	// 		token.Comma,
+	// 	},
+	// }
+	// if !env.reader.PeekNodeIs(true, commaMatcher) {
+	// 	results = append(results, whitespaceNode)
+	// }
+
+	return &ast.ItemWith{Toks: results}
+}
+
+func formatMemberIdentifer(node *ast.MemberIdentifer, env *formatEnvironment) ast.Node {
+	results := []ast.Node{
+		node.Parent,
+		periodNode,
+		node.Child,
+	}
+	return &ast.ItemWith{Toks: results}
+}
+
+func formatOperator(node *ast.Operator, env *formatEnvironment) ast.Node {
+	results := []ast.Node{
+		Eval(node.Left, env),
+		whitespaceNode,
+		node.Operator,
+		whitespaceNode,
+		Eval(node.Right, env),
+	}
+	return &ast.ItemWith{Toks: results}
+}
+
+func formatComparison(node *ast.Comparison, env *formatEnvironment) ast.Node {
+	results := []ast.Node{
+		Eval(node.Left, env),
+		whitespaceNode,
+		node.Comparison,
+		whitespaceNode,
+		Eval(node.Right, env),
+	}
+	return &ast.ItemWith{Toks: results}
+}
+
+func formatTokenList(list ast.TokenList, env *formatEnvironment) ast.Node {
+	results := []ast.Node{}
+	reader := astutil.NewNodeReader(list)
+	for reader.NextNode(true) {
+		env.reader = reader
+		results = append(results, Eval(reader.CurNode, env))
+	}
+	reader.Node.SetTokens(results)
 	return reader.Node
 }
 
-func unshift(slice []ast.Node, node ...ast.Node) []ast.Node {
-	return append(node, slice...)
-}
-
-var whitespaceNode = ast.NewItem(&token.Token{
-	Kind:  token.Whitespace,
-	Value: " ",
-})
-
-var linebreakNode = ast.NewItem(&token.Token{
-	Kind:  token.Whitespace,
-	Value: "\n",
-})
-
-var indentNode = ast.NewItem(&token.Token{
-	Kind:  token.Whitespace,
-	Value: "\t",
-})
-
-var whitespaceMatcher = astutil.NodeMatcher{
-	NodeTypes: []ast.NodeType{
-		ast.TypeMemberIdentifer,
-		ast.TypeIdentifer,
-		ast.TypeOperator,
-		ast.TypeComparison,
-	},
-	ExpectTokens: []token.Kind{
-		token.SQLKeyword,
-		token.Comma,
-	},
-}
-
-func formatWhiteSpace(nodes []ast.Node, reader *astutil.NodeReader, env formatEnvironment) ([]ast.Node, formatEnvironment) {
-	pass := astutil.NodeMatcher{
-		ExpectTokens: []token.Kind{
-			token.Comma,
-			token.Semicolon,
-		},
-	}
-	if reader.PeekNodeIs(true, pass) {
-		return nodes, env
-	}
-	return append(nodes, whitespaceNode), env
-}
-
-var indentAfterMatcher = astutil.NodeMatcher{
-	ExpectKeyword: []string{
-		"SELECT",
-	},
-}
-
-func formatIndentAfter(nodes []ast.Node, reader *astutil.NodeReader, env formatEnvironment) ([]ast.Node, formatEnvironment) {
-	nodes = append(nodes, linebreakNode)
-	env.indentLevelUp()
-	nodes = append(nodes, env.genIndent()...)
-	return nodes, env
-}
-
-var linebreakBeforeMatcher = astutil.NodeMatcher{
-	ExpectKeyword: []string{
-		"FROM",
-		"JOIN",
-		"INNER JOIN",
-		"CROSS JOIN",
-		"LEFT JOIN",
-		"RIGHT JOIN",
-		"WHERE",
-		"HAVING",
-		"LIMIT",
-		"UNION",
-		"VALUES",
-		"SET",
-		"BETWEEN",
-		"EXCEPT",
-	},
-}
-
-func formatLinebreakBefore(nodes []ast.Node, reader *astutil.NodeReader, env formatEnvironment) ([]ast.Node, formatEnvironment) {
-	env.indentLevelReset()
-	nodes = unshift(nodes, linebreakNode)
-	return nodes, env
-}
-
-var linebreakAfterMatcher = astutil.NodeMatcher{
-	ExpectTokens: []token.Kind{
-		token.Comma,
-	},
-}
-
-func formatLinebreakAfter(nodes []ast.Node, reader *astutil.NodeReader, env formatEnvironment) ([]ast.Node, formatEnvironment) {
-	nodes = append(nodes, linebreakNode)
-	nodes = append(nodes, env.genIndent()...)
-	return nodes, env
-}
-
-var indentBeforeMatcher = astutil.NodeMatcher{
-	ExpectKeyword: []string{
-		"ON",
-		"AND",
-		"OR",
-	},
-}
-
-func formatIndentBefore(nodes []ast.Node, reader *astutil.NodeReader, env formatEnvironment) ([]ast.Node, formatEnvironment) {
-	env.indentLevelUp()
-	nodes = unshift(nodes, env.genIndent()...)
-	nodes = unshift(nodes, linebreakNode)
-	return nodes, env
-}
-
-func dPrintln(a ...interface{}) {
-	fmt.Fprintln(os.Stderr, a...)
-}
-
-func dPrintf(format string, a ...interface{}) {
-	fmt.Fprintf(os.Stderr, format, a...)
+func formatNode(node ast.Node, env *formatEnvironment) ast.Node {
+	return node
 }
