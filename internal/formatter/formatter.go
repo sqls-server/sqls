@@ -23,7 +23,6 @@ func Format(text string, params lsp.DocumentFormattingParams) ([]lsp.TextEdit, e
 		Character: parsed.End().Col,
 	}
 	formatted := Eval(parsed, &formatEnvironment{})
-	dPrintln("formatted", formatted)
 
 	res := []lsp.TextEdit{
 		{
@@ -31,7 +30,6 @@ func Format(text string, params lsp.DocumentFormattingParams) ([]lsp.TextEdit, e
 				Start: st,
 				End:   en,
 			},
-			// NewText: format(parsed),
 			NewText: formatted.String(),
 		},
 	}
@@ -78,6 +76,7 @@ func (pfm *prefixFormatMap) isMatch(reader *astutil.NodeReader) bool {
 }
 
 func Eval(node ast.Node, env *formatEnvironment) ast.Node {
+	dPrintf("eval %q: %T\n", node, node)
 	switch node := node.(type) {
 	// case *ast.Query:
 	// 	return formatQuery(node, env)
@@ -97,11 +96,12 @@ func Eval(node ast.Node, env *formatEnvironment) ast.Node {
 		return formatOperator(node, env)
 	case *ast.Comparison:
 		return formatComparison(node, env)
-	// case *ast.Parenthesis:
-	// 	return formatParenthesis(node, env)
+	case *ast.Parenthesis:
+		return formatParenthesis(node, env)
 	// case *ast.ParenthesisInner:
 	// case *ast.FunctionLiteral:
-	// case *ast.IdentiferList:
+	case *ast.IdentiferList:
+		return formatIdentiferList(node, env)
 	// case *ast.SwitchCase:
 	// case *ast.Null:
 	default:
@@ -116,24 +116,34 @@ func Eval(node ast.Node, env *formatEnvironment) ast.Node {
 func formatItem(node ast.Node, env *formatEnvironment) ast.Node {
 	results := []ast.Node{node}
 
-	whitespaceMatcher := astutil.NodeMatcher{
+	whitespaceAfterMatcher := astutil.NodeMatcher{
 		ExpectKeyword: []string{
 			"JOIN",
 			"ON",
+			"AND",
+			"OR",
+			"LIMIT",
 		},
 	}
-	if whitespaceMatcher.IsMatch(node) {
+	if whitespaceAfterMatcher.IsMatch(node) {
+		results = append(results, whitespaceNode)
+	}
+	whitespaceAroundMatcher := astutil.NodeMatcher{
+		ExpectKeyword: []string{
+			"BETWEEN",
+			"USING",
+		},
+	}
+	if whitespaceAroundMatcher.IsMatch(node) {
+		results = unshift(results, whitespaceNode)
 		results = append(results, whitespaceNode)
 	}
 
-	linebreakBeforeMatcher := astutil.NodeMatcher{
+	// Add an adjustment before the cursor
+	outdentBeforeMatcher := astutil.NodeMatcher{
 		ExpectKeyword: []string{
 			"FROM",
 			"JOIN",
-			"INNER JOIN",
-			"CROSS JOIN",
-			"LEFT JOIN",
-			"RIGHT JOIN",
 			"WHERE",
 			"HAVING",
 			"LIMIT",
@@ -143,11 +153,33 @@ func formatItem(node ast.Node, env *formatEnvironment) ast.Node {
 			"EXCEPT",
 		},
 	}
-	if linebreakBeforeMatcher.IsMatch(node) {
+	if outdentBeforeMatcher.IsMatch(node) {
 		env.indentLevelDown()
+		results = unshift(results, env.genIndent()...)
+		results = unshift(results, linebreakNode)
+	}
+	indentBeforeMatcher := astutil.NodeMatcher{
+		ExpectKeyword: []string{
+			"ON",
+		},
+	}
+	if indentBeforeMatcher.IsMatch(node) {
+		env.indentLevelUp()
+		results = unshift(results, env.genIndent()...)
+		results = unshift(results, linebreakNode)
+	}
+	linebreakBeforeMatcher := astutil.NodeMatcher{
+		ExpectKeyword: []string{
+			"AND",
+			"OR",
+		},
+	}
+	if linebreakBeforeMatcher.IsMatch(node) {
+		results = unshift(results, env.genIndent()...)
 		results = unshift(results, linebreakNode)
 	}
 
+	// Add an adjustment after the cursor
 	indentAfterMatcher := astutil.NodeMatcher{
 		ExpectKeyword: []string{
 			"SELECT",
@@ -163,20 +195,6 @@ func formatItem(node ast.Node, env *formatEnvironment) ast.Node {
 		env.indentLevelUp()
 		results = append(results, env.genIndent()...)
 	}
-
-	indentBeforeMatcher := astutil.NodeMatcher{
-		ExpectKeyword: []string{
-			"ON",
-			"AND",
-			"OR",
-		},
-	}
-	if indentBeforeMatcher.IsMatch(node) {
-		env.indentLevelUp()
-		results = unshift(results, env.genIndent()...)
-		results = unshift(results, linebreakNode)
-	}
-
 	linebreakAfterMatcher := astutil.NodeMatcher{
 		ExpectTokens: []token.Kind{
 			token.Comma,
@@ -191,18 +209,34 @@ func formatItem(node ast.Node, env *formatEnvironment) ast.Node {
 }
 
 func formatMultiKeyword(node ast.Node, env *formatEnvironment) ast.Node {
-	linebreakBeforeMatcher := astutil.NodeMatcher{
-		ExpectKeyword: []string{
-			"INNER JOIN",
-			"CROSS JOIN",
-			"LEFT JOIN",
-			"RIGHT JOIN",
-		},
-	}
 	results := []ast.Node{node}
-	if linebreakBeforeMatcher.IsMatch(node) {
+
+	joinKeywords := []string{
+		"INNER JOIN",
+		"CROSS JOIN",
+		"OUTER JOIN",
+		"LEFT JOIN",
+		"RIGHT JOIN",
+		"LEFT OUTER JOIN",
+		"RIGHT OUTER JOIN",
+	}
+
+	whitespaceAfterMatcher := astutil.NodeMatcher{
+		ExpectKeyword: joinKeywords,
+	}
+	if whitespaceAfterMatcher.IsMatch(node) {
+		results = append(results, whitespaceNode)
+	}
+
+	outdentBeforeMatcher := astutil.NodeMatcher{
+		ExpectKeyword: joinKeywords,
+	}
+	if outdentBeforeMatcher.IsMatch(node) {
+		env.indentLevelDown()
+		results = unshift(results, env.genIndent()...)
 		results = unshift(results, linebreakNode)
 	}
+
 	return &ast.ItemWith{Toks: results}
 }
 
@@ -210,15 +244,17 @@ func formatAliased(node *ast.Aliased, env *formatEnvironment) ast.Node {
 	var results []ast.Node
 	if node.IsAs {
 		results = []ast.Node{
-			node.RealName,
-			asNode,
-			node.AliasedName,
+			Eval(node.RealName, env),
+			whitespaceNode,
+			node.As,
+			whitespaceNode,
+			Eval(node.AliasedName, env),
 		}
 	} else {
 		results = []ast.Node{
-			node.RealName,
+			Eval(node.RealName, env),
 			whitespaceNode,
-			node.AliasedName,
+			Eval(node.AliasedName, env),
 		}
 	}
 	return &ast.ItemWith{Toks: results}
@@ -226,6 +262,7 @@ func formatAliased(node *ast.Aliased, env *formatEnvironment) ast.Node {
 
 func formatIdentifer(node ast.Node, env *formatEnvironment) ast.Node {
 	results := []ast.Node{node}
+	// results := []ast.Node{node, whitespaceNode}
 
 	// commaMatcher := astutil.NodeMatcher{
 	// 	ExpectTokens: []token.Kind{
@@ -241,9 +278,9 @@ func formatIdentifer(node ast.Node, env *formatEnvironment) ast.Node {
 
 func formatMemberIdentifer(node *ast.MemberIdentifer, env *formatEnvironment) ast.Node {
 	results := []ast.Node{
-		node.Parent,
+		Eval(node.Parent, env),
 		periodNode,
-		node.Child,
+		Eval(node.Child, env),
 	}
 	return &ast.ItemWith{Toks: results}
 }
@@ -266,6 +303,36 @@ func formatComparison(node *ast.Comparison, env *formatEnvironment) ast.Node {
 		node.Comparison,
 		whitespaceNode,
 		Eval(node.Right, env),
+	}
+	return &ast.ItemWith{Toks: results}
+}
+
+func formatParenthesis(node *ast.Parenthesis, env *formatEnvironment) ast.Node {
+	results := []ast.Node{}
+	// results = append(results, whitespaceNode)
+	results = append(results, lparenNode)
+	startIndentLevel := env.indentLevel
+	env.indentLevelUp()
+	results = append(results, linebreakNode)
+	results = append(results, env.genIndent()...)
+	results = append(results, Eval(node.Inner(), env))
+	env.indentLevel = startIndentLevel
+	results = append(results, linebreakNode)
+	results = append(results, env.genIndent()...)
+	results = append(results, rparenNode)
+	// results = append(results, whitespaceNode)
+	return &ast.ItemWith{Toks: results}
+}
+
+func formatIdentiferList(identiferList *ast.IdentiferList, env *formatEnvironment) ast.Node {
+	idents := identiferList.GetIdentifers()
+	results := []ast.Node{}
+	for i, ident := range idents {
+		results = append(results, Eval(ident, env))
+		if i != len(idents)-1 {
+			results = append(results, commaNode, linebreakNode)
+			results = append(results, env.genIndent()...)
+		}
 	}
 	return &ast.ItemWith{Toks: results}
 }
