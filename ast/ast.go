@@ -128,6 +128,7 @@ type Aliased struct {
 	Toks        []Node
 	RealName    Node
 	AliasedName Node
+	As          Node
 	IsAs        bool
 }
 
@@ -320,7 +321,8 @@ func (s *Statement) Pos() token.Pos        { return findFrom(s) }
 func (s *Statement) End() token.Pos        { return findTo(s) }
 
 type IdentiferList struct {
-	Toks []Node
+	Toks       []Node
+	Identifers []Node
 }
 
 func (il *IdentiferList) String() string {
@@ -335,6 +337,7 @@ func (il *IdentiferList) GetTokens() []Node     { return il.Toks }
 func (il *IdentiferList) SetTokens(toks []Node) { il.Toks = toks }
 func (il *IdentiferList) Pos() token.Pos        { return findFrom(il) }
 func (il *IdentiferList) End() token.Pos        { return findTo(il) }
+func (il *IdentiferList) GetIdentifers() []Node { return il.Identifers }
 
 type SwitchCase struct {
 	Toks []Node

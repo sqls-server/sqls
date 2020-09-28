@@ -240,15 +240,17 @@ func parseMemberIdentifier(reader *astutil.NodeReader) ast.Node {
 	return memberIdentifier
 }
 
-var multiKeywordMap = map[string]string{
-	"ORDER":  "BY",
-	"GROUP":  "BY",
-	"INSERT": "INTO",
-	"DELETE": "FROM",
-	"INNER":  "JOIN",
-	"CROSS":  "JOIN",
-	"LEFT":   "JOIN",
-	"RIGHT":  "JOIN",
+var multiKeywordMap = map[string][]string{
+	"ORDER":   {"BY"},
+	"GROUP":   {"BY"},
+	"INSERT":  {"INTO"},
+	"DELETE":  {"FROM"},
+	"INNER":   {"JOIN"},
+	"CROSS":   {"JOIN"},
+	"OUTER":   {"JOIN"},
+	"LEFT":    {"OUTER", "JOIN"},
+	"RIGHT":   {"OUTER", "JOIN"},
+	"NATURAL": {"LEFT", "RIGHT", "OUTER", "JOIN"},
 }
 
 func genMultiKeywordPrefixMatcher() astutil.NodeMatcher {
@@ -260,17 +262,21 @@ func genMultiKeywordPrefixMatcher() astutil.NodeMatcher {
 }
 
 func parseMultiKeyword(reader *astutil.NodeReader) ast.Node {
-	curKeyword := strings.ToUpper(reader.CurNode.String())
-	peekKeyword := multiKeywordMap[curKeyword]
-	if !reader.PeekNodeIs(true, astutil.NodeMatcher{ExpectKeyword: []string{peekKeyword}}) {
-		return reader.CurNode
-	}
 	startIndex := reader.Index - 1
-	reader.NextNode(true)
-	memberIdentifier := &ast.MultiKeyword{
+	for {
+		curKeyword := strings.ToUpper(reader.CurNode.String())
+		peekKeywords, ok := multiKeywordMap[curKeyword]
+		if !ok {
+			break
+		}
+		if !reader.PeekNodeIs(true, astutil.NodeMatcher{ExpectKeyword: peekKeywords}) {
+			return reader.CurNode
+		}
+		reader.NextNode(true)
+	}
+	return &ast.MultiKeyword{
 		Toks: reader.NodesWithRange(startIndex, reader.Index),
 	}
-	return memberIdentifier
 }
 
 // parseArrays
@@ -386,6 +392,9 @@ var comparisonInfixMatcher = astutil.NodeMatcher{
 		token.LtEq,
 		token.GtEq,
 	},
+	ExpectKeyword: []string{
+		"IS",
+	},
 }
 var comparisonTargetMatcher = astutil.NodeMatcher{
 	NodeTypes: []ast.NodeType{
@@ -400,6 +409,10 @@ var comparisonTargetMatcher = astutil.NodeMatcher{
 		token.Char,
 		token.SingleQuotedString,
 		token.NationalStringLiteral,
+	},
+	ExpectKeyword: []string{
+		"TRUE",
+		"FALSE",
 	},
 }
 var comparisonRecursionMatcher = astutil.NodeMatcher{
@@ -474,6 +487,7 @@ var aliasLeftMatcher = astutil.NodeMatcher{
 		ast.TypeIdentifer,
 		ast.TypeMemberIdentifer,
 		ast.TypeSwitchCase,
+		ast.TypeOperator,
 	},
 }
 
@@ -530,6 +544,7 @@ func parseAliased(reader *astutil.NodeReader) ast.Node {
 	}
 
 	realName := reader.CurNode
+	_, as := reader.PeekNode(true)
 	startIndex := reader.Index - 1
 	tmpReader := reader.CopyReader()
 	tmpReader.NextNode(true)
@@ -546,6 +561,7 @@ func parseAliased(reader *astutil.NodeReader) ast.Node {
 		Toks:        reader.NodesWithRange(startIndex, endIndex+1),
 		RealName:    realName,
 		AliasedName: aliasedName,
+		As:          as,
 		IsAs:        true,
 	}
 }
@@ -559,6 +575,12 @@ var identifierListInfixMatcher = astutil.NodeMatcher{
 	},
 }
 var identifierListTargetMatcher = astutil.NodeMatcher{
+	ExpectTokens: []token.Kind{
+		token.Number,
+		token.Char,
+		token.SingleQuotedString,
+		token.NationalStringLiteral,
+	},
 	NodeTypes: []ast.NodeType{
 		ast.TypeFunctionLiteral,
 		ast.TypeIdentifer,
@@ -574,11 +596,15 @@ func parseIdentifierList(reader *astutil.NodeReader) ast.Node {
 	if !reader.CurNodeIs(identifierListTargetMatcher) {
 		return reader.CurNode
 	}
+	idents := []ast.Node{reader.CurNode}
 	startIndex := reader.Index - 1
 	tmpReader := reader.CopyReader()
 	tmpReader.NextNode(true)
 
-	var endIndex, peekIndex int
+	var (
+		endIndex, peekIndex int
+		peekNode            ast.Node
+	)
 	for {
 		if !tmpReader.PeekNodeIs(true, identifierListTargetMatcher) {
 			// Include white space after the comma
@@ -595,7 +621,8 @@ func parseIdentifierList(reader *astutil.NodeReader) ast.Node {
 			break
 		}
 
-		peekIndex, _ = tmpReader.PeekNode(true)
+		peekIndex, peekNode = tmpReader.PeekNode(true)
+		idents = append(idents, peekNode)
 		endIndex = peekIndex
 
 		tmpReader.NextNode(true)
@@ -607,7 +634,10 @@ func parseIdentifierList(reader *astutil.NodeReader) ast.Node {
 
 	reader.Index = tmpReader.Index
 	reader.CurNode = tmpReader.CurNode
-	return &ast.IdentiferList{Toks: reader.NodesWithRange(startIndex, endIndex+1)}
+	return &ast.IdentiferList{
+		Toks:       reader.NodesWithRange(startIndex, endIndex+1),
+		Identifers: idents,
+	}
 }
 
 var switchCaseOpenMatcher = astutil.NodeMatcher{

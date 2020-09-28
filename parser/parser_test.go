@@ -526,6 +526,24 @@ func TestParseMultiKeyword(t *testing.T) {
 			},
 		},
 		{
+			name:  "inner join keyword",
+			input: "inner join",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testMultiKeyword(t, list[0], input)
+			},
+		},
+		{
+			name:  "left outer join keyword",
+			input: "left outer join",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testMultiKeyword(t, list[0], input)
+			},
+		},
+		{
 			name:  "select with group keyword",
 			input: "select a, b, c from abc group by d, e, f",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
@@ -820,7 +838,7 @@ func TestParseAliased(t *testing.T) {
 			name:  "aliase join identifier",
 			input: "select foo from abc inner join def as d",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
-				testStatement(t, stmts[0], 13, input)
+				testStatement(t, stmts[0], 11, input)
 				list := stmts[0].GetTokens()
 				testItem(t, list[0], "select")
 				testItem(t, list[1], " ")
@@ -830,11 +848,9 @@ func TestParseAliased(t *testing.T) {
 				testItem(t, list[5], " ")
 				testIdentifier(t, list[6], "abc")
 				testItem(t, list[7], " ")
-				testItem(t, list[8], "inner")
+				testMultiKeyword(t, list[8], "inner join")
 				testItem(t, list[9], " ")
-				testItem(t, list[10], "join")
-				testItem(t, list[11], " ")
-				testAliased(t, list[12], "def as d", "def", "d")
+				testAliased(t, list[10], "def as d", "def", "d")
 			},
 		},
 		{
@@ -1000,6 +1016,15 @@ func TestParseIdentifierList(t *testing.T) {
 		{
 			name:  "IndentifierList operator",
 			input: "1 + 2, 3 - 4, 5 * 6",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testIdentifierList(t, list[0], input)
+			},
+		},
+		{
+			name:  "IndentifierList tokens",
+			input: "1, 'aaa', 'N'",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, input)
 				list := stmts[0].GetTokens()
