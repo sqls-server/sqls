@@ -76,7 +76,7 @@ func (pfm *prefixFormatMap) isMatch(reader *astutil.NodeReader) bool {
 }
 
 func Eval(node ast.Node, env *formatEnvironment) ast.Node {
-	dPrintf("eval %q: %T\n", node, node)
+	// dPrintf("eval %q: %T\n", node, node)
 	switch node := node.(type) {
 	// case *ast.Query:
 	// 	return formatQuery(node, env)
