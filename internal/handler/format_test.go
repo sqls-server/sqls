@@ -1,6 +1,10 @@
 package handler
 
 import (
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -112,89 +116,48 @@ func TestFormatting(t *testing.T) {
 	type formattingTestCase struct {
 		name  string
 		input string
-		line  int
-		col   int
 		want  string
 	}
-	testCase := []formattingTestCase{
-		// 		{
-		// 			name:  "select",
-		// 			input: "SELECT ID , Name FROM city;",
-		// 			want: `SELECT
-		// 	ID,
-		// 	Name
-		// FROM
-		// 	city;`,
-		// 		},
-		// 		{
-		// 			name:  "member ident",
-		// 			input: "select ci.ID, ci.Name, co.Code, co.Name from city ci join country co on ci.CountryCode = co.Code;",
-		// 			want: `select
-		// 	ci.ID,
-		// 	ci.Name,
-		// 	co.Code,
-		// 	co.Name
-		// from
-		// 	city ci
-		// join country co
-		// 	on ci.CountryCode = co.Code;`,
-		// 		},
-		{
-			name: "select",
-			input: `select a, b as bb,c from table
-join (select a * 2 as a from new_table) other
-on table.a = other.a
-where c is true
-and b between 3 and 4
-or d is 'blue'
-limit 10`,
-			want: `select
-	a,
-	b as bb,
-	c
-from
-	table
-join (
-	select
-		a * 2 as a
-	from
-		new_table
-) other
-	on table.a = other.a
-where
-	c is true
-	and b between 3
-	and 4
-	or d is 'blue'
-limit 10`,
-		},
-		{
-			name: "joins",
-			input: `select * from a
-join b on a.one = b.one
-left join c on c.two = a.two and c.three = a.three
-right outer join d on d.three = a.three
-cross join e on e.four = a.four
-join f using (one, two, three)`,
-			want: `select
-	*
-from
-	a
-join b
-	on a.one = b.one
-left join c
-	on c.two = a.two
-	and c.three = a.three
-right outer join d
-	on d.three = a.three
-cross join e
-	on e.four = a.four
-join f using (
-	one,
-	two,
-	three
-)`,
-		},
+
+	testDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	testFileInfos, err := ioutil.ReadDir("testdata")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	const (
+		inputFileSuffix  = ".input.sql"
+		goldenFileSuffix = ".golden.sql"
+	)
+	testCase := []formattingTestCase{}
+	for _, testFileInfo := range testFileInfos {
+		inputFileName := testFileInfo.Name()
+		if !strings.HasSuffix(inputFileName, inputFileSuffix) {
+			continue
+		}
+
+		testName := testFileInfo.Name()[:len(inputFileName)-len(inputFileSuffix)]
+		inputPath := filepath.Join(testDir, "testdata", inputFileName)
+		goldenPath := filepath.Join(testDir, "testdata", testName+goldenFileSuffix)
+
+		input, err := ioutil.ReadFile(inputPath)
+		if err != nil {
+			t.Errorf("Cannot read input file, Path=%s, Err=%+v", inputPath, err)
+			continue
+		}
+		golden, err := ioutil.ReadFile(goldenPath)
+		if err != nil {
+			t.Errorf("Cannot read input file, Path=%s, Err=%+v", goldenPath, err)
+			continue
+		}
+		testCase = append(testCase, formattingTestCase{
+			name:  testName,
+			input: string(input),
+			want:  string(golden)[:len(string(golden))-len("\n")],
+		})
 	}
 
 	for _, tt := range testCase {
@@ -235,6 +198,7 @@ join f using (
 			}
 			if diff := cmp.Diff(tt.want, got[0].NewText); diff != "" {
 				t.Errorf("unmatch (- want, + got):\n%s", diff)
+				t.Errorf("unmatch\nwant: %q\ngot : %q", tt.want, got[0].NewText)
 			}
 		})
 	}
