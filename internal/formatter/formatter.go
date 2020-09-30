@@ -1,6 +1,8 @@
 package formatter
 
 import (
+	"errors"
+
 	"github.com/lighttiger2505/sqls/ast"
 	"github.com/lighttiger2505/sqls/ast/astutil"
 	"github.com/lighttiger2505/sqls/internal/lsp"
@@ -9,11 +11,15 @@ import (
 )
 
 func Format(text string, params lsp.DocumentFormattingParams) ([]lsp.TextEdit, error) {
+	if text == "" {
+		return nil, errors.New("empty")
+	}
 	parsed, err := parser.Parse(text)
 	if err != nil {
 		return nil, err
 	}
 
+	dPrintln(parsed)
 	st := lsp.Position{
 		Line:      parsed.Pos().Line,
 		Character: parsed.Pos().Col,
@@ -76,7 +82,7 @@ func (pfm *prefixFormatMap) isMatch(reader *astutil.NodeReader) bool {
 }
 
 func Eval(node ast.Node, env *formatEnvironment) ast.Node {
-	// dPrintf("eval %q: %T\n", node, node)
+	dPrintf("eval %q: %T\n", node, node)
 	switch node := node.(type) {
 	// case *ast.Query:
 	// 	return formatQuery(node, env)
@@ -123,6 +129,8 @@ func formatItem(node ast.Node, env *formatEnvironment) ast.Node {
 			"AND",
 			"OR",
 			"LIMIT",
+			"WHEN",
+			"ELSE",
 		},
 	}
 	if whitespaceAfterMatcher.IsMatch(node) {
@@ -132,6 +140,7 @@ func formatItem(node ast.Node, env *formatEnvironment) ast.Node {
 		ExpectKeyword: []string{
 			"BETWEEN",
 			"USING",
+			"THEN",
 		},
 	}
 	if whitespaceAroundMatcher.IsMatch(node) {
@@ -151,6 +160,7 @@ func formatItem(node ast.Node, env *formatEnvironment) ast.Node {
 			"VALUES",
 			"SET",
 			"EXCEPT",
+			"END",
 		},
 	}
 	if outdentBeforeMatcher.IsMatch(node) {
@@ -172,6 +182,8 @@ func formatItem(node ast.Node, env *formatEnvironment) ast.Node {
 		ExpectKeyword: []string{
 			"AND",
 			"OR",
+			"WHEN",
+			"ELSE",
 		},
 	}
 	if linebreakBeforeMatcher.IsMatch(node) {
@@ -180,7 +192,7 @@ func formatItem(node ast.Node, env *formatEnvironment) ast.Node {
 	}
 
 	// Add an adjustment after the cursor
-	indentAfterMatcher := astutil.NodeMatcher{
+	linebreakWithIndentAfterMatcher := astutil.NodeMatcher{
 		ExpectKeyword: []string{
 			"SELECT",
 			"FROM",
@@ -190,10 +202,18 @@ func formatItem(node ast.Node, env *formatEnvironment) ast.Node {
 			token.LParen,
 		},
 	}
-	if indentAfterMatcher.IsMatch(node) {
+	if linebreakWithIndentAfterMatcher.IsMatch(node) {
 		results = append(results, linebreakNode)
 		env.indentLevelUp()
 		results = append(results, env.genIndent()...)
+	}
+	indentAfterMatcher := astutil.NodeMatcher{
+		ExpectKeyword: []string{
+			"CASE",
+		},
+	}
+	if indentAfterMatcher.IsMatch(node) {
+		env.indentLevelUp()
 	}
 	linebreakAfterMatcher := astutil.NodeMatcher{
 		ExpectTokens: []token.Kind{
