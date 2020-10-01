@@ -66,6 +66,13 @@ func ExtractTableFactor(parsed ast.TokenList) []ast.Node {
 	prefixMatcher := astutil.NodeMatcher{
 		ExpectKeyword: []string{
 			"JOIN",
+			"INNER JOIN",
+			"CROSS JOIN",
+			"OUTER JOIN",
+			"LEFT JOIN",
+			"RIGHT JOIN",
+			"LEFT OUTER JOIN",
+			"RIGHT OUTER JOIN",
 		},
 	}
 	peekMatcher := astutil.NodeMatcher{

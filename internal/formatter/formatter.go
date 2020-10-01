@@ -19,7 +19,6 @@ func Format(text string, params lsp.DocumentFormattingParams) ([]lsp.TextEdit, e
 		return nil, err
 	}
 
-	dPrintln(parsed)
 	st := lsp.Position{
 		Line:      parsed.Pos().Line,
 		Character: parsed.Pos().Col,
@@ -82,7 +81,6 @@ func (pfm *prefixFormatMap) isMatch(reader *astutil.NodeReader) bool {
 }
 
 func Eval(node ast.Node, env *formatEnvironment) ast.Node {
-	dPrintf("eval %q: %T\n", node, node)
 	switch node := node.(type) {
 	// case *ast.Query:
 	// 	return formatQuery(node, env)
@@ -105,7 +103,8 @@ func Eval(node ast.Node, env *formatEnvironment) ast.Node {
 	case *ast.Parenthesis:
 		return formatParenthesis(node, env)
 	// case *ast.ParenthesisInner:
-	// case *ast.FunctionLiteral:
+	case *ast.FunctionLiteral:
+		return formatFunctionLiteral(node, env)
 	case *ast.IdentiferList:
 		return formatIdentiferList(node, env)
 	// case *ast.SwitchCase:
@@ -148,7 +147,7 @@ func formatItem(node ast.Node, env *formatEnvironment) ast.Node {
 		results = append(results, whitespaceNode)
 	}
 
-	// Add an adjustment before the cursor
+	// Add an adjustment indent before the cursor
 	outdentBeforeMatcher := astutil.NodeMatcher{
 		ExpectKeyword: []string{
 			"FROM",
@@ -191,12 +190,13 @@ func formatItem(node ast.Node, env *formatEnvironment) ast.Node {
 		results = unshift(results, linebreakNode)
 	}
 
-	// Add an adjustment after the cursor
+	// Add an adjustment indent after the cursor
 	linebreakWithIndentAfterMatcher := astutil.NodeMatcher{
 		ExpectKeyword: []string{
 			"SELECT",
 			"FROM",
 			"WHERE",
+			"HAVING",
 		},
 		ExpectTokens: []token.Kind{
 			token.LParen,
@@ -240,6 +240,10 @@ func formatMultiKeyword(node ast.Node, env *formatEnvironment) ast.Node {
 		"LEFT OUTER JOIN",
 		"RIGHT OUTER JOIN",
 	}
+	byKeywords := []string{
+		"GROUP BY",
+		"ORDER BY",
+	}
 
 	whitespaceAfterMatcher := astutil.NodeMatcher{
 		ExpectKeyword: joinKeywords,
@@ -248,13 +252,24 @@ func formatMultiKeyword(node ast.Node, env *formatEnvironment) ast.Node {
 		results = append(results, whitespaceNode)
 	}
 
+	// Add an adjustment indent before the cursor
 	outdentBeforeMatcher := astutil.NodeMatcher{
-		ExpectKeyword: joinKeywords,
+		ExpectKeyword: append(joinKeywords, byKeywords...),
 	}
 	if outdentBeforeMatcher.IsMatch(node) {
 		env.indentLevelDown()
 		results = unshift(results, env.genIndent()...)
 		results = unshift(results, linebreakNode)
+	}
+
+	// Add an adjustment indent after the cursor
+	linebreakWithIndentAfterMatcher := astutil.NodeMatcher{
+		ExpectKeyword: byKeywords,
+	}
+	if linebreakWithIndentAfterMatcher.IsMatch(node) {
+		results = append(results, linebreakNode)
+		env.indentLevelUp()
+		results = append(results, env.genIndent()...)
 	}
 
 	return &ast.ItemWith{Toks: results}
@@ -341,6 +356,11 @@ func formatParenthesis(node *ast.Parenthesis, env *formatEnvironment) ast.Node {
 	results = append(results, env.genIndent()...)
 	results = append(results, rparenNode)
 	// results = append(results, whitespaceNode)
+	return &ast.ItemWith{Toks: results}
+}
+
+func formatFunctionLiteral(node *ast.FunctionLiteral, env *formatEnvironment) ast.Node {
+	results := []ast.Node{node}
 	return &ast.ItemWith{Toks: results}
 }
 
