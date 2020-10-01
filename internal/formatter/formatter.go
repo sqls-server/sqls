@@ -228,8 +228,14 @@ func formatItem(node ast.Node, env *formatEnvironment) ast.Node {
 	return &ast.ItemWith{Toks: results}
 }
 
-func formatMultiKeyword(node ast.Node, env *formatEnvironment) ast.Node {
-	results := []ast.Node{node}
+func formatMultiKeyword(node *ast.MultiKeyword, env *formatEnvironment) ast.Node {
+	results := []ast.Node{}
+	for i, kw := range node.GetKeywords() {
+		results = append(results, kw)
+		if i != len(node.GetKeywords())-1 {
+			results = append(results, whitespaceNode)
+		}
+	}
 
 	joinKeywords := []string{
 		"INNER JOIN",

@@ -83,7 +83,8 @@ func (iw *ItemWith) Pos() token.Pos        { return findFrom(iw) }
 func (iw *ItemWith) End() token.Pos        { return findTo(iw) }
 
 type MultiKeyword struct {
-	Toks []Node
+	Toks     []Node
+	Keywords []Node
 }
 
 func (mk *MultiKeyword) String() string {
@@ -98,6 +99,7 @@ func (mk *MultiKeyword) GetTokens() []Node     { return mk.Toks }
 func (mk *MultiKeyword) SetTokens(toks []Node) { mk.Toks = toks }
 func (mk *MultiKeyword) Pos() token.Pos        { return findFrom(mk) }
 func (mk *MultiKeyword) End() token.Pos        { return findTo(mk) }
+func (mk *MultiKeyword) GetKeywords() []Node   { return mk.Keywords }
 
 type MemberIdentifer struct {
 	Toks   []Node

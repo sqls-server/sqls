@@ -262,8 +262,10 @@ func genMultiKeywordPrefixMatcher() astutil.NodeMatcher {
 }
 
 func parseMultiKeyword(reader *astutil.NodeReader) ast.Node {
+	keywords := []ast.Node{}
 	startIndex := reader.Index - 1
 	for {
+		keywords = append(keywords, reader.CurNode)
 		curKeyword := strings.ToUpper(reader.CurNode.String())
 		peekKeywords, ok := multiKeywordMap[curKeyword]
 		if !ok {
@@ -275,7 +277,8 @@ func parseMultiKeyword(reader *astutil.NodeReader) ast.Node {
 		reader.NextNode(true)
 	}
 	return &ast.MultiKeyword{
-		Toks: reader.NodesWithRange(startIndex, reader.Index),
+		Toks:     reader.NodesWithRange(startIndex, reader.Index),
+		Keywords: keywords,
 	}
 }
 

@@ -33,11 +33,13 @@ func TestFormatting(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	testCase := []formattingTestCase{}
+
+	// Add golden file test
 	const (
 		inputFileSuffix  = ".input.sql"
 		goldenFileSuffix = ".golden.sql"
 	)
-	testCase := []formattingTestCase{}
 	for _, testFileInfo := range testFileInfos {
 		inputFileName := testFileInfo.Name()
 		if !strings.HasSuffix(inputFileName, inputFileSuffix) {
@@ -64,6 +66,16 @@ func TestFormatting(t *testing.T) {
 			want:  string(golden)[:len(string(golden))-len("\n")],
 		})
 	}
+
+	// Add minimal case test
+	minimalTestCase := []formattingTestCase{
+		{
+			name:  "multi keyword",
+			input: "  inner   join  ",
+			want:  "inner join",
+		},
+	}
+	testCase = append(testCase, minimalTestCase...)
 
 	for _, tt := range testCase {
 		t.Run(tt.name, func(t *testing.T) {
