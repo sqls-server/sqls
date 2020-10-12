@@ -543,9 +543,6 @@ func parseAliased(reader *astutil.NodeReader) ast.Node {
 	}
 }
 
-// parseAssignment
-// alignComments
-
 var identifierListInfixMatcher = astutil.NodeMatcher{
 	ExpectTokens: []token.Kind{
 		token.Comma,
