@@ -98,6 +98,7 @@ func (p *Parser) Parse() (ast.TokenList, error) {
 	root = parsePrefixGroup(astutil.NewNodeReader(root), switchCaseOpenMatcher, parseCase)
 
 	root = parsePrefixGroup(astutil.NewNodeReader(root), operatorRecursionMatcher, parseOperatorInParenthesis)
+	root = parsePrefixGroup(astutil.NewNodeReader(root), comparisonRecursionMatcher, parseComparisonInParenthesis)
 
 	root = parseInfixGroup(astutil.NewNodeReader(root), memberIdentifierInfixMatcher, false, parseMemberIdentifier)
 	root = parsePrefixGroup(astutil.NewNodeReader(root), genMultiKeywordPrefixMatcher(), parseMultiKeyword)
@@ -366,6 +367,20 @@ func parseOperator(reader *astutil.NodeReader) ast.Node {
 	return operator
 }
 
+var comparisonRecursionMatcher = astutil.NodeMatcher{
+	NodeTypes: []ast.NodeType{
+		ast.TypeParenthesis,
+	},
+}
+
+func parseComparisonInParenthesis(reader *astutil.NodeReader) ast.Node {
+	if list, ok := reader.CurNode.(ast.TokenList); ok {
+		parenthesis := parseInfixGroup(astutil.NewNodeReader(list), comparisonInfixMatcher, true, parseComparison)
+		return parenthesis
+	}
+	return reader.CurNode
+}
+
 var comparisonInfixMatcher = astutil.NodeMatcher{
 	ExpectTokens: []token.Kind{
 		token.Eq,
@@ -398,23 +413,10 @@ var comparisonTargetMatcher = astutil.NodeMatcher{
 		"FALSE",
 	},
 }
-var comparisonRecursionMatcher = astutil.NodeMatcher{
-	NodeTypes: []ast.NodeType{
-		ast.TypeParenthesis,
-	},
-}
 
 func parseComparison(reader *astutil.NodeReader) ast.Node {
 	if !reader.CurNodeIs(comparisonTargetMatcher) {
 		return reader.CurNode
-	}
-	if reader.CurNodeIs(comparisonRecursionMatcher) {
-		if list, ok := reader.CurNode.(ast.TokenList); ok {
-			// FIXME: more simplity
-			// For sub query
-			parenthesis := parseInfixGroup(astutil.NewNodeReader(list), comparisonInfixMatcher, true, parseComparison)
-			reader.Replace(parenthesis, reader.Index-1)
-		}
 	}
 	left := reader.CurNode
 	startIndex := reader.Index - 1
@@ -442,14 +444,6 @@ func parseComparison(reader *astutil.NodeReader) ast.Node {
 		return comparison
 	}
 	endIndex, right := reader.PeekNode(true)
-	if reader.PeekNodeIs(true, operatorRecursionMatcher) {
-		if list, ok := right.(ast.TokenList); ok {
-			// FIXME: more simplity
-			// For sub query
-			parenthesis := parseInfixGroup(astutil.NewNodeReader(list), comparisonInfixMatcher, true, parseComparison)
-			reader.Replace(parenthesis, endIndex)
-		}
-	}
 	comparison.Right = right
 
 	reader.NextNode(true)

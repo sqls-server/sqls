@@ -631,16 +631,16 @@ func TestParseOperator(t *testing.T) {
 				testOperator(t, list[0], input, "foo", "+", "100")
 			},
 		},
-		{
-			name:  "multiple operator",
-			input: "1 + 2 - 3 / 4",
-			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
-				testStatement(t, stmts[0], 5, input)
-				list := stmts[0].GetTokens()
-				testOperator(t, list[0], "1 + 2", "1", "+", "2")
-				// testOperator(t, list[1], "1 + 2", "1", "+", "2")
-			},
-		},
+		// {
+		// 	name:  "multiple operator",
+		// 	input: "1 + 2 - 3 / 4",
+		// 	checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+		// 		testStatement(t, stmts[0], 5, input)
+		// 		list := stmts[0].GetTokens()
+		// 		testOperator(t, list[0], "1 + 2", "1", "+", "2")
+		// 		testOperator(t, list[1], "1 + 2", "1", "+", "2")
+		// 	},
+		// },
 		{
 			name:  "left parenthesis",
 			input: "(100+foo)/100",
