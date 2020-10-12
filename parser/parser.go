@@ -97,6 +97,8 @@ func (p *Parser) Parse() (ast.TokenList, error) {
 	root = parsePrefixGroup(astutil.NewNodeReader(root), identifierPrefixMatcher, parseIdentifier)
 	root = parsePrefixGroup(astutil.NewNodeReader(root), switchCaseOpenMatcher, parseCase)
 
+	root = parsePrefixGroup(astutil.NewNodeReader(root), operatorRecursionMatcher, parseOperatorInParenthesis)
+
 	root = parseInfixGroup(astutil.NewNodeReader(root), memberIdentifierInfixMatcher, false, parseMemberIdentifier)
 	root = parsePrefixGroup(astutil.NewNodeReader(root), genMultiKeywordPrefixMatcher(), parseMultiKeyword)
 	root = parseInfixGroup(astutil.NewNodeReader(root), operatorInfixMatcher, true, parseOperator)
@@ -138,9 +140,6 @@ func parseStatement(reader *astutil.NodeReader) ast.TokenList {
 	return reader.Node
 }
 
-// parseComments
-// parseBrackets
-
 var parenthesisPrefixMatcher = astutil.NodeMatcher{
 	ExpectTokens: []token.Kind{
 		token.LParen,
@@ -173,11 +172,6 @@ func parseParenthesis(reader *astutil.NodeReader) ast.Node {
 	}
 	return reader.CurNode
 }
-
-// parseCase
-// parseIf
-// parseFor
-// parseBegin
 
 var functionPrefixMatcher = astutil.NodeMatcher{
 	ExpectSQLType: []dialect.KeywordKind{
@@ -282,8 +276,6 @@ func parseMultiKeyword(reader *astutil.NodeReader) ast.Node {
 	}
 }
 
-// parseArrays
-
 var identifierPrefixMatcher = astutil.NodeMatcher{
 	ExpectTokens: []token.Kind{
 		token.Mult,
@@ -298,10 +290,19 @@ func parseIdentifier(reader *astutil.NodeReader) ast.Node {
 	return &ast.Identifer{Tok: token.GetToken()}
 }
 
-// parseOrder
-// parseTypecasts
-// parseTzcasts
-// parseTyped_literal
+var operatorRecursionMatcher = astutil.NodeMatcher{
+	NodeTypes: []ast.NodeType{
+		ast.TypeParenthesis,
+	},
+}
+
+func parseOperatorInParenthesis(reader *astutil.NodeReader) ast.Node {
+	if list, ok := reader.CurNode.(ast.TokenList); ok {
+		parenthesis := parseInfixGroup(astutil.NewNodeReader(list), operatorInfixMatcher, true, parseOperator)
+		return parenthesis
+	}
+	return reader.CurNode
+}
 
 var operatorInfixMatcher = astutil.NodeMatcher{
 	ExpectTokens: []token.Kind{
@@ -327,23 +328,10 @@ var operatorTargetMatcher = astutil.NodeMatcher{
 		token.NationalStringLiteral,
 	},
 }
-var operatorRecursionMatcher = astutil.NodeMatcher{
-	NodeTypes: []ast.NodeType{
-		ast.TypeParenthesis,
-	},
-}
 
 func parseOperator(reader *astutil.NodeReader) ast.Node {
 	if !reader.CurNodeIs(operatorTargetMatcher) {
 		return reader.CurNode
-	}
-	if reader.CurNodeIs(operatorRecursionMatcher) {
-		if list, ok := reader.CurNode.(ast.TokenList); ok {
-			// FIXME: more simplity
-			// For sub query
-			parenthesis := parseInfixGroup(astutil.NewNodeReader(list), operatorInfixMatcher, true, parseOperator)
-			reader.Replace(parenthesis, reader.Index-1)
-		}
 	}
 	left := reader.CurNode
 	startIndex := reader.Index - 1
@@ -371,14 +359,6 @@ func parseOperator(reader *astutil.NodeReader) ast.Node {
 		return operator
 	}
 	endIndex, right := reader.PeekNode(true)
-	if reader.PeekNodeIs(true, operatorRecursionMatcher) {
-		if list, ok := right.(ast.TokenList); ok {
-			// FIXME: more simplity
-			// For sub query
-			parenthesis := parseInfixGroup(astutil.NewNodeReader(list), operatorInfixMatcher, true, parseOperator)
-			reader.Replace(parenthesis, endIndex)
-		}
-	}
 	operator.Right = right
 
 	reader.NextNode(true)
