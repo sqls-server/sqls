@@ -97,9 +97,7 @@ func (p *Parser) Parse() (ast.TokenList, error) {
 	root = parsePrefixGroup(astutil.NewNodeReader(root), identifierPrefixMatcher, parseIdentifier)
 	root = parsePrefixGroup(astutil.NewNodeReader(root), switchCaseOpenMatcher, parseCase)
 
-	root = parsePrefixGroup(astutil.NewNodeReader(root), operatorRecursionMatcher, parseOperatorInParenthesis)
-	root = parsePrefixGroup(astutil.NewNodeReader(root), comparisonRecursionMatcher, parseComparisonInParenthesis)
-	root = parsePrefixGroup(astutil.NewNodeReader(root), aliasRecursionMatcher, parseAliasedInParenthesis)
+	root = parsePrefixGroup(astutil.NewNodeReader(root), expresionPrefixMatcher, parseExpresionInParenthesis)
 
 	root = parseInfixGroup(astutil.NewNodeReader(root), memberIdentifierInfixMatcher, false, parseMemberIdentifier)
 	root = parsePrefixGroup(astutil.NewNodeReader(root), genMultiKeywordPrefixMatcher(), parseMultiKeyword)
@@ -292,20 +290,6 @@ func parseIdentifier(reader *astutil.NodeReader) ast.Node {
 	return &ast.Identifer{Tok: token.GetToken()}
 }
 
-var operatorRecursionMatcher = astutil.NodeMatcher{
-	NodeTypes: []ast.NodeType{
-		ast.TypeParenthesis,
-	},
-}
-
-func parseOperatorInParenthesis(reader *astutil.NodeReader) ast.Node {
-	if list, ok := reader.CurNode.(ast.TokenList); ok {
-		parenthesis := parseInfixGroup(astutil.NewNodeReader(list), operatorInfixMatcher, true, parseOperator)
-		return parenthesis
-	}
-	return reader.CurNode
-}
-
 var operatorInfixMatcher = astutil.NodeMatcher{
 	ExpectTokens: []token.Kind{
 		token.Plus,
@@ -366,20 +350,6 @@ func parseOperator(reader *astutil.NodeReader) ast.Node {
 	reader.NextNode(true)
 	operator.Toks = reader.NodesWithRange(startIndex, endIndex+1)
 	return operator
-}
-
-var comparisonRecursionMatcher = astutil.NodeMatcher{
-	NodeTypes: []ast.NodeType{
-		ast.TypeParenthesis,
-	},
-}
-
-func parseComparisonInParenthesis(reader *astutil.NodeReader) ast.Node {
-	if list, ok := reader.CurNode.(ast.TokenList); ok {
-		parenthesis := parseInfixGroup(astutil.NewNodeReader(list), comparisonInfixMatcher, true, parseComparison)
-		return parenthesis
-	}
-	return reader.CurNode
 }
 
 var comparisonInfixMatcher = astutil.NodeMatcher{
@@ -473,24 +443,6 @@ var aliasRightMatcher = astutil.NodeMatcher{
 	NodeTypes: []ast.NodeType{
 		ast.TypeIdentifer,
 	},
-}
-
-var aliasRecursionMatcher = astutil.NodeMatcher{
-	NodeTypes: []ast.NodeType{
-		ast.TypeParenthesis,
-	},
-}
-
-func parseAliasedInParenthesis(reader *astutil.NodeReader) ast.Node {
-	if reader.CurNodeIs(aliasRecursionMatcher) {
-		if list, ok := reader.CurNode.(ast.TokenList); ok {
-			res := list
-			res = parsePrefixGroup(astutil.NewNodeReader(res), aliasLeftMatcher, parseAliasedWithoutAs)
-			res = parseInfixGroup(astutil.NewNodeReader(res), aliasInfixMatcher, true, parseAliased)
-			return res
-		}
-	}
-	return reader.CurNode
 }
 
 func parseAliasedWithoutAs(reader *astutil.NodeReader) ast.Node {
@@ -639,4 +591,24 @@ func parseCase(reader *astutil.NodeReader) ast.Node {
 		}
 	}
 	return reader.Node
+}
+
+var expresionPrefixMatcher = astutil.NodeMatcher{
+	NodeTypes: []ast.NodeType{
+		ast.TypeParenthesis,
+	},
+}
+
+func parseExpresionInParenthesis(reader *astutil.NodeReader) ast.Node {
+	if reader.CurNodeIs(expresionPrefixMatcher) {
+		if list, ok := reader.CurNode.(ast.TokenList); ok {
+			res := list
+			res = parseInfixGroup(astutil.NewNodeReader(res), operatorInfixMatcher, true, parseOperator)
+			res = parseInfixGroup(astutil.NewNodeReader(res), comparisonInfixMatcher, true, parseComparison)
+			res = parsePrefixGroup(astutil.NewNodeReader(res), aliasLeftMatcher, parseAliasedWithoutAs)
+			res = parseInfixGroup(astutil.NewNodeReader(res), aliasInfixMatcher, true, parseAliased)
+			return res
+		}
+	}
+	return reader.CurNode
 }
