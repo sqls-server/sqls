@@ -714,6 +714,24 @@ func TestParseComparison(t *testing.T) {
 			},
 		},
 		{
+			name:  "greater equal",
+			input: "1 >= 2",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testComparison(t, list[0], input, "1", ">=", "2")
+			},
+		},
+		{
+			name:  "less equal",
+			input: "1 <= 2",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testComparison(t, list[0], input, "1", "<=", "2")
+			},
+		},
+		{
 			name:  "equal left parenthesis",
 			input: "(3 = 4) = 7",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
