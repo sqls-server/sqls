@@ -319,37 +319,47 @@ func parseOperator(reader *astutil.NodeReader) ast.Node {
 	if !reader.CurNodeIs(operatorTargetMatcher) {
 		return reader.CurNode
 	}
+
 	left := reader.CurNode
 	startIndex := reader.Index - 1
-	reader.NextNode(true)
-	operator := &ast.Operator{
-		Toks:     reader.NodesWithRange(startIndex, reader.Index),
-		Left:     left,
-		Operator: reader.CurNode,
-	}
 
-	if !reader.PeekNodeIs(true, operatorTargetMatcher) {
-		// Include white space after the comma
-		var endIndex int
-		peekIndex, peekNode := reader.PeekNode(true)
-		if peekNode != nil {
-			endIndex = peekIndex - 1
-			reader.Index = endIndex + 1
-		} else {
-			tailIndex, tailNode := reader.TailNode()
-			endIndex = tailIndex - 1
-			reader.Index = tailIndex
-			reader.CurNode = tailNode
+	for {
+		if !reader.PeekNodeIs(true, operatorInfixMatcher) {
+			return left
 		}
-		operator.Toks = reader.NodesWithRange(startIndex, endIndex+1)
-		return operator
-	}
-	endIndex, right := reader.PeekNode(true)
-	operator.Right = right
 
-	reader.NextNode(true)
-	operator.Toks = reader.NodesWithRange(startIndex, endIndex+1)
-	return operator
+		reader.NextNode(true)
+		operator := reader.CurNode
+
+		if !reader.PeekNodeIs(true, operatorTargetMatcher) {
+			// Include white space after the comma
+			var endIndex int
+			peekIndex, peekNode := reader.PeekNode(true)
+			if peekNode != nil {
+				endIndex = peekIndex - 1
+				reader.Index = endIndex + 1
+			} else {
+				tailIndex, tailNode := reader.TailNode()
+				endIndex = tailIndex - 1
+				reader.Index = tailIndex
+				reader.CurNode = tailNode
+			}
+			return &ast.Operator{
+				Toks:     reader.NodesWithRange(startIndex, endIndex+1),
+				Left:     left,
+				Operator: operator,
+			}
+		}
+		endIndex, right := reader.PeekNode(true)
+
+		reader.NextNode(true)
+		left = &ast.Operator{
+			Toks:     reader.NodesWithRange(startIndex, endIndex+1),
+			Left:     left,
+			Operator: operator,
+			Right:    right,
+		}
+	}
 }
 
 var comparisonInfixMatcher = astutil.NodeMatcher{
