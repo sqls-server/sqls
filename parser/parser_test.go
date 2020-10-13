@@ -644,6 +644,27 @@ func TestParseOperator(t *testing.T) {
 			},
 		},
 		{
+			name:  "in parenthesis",
+			input: "(100+foo)",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				parenthesis := testParenthesis(t, list[0], input)
+				testOperator(t, parenthesis.Inner().GetTokens()[0], "100+foo", "100", "+", "foo")
+			},
+		},
+		{
+			name:  "in double parenthesis",
+			input: "((100+foo))",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				p1 := testParenthesis(t, list[0], input)
+				p2 := testParenthesis(t, p1.Inner().GetTokens()[0], "(100+foo)")
+				testOperator(t, p2.Inner().GetTokens()[0], "100+foo", "100", "+", "foo")
+			},
+		},
+		{
 			name:  "left parenthesis",
 			input: "(100+foo)/100",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
@@ -1254,15 +1275,16 @@ func testComparison(t *testing.T, node ast.Node, expect string, left, comp, righ
 	return comparison
 }
 
-func testParenthesis(t *testing.T, node ast.Node, expect string) {
+func testParenthesis(t *testing.T, node ast.Node, expect string) *ast.Parenthesis {
 	t.Helper()
-	_, ok := node.(*ast.Parenthesis)
+	parenthesis, ok := node.(*ast.Parenthesis)
 	if !ok {
 		t.Fatalf("invalid type want Parenthesis got %T", node)
 	}
 	if expect != node.String() {
 		t.Errorf("expected %q, got %q", expect, node.String())
 	}
+	return parenthesis
 }
 
 func testFunction(t *testing.T, node ast.Node, expect string) {
