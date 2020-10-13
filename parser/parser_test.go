@@ -1156,7 +1156,7 @@ func testItem(t *testing.T, node ast.Node, expect string) {
 	t.Helper()
 	item, ok := node.(*ast.Item)
 	if !ok {
-		t.Errorf("invalid type want Item got %T", node)
+		t.Fatalf("invalid type want Item got %T", node)
 	}
 	if item != nil {
 		if expect != item.String() {
@@ -1171,7 +1171,7 @@ func testMemberIdentifier(t *testing.T, node ast.Node, expect, parent, child str
 	t.Helper()
 	mi, ok := node.(*ast.MemberIdentifer)
 	if !ok {
-		t.Errorf("invalid type want MemberIdentifer got %T", node)
+		t.Fatalf("invalid type want MemberIdentifer got %T", node)
 	}
 	if expect != node.String() {
 		t.Errorf("expected %q, got %q", expect, node.String())
@@ -1194,7 +1194,7 @@ func testIdentifier(t *testing.T, node ast.Node, expect string) {
 	t.Helper()
 	_, ok := node.(*ast.Identifer)
 	if !ok {
-		t.Errorf("invalid type want Identifier got %T", node)
+		t.Fatalf("invalid type want Identifier got %T", node)
 	}
 	if expect != node.String() {
 		t.Errorf("expected %q, got %q", expect, node.String())
@@ -1205,7 +1205,7 @@ func testMultiKeyword(t *testing.T, node ast.Node, expect string) {
 	t.Helper()
 	_, ok := node.(*ast.MultiKeyword)
 	if !ok {
-		t.Errorf("invalid type want MultiKeyword got %T", node)
+		t.Fatalf("invalid type want MultiKeyword got %T", node)
 	}
 	if expect != node.String() {
 		t.Errorf("expected %q, got %q", expect, node.String())
@@ -1216,7 +1216,7 @@ func testOperator(t *testing.T, node ast.Node, expect string, left, ope, right s
 	t.Helper()
 	operator, ok := node.(*ast.Operator)
 	if !ok {
-		t.Errorf("invalid type want Operator got %T", node)
+		t.Fatalf("invalid type want Operator got %T", node)
 	}
 	if expect != node.String() {
 		t.Errorf("expected %q, got %q", expect, node.String())
@@ -1237,7 +1237,7 @@ func testComparison(t *testing.T, node ast.Node, expect string, left, comp, righ
 	t.Helper()
 	comparison, ok := node.(*ast.Comparison)
 	if !ok {
-		t.Errorf("invalid type want Comparison got %T", node)
+		t.Fatalf("invalid type want Comparison got %T", node)
 	}
 	if expect != node.String() {
 		t.Errorf("expected %q, got %q", expect, node.String())
@@ -1258,7 +1258,7 @@ func testParenthesis(t *testing.T, node ast.Node, expect string) {
 	t.Helper()
 	_, ok := node.(*ast.Parenthesis)
 	if !ok {
-		t.Errorf("invalid type want Parenthesis got %T", node)
+		t.Fatalf("invalid type want Parenthesis got %T", node)
 	}
 	if expect != node.String() {
 		t.Errorf("expected %q, got %q", expect, node.String())
@@ -1269,7 +1269,7 @@ func testFunction(t *testing.T, node ast.Node, expect string) {
 	t.Helper()
 	_, ok := node.(*ast.FunctionLiteral)
 	if !ok {
-		t.Errorf("invalid type want Function got %T", node)
+		t.Fatalf("invalid type want Function got %T", node)
 	}
 	if expect != node.String() {
 		t.Errorf("expected %q, got %q", expect, node.String())
@@ -1280,7 +1280,7 @@ func testAliased(t *testing.T, node ast.Node, expect string, realName, aliasedNa
 	t.Helper()
 	aliased, ok := node.(*ast.Aliased)
 	if !ok {
-		t.Errorf("invalid type want Identifier got %T", node)
+		t.Fatalf("invalid type want Identifier got %T", node)
 		return
 	}
 	if expect != node.String() {
@@ -1306,7 +1306,7 @@ func testIdentifierList(t *testing.T, node ast.Node, expect string) {
 	t.Helper()
 	_, ok := node.(*ast.IdentiferList)
 	if !ok {
-		t.Errorf("invalid type want IdentiferList got %T", node)
+		t.Fatalf("invalid type want IdentiferList got %T", node)
 	}
 	if expect != node.String() {
 		t.Errorf("expected %q, got %q", expect, node.String())
@@ -1317,7 +1317,7 @@ func testSwitchCase(t *testing.T, node ast.Node, expect string) {
 	t.Helper()
 	_, ok := node.(*ast.SwitchCase)
 	if !ok {
-		t.Errorf("invalid type want SwitchCase got %T", node)
+		t.Fatalf("invalid type want SwitchCase got %T", node)
 	}
 	if expect != node.String() {
 		t.Errorf("expected %q, got %q", expect, node.String())
