@@ -659,9 +659,9 @@ func TestParseOperator(t *testing.T) {
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, input)
 				list := stmts[0].GetTokens()
-				p1 := testParenthesis(t, list[0], input)
-				p2 := testParenthesis(t, p1.Inner().GetTokens()[0], "(100+foo)")
-				testOperator(t, p2.Inner().GetTokens()[0], "100+foo", "100", "+", "foo")
+				parenthesis1 := testParenthesis(t, list[0], input)
+				parenthesis2 := testParenthesis(t, parenthesis1.Inner().GetTokens()[0], "(100+foo)")
+				testOperator(t, parenthesis2.Inner().GetTokens()[0], "100+foo", "100", "+", "foo")
 			},
 		},
 		{
