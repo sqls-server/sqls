@@ -31,6 +31,30 @@ func TestTokenizer_Tokenize(t *testing.T) {
 			},
 		},
 		{
+			name: "linebreak",
+			in:   "\n",
+			out: []*Token{
+				{
+					Kind:  Whitespace,
+					Value: "\n",
+					From:  Pos{Line: 0, Col: 0},
+					To:    Pos{Line: 1, Col: 1},
+				},
+			},
+		},
+		{
+			name: "tab",
+			in:   "\t",
+			out: []*Token{
+				{
+					Kind:  Whitespace,
+					Value: "\t",
+					From:  Pos{Line: 0, Col: 0},
+					To:    Pos{Line: 0, Col: 4},
+				},
+			},
+		},
+		{
 			name: "whitespace and new line",
 			in: `
  `,

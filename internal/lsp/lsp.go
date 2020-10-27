@@ -313,3 +313,36 @@ type MarkupContent struct {
 	Kind  MarkupKind `json:"kind"`
 	Value string     `json:"value"`
 }
+
+type WorkDoneProgressOptions struct {
+	WorkDoneProgress bool `json:"workDoneProgress,omitempty"`
+}
+
+type FormattingOptions struct {
+	TabSize                float64 `json:"tabSize"`
+	InsertSpaces           bool    `json:"insertSpaces"`
+	TrimTrailingWhitespace bool    `json:"trimTrailingWhitespace,omitempty"`
+	InsertFinalNewline     bool    `json:"insertFinalNewline,omitempty"`
+	TrimFinalNewlines      bool    `json:"trimFinalNewlines,omitempty"`
+}
+
+type DocumentFormattingParams struct {
+	TextDocument TextDocumentIdentifier `json:"textDocument"`
+	Options      FormattingOptions      `json:"options"`
+	WorkDoneProgressParams
+}
+
+type DocumentFormattingOptions struct {
+	WorkDoneProgressOptions
+}
+
+type DocumentRangeFormattingOptions struct {
+	WorkDoneProgressOptions
+}
+
+type DocumentRangeFormattingParams struct {
+	TextDocument TextDocumentIdentifier `json:"textDocument"`
+	Range        Range                  `json:"range"`
+	Options      FormattingOptions      `json:"options"`
+	WorkDoneProgressParams
+}

@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -9,7 +8,6 @@ import (
 
 	"github.com/lighttiger2505/sqls/ast"
 	"github.com/lighttiger2505/sqls/ast/astutil"
-	"github.com/lighttiger2505/sqls/dialect"
 	"github.com/lighttiger2505/sqls/internal/database"
 	"github.com/lighttiger2505/sqls/internal/lsp"
 	"github.com/lighttiger2505/sqls/parser"
@@ -59,7 +57,7 @@ func hover(text string, params lsp.HoverParams, dbCache *database.DBCache) (*lsp
 			Col:  params.Position.Character + 2,
 		}
 	}
-	parsed, err := parse(text)
+	parsed, err := parser.Parse(text)
 	if err != nil {
 		return nil, err
 	}
@@ -303,19 +301,6 @@ func tableHoverInfo(tableName string, cols []*database.ColumnDesc) *lsp.MarkupCo
 		Kind:  lsp.Markdown,
 		Value: database.TableDoc(tableName, cols),
 	}
-}
-
-func parse(text string) (ast.TokenList, error) {
-	src := bytes.NewBuffer([]byte(text))
-	p, err := parser.NewParser(src, &dialect.GenericSQLDialect{})
-	if err != nil {
-		return nil, err
-	}
-	parsed, err := p.Parse()
-	if err != nil {
-		return nil, err
-	}
-	return parsed, nil
 }
 
 func hoverTypeIs(hoverTypes []hoverType, expect hoverType) bool {

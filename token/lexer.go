@@ -304,6 +304,10 @@ func (t *Tokenizer) next() (Kind, interface{}, error) {
 		t.Scanner.Next()
 		t.Col += 1
 		return Mod, "%", nil
+	case r == '^':
+		t.Scanner.Next()
+		t.Col += 1
+		return Caret, "^", nil
 	case r == '=':
 		t.Scanner.Next()
 		t.Col += 1

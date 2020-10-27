@@ -20,9 +20,6 @@ const (
 	TypeParenthesis
 	TypeParenthesisInner
 	TypeFunctionLiteral
-	TypeWhereClause
-	TypeFromClause
-	TypeJoinClause
 	TypeQuery
 	TypeStatement
 	TypeIdentiferList
@@ -68,8 +65,26 @@ func (i *Item) GetToken() *SQLToken { return i.Tok }
 func (i *Item) Pos() token.Pos      { return i.Tok.From }
 func (i *Item) End() token.Pos      { return i.Tok.To }
 
-type MultiKeyword struct {
+type ItemWith struct {
 	Toks []Node
+}
+
+func (iw *ItemWith) String() string {
+	var strs []string
+	for _, t := range iw.Toks {
+		strs = append(strs, t.String())
+	}
+	return strings.Join(strs, "")
+}
+func (iw *ItemWith) Type() NodeType        { return TypeMultiKeyword }
+func (iw *ItemWith) GetTokens() []Node     { return iw.Toks }
+func (iw *ItemWith) SetTokens(toks []Node) { iw.Toks = toks }
+func (iw *ItemWith) Pos() token.Pos        { return findFrom(iw) }
+func (iw *ItemWith) End() token.Pos        { return findTo(iw) }
+
+type MultiKeyword struct {
+	Toks     []Node
+	Keywords []Node
 }
 
 func (mk *MultiKeyword) String() string {
@@ -84,6 +99,7 @@ func (mk *MultiKeyword) GetTokens() []Node     { return mk.Toks }
 func (mk *MultiKeyword) SetTokens(toks []Node) { mk.Toks = toks }
 func (mk *MultiKeyword) Pos() token.Pos        { return findFrom(mk) }
 func (mk *MultiKeyword) End() token.Pos        { return findTo(mk) }
+func (mk *MultiKeyword) GetKeywords() []Node   { return mk.Keywords }
 
 type MemberIdentifer struct {
 	Toks   []Node
@@ -114,6 +130,8 @@ type Aliased struct {
 	Toks        []Node
 	RealName    Node
 	AliasedName Node
+	As          Node
+	IsAs        bool
 }
 
 func (a *Aliased) String() string {
@@ -305,7 +323,8 @@ func (s *Statement) Pos() token.Pos        { return findFrom(s) }
 func (s *Statement) End() token.Pos        { return findTo(s) }
 
 type IdentiferList struct {
-	Toks []Node
+	Toks       []Node
+	Identifers []Node
 }
 
 func (il *IdentiferList) String() string {
@@ -320,6 +339,7 @@ func (il *IdentiferList) GetTokens() []Node     { return il.Toks }
 func (il *IdentiferList) SetTokens(toks []Node) { il.Toks = toks }
 func (il *IdentiferList) Pos() token.Pos        { return findFrom(il) }
 func (il *IdentiferList) End() token.Pos        { return findTo(il) }
+func (il *IdentiferList) GetIdentifers() []Node { return il.Identifers }
 
 type SwitchCase struct {
 	Toks []Node

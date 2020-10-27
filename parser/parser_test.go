@@ -1,12 +1,10 @@
 package parser
 
 import (
-	"bytes"
 	"reflect"
 	"testing"
 
 	"github.com/lighttiger2505/sqls/ast"
-	"github.com/lighttiger2505/sqls/dialect"
 	"github.com/lighttiger2505/sqls/token"
 )
 
@@ -528,6 +526,24 @@ func TestParseMultiKeyword(t *testing.T) {
 			},
 		},
 		{
+			name:  "inner join keyword",
+			input: "inner join",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testMultiKeyword(t, list[0], input)
+			},
+		},
+		{
+			name:  "left outer join keyword",
+			input: "left outer join",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testMultiKeyword(t, list[0], input)
+			},
+		},
+		{
 			name:  "select with group keyword",
 			input: "select a, b, c from abc group by d, e, f",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
@@ -607,21 +623,45 @@ func TestParseOperator(t *testing.T) {
 			},
 		},
 		{
-			name:  "mod operator",
-			input: "foo%100",
-			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
-				testStatement(t, stmts[0], 1, input)
-				list := stmts[0].GetTokens()
-				testOperator(t, list[0], input, "foo", "%", "100")
-			},
-		},
-		{
 			name:  "operator with whitespace",
 			input: "foo + 100",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, input)
 				list := stmts[0].GetTokens()
 				testOperator(t, list[0], input, "foo", "+", "100")
+
+			},
+		},
+		{
+			name:  "multiple operator",
+			input: "1 + 2 - 3 / 4",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				operator1 := testOperator(t, list[0], "1 + 2 - 3 / 4", "1 + 2 - 3", "/", "4")
+				operator2 := testOperator(t, operator1.GetLeft(), "1 + 2 - 3", "1 + 2", "-", "3")
+				testOperator(t, operator2.GetLeft(), "1 + 2", "1", "+", "2")
+			},
+		},
+		{
+			name:  "in parenthesis",
+			input: "(100+foo)",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				parenthesis := testParenthesis(t, list[0], input)
+				testOperator(t, parenthesis.Inner().GetTokens()[0], "100+foo", "100", "+", "foo")
+			},
+		},
+		{
+			name:  "in double parenthesis",
+			input: "((100+foo))",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				parenthesis1 := testParenthesis(t, list[0], input)
+				parenthesis2 := testParenthesis(t, parenthesis1.Inner().GetTokens()[0], "(100+foo)")
+				testOperator(t, parenthesis2.Inner().GetTokens()[0], "100+foo", "100", "+", "foo")
 			},
 		},
 		{
@@ -695,6 +735,24 @@ func TestParseComparison(t *testing.T) {
 				testStatement(t, stmts[0], 1, input)
 				list := stmts[0].GetTokens()
 				testComparison(t, list[0], input, "foo", "=", "'bar'")
+			},
+		},
+		{
+			name:  "greater equal",
+			input: "1 >= 2",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testComparison(t, list[0], input, "1", ">=", "2")
+			},
+		},
+		{
+			name:  "less equal",
+			input: "1 <= 2",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testComparison(t, list[0], input, "1", "<=", "2")
 			},
 		},
 		{
@@ -822,7 +880,7 @@ func TestParseAliased(t *testing.T) {
 			name:  "aliase join identifier",
 			input: "select foo from abc inner join def as d",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
-				testStatement(t, stmts[0], 13, input)
+				testStatement(t, stmts[0], 11, input)
 				list := stmts[0].GetTokens()
 				testItem(t, list[0], "select")
 				testItem(t, list[1], " ")
@@ -832,11 +890,9 @@ func TestParseAliased(t *testing.T) {
 				testItem(t, list[5], " ")
 				testIdentifier(t, list[6], "abc")
 				testItem(t, list[7], " ")
-				testItem(t, list[8], "inner")
+				testMultiKeyword(t, list[8], "inner join")
 				testItem(t, list[9], " ")
-				testItem(t, list[10], "join")
-				testItem(t, list[11], " ")
-				testAliased(t, list[12], "def as d", "def", "d")
+				testAliased(t, list[10], "def as d", "def", "d")
 			},
 		},
 		{
@@ -1008,6 +1064,15 @@ func TestParseIdentifierList(t *testing.T) {
 				testIdentifierList(t, list[0], input)
 			},
 		},
+		{
+			name:  "IndentifierList tokens",
+			input: "1, 'aaa', 'N'",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testIdentifierList(t, list[0], input)
+			},
+		},
 	}
 	for _, tt := range testcases {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1070,13 +1135,7 @@ func TestParseCase(t *testing.T) {
 
 func parseInit(t *testing.T, input string) []*ast.Statement {
 	t.Helper()
-	src := bytes.NewBuffer([]byte(input))
-	parser, err := NewParser(src, &dialect.GenericSQLDialect{})
-	if err != nil {
-		t.Fatalf("error %+v\n", err)
-	}
-
-	parsed, err := parser.Parse()
+	parsed, err := Parse(input)
 	if err != nil {
 		t.Fatalf("error %+v\n", err)
 	}
@@ -1118,7 +1177,7 @@ func testItem(t *testing.T, node ast.Node, expect string) {
 	t.Helper()
 	item, ok := node.(*ast.Item)
 	if !ok {
-		t.Errorf("invalid type want Item got %T", node)
+		t.Fatalf("invalid type want Item got %T", node)
 	}
 	if item != nil {
 		if expect != item.String() {
@@ -1133,7 +1192,7 @@ func testMemberIdentifier(t *testing.T, node ast.Node, expect, parent, child str
 	t.Helper()
 	mi, ok := node.(*ast.MemberIdentifer)
 	if !ok {
-		t.Errorf("invalid type want MemberIdentifer got %T", node)
+		t.Fatalf("invalid type want MemberIdentifer got %T", node)
 	}
 	if expect != node.String() {
 		t.Errorf("expected %q, got %q", expect, node.String())
@@ -1156,7 +1215,7 @@ func testIdentifier(t *testing.T, node ast.Node, expect string) {
 	t.Helper()
 	_, ok := node.(*ast.Identifer)
 	if !ok {
-		t.Errorf("invalid type want Identifier got %T", node)
+		t.Fatalf("invalid type want Identifier got %T", node)
 	}
 	if expect != node.String() {
 		t.Errorf("expected %q, got %q", expect, node.String())
@@ -1167,7 +1226,7 @@ func testMultiKeyword(t *testing.T, node ast.Node, expect string) {
 	t.Helper()
 	_, ok := node.(*ast.MultiKeyword)
 	if !ok {
-		t.Errorf("invalid type want MultiKeyword got %T", node)
+		t.Fatalf("invalid type want MultiKeyword got %T", node)
 	}
 	if expect != node.String() {
 		t.Errorf("expected %q, got %q", expect, node.String())
@@ -1178,7 +1237,7 @@ func testOperator(t *testing.T, node ast.Node, expect string, left, ope, right s
 	t.Helper()
 	operator, ok := node.(*ast.Operator)
 	if !ok {
-		t.Errorf("invalid type want Operator got %T", node)
+		t.Fatalf("invalid type want Operator got %T", node)
 	}
 	if expect != node.String() {
 		t.Errorf("expected %q, got %q", expect, node.String())
@@ -1199,7 +1258,7 @@ func testComparison(t *testing.T, node ast.Node, expect string, left, comp, righ
 	t.Helper()
 	comparison, ok := node.(*ast.Comparison)
 	if !ok {
-		t.Errorf("invalid type want Comparison got %T", node)
+		t.Fatalf("invalid type want Comparison got %T", node)
 	}
 	if expect != node.String() {
 		t.Errorf("expected %q, got %q", expect, node.String())
@@ -1216,22 +1275,23 @@ func testComparison(t *testing.T, node ast.Node, expect string, left, comp, righ
 	return comparison
 }
 
-func testParenthesis(t *testing.T, node ast.Node, expect string) {
+func testParenthesis(t *testing.T, node ast.Node, expect string) *ast.Parenthesis {
 	t.Helper()
-	_, ok := node.(*ast.Parenthesis)
+	parenthesis, ok := node.(*ast.Parenthesis)
 	if !ok {
-		t.Errorf("invalid type want Parenthesis got %T", node)
+		t.Fatalf("invalid type want Parenthesis got %T", node)
 	}
 	if expect != node.String() {
 		t.Errorf("expected %q, got %q", expect, node.String())
 	}
+	return parenthesis
 }
 
 func testFunction(t *testing.T, node ast.Node, expect string) {
 	t.Helper()
 	_, ok := node.(*ast.FunctionLiteral)
 	if !ok {
-		t.Errorf("invalid type want Function got %T", node)
+		t.Fatalf("invalid type want Function got %T", node)
 	}
 	if expect != node.String() {
 		t.Errorf("expected %q, got %q", expect, node.String())
@@ -1242,7 +1302,7 @@ func testAliased(t *testing.T, node ast.Node, expect string, realName, aliasedNa
 	t.Helper()
 	aliased, ok := node.(*ast.Aliased)
 	if !ok {
-		t.Errorf("invalid type want Identifier got %T", node)
+		t.Fatalf("invalid type want Identifier got %T", node)
 		return
 	}
 	if expect != node.String() {
@@ -1268,7 +1328,7 @@ func testIdentifierList(t *testing.T, node ast.Node, expect string) {
 	t.Helper()
 	_, ok := node.(*ast.IdentiferList)
 	if !ok {
-		t.Errorf("invalid type want IdentiferList got %T", node)
+		t.Fatalf("invalid type want IdentiferList got %T", node)
 	}
 	if expect != node.String() {
 		t.Errorf("expected %q, got %q", expect, node.String())
@@ -1279,7 +1339,7 @@ func testSwitchCase(t *testing.T, node ast.Node, expect string) {
 	t.Helper()
 	_, ok := node.(*ast.SwitchCase)
 	if !ok {
-		t.Errorf("invalid type want SwitchCase got %T", node)
+		t.Fatalf("invalid type want SwitchCase got %T", node)
 	}
 	if expect != node.String() {
 		t.Errorf("expected %q, got %q", expect, node.String())

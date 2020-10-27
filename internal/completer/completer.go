@@ -9,7 +9,6 @@ import (
 
 	"github.com/lighttiger2505/sqls/ast"
 	"github.com/lighttiger2505/sqls/ast/astutil"
-	"github.com/lighttiger2505/sqls/dialect"
 	"github.com/lighttiger2505/sqls/internal/database"
 	"github.com/lighttiger2505/sqls/internal/lsp"
 	"github.com/lighttiger2505/sqls/parser"
@@ -104,21 +103,8 @@ func completionTypeIs(completionTypes []completionType, expect completionType) b
 	return false
 }
 
-func parse(text string) (ast.TokenList, error) {
-	src := bytes.NewBuffer([]byte(text))
-	p, err := parser.NewParser(src, &dialect.GenericSQLDialect{})
-	if err != nil {
-		return nil, err
-	}
-	parsed, err := p.Parse()
-	if err != nil {
-		return nil, err
-	}
-	return parsed, nil
-}
-
 func (c *Completer) Complete(text string, params lsp.CompletionParams) ([]lsp.CompletionItem, error) {
-	parsed, err := parse(text)
+	parsed, err := parser.Parse(text)
 	if err != nil {
 		return nil, err
 	}
