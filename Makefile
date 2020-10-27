@@ -44,3 +44,7 @@ dist: cross-build
 	$(DIST_DIRS) tar -zcf $(NAME)-$(VERSION)-{}.tar.gz {} \; && \
 	$(DIST_DIRS) zip -r $(NAME)-$(VERSION)-{}.zip {} \; && \
 	cd ..
+
+.PHONY: stringer
+stringer:
+	stringer -type Kind ./token/kind.go

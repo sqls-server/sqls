@@ -41,6 +41,8 @@ const (
 	// / operator
 	Div
 	// % operator
+	Caret
+	// ^ operator
 	Mod
 	// Left parenthesis `(`
 	LParen

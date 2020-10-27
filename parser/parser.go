@@ -297,6 +297,7 @@ var operatorInfixMatcher = astutil.NodeMatcher{
 		token.Mult,
 		token.Div,
 		token.Mod,
+		token.Caret,
 	},
 }
 var operatorTargetMatcher = astutil.NodeMatcher{
