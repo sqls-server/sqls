@@ -27,6 +27,10 @@ func (s *SQLWord) String() string {
 	return ""
 }
 
+func (s *SQLWord) NoQuateString() string {
+	return s.Value
+}
+
 func matchingEndQuote(quoteStyle rune) rune {
 	switch quoteStyle {
 	case '"':

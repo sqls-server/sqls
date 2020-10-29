@@ -405,6 +405,15 @@ func TestMemberIdentifier(t *testing.T) {
 			},
 		},
 		{
+			name:  "back quate member identifier",
+			input: "`abc`.`def`",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testMemberIdentifier(t, list[0], input, "`abc`", "`def`")
+			},
+		},
+		{
 			name:  "invalid member identifier",
 			input: "a.",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {

@@ -209,26 +209,27 @@ var memberIdentifierTargetMatcher = astutil.NodeMatcher{
 }
 
 func parseMemberIdentifier(reader *astutil.NodeReader) ast.Node {
+	var memberIdentifier *ast.MemberIdentifer
 	if !reader.CurNodeIs(memberIdentifierTargetMatcher) {
 		return reader.CurNode
 	}
 	parent := reader.CurNode
 	startIndex := reader.Index - 1
-	memberIdentifier := &ast.MemberIdentifer{
-		Toks:   reader.NodesWithRange(startIndex, reader.Index+1),
-		Parent: parent,
-	}
+	memberIdentifier = ast.NewMemberIdentiferParent(
+		reader.NodesWithRange(startIndex, reader.Index+1),
+		parent,
+	)
 
 	reader.NextNode(false)
 	if !reader.PeekNodeIs(true, memberIdentifierTargetMatcher) {
 		return memberIdentifier
 	}
 	endIndex, child := reader.PeekNode(true)
-	memberIdentifier = &ast.MemberIdentifer{
-		Toks:   reader.NodesWithRange(startIndex, endIndex+1),
-		Parent: parent,
-		Child:  child,
-	}
+	memberIdentifier = ast.NewMemberIdentifer(
+		reader.NodesWithRange(startIndex, endIndex+1),
+		parent,
+		child,
+	)
 
 	reader.NextNode(false)
 	return memberIdentifier

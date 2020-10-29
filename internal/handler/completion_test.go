@@ -169,6 +169,19 @@ var selectExprCase = []completionTestCase{
 		},
 	},
 	{
+		name:  "columns of before period table closed",
+		input: "select `c`. from city as c",
+		line:  0,
+		col:   11,
+		want: []string{
+			"ID",
+			"Name",
+			"CountryCode",
+			"District",
+			"Population",
+		},
+	},
+	{
 		name:  "identifier list",
 		input: "select id,  from city",
 		line:  0,

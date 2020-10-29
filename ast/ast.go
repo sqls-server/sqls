@@ -59,11 +59,12 @@ type Item struct {
 func NewItem(tok *token.Token) Node {
 	return &Item{NewSQLToken(tok)}
 }
-func (i *Item) String() string      { return i.Tok.String() }
-func (i *Item) Type() NodeType      { return TypeItem }
-func (i *Item) GetToken() *SQLToken { return i.Tok }
-func (i *Item) Pos() token.Pos      { return i.Tok.From }
-func (i *Item) End() token.Pos      { return i.Tok.To }
+func (i *Item) String() string        { return i.Tok.String() }
+func (i *Item) NoQuateString() string { return i.Tok.NoQuateString() }
+func (i *Item) Type() NodeType        { return TypeItem }
+func (i *Item) GetToken() *SQLToken   { return i.Tok }
+func (i *Item) Pos() token.Pos        { return i.Tok.From }
+func (i *Item) End() token.Pos        { return i.Tok.To }
 
 type ItemWith struct {
 	Toks []Node
@@ -102,9 +103,24 @@ func (mk *MultiKeyword) End() token.Pos        { return findTo(mk) }
 func (mk *MultiKeyword) GetKeywords() []Node   { return mk.Keywords }
 
 type MemberIdentifer struct {
-	Toks   []Node
-	Parent Node
-	Child  Node
+	Toks      []Node
+	Parent    Node
+	ParentTok *SQLToken
+	Child     Node
+	ChildTok  *SQLToken
+}
+
+func NewMemberIdentiferParent(nodes []Node, parent Node) *MemberIdentifer {
+	memberIdentifier := &MemberIdentifer{Toks: nodes}
+	memberIdentifier.setParent(parent)
+	return memberIdentifier
+}
+
+func NewMemberIdentifer(nodes []Node, parent Node, child Node) *MemberIdentifer {
+	memberIdentifier := &MemberIdentifer{Toks: nodes}
+	memberIdentifier.setParent(parent)
+	memberIdentifier.setChild(child)
+	return memberIdentifier
 }
 
 func (mi *MemberIdentifer) String() string {
@@ -119,6 +135,20 @@ func (mi *MemberIdentifer) GetTokens() []Node     { return mi.Toks }
 func (mi *MemberIdentifer) SetTokens(toks []Node) { mi.Toks = toks }
 func (mi *MemberIdentifer) Pos() token.Pos        { return findFrom(mi) }
 func (mi *MemberIdentifer) End() token.Pos        { return findTo(mi) }
+func (mi *MemberIdentifer) setParent(node Node) {
+	mi.Parent = node
+	tok, ok := node.(Token)
+	if ok {
+		mi.ParentTok = tok.GetToken()
+	}
+}
+func (mi *MemberIdentifer) setChild(node Node) {
+	mi.Child = node
+	tok, ok := node.(Token)
+	if ok {
+		mi.ChildTok = tok.GetToken()
+	}
+}
 func (mi *MemberIdentifer) GetChild() Node {
 	if mi.Child == nil {
 		return &Null{}
@@ -408,6 +438,17 @@ func (t *SQLToken) String() string {
 	switch v := t.Value.(type) {
 	case *token.SQLWord:
 		return v.String()
+	case string:
+		return v
+	default:
+		return " "
+	}
+}
+
+func (t *SQLToken) NoQuateString() string {
+	switch v := t.Value.(type) {
+	case *token.SQLWord:
+		return v.NoQuateString()
 	case string:
 		return v
 	default:
