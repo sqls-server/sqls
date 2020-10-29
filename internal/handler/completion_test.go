@@ -268,6 +268,28 @@ var tableReferenceCase = []completionTestCase{
 		},
 	},
 	{
+		name:  "left join tables",
+		input: "select CountryCode from city left join ",
+		line:  0,
+		col:   39,
+		want: []string{
+			"city",
+			"country",
+			"countrylanguage",
+		},
+	},
+	{
+		name:  "left outer join tables",
+		input: "select CountryCode from city left outer join ",
+		line:  0,
+		col:   45,
+		want: []string{
+			"city",
+			"country",
+			"countrylanguage",
+		},
+	},
+	{
 		name:  "insert tables",
 		input: "INSERT INTO ",
 		line:  0,

@@ -73,6 +73,13 @@ func CheckSyntaxPosition(nw *NodeWalker) SyntaxPosition {
 		"INSERT INTO",
 		// JOIN Clause
 		"JOIN",
+		"INNER JOIN",
+		"CROSS JOIN",
+		"OUTER JOIN",
+		"LEFT JOIN",
+		"RIGHT JOIN",
+		"LEFT OUTER JOIN",
+		"RIGHT OUTER JOIN",
 		// DESCRIBE Statement
 		"DESCRIBE",
 		"DESC",
