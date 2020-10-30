@@ -22,7 +22,7 @@ func CheckSyntaxPosition(nw *NodeWalker) SyntaxPosition {
 	var res SyntaxPosition
 	switch {
 	case nw.PrevNodesIs(true, genKeywordMatcher([]string{
-		// INSERT Statement
+		// UPDATE Statement
 		"SET",
 		// SELECT Statement
 		"ORDER BY",
