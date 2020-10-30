@@ -176,7 +176,7 @@ func (t *Tokenizer) next() (Kind, interface{}, error) {
 	case r == '\n':
 		t.Scanner.Next()
 		t.Line += 1
-		t.Col = 1
+		t.Col = 0
 		return Whitespace, "\n", nil
 
 	case r == '\r':
@@ -186,7 +186,7 @@ func (t *Tokenizer) next() (Kind, interface{}, error) {
 			t.Scanner.Next()
 		}
 		t.Line += 1
-		t.Col = 1
+		t.Col = 0
 		return Whitespace, "\n", nil
 
 	case r == 'N':
@@ -461,10 +461,10 @@ func (t *Tokenizer) tokenizeMultilineComment() (string, error) {
 			if t.Scanner.Peek() == '\n' {
 				t.Scanner.Next()
 			}
-			t.Col = 1
+			t.Col = 0
 			t.Line += 1
 		} else if n == '\n' {
-			t.Col = 1
+			t.Col = 0
 			t.Line += 1
 		} else if n == scanner.EOF {
 			return "", errors.Errorf("unclosed multiline comment: %s at %+v", string(str), t.Pos())

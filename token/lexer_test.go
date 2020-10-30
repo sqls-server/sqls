@@ -38,7 +38,7 @@ func TestTokenizer_Tokenize(t *testing.T) {
 					Kind:  Whitespace,
 					Value: "\n",
 					From:  Pos{Line: 0, Col: 0},
-					To:    Pos{Line: 1, Col: 1},
+					To:    Pos{Line: 1, Col: 0},
 				},
 			},
 		},
@@ -63,13 +63,13 @@ func TestTokenizer_Tokenize(t *testing.T) {
 					Kind:  Whitespace,
 					Value: "\n",
 					From:  Pos{Line: 0, Col: 0},
-					To:    Pos{Line: 1, Col: 1},
+					To:    Pos{Line: 1, Col: 0},
 				},
 				{
 					Kind:  Whitespace,
 					Value: " ",
-					From:  Pos{Line: 1, Col: 1},
-					To:    Pos{Line: 1, Col: 2},
+					From:  Pos{Line: 1, Col: 0},
+					To:    Pos{Line: 1, Col: 1},
 				},
 			},
 		},
@@ -81,13 +81,13 @@ func TestTokenizer_Tokenize(t *testing.T) {
 					Kind:  Whitespace,
 					Value: "\n",
 					From:  Pos{Line: 0, Col: 0},
-					To:    Pos{Line: 1, Col: 1},
+					To:    Pos{Line: 1, Col: 0},
 				},
 				{
 					Kind:  Whitespace,
 					Value: "\t",
-					From:  Pos{Line: 1, Col: 1},
-					To:    Pos{Line: 1, Col: 5},
+					From:  Pos{Line: 1, Col: 0},
+					To:    Pos{Line: 1, Col: 4},
 				},
 			},
 		},
@@ -144,6 +144,56 @@ func TestTokenizer_Tokenize(t *testing.T) {
 					},
 					From: Pos{Line: 0, Col: 0},
 					To:   Pos{Line: 0, Col: 6},
+				},
+			},
+		},
+		{
+			name: "Multi line ident",
+			in: `select
+select
+select`,
+			out: []*Token{
+				{
+					Kind: SQLKeyword,
+					Value: &SQLWord{
+						Value:   "select",
+						Keyword: "SELECT",
+						Kind:    dialect.DML,
+					},
+					From: Pos{Line: 0, Col: 0},
+					To:   Pos{Line: 0, Col: 6},
+				},
+				{
+					Kind:  Whitespace,
+					Value: "\n",
+					From:  Pos{Line: 0, Col: 6},
+					To:    Pos{Line: 1, Col: 0},
+				},
+				{
+					Kind: SQLKeyword,
+					Value: &SQLWord{
+						Value:   "select",
+						Keyword: "SELECT",
+						Kind:    dialect.DML,
+					},
+					From: Pos{Line: 1, Col: 0},
+					To:   Pos{Line: 1, Col: 6},
+				},
+				{
+					Kind:  Whitespace,
+					Value: "\n",
+					From:  Pos{Line: 1, Col: 6},
+					To:    Pos{Line: 2, Col: 0},
+				},
+				{
+					Kind: SQLKeyword,
+					Value: &SQLWord{
+						Value:   "select",
+						Keyword: "SELECT",
+						Kind:    dialect.DML,
+					},
+					From: Pos{Line: 2, Col: 0},
+					To:   Pos{Line: 2, Col: 6},
 				},
 			},
 		},
@@ -352,7 +402,7 @@ comment */`,
 					Kind:  Comment,
 					Value: " test\nmultiline\ncomment ",
 					From:  Pos{Line: 0, Col: 0},
-					To:    Pos{Line: 2, Col: 11},
+					To:    Pos{Line: 2, Col: 10},
 				},
 			},
 		},
@@ -604,23 +654,8 @@ comment */`,
 				if tok[i].Kind != c.out[i].Kind {
 					t.Errorf("%d, expected sqltoken: %d, but got %d", i, c.out[i].Kind, tok[i].Kind)
 				}
-				// if !reflect.DeepEqual(tok[i].Value, c.out[i].Value) {
-				// 	t.Errorf("%d, expected value: %#v, but got %#v", i, c.out[i].Value, tok[i].Value)
-				// }
-				if d := cmp.Diff(tok[i].Value, c.out[i].Value); d != "" {
-					t.Errorf("unmatched value: %s", d)
-				}
-				// if !reflect.DeepEqual(tok[i].From, c.out[i].From) {
-				// 	t.Errorf("%d, expected value: %+v, but got %+v", i, c.out[i].From, tok[i].From)
-				// }
-				if d := cmp.Diff(tok[i].From, c.out[i].From); d != "" {
-					t.Errorf("unmatched From: %s", d)
-				}
-				// if !reflect.DeepEqual(tok[i].To, c.out[i].To) {
-				// 	t.Errorf("%d, expected value: %+v, but got %+v", i, c.out[i].To, tok[i].To)
-				// }
-				if d := cmp.Diff(tok[i].To, c.out[i].To); d != "" {
-					t.Errorf("unmatched To: %s", d)
+				if d := cmp.Diff(tok[i], c.out[i]); d != "" {
+					t.Errorf("%d, unmatched Value(+want -got): %s", i, d)
 				}
 			}
 		})
@@ -696,7 +731,7 @@ func TestTokenizer_Pos(t *testing.T) {
 				name: "multiline",
 				src: `1+1
 asdf`,
-				expect: Pos{Line: 1, Col: 5},
+				expect: Pos{Line: 1, Col: 4},
 			},
 			{
 				name:   "single line comment",
@@ -713,7 +748,7 @@ asdf`,
 				src: `select count(id)
 from account 
 where name like '%test%'`,
-				expect: Pos{Line: 2, Col: 25},
+				expect: Pos{Line: 2, Col: 24},
 			},
 			{
 				name: "multiline comment",
@@ -721,7 +756,7 @@ where name like '%test%'`,
 test comment
 test comment
 */`,
-				expect: Pos{Line: 3, Col: 3},
+				expect: Pos{Line: 3, Col: 2},
 			},
 			{
 				name:   "single line comment",
