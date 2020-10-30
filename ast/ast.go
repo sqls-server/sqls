@@ -181,12 +181,13 @@ type Identifer struct {
 	Tok *SQLToken
 }
 
-func (i *Identifer) Type() NodeType      { return TypeIdentifer }
-func (i *Identifer) String() string      { return i.Tok.String() }
-func (i *Identifer) GetToken() *SQLToken { return i.Tok }
-func (i *Identifer) Pos() token.Pos      { return i.Tok.From }
-func (i *Identifer) End() token.Pos      { return i.Tok.To }
-func (i *Identifer) IsWildcard() bool    { return i.Tok.MatchKind(token.Mult) }
+func (i *Identifer) Type() NodeType        { return TypeIdentifer }
+func (i *Identifer) String() string        { return i.Tok.String() }
+func (i *Identifer) NoQuateString() string { return i.Tok.NoQuateString() }
+func (i *Identifer) GetToken() *SQLToken   { return i.Tok }
+func (i *Identifer) Pos() token.Pos        { return i.Tok.From }
+func (i *Identifer) End() token.Pos        { return i.Tok.To }
+func (i *Identifer) IsWildcard() bool      { return i.Tok.MatchKind(token.Mult) }
 
 type Operator struct {
 	Toks     []Node

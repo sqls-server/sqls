@@ -88,9 +88,9 @@ func hover(text string, params lsp.HoverParams, dbCache *database.DBCache) (*lsp
 	// Create hover contents
 	var hoverContent *lsp.MarkupContent
 	if ident != nil && memIdent != nil {
-		identName := ident.String()
-		parentName := memIdent.Parent.String()
-		childName := memIdent.Child.String()
+		identName := ident.NoQuateString()
+		parentName := memIdent.ParentTok.NoQuateString()
+		childName := memIdent.ChildTok.NoQuateString()
 		if identName == parentName {
 			// The cursor is on the member identifier parent.
 			// example "w[o]rld.city"
@@ -106,11 +106,11 @@ func hover(text string, params lsp.HoverParams, dbCache *database.DBCache) (*lsp
 	} else if ident == nil && memIdent != nil {
 		// The cursor is on the dot with the member identifier
 		// example "world[.]city"
-		hoverContent = hoverContentFromChildIdent(ctx, memIdent.Child.String(), dbCache, hoverEnv)
+		hoverContent = hoverContentFromChildIdent(ctx, memIdent.ChildTok.NoQuateString(), dbCache, hoverEnv)
 	} else if ident != nil && memIdent == nil {
 		// The cursor is on the identifier
 		// example "c[i]ty"
-		hoverContent = hoverContentFromIdent(ctx, ident.String(), dbCache, hoverEnv)
+		hoverContent = hoverContentFromIdent(ctx, ident.NoQuateString(), dbCache, hoverEnv)
 	}
 	if hoverContent == nil {
 		return nil, ErrNoHover

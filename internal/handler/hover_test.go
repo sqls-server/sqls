@@ -76,6 +76,20 @@ func TestHover(t *testing.T) {
 			col:    15,
 		},
 		{
+			name:   "select quated ident head",
+			input:  "SELECT `ID`, Name FROM city",
+			output: "city.ID column",
+			line:   0,
+			col:    8,
+		},
+		{
+			name:   "select quated ident head",
+			input:  "SELECT `ID`, Name FROM city",
+			output: "city.ID column",
+			line:   0,
+			col:    11,
+		},
+		{
 			name:   "table ident head",
 			input:  "SELECT ID, Name FROM city",
 			output: "city table",
