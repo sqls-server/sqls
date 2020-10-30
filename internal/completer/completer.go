@@ -109,18 +109,9 @@ func (c *Completer) Complete(text string, params lsp.CompletionParams) ([]lsp.Co
 		return nil, err
 	}
 
-	var pos token.Pos
-	// NOTE work around
-	if params.Position.Line == 0 {
-		pos = token.Pos{
-			Line: params.Position.Line,
-			Col:  params.Position.Character,
-		}
-	} else {
-		pos = token.Pos{
-			Line: params.Position.Line,
-			Col:  params.Position.Character + 1,
-		}
+	pos := token.Pos{
+		Line: params.Position.Line,
+		Col:  params.Position.Character,
 	}
 
 	nodeWalker := parseutil.NewNodeWalker(parsed, pos)

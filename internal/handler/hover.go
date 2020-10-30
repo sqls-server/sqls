@@ -44,18 +44,9 @@ func (s *Server) handleTextDocumentHover(ctx context.Context, conn *jsonrpc2.Con
 }
 
 func hover(text string, params lsp.HoverParams, dbCache *database.DBCache) (*lsp.Hover, error) {
-	var pos token.Pos
-	// NOTE work around
-	if params.Position.Line == 0 {
-		pos = token.Pos{
-			Line: params.Position.Line,
-			Col:  params.Position.Character + 1,
-		}
-	} else {
-		pos = token.Pos{
-			Line: params.Position.Line,
-			Col:  params.Position.Character + 2,
-		}
+	pos := token.Pos{
+		Line: params.Position.Line,
+		Col:  params.Position.Character + 1,
 	}
 	parsed, err := parser.Parse(text)
 	if err != nil {
