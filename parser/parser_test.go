@@ -337,6 +337,24 @@ func TestParseIdentifier(t *testing.T) {
 			},
 		},
 		{
+			name:  "back quate identifier",
+			input: "`abc`",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testIdentifier(t, list[0], input)
+			},
+		},
+		{
+			name:  "non close back quate identifier",
+			input: "`abc",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testIdentifier(t, list[0], input)
+			},
+		},
+		{
 			name:  "wildcard",
 			input: "*",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
