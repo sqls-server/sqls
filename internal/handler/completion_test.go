@@ -14,6 +14,7 @@ type completionTestCase struct {
 	line  int
 	col   int
 	want  []string
+	bad   []string
 }
 
 var statementCase = []completionTestCase{
@@ -334,6 +335,11 @@ var tableReferenceCase = []completionTestCase{
 			"CountryCode",
 			"District",
 			"Population",
+		},
+		bad: []string{
+			"city",
+			"country",
+			"countrylanguage",
 		},
 	},
 	{
@@ -756,14 +762,14 @@ func TestComplete(t *testing.T) {
 				if err := tx.conn.Call(tx.ctx, "textDocument/completion", commpletionParams, &got); err != nil {
 					t.Fatal("conn.Call textDocument/completion:", err)
 				}
-				testCompletionItem(t, tt.want, got)
+				testCompletionItem(t, tt.want, tt.bad, got)
 			})
 		}
 	}
 
 }
 
-func testCompletionItem(t *testing.T, expectLabels []string, gotItems []lsp.CompletionItem) {
+func testCompletionItem(t *testing.T, expectLabels []string, badLabels []string, gotItems []lsp.CompletionItem) {
 	t.Helper()
 
 	itemMap := map[string]struct{}{}
@@ -774,7 +780,14 @@ func testCompletionItem(t *testing.T, expectLabels []string, gotItems []lsp.Comp
 	for _, el := range expectLabels {
 		_, ok := itemMap[el]
 		if !ok {
-			t.Errorf("not included label, expect %q", el)
+			t.Errorf("expected to be included in the results, expect candidate %q", el)
+		}
+	}
+
+	for _, el := range badLabels {
+		_, ok := itemMap[el]
+		if ok {
+			t.Errorf("should not be included in the results, got candidate %q", el)
 		}
 	}
 }

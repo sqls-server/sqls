@@ -297,7 +297,6 @@ func getCompletionTypes(nw *parseutil.NodeWalker) *CompletionContext {
 	case syntaxPos == parseutil.InsertValue:
 		t = []completionType{
 			CompletionTypeColumn,
-			CompletionTypeTable,
 			CompletionTypeView,
 		}
 	default:
