@@ -19,12 +19,14 @@ type SQLWord struct {
 }
 
 func (s *SQLWord) String() string {
-	if s.QuoteStyle == '"' || s.QuoteStyle == '[' || s.QuoteStyle == '`' {
+	switch s.QuoteStyle {
+	case '"', '[', '`':
 		return string(s.QuoteStyle) + s.Value + string(matchingEndQuote(s.QuoteStyle))
-	} else if s.QuoteStyle == 0 {
+	case 0:
 		return s.Value
+	default:
+		return ""
 	}
-	return ""
 }
 
 func (s *SQLWord) NoQuateString() string {
@@ -194,10 +196,7 @@ func (t *Tokenizer) next() (Kind, interface{}, error) {
 		n := t.Scanner.Peek()
 		if n == '\'' {
 			t.Col += 1
-			str, err := t.tokenizeSingleQuotedString()
-			if err != nil {
-				return ILLEGAL, "", err
-			}
+			str := t.tokenizeSingleQuotedString()
 			return NationalStringLiteral, str, nil
 		}
 		s := t.tokenizeWord('N')
@@ -210,27 +209,12 @@ func (t *Tokenizer) next() (Kind, interface{}, error) {
 		return SQLKeyword, MakeKeyword(s, 0), nil
 
 	case r == '\'':
-		s, err := t.tokenizeSingleQuotedString()
-		if err != nil {
-			return ILLEGAL, "", err
-		}
+		s := t.tokenizeSingleQuotedString()
 		return SingleQuotedString, s, nil
 
 	case t.Dialect.IsDelimitedIdentifierStart(r):
-		t.Scanner.Next()
-		end := matchingEndQuote(r)
-
-		var s []rune
-		for {
-			n := t.Scanner.Next()
-			if n == end {
-				break
-			}
-			s = append(s, n)
-		}
-		t.Col += 2 + len(s)
-
-		return SQLKeyword, MakeKeyword(string(s), r), nil
+		s := t.tokenizeDelimitedIdentifier(r)
+		return SQLKeyword, s, nil
 
 	case '0' <= r && r <= '9':
 		var s []rune
@@ -421,9 +405,10 @@ func (t *Tokenizer) tokenizeWord(f rune) string {
 	return string(str)
 }
 
-func (t *Tokenizer) tokenizeSingleQuotedString() (string, error) {
+func (t *Tokenizer) tokenizeSingleQuotedString() string {
 	var str []rune
 	t.Scanner.Next()
+	isClosed := false
 
 	for {
 		n := t.Scanner.Peek()
@@ -433,21 +418,51 @@ func (t *Tokenizer) tokenizeSingleQuotedString() (string, error) {
 				str = append(str, '\'')
 				t.Scanner.Next()
 			} else {
+				isClosed = true
 				break
 			}
 			continue
 		}
 		if n == scanner.EOF {
-			return "", errors.Errorf("unclosed single quoted string: %s at %+v", string(str), t.Pos())
+			break
 		}
 
 		t.Scanner.Next()
 		str = append(str, n)
 	}
-	t.Col += 2 + len(str)
 
-	// FIXME work around
-	return "'" + string(str) + "'", nil
+	if isClosed {
+		t.Col += 2 + len(str)
+		return "'" + string(str) + "'"
+	}
+	t.Col += 1 + len(str)
+	return "'" + string(str)
+}
+
+func (t *Tokenizer) tokenizeDelimitedIdentifier(r rune) *SQLWord {
+	t.Scanner.Next()
+	end := matchingEndQuote(r)
+	isClosed := false
+
+	var s []rune
+	for {
+		n := t.Scanner.Next()
+		if n == scanner.EOF {
+			break
+		}
+		if n == end {
+			isClosed = true
+			break
+		}
+		s = append(s, n)
+	}
+
+	if isClosed {
+		t.Col += 2 + len(s)
+		return MakeKeyword(string(s), r)
+	}
+	t.Col += 1 + len(s)
+	return MakeKeyword(string(r)+string(s), 0)
 }
 
 func (t *Tokenizer) tokenizeMultilineComment() (string, error) {

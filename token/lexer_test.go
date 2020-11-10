@@ -327,6 +327,52 @@ select`,
 			},
 		},
 		{
+			name: "non closed single quate identifier",
+			in:   "'foo",
+			out: []*Token{
+				{
+					Kind:  SingleQuotedString,
+					Value: "'foo",
+					From:  Pos{Line: 0, Col: 0},
+					To:    Pos{Line: 0, Col: 4},
+				},
+			},
+		},
+		{
+			name: "non closed double quate identifier",
+			in:   `"foo`,
+			out: []*Token{
+				{
+					Kind: SQLKeyword,
+					Value: &SQLWord{
+						Value:      `"foo`,
+						Keyword:    `"FOO`,
+						QuoteStyle: 0,
+						Kind:       dialect.Unmatched,
+					},
+					From: Pos{Line: 0, Col: 0},
+					To:   Pos{Line: 0, Col: 4},
+				},
+			},
+		},
+		{
+			name: "non closed back quate identifier",
+			in:   "`foo",
+			out: []*Token{
+				{
+					Kind: SQLKeyword,
+					Value: &SQLWord{
+						Value:      "`foo",
+						Keyword:    "`FOO",
+						QuoteStyle: 0,
+						Kind:       dialect.Unmatched,
+					},
+					From: Pos{Line: 0, Col: 0},
+					To:   Pos{Line: 0, Col: 4},
+				},
+			},
+		},
+		{
 			name: "parents with number",
 			in:   "(123),",
 			out: []*Token{
@@ -790,10 +836,6 @@ test comment
 			name string
 			src  string
 		}{
-			{
-				name: "incomplete quoted string",
-				src:  "'test",
-			},
 			{
 				name: "unclosed multiline comment",
 				src: `
