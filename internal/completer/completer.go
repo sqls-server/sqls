@@ -129,15 +129,18 @@ func (c *Completer) Complete(text string, params lsp.CompletionParams) ([]lsp.Co
 		return nil, err
 	}
 
+	lastWord := getLastWord(text, params.Position.Line+1, params.Position.Character)
+	withBackQuote := strings.HasPrefix(lastWord, "`")
+
 	items := []lsp.CompletionItem{}
 	if completionTypeIs(ctx.types, CompletionTypeColumn) {
-		items = append(items, c.columnCandidates(definedTables, ctx.parent)...)
+		items = append(items, c.columnCandidates(definedTables, ctx.parent, withBackQuote)...)
 	}
 	if completionTypeIs(ctx.types, CompletionTypeReferencedTable) {
 		items = append(items, c.ReferencedTableCandidates(definedTables)...)
 	}
 	if completionTypeIs(ctx.types, CompletionTypeTable) {
-		items = append(items, c.TableCandidates(ctx.parent, definedTables)...)
+		items = append(items, c.TableCandidates(ctx.parent, definedTables, withBackQuote)...)
 	}
 	if completionTypeIs(ctx.types, CompletionTypeSchema) {
 		items = append(items, c.SchemaCandidates()...)
@@ -152,7 +155,6 @@ func (c *Completer) Complete(text string, params lsp.CompletionParams) ([]lsp.Co
 		items = append(items, c.keywordCandidates()...)
 	}
 
-	lastWord := getLastWord(text, params.Position.Line+1, params.Position.Character)
 	items = filterCandidates(items, lastWord)
 
 	return items, nil
@@ -336,7 +338,7 @@ func getLastWord(text string, line, char int) string {
 	t := getBeforeCursorText(text, line, char)
 	s := getLine(t, line)
 
-	reg := regexp.MustCompile(`\w+$`)
+	reg := regexp.MustCompile("[\\w`]+$")
 	ss := reg.FindAllString(s, -1)
 	if len(ss) == 0 {
 		return ""

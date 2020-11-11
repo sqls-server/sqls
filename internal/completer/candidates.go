@@ -1,6 +1,7 @@
 package completer
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/lighttiger2505/sqls/internal/database"
@@ -21,7 +22,7 @@ func (c *Completer) keywordCandidates() []lsp.CompletionItem {
 	return candidates
 }
 
-func (c *Completer) columnCandidates(targetTables []*parseutil.TableInfo, parent *completionParent) []lsp.CompletionItem {
+func (c *Completer) columnCandidates(targetTables []*parseutil.TableInfo, parent *completionParent, withBackQuote bool) []lsp.CompletionItem {
 	candidates := []lsp.CompletionItem{}
 	if c.DBCache == nil {
 		return candidates
@@ -56,6 +57,15 @@ func (c *Completer) columnCandidates(targetTables []*parseutil.TableInfo, parent
 			}
 			candidates = append(candidates, generateColumnCandidates(table.Name, columns)...)
 		}
+	}
+
+	if withBackQuote {
+		quotedCandidates := make([]lsp.CompletionItem, len(candidates))
+		for i, candidate := range candidates {
+			candidate.Label = fmt.Sprintf("`%s`", candidate.Label)
+			quotedCandidates[i] = candidate
+		}
+		return quotedCandidates
 	}
 	return candidates
 }
@@ -107,7 +117,7 @@ func (c *Completer) ReferencedTableCandidates(targetTables []*parseutil.TableInf
 	return candidates
 }
 
-func (c *Completer) TableCandidates(parent *completionParent, targetTables []*parseutil.TableInfo) []lsp.CompletionItem {
+func (c *Completer) TableCandidates(parent *completionParent, targetTables []*parseutil.TableInfo, withBackQuote bool) []lsp.CompletionItem {
 	candidates := []lsp.CompletionItem{}
 	if c.DBCache == nil {
 		return candidates
@@ -138,6 +148,15 @@ func (c *Completer) TableCandidates(parent *completionParent, targetTables []*pa
 			candidates = append(candidates, generateTableCandidates(tables, c.DBCache)...)
 		}
 	case ParentTypeTable:
+	}
+
+	if withBackQuote {
+		quotedCandidates := make([]lsp.CompletionItem, len(candidates))
+		for i, candidate := range candidates {
+			candidate.Label = fmt.Sprintf("`%s`", candidate.Label)
+			quotedCandidates[i] = candidate
+		}
+		return quotedCandidates
 	}
 	return candidates
 }

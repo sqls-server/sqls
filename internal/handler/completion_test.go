@@ -84,6 +84,17 @@ var selectExprCase = []completionTestCase{
 		},
 	},
 	{
+		name:  "filterd signle quate table columns",
+		input: "select `Cou from city",
+		line:  0,
+		col:   10,
+		want: []string{
+			"`CountryCode`",
+			"`country`",
+			"`countrylanguage`",
+		},
+	},
+	{
 		name:  "columns of table specifies database",
 		input: "select  from world.city",
 		line:  0,

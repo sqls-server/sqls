@@ -357,7 +357,7 @@ select`,
 		},
 		{
 			name: "non closed back quate identifier",
-			in:   "`foo",
+			in:   "`foo bar",
 			out: []*Token{
 				{
 					Kind: SQLKeyword,
@@ -369,6 +369,23 @@ select`,
 					},
 					From: Pos{Line: 0, Col: 0},
 					To:   Pos{Line: 0, Col: 4},
+				},
+				{
+					Kind:  Whitespace,
+					Value: " ",
+					From:  Pos{Line: 0, Col: 4},
+					To:    Pos{Line: 0, Col: 5},
+				},
+				{
+					Kind: SQLKeyword,
+					Value: &SQLWord{
+						Value:      "bar",
+						Keyword:    "BAR",
+						QuoteStyle: 0,
+						Kind:       dialect.Unmatched,
+					},
+					From: Pos{Line: 0, Col: 5},
+					To:   Pos{Line: 0, Col: 8},
 				},
 			},
 		},
