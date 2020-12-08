@@ -92,6 +92,8 @@ func (s *Server) handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.
 		return
 	case "shutdown":
 		return s.handleShutdown(ctx, conn, req)
+	case "exit":
+		return s.handleExit(ctx, conn, req)
 	case "textDocument/didOpen":
 		return s.handleTextDocumentDidOpen(ctx, conn, req)
 	case "textDocument/didChange":
@@ -152,14 +154,18 @@ func (s *Server) handleInitialize(ctx context.Context, conn *jsonrpc2.Conn, req 
 }
 
 func (s *Server) handleShutdown(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
-	if req.Params == nil {
-		return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeInvalidParams}
-	}
-
 	if s.dbConn != nil {
 		s.dbConn.Close()
 	}
 	return nil, nil
+}
+
+func (s *Server) handleExit(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
+	if s.dbConn != nil {
+		s.dbConn.Close()
+	}
+	err = s.Stop()
+	return nil, err
 }
 
 func (s *Server) handleTextDocumentDidOpen(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
