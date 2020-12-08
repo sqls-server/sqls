@@ -80,6 +80,8 @@ Whichever method you choose, the settings you make will remain the same.
 ### Configuration file sample
 
 ```yaml
+# Set to true to use lowercase keywords instead of uppercase.
+lowercaseKeywords: false
 connections:
   - alias: dsn_mysql
     driver: mysql

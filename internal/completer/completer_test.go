@@ -1,7 +1,10 @@
 package completer
 
 import (
+	"reflect"
 	"testing"
+
+	"github.com/lighttiger2505/sqls/internal/lsp"
 )
 
 func TestGetBeforeCursorText(t *testing.T) {
@@ -100,6 +103,60 @@ func Test_completionTypeIs(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := completionTypeIs(tt.completionTypes, tt.expect); got != tt.want {
 				t.Errorf("completionTypeIs() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestComplete(t *testing.T) {
+	tests := []struct {
+		name      string
+		text      string
+		lowerCase bool
+		expected  []lsp.CompletionItem
+	}{
+		{
+			name: "keyword",
+			text: "sel",
+			expected: []lsp.CompletionItem{
+				{
+					Label:  "SELECT",
+					Kind:   lsp.KeywordCompletion,
+					Detail: "keyword",
+				},
+			},
+		},
+		{
+			name:      "keyword-lowercase",
+			text:      "sel",
+			lowerCase: true,
+			expected: []lsp.CompletionItem{
+				{
+					Label:  "select",
+					Kind:   lsp.KeywordCompletion,
+					Detail: "keyword",
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run("", func(t *testing.T) {
+			c := NewCompleter(nil)
+			got, err := c.Complete("sel", lsp.CompletionParams{
+				TextDocumentPositionParams: lsp.TextDocumentPositionParams{
+					Position: lsp.Position{
+						Line:      0,
+						Character: len(tt.text),
+					},
+				},
+			}, tt.lowerCase)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if !reflect.DeepEqual(got, tt.expected) {
+				t.Errorf("\nwant: %v\ngot:  %v", tt.expected, got)
 			}
 		})
 	}
