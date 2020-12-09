@@ -76,10 +76,15 @@ func IsFileExist(fPath string) bool {
 }
 
 func configFilePath(fileName string) string {
+	if xdgConfigHome := os.Getenv("XDG_CONFIG_HOME"); xdgConfigHome != "" {
+		return filepath.Join(xdgConfigHome, "sqls", fileName)
+	}
+
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		panic(err)
 	}
+
 	return filepath.Join(homeDir, ".config", "sqls", fileName)
 }
 

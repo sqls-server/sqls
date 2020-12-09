@@ -75,7 +75,7 @@ Whichever method you choose, the settings you make will remain the same.
 1. Configuration file specified by the `-config` flag
 1. `workspace/configuration` set to LSP client
 1. Configuration file located in the following location
-    - `$HOME`/.config/sqls/config.yml
+    - `$XDG_CONFIG_HOME`/sqls/config.yml ("`$HOME`/.config" is used instead of `$XDG_CONFIG_HOME` if it's not set)
 
 ### Configuration file sample
 
