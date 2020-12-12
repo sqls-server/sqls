@@ -29,7 +29,7 @@ func (s *Server) handleTextDocumentCompletion(ctx context.Context, conn *jsonrpc
 		return nil, fmt.Errorf("database cache not found")
 	}
 	c := completer.NewCompleter(s.worker.Cache())
-	completionItems, err := c.Complete(f.Text, params)
+	completionItems, err := c.Complete(f.Text, params, s.getConfig().LowercaseKeywords)
 	if err != nil {
 		return nil, err
 	}

@@ -20,7 +20,8 @@ var (
 )
 
 type Config struct {
-	Connections []*database.DBConfig `json:"connections" yaml:"connections"`
+	LowercaseKeywords bool                 `json:"lowercaseKeywords" yaml:"lowercaseKeywords"`
+	Connections       []*database.DBConfig `json:"connections" yaml:"connections"`
 }
 
 func newConfig() *Config {

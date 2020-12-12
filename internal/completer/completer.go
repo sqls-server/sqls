@@ -103,7 +103,7 @@ func completionTypeIs(completionTypes []completionType, expect completionType) b
 	return false
 }
 
-func (c *Completer) Complete(text string, params lsp.CompletionParams) ([]lsp.CompletionItem, error) {
+func (c *Completer) Complete(text string, params lsp.CompletionParams, lowercaseKeywords bool) ([]lsp.CompletionItem, error) {
 	parsed, err := parser.Parse(text)
 	if err != nil {
 		return nil, err
@@ -152,7 +152,7 @@ func (c *Completer) Complete(text string, params lsp.CompletionParams) ([]lsp.Co
 		items = append(items, c.SubQueryColumnCandidates(definedSubQuerys)...)
 	}
 	if completionTypeIs(ctx.types, CompletionTypeKeyword) {
-		items = append(items, c.keywordCandidates()...)
+		items = append(items, c.keywordCandidates(lowercaseKeywords)...)
 	}
 
 	items = filterCandidates(items, lastWord)

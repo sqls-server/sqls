@@ -9,13 +9,16 @@ import (
 	"github.com/lighttiger2505/sqls/parser/parseutil"
 )
 
-func (c *Completer) keywordCandidates() []lsp.CompletionItem {
+func (c *Completer) keywordCandidates(lower bool) []lsp.CompletionItem {
 	candidates := []lsp.CompletionItem{}
 	for _, k := range keywords {
 		candidate := lsp.CompletionItem{
 			Label:  k,
 			Kind:   lsp.KeywordCompletion,
 			Detail: "keyword",
+		}
+		if lower {
+			candidate.Label = strings.ToLower(candidate.Label)
 		}
 		candidates = append(candidates, candidate)
 	}
