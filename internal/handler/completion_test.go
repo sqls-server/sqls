@@ -73,6 +73,22 @@ var selectExprCase = []completionTestCase{
 		},
 	},
 	{
+		name:  "quoted table columns",
+		input: "select  from `city`",
+		line:  0,
+		col:   7,
+		want: []string{
+			"ID",
+			"Name",
+			"CountryCode",
+			"District",
+			"Population",
+			"city",
+			"country",
+			"countrylanguage",
+		},
+	},
+	{
 		name:  "filterd table columns",
 		input: "select Cou from city",
 		line:  0,

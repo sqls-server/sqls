@@ -278,7 +278,7 @@ func parseTableInfo(idents ast.Node) ([]*TableInfo, error) {
 	res := []*TableInfo{}
 	switch v := idents.(type) {
 	case *ast.Identifer:
-		ti := &TableInfo{Name: v.String()}
+		ti := &TableInfo{Name: v.NoQuateString()}
 		res = append(res, ti)
 	case *ast.IdentiferList:
 		tis, err := identifierListToTableInfo(v)
