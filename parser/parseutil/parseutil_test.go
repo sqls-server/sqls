@@ -332,6 +332,16 @@ func TestExtractTable(t *testing.T) {
 			},
 		},
 		{
+			name:  "select quoted table reference",
+			input: "select * from `abc`",
+			pos:   token.Pos{Line: 0, Col: 1},
+			want: []*TableInfo{
+				{
+					Name: "abc",
+				},
+			},
+		},
+		{
 			name:  "select table references",
 			input: "select * from abc, def",
 			pos:   token.Pos{Line: 0, Col: 1},
