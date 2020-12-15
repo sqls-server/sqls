@@ -313,7 +313,7 @@ func identifierListToTableInfo(il *ast.IdentiferList) ([]*TableInfo, error) {
 		switch v := ident.(type) {
 		case *ast.Identifer:
 			ti := &TableInfo{
-				Name: v.String(),
+				Name: v.NoQuateString(),
 			}
 			tis = append(tis, ti)
 		case *ast.MemberIdentifer:
@@ -336,7 +336,7 @@ func aliasedToTableInfo(aliased *ast.Aliased) (*TableInfo, error) {
 	// fetch table schema and name
 	switch v := aliased.RealName.(type) {
 	case *ast.Identifer:
-		ti.Name = v.String()
+		ti.Name = v.NoQuateString()
 	case *ast.MemberIdentifer:
 		ti.DatabaseSchema = v.Parent.String()
 		ti.Name = v.GetChild().String()
@@ -358,7 +358,7 @@ func aliasedToTableInfo(aliased *ast.Aliased) (*TableInfo, error) {
 	// fetch table aliased name
 	switch v := aliased.AliasedName.(type) {
 	case *ast.Identifer:
-		ti.Alias = v.String()
+		ti.Alias = v.NoQuateString()
 	default:
 		return nil, xerrors.Errorf(
 			"failed parse aliased name of alias, unknown node type %T, value %q",
@@ -373,7 +373,7 @@ func parseSubQueryColumns(idents ast.Node) ([]string, error) {
 	columns := []string{}
 	switch v := idents.(type) {
 	case *ast.Identifer:
-		columns = append(columns, v.String())
+		columns = append(columns, v.NoQuateString())
 	case *ast.IdentiferList:
 		results, err := identifierListToSubQueryColumns(v)
 		if err != nil {
@@ -400,7 +400,7 @@ func identifierListToSubQueryColumns(il *ast.IdentiferList) ([]string, error) {
 	for _, ident := range idents {
 		switch v := ident.(type) {
 		case *ast.Identifer:
-			columns = append(columns, v.String())
+			columns = append(columns, v.NoQuateString())
 		case *ast.MemberIdentifer:
 			columns = append(columns, v.GetChild().String())
 		default:
@@ -418,7 +418,7 @@ func aliasedToSubQueryColumn(aliased *ast.Aliased) (string, error) {
 	// fetch table schema and name
 	switch v := aliased.AliasedName.(type) {
 	case *ast.Identifer:
-		return v.String(), nil
+		return v.NoQuateString(), nil
 	default:
 		return "", xerrors.Errorf(
 			"failed trans alias to column, unknown node type %T, value %q",
