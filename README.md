@@ -208,9 +208,12 @@ See also.
 - https://godoc.org/github.com/lib/pq
 - https://github.com/mattn/go-sqlite3#connection-string
 
-## Special Thanks
+## Contributors
 
-[@mattn](https://github.com/mattn)
+This project exists thanks to all the people who contribute.
+<a href="https://github.com/lighttiger2505/sqls/graphs/contributors">
+    <img src="https://contrib.rocks/image?repo=lighttiger2505/sqls" />
+</a>
 
 ## Inspired
 
