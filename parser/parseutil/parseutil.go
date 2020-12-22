@@ -13,14 +13,32 @@ type TableInfo struct {
 	Alias          string
 }
 
+func (ti *TableInfo) isMatch(name string) bool {
+	if ti.Name == name {
+		return true
+	}
+	if ti.Alias == name {
+		return true
+	}
+	return false
+}
+
 type SubQueryInfo struct {
 	Name  string
 	Views []*SubQueryView
 }
 
 type SubQueryView struct {
-	Table   *TableInfo
-	Columns []string
+	Table           *TableInfo
+	Columns         []string
+	SubQueryColumns []*SubQueryColumn
+}
+
+type SubQueryColumn struct {
+	ParentTable *TableInfo
+	ParentName  string
+	ColumnName  string
+	AliasName   string
 }
 
 func extractFocusedStatement(parsed ast.TokenList, pos token.Pos) (ast.TokenList, error) {
@@ -127,22 +145,29 @@ func ExtractSubQueryViews(parsed ast.TokenList, pos token.Pos) ([]*SubQueryInfo,
 			return nil, xerrors.Errorf("is not sub query, query: %q, type: %T", stmt, stmt)
 		}
 
-		idents, err := extractSelectIdentifier(parenthesis.Inner())
+		subqueryCols, err := extractSelectIdentifier(parenthesis.Inner())
 		if err != nil {
 			return nil, err
 		}
 
+		// FIXME あとで消す
 		tables, err := extractTableIdentifier(parenthesis.Inner(), true)
 		if err != nil {
 			return nil, err
+		}
+
+		cols := make([]string, len(subqueryCols))
+		for i, subqueryCol := range subqueryCols {
+			cols[i] = subqueryCol.ColumnName
 		}
 
 		info := &SubQueryInfo{
 			Name: subQuery.AliasedName.String(),
 			Views: []*SubQueryView{
 				{
-					Table:   tables[0],
-					Columns: idents,
+					Table:           tables[0],
+					Columns:         cols,
+					SubQueryColumns: subqueryCols,
 				},
 			},
 		}
@@ -172,26 +197,30 @@ var identifierMatcher = astutil.NodeMatcher{
 	},
 }
 
-func extractSelectIdentifier(selectStmt ast.TokenList) ([]string, error) {
+func extractSelectIdentifier(selectStmt ast.TokenList) ([]*SubQueryColumn, error) {
+	tables, err := extractTableIdentifier(selectStmt, true)
+	if err != nil {
+		return nil, err
+	}
+
 	// extract select identifiers
-	idents := []string{}
+	cols := []*SubQueryColumn{}
 	identsObj := selectStmt.GetTokens()[2]
 	switch v := identsObj.(type) {
-	case ast.TokenList:
-		identifiers := filterTokenList(astutil.NewNodeReader(v), identifierMatcher)
-		for _, ident := range identifiers.GetTokens() {
-			res, err := parseSubQueryColumns(ident)
+	case *ast.IdentiferList:
+		for _, ident := range v.Identifers {
+			res, err := parseSubQueryColumns(ident, tables)
 			if err != nil {
 				return nil, err
 			}
-			idents = append(idents, res...)
+			cols = append(cols, res...)
 		}
 	case *ast.Identifer:
-		res, err := parseSubQueryColumns(v)
+		res, err := parseSubQueryColumns(v, tables)
 		if err != nil {
 			return nil, err
 		}
-		idents = append(idents, res...)
+		cols = append(cols, res...)
 	default:
 		return nil, xerrors.Errorf("failed read the TokenList of select, query: %q, type: %T", identsObj, identsObj)
 	}
@@ -199,18 +228,18 @@ func extractSelectIdentifier(selectStmt ast.TokenList) ([]string, error) {
 	// check from clause is sub query
 	fromIdentifier := ExtractTableReferences(selectStmt)
 	if len(fromIdentifier) == 0 {
-		return idents, nil
+		return cols, nil
 	}
 	alias, ok := fromIdentifier[0].(*ast.Aliased)
 	if !ok {
-		return idents, nil
+		return cols, nil
 	}
 	parenthesis, ok := alias.RealName.(*ast.Parenthesis)
 	if !ok {
-		return idents, nil
+		return cols, nil
 	}
 	if !isSubQuery(parenthesis) {
-		return idents, nil
+		return cols, nil
 	}
 
 	// merge select identiner of inner sub query
@@ -218,13 +247,13 @@ func extractSelectIdentifier(selectStmt ast.TokenList) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	realIdents := []string{}
-	for _, ident := range idents {
-		if ident == "*" {
+	realIdents := []*SubQueryColumn{}
+	for _, ident := range cols {
+		if ident.ColumnName == "*" {
 			return innerIdents, nil
 		}
 		for _, innerIdent := range innerIdents {
-			if ident == innerIdent {
+			if ident.ColumnName == innerIdent.ColumnName {
 				realIdents = append(realIdents, ident)
 			}
 		}
@@ -369,58 +398,69 @@ func aliasedToTableInfo(aliased *ast.Aliased) (*TableInfo, error) {
 	return ti, nil
 }
 
-func parseSubQueryColumns(idents ast.Node) ([]string, error) {
-	columns := []string{}
+func parseSubQueryColumns(idents ast.Node, tables []*TableInfo) ([]*SubQueryColumn, error) {
+	subqueryCols := []*SubQueryColumn{}
 	switch v := idents.(type) {
 	case *ast.Identifer:
-		columns = append(columns, v.NoQuateString())
+		subqueryCols = append(subqueryCols, &SubQueryColumn{ColumnName: v.NoQuateString()})
+		// FIXME アスタリスクパターンを追加
 	case *ast.IdentiferList:
-		results, err := identifierListToSubQueryColumns(v)
-		if err != nil {
-			return nil, err
+		idents := filterTokens(v.GetTokens(), identifierMatcher)
+		for _, ident := range idents {
+			resSubqueryCols, err := parseSubQueryColumns(ident, tables)
+			if err != nil {
+				return nil, err
+			}
+			subqueryCols = append(subqueryCols, resSubqueryCols...)
 		}
-		columns = append(columns, results...)
 	case *ast.MemberIdentifer:
-		columns = append(columns, v.GetChild().String())
+		// FIXME 子供がアスタリスクパターンを追加
+		subqueryCols = append(
+			subqueryCols,
+			&SubQueryColumn{
+				ParentName: v.GetParentIdent().NoQuateString(),
+				ColumnName: v.GetChildIdent().NoQuateString(),
+			},
+		)
 	case *ast.Aliased:
-		result, err := aliasedToSubQueryColumn(v)
+		subqueryCol, err := aliasedToSubQueryColumn(v)
 		if err != nil {
 			return nil, err
 		}
-		columns = append(columns, result)
+		subqueryCols = append(subqueryCols, subqueryCol)
 	default:
 		return nil, xerrors.Errorf("failed parse sub query columns, unknown node type %T, value %q", idents, idents)
 	}
-	return columns, nil
-}
 
-func identifierListToSubQueryColumns(il *ast.IdentiferList) ([]string, error) {
-	columns := []string{}
-	idents := filterTokens(il.GetTokens(), identifierMatcher)
-	for _, ident := range idents {
-		switch v := ident.(type) {
-		case *ast.Identifer:
-			columns = append(columns, v.NoQuateString())
-		case *ast.MemberIdentifer:
-			columns = append(columns, v.GetChild().String())
-		default:
-			return nil, xerrors.Errorf(
-				"failed trans identifier list to column, unknown node type %T, value %q",
-				ident,
-				ident,
-			)
+	for _, subqueryCol := range subqueryCols {
+		for _, table := range tables {
+			if table.isMatch(subqueryCol.ParentName) {
+				subqueryCol.ParentTable = table
+			}
 		}
 	}
-	return columns, nil
+	return subqueryCols, nil
 }
 
-func aliasedToSubQueryColumn(aliased *ast.Aliased) (string, error) {
+func aliasedToSubQueryColumn(aliased *ast.Aliased) (*SubQueryColumn, error) {
 	// fetch table schema and name
-	switch v := aliased.AliasedName.(type) {
+	aliasedName := aliased.GetAliasedNameIdent().NoQuateString()
+	switch v := aliased.RealName.(type) {
 	case *ast.Identifer:
-		return v.NoQuateString(), nil
+		subqueryCol := &SubQueryColumn{
+			ColumnName: v.NoQuateString(),
+			AliasName:  aliasedName,
+		}
+		return subqueryCol, nil
+	case *ast.MemberIdentifer:
+		subqueryCol := &SubQueryColumn{
+			ParentName: v.GetParentIdent().NoQuateString(),
+			ColumnName: v.GetChildIdent().NoQuateString(),
+			AliasName:  aliasedName,
+		}
+		return subqueryCol, nil
 	default:
-		return "", xerrors.Errorf(
+		return nil, xerrors.Errorf(
 			"failed trans alias to column, unknown node type %T, value %q",
 			aliased.AliasedName,
 			aliased.AliasedName,

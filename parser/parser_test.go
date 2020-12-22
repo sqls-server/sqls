@@ -1006,6 +1006,15 @@ func TestParseIdentifierList(t *testing.T) {
 			},
 		},
 		{
+			name:  "aliased menber identiger",
+			input: "`c`.`Name` as `country_name`, `cl`.`Language` as `country_language`",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testIdentifierList(t, list[0], input)
+			},
+		},
+		{
 			name:  "parenthesis",
 			input: "(foo, bar, foobar)",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {

@@ -103,23 +103,34 @@ func (mk *MultiKeyword) End() token.Pos        { return findTo(mk) }
 func (mk *MultiKeyword) GetKeywords() []Node   { return mk.Keywords }
 
 type MemberIdentifer struct {
-	Toks      []Node
-	Parent    Node
-	ParentTok *SQLToken
-	Child     Node
-	ChildTok  *SQLToken
+	Toks        []Node
+	Parent      Node
+	ParentTok   *SQLToken
+	ParentIdent *Identifer
+	Child       Node
+	ChildTok    *SQLToken
+	ChildIdent  *Identifer
 }
 
 func NewMemberIdentiferParent(nodes []Node, parent Node) *MemberIdentifer {
 	memberIdentifier := &MemberIdentifer{Toks: nodes}
 	memberIdentifier.setParent(parent)
+	if v, ok := parent.(*Identifer); ok {
+		memberIdentifier.ParentIdent = v
+	}
 	return memberIdentifier
 }
 
 func NewMemberIdentifer(nodes []Node, parent Node, child Node) *MemberIdentifer {
 	memberIdentifier := &MemberIdentifer{Toks: nodes}
 	memberIdentifier.setParent(parent)
+	if v, ok := parent.(*Identifer); ok {
+		memberIdentifier.ParentIdent = v
+	}
 	memberIdentifier.setChild(child)
+	if v, ok := child.(*Identifer); ok {
+		memberIdentifier.ChildIdent = v
+	}
 	return memberIdentifier
 }
 
@@ -149,11 +160,29 @@ func (mi *MemberIdentifer) setChild(node Node) {
 		mi.ChildTok = tok.GetToken()
 	}
 }
+func (mi *MemberIdentifer) GetParent() Node {
+	if mi.Parent == nil {
+		return &Null{}
+	}
+	return mi.Parent
+}
+func (mi *MemberIdentifer) GetParentIdent() *Identifer {
+	if mi.ParentIdent == nil {
+		return &Identifer{}
+	}
+	return mi.ParentIdent
+}
 func (mi *MemberIdentifer) GetChild() Node {
 	if mi.Child == nil {
 		return &Null{}
 	}
 	return mi.Child
+}
+func (mi *MemberIdentifer) GetChildIdent() *Identifer {
+	if mi.ChildIdent == nil {
+		return &Identifer{}
+	}
+	return mi.ChildIdent
 }
 
 type Aliased struct {
@@ -176,6 +205,12 @@ func (a *Aliased) GetTokens() []Node     { return a.Toks }
 func (a *Aliased) SetTokens(toks []Node) { a.Toks = toks }
 func (a *Aliased) Pos() token.Pos        { return findFrom(a) }
 func (a *Aliased) End() token.Pos        { return findTo(a) }
+func (a *Aliased) GetAliasedNameIdent() *Identifer {
+	if v, ok := a.AliasedName.(*Identifer); ok {
+		return v
+	}
+	return &Identifer{}
+}
 
 type Identifer struct {
 	Tok *SQLToken
