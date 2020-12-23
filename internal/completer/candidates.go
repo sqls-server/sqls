@@ -227,9 +227,9 @@ func (c *Completer) SubQueryColumnCandidates(infos []*parseutil.SubQueryInfo) []
 	candidates := []lsp.CompletionItem{}
 	for _, info := range infos {
 		for _, view := range info.Views {
-			for _, colmun := range view.Columns {
+			for _, col := range view.SubQueryColumns {
 				candidate := lsp.CompletionItem{
-					Label:  colmun,
+					Label:  col.DisplayName(),
 					Kind:   lsp.FieldCompletion,
 					Detail: subQueryColumnDetail(info.Name),
 				}

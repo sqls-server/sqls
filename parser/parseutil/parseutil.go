@@ -8,16 +8,24 @@ import (
 )
 
 type TableInfo struct {
-	DatabaseSchema string
-	Name           string
-	Alias          string
+	DatabaseSchema  string
+	Name            string
+	Alias           string
+	SubQueryColumns []*SubQueryColumn
 }
 
-func (ti *TableInfo) isMatch(name string) bool {
+func (ti *TableInfo) isMatchTableName(name string) bool {
 	if ti.Name == name {
 		return true
 	}
 	if ti.Alias == name {
+		return true
+	}
+	return false
+}
+
+func (ti *TableInfo) hasSubQuery() bool {
+	if ti.SubQueryColumns != nil && len(ti.SubQueryColumns) > 0 {
 		return true
 	}
 	return false
@@ -29,8 +37,6 @@ type SubQueryInfo struct {
 }
 
 type SubQueryView struct {
-	Table           *TableInfo
-	Columns         []string
 	SubQueryColumns []*SubQueryColumn
 }
 
@@ -39,6 +45,14 @@ type SubQueryColumn struct {
 	ParentName  string
 	ColumnName  string
 	AliasName   string
+}
+
+func (sc *SubQueryColumn) DisplayName() string {
+	name := sc.ColumnName
+	if sc.AliasName != "" {
+		name = sc.AliasName
+	}
+	return name
 }
 
 func extractFocusedStatement(parsed ast.TokenList, pos token.Pos) (ast.TokenList, error) {
@@ -145,13 +159,7 @@ func ExtractSubQueryViews(parsed ast.TokenList, pos token.Pos) ([]*SubQueryInfo,
 			return nil, xerrors.Errorf("is not sub query, query: %q, type: %T", stmt, stmt)
 		}
 
-		subqueryCols, err := extractSelectIdentifier(parenthesis.Inner())
-		if err != nil {
-			return nil, err
-		}
-
-		// FIXME あとで消す
-		tables, err := extractTableIdentifier(parenthesis.Inner(), true)
+		subqueryCols, _, err := extractSubQueryColumns(parenthesis.Inner())
 		if err != nil {
 			return nil, err
 		}
@@ -165,8 +173,8 @@ func ExtractSubQueryViews(parsed ast.TokenList, pos token.Pos) ([]*SubQueryInfo,
 			Name: subQuery.AliasedName.String(),
 			Views: []*SubQueryView{
 				{
-					Table:           tables[0],
-					Columns:         cols,
+					// Table:           tables[0],
+					// Columns:         cols,
 					SubQueryColumns: subqueryCols,
 				},
 			},
@@ -197,68 +205,54 @@ var identifierMatcher = astutil.NodeMatcher{
 	},
 }
 
-func extractSelectIdentifier(selectStmt ast.TokenList) ([]*SubQueryColumn, error) {
+func extractSubQueryColumns(selectStmt ast.TokenList) ([]*SubQueryColumn, []*TableInfo, error) {
 	tables, err := extractTableIdentifier(selectStmt, true)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// extract select identifiers
-	cols := []*SubQueryColumn{}
 	identsObj := selectStmt.GetTokens()[2]
-	switch v := identsObj.(type) {
-	case *ast.IdentiferList:
-		for _, ident := range v.Identifers {
-			res, err := parseSubQueryColumns(ident, tables)
-			if err != nil {
-				return nil, err
-			}
-			cols = append(cols, res...)
-		}
-	case *ast.Identifer:
-		res, err := parseSubQueryColumns(v, tables)
-		if err != nil {
-			return nil, err
-		}
-		cols = append(cols, res...)
-	default:
-		return nil, xerrors.Errorf("failed read the TokenList of select, query: %q, type: %T", identsObj, identsObj)
+	cols, err := parseSubQueryColumns(identsObj, tables)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	// check from clause is sub query
 	fromIdentifier := ExtractTableReferences(selectStmt)
 	if len(fromIdentifier) == 0 {
-		return cols, nil
+		return cols, tables, nil
 	}
 	alias, ok := fromIdentifier[0].(*ast.Aliased)
 	if !ok {
-		return cols, nil
+		return cols, tables, nil
 	}
 	parenthesis, ok := alias.RealName.(*ast.Parenthesis)
 	if !ok {
-		return cols, nil
+		return cols, tables, nil
 	}
 	if !isSubQuery(parenthesis) {
-		return cols, nil
+		return cols, tables, nil
 	}
 
 	// merge select identiner of inner sub query
-	innerIdents, err := extractSelectIdentifier(parenthesis.Inner())
+	innerIdents, innerTables, err := extractSubQueryColumns(parenthesis.Inner())
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	realIdents := []*SubQueryColumn{}
 	for _, ident := range cols {
 		if ident.ColumnName == "*" {
-			return innerIdents, nil
+			return innerIdents, innerTables, nil
 		}
 		for _, innerIdent := range innerIdents {
 			if ident.ColumnName == innerIdent.ColumnName {
+				// ident.ParentTable.SubQueryColumns = innerIdents
 				realIdents = append(realIdents, ident)
 			}
 		}
 	}
-	return realIdents, nil
+	return realIdents, tables, nil
 }
 
 func extractTableIdentifier(list ast.TokenList, isSubQuery bool) ([]*TableInfo, error) {
@@ -402,7 +396,11 @@ func parseSubQueryColumns(idents ast.Node, tables []*TableInfo) ([]*SubQueryColu
 	subqueryCols := []*SubQueryColumn{}
 	switch v := idents.(type) {
 	case *ast.Identifer:
-		subqueryCols = append(subqueryCols, &SubQueryColumn{ColumnName: v.NoQuateString()})
+		subqueryCol := &SubQueryColumn{ColumnName: v.NoQuateString()}
+		if len(tables) == 1 {
+			subqueryCol.ParentTable = tables[0]
+		}
+		subqueryCols = append(subqueryCols, subqueryCol)
 		// FIXME アスタリスクパターンを追加
 	case *ast.IdentiferList:
 		idents := filterTokens(v.GetTokens(), identifierMatcher)
@@ -428,13 +426,15 @@ func parseSubQueryColumns(idents ast.Node, tables []*TableInfo) ([]*SubQueryColu
 			return nil, err
 		}
 		subqueryCols = append(subqueryCols, subqueryCol)
+	// TODO Add case of function:
+	// case *ast.Function:
 	default:
 		return nil, xerrors.Errorf("failed parse sub query columns, unknown node type %T, value %q", idents, idents)
 	}
 
 	for _, subqueryCol := range subqueryCols {
 		for _, table := range tables {
-			if table.isMatch(subqueryCol.ParentName) {
+			if table.isMatchTableName(subqueryCol.ParentName) {
 				subqueryCol.ParentTable = table
 			}
 		}

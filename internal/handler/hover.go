@@ -338,12 +338,12 @@ func subqueryDoc(name string, views []*parseutil.SubQueryView, dbCache *database
 	fmt.Fprintln(buf)
 	fmt.Fprintln(buf)
 	for _, view := range views {
-		for _, colmun := range view.Columns {
-			columnDesc, ok := dbCache.Column(view.Table.Name, colmun)
+		for _, colmun := range view.SubQueryColumns {
+			columnDesc, ok := dbCache.Column(colmun.ParentTable.Name, colmun.ColumnName)
 			if !ok {
 				continue
 			}
-			fmt.Fprintf(buf, "- (%s.%s: %s)", view.Table.Name, colmun, columnDesc.OnelineDesc())
+			fmt.Fprintf(buf, "- (%s.%s: %s)", colmun.ParentTable.Name, colmun.ColumnName, columnDesc.OnelineDesc())
 			fmt.Fprintln(buf)
 		}
 	}
@@ -356,15 +356,15 @@ func subqueryColumnDoc(identName string, views []*parseutil.SubQueryView, dbCach
 	fmt.Fprintln(buf)
 	fmt.Fprintln(buf)
 	for _, view := range views {
-		for _, colmun := range view.Columns {
-			if identName != colmun {
+		for _, colmun := range view.SubQueryColumns {
+			if identName != colmun.ColumnName {
 				continue
 			}
-			columnDesc, ok := dbCache.Column(view.Table.Name, colmun)
+			columnDesc, ok := dbCache.Column(colmun.ParentTable.Name, colmun.ColumnName)
 			if !ok {
 				continue
 			}
-			fmt.Fprintf(buf, "- %s.%s: %s", view.Table.Name, colmun, columnDesc.OnelineDesc())
+			fmt.Fprintf(buf, "- %s.%s: %s", colmun.ParentTable.Name, colmun.ColumnName, columnDesc.OnelineDesc())
 			fmt.Fprintln(buf)
 		}
 	}

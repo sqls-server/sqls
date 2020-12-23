@@ -99,15 +99,6 @@ func TestExtractSubQueryViews(t *testing.T) {
 					Name: "sub",
 					Views: []*SubQueryView{
 						{
-							Table: &TableInfo{
-								DatabaseSchema: "world",
-								Name:           "city",
-								Alias:          "ci",
-							},
-							Columns: []string{
-								"ID",
-								"Name",
-							},
 							SubQueryColumns: []*SubQueryColumn{
 								{
 									ParentTable: &TableInfo{
@@ -142,14 +133,6 @@ func TestExtractSubQueryViews(t *testing.T) {
 					Name: "sub1",
 					Views: []*SubQueryView{
 						{
-							Table: &TableInfo{
-								DatabaseSchema: "",
-								Name:           "city",
-								Alias:          "",
-							},
-							Columns: []string{
-								"*",
-							},
 							SubQueryColumns: []*SubQueryColumn{
 								{
 									ParentTable: &TableInfo{
@@ -167,14 +150,6 @@ func TestExtractSubQueryViews(t *testing.T) {
 					Name: "sub2",
 					Views: []*SubQueryView{
 						{
-							Table: &TableInfo{
-								DatabaseSchema: "",
-								Name:           "country",
-								Alias:          "",
-							},
-							Columns: []string{
-								"*",
-							},
 							SubQueryColumns: []*SubQueryColumn{
 								{
 									ParentTable: &TableInfo{
@@ -199,15 +174,6 @@ func TestExtractSubQueryViews(t *testing.T) {
 					Name: "sub",
 					Views: []*SubQueryView{
 						{
-							Table: &TableInfo{
-								DatabaseSchema: "world",
-								Name:           "city",
-								Alias:          "ci",
-							},
-							Columns: []string{
-								"ID",
-								"Name",
-							},
 							SubQueryColumns: []*SubQueryColumn{
 								{
 									ParentTable: &TableInfo{
@@ -242,7 +208,7 @@ func TestExtractSubQueryViews(t *testing.T) {
 			want:  nil,
 		},
 		{
-			name:  "astrisk identifier",
+			name:  "asterisk identifier",
 			input: "SELECT * FROM (SELECT * FROM world.city AS ci) AS sub",
 			pos:   token.Pos{Line: 0, Col: 14},
 			want: []*SubQueryInfo{
@@ -250,14 +216,6 @@ func TestExtractSubQueryViews(t *testing.T) {
 					Name: "sub",
 					Views: []*SubQueryView{
 						{
-							Table: &TableInfo{
-								DatabaseSchema: "world",
-								Name:           "city",
-								Alias:          "ci",
-							},
-							Columns: []string{
-								"*",
-							},
 							SubQueryColumns: []*SubQueryColumn{
 								{
 									ParentTable: &TableInfo{
@@ -282,15 +240,6 @@ func TestExtractSubQueryViews(t *testing.T) {
 					Name: "ot",
 					Views: []*SubQueryView{
 						{
-							Table: &TableInfo{
-								DatabaseSchema: "world",
-								Name:           "city",
-								Alias:          "it",
-							},
-							Columns: []string{
-								"ID",
-								"Name",
-							},
 							SubQueryColumns: []*SubQueryColumn{
 								{
 									ParentTable: &TableInfo{
@@ -325,18 +274,6 @@ func TestExtractSubQueryViews(t *testing.T) {
 					Name: "it",
 					Views: []*SubQueryView{
 						{
-							Table: &TableInfo{
-								DatabaseSchema: "world",
-								Name:           "city",
-								Alias:          "ci",
-							},
-							Columns: []string{
-								"ID",
-								"Name",
-								"CountryCode",
-								"District",
-								"Population",
-							},
 							SubQueryColumns: []*SubQueryColumn{
 								{
 									ParentTable: &TableInfo{
@@ -404,15 +341,6 @@ func TestExtractSubQueryViews(t *testing.T) {
 					Name: "t",
 					Views: []*SubQueryView{
 						{
-							Table: &TableInfo{
-								DatabaseSchema: "world",
-								Name:           "city",
-								Alias:          "t",
-							},
-							Columns: []string{
-								"ID",
-								"Name",
-							},
 							SubQueryColumns: []*SubQueryColumn{
 								{
 									ParentTable: &TableInfo{
@@ -438,6 +366,9 @@ func TestExtractSubQueryViews(t *testing.T) {
 				},
 			},
 		},
+		// select * from (select `c`.`Name` as `country_name`, `cl`.`Language` as `country_language` from country as c join countrylanguage as cl on cl.CountryCode = c.Code) as ti
+		// select * from (select * from country as c join countrylanguage as cl on cl.CountryCode = c.Code) as ti
+		// select * from (select `c`.* as, `cl`.* from country as c join countrylanguage as cl on cl.CountryCode = c.Code) as ti
 		{
 			name:  "join sub query",
 			input: "select ti.country_name, ti.country_language from (select `c`.`Name` as `country_name`, `cl`.`Language` as `country_language` from country as c join countrylanguage as cl on cl.CountryCode = c.Code) as ti",
@@ -447,15 +378,6 @@ func TestExtractSubQueryViews(t *testing.T) {
 					Name: "ti",
 					Views: []*SubQueryView{
 						{
-							Table: &TableInfo{
-								DatabaseSchema: "",
-								Name:           "country",
-								Alias:          "c",
-							},
-							Columns: []string{
-								"Name",
-								"Language",
-							},
 							SubQueryColumns: []*SubQueryColumn{
 								{
 									ParentTable: &TableInfo{
