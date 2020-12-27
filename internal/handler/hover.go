@@ -343,7 +343,7 @@ func subqueryDoc(name string, views []*parseutil.SubQueryView, dbCache *database
 			if !ok {
 				continue
 			}
-			fmt.Fprintf(buf, "- (%s.%s: %s)", colmun.ParentTable.Name, colmun.ColumnName, columnDesc.OnelineDesc())
+			fmt.Fprintf(buf, "- %s(%s.%s): %s", colmun.DisplayName(), colmun.ParentTable.Name, colmun.ColumnName, columnDesc.OnelineDesc())
 			fmt.Fprintln(buf)
 		}
 	}
@@ -357,7 +357,7 @@ func subqueryColumnDoc(identName string, views []*parseutil.SubQueryView, dbCach
 	fmt.Fprintln(buf)
 	for _, view := range views {
 		for _, colmun := range view.SubQueryColumns {
-			if identName != colmun.ColumnName {
+			if identName != colmun.ColumnName && identName != colmun.AliasName {
 				continue
 			}
 			columnDesc, ok := dbCache.Column(colmun.ParentTable.Name, colmun.ColumnName)
