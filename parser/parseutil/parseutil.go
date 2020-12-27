@@ -247,7 +247,7 @@ func extractSubQueryColumns(selectStmt ast.TokenList) ([]*SubQueryColumn, []*Tab
 		}
 		for _, innerIdent := range innerIdents {
 			if ident.ColumnName == innerIdent.ColumnName {
-				// ident.ParentTable.SubQueryColumns = innerIdents
+				ident.ParentTable.SubQueryColumns = innerIdents
 				realIdents = append(realIdents, ident)
 			}
 		}

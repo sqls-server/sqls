@@ -246,6 +246,53 @@ func TestExtractSubQueryViews(t *testing.T) {
 										DatabaseSchema: "world",
 										Name:           "city",
 										Alias:          "it",
+										SubQueryColumns: []*SubQueryColumn{
+											{
+												ParentTable: &TableInfo{
+													DatabaseSchema: "world",
+													Name:           "city",
+													Alias:          "ci",
+												},
+												ParentName: "ci",
+												ColumnName: "ID",
+											},
+											{
+												ParentTable: &TableInfo{
+													DatabaseSchema: "world",
+													Name:           "city",
+													Alias:          "ci",
+												},
+												ParentName: "ci",
+												ColumnName: "Name",
+											},
+											{
+												ParentTable: &TableInfo{
+													DatabaseSchema: "world",
+													Name:           "city",
+													Alias:          "ci",
+												},
+												ParentName: "ci",
+												ColumnName: "CountryCode",
+											},
+											{
+												ParentTable: &TableInfo{
+													DatabaseSchema: "world",
+													Name:           "city",
+													Alias:          "ci",
+												},
+												ParentName: "ci",
+												ColumnName: "District",
+											},
+											{
+												ParentTable: &TableInfo{
+													DatabaseSchema: "world",
+													Name:           "city",
+													Alias:          "ci",
+												},
+												ParentName: "ci",
+												ColumnName: "Population",
+											},
+										},
 									},
 									ParentName: "it",
 									ColumnName: "ID",
@@ -255,6 +302,53 @@ func TestExtractSubQueryViews(t *testing.T) {
 										DatabaseSchema: "world",
 										Name:           "city",
 										Alias:          "it",
+										SubQueryColumns: []*SubQueryColumn{
+											{
+												ParentTable: &TableInfo{
+													DatabaseSchema: "world",
+													Name:           "city",
+													Alias:          "ci",
+												},
+												ParentName: "ci",
+												ColumnName: "ID",
+											},
+											{
+												ParentTable: &TableInfo{
+													DatabaseSchema: "world",
+													Name:           "city",
+													Alias:          "ci",
+												},
+												ParentName: "ci",
+												ColumnName: "Name",
+											},
+											{
+												ParentTable: &TableInfo{
+													DatabaseSchema: "world",
+													Name:           "city",
+													Alias:          "ci",
+												},
+												ParentName: "ci",
+												ColumnName: "CountryCode",
+											},
+											{
+												ParentTable: &TableInfo{
+													DatabaseSchema: "world",
+													Name:           "city",
+													Alias:          "ci",
+												},
+												ParentName: "ci",
+												ColumnName: "District",
+											},
+											{
+												ParentTable: &TableInfo{
+													DatabaseSchema: "world",
+													Name:           "city",
+													Alias:          "ci",
+												},
+												ParentName: "ci",
+												ColumnName: "Population",
+											},
+										},
 									},
 									ParentName: "it",
 									ColumnName: "Name",
