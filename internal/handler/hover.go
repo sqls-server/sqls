@@ -169,6 +169,13 @@ func (e *hoverEnvironment) getSubQueryView(name string) (*parseutil.SubQueryInfo
 	return nil, false
 }
 
+func (e *hoverEnvironment) getSubQueryViewOne() (*parseutil.SubQueryInfo, bool) {
+	if len(e.subQueries) == 1 {
+		return e.subQueries[0], true
+	}
+	return nil, false
+}
+
 func (e *hoverEnvironment) isSubQuery(name string) bool {
 	_, ok := e.getSubQueryView(name)
 	return ok
@@ -245,6 +252,14 @@ func hoverContentFromIdent(ctx *hoverContext, identName string, dbCache *databas
 		if ok {
 			return tableHoverInfo(tableName, cols)
 		}
+	}
+	if hoverTypeIs(ctx.types, hoverTypeSubQueryColumn) {
+		columnName := identName
+		subQueryView, ok := hoverEnv.getSubQueryViewOne()
+		if !ok {
+			return nil
+		}
+		return subqueryColumnHoverInfo(columnName, subQueryView, dbCache)
 	}
 	return nil
 }

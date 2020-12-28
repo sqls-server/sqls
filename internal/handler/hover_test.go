@@ -174,6 +174,20 @@ func TestHover(t *testing.T) {
 			col:    21,
 		},
 		{
+			name:   "select subquery ident parent head",
+			input:  "SELECT ID, Name FROM (SELECT ci.ID, ci.Name, ci.CountryCode, ci.District, ci.Population FROM city AS ci) as it",
+			output: "ID subquery column",
+			line:   0,
+			col:    8,
+		},
+		{
+			name:   "select subquery ident parent head",
+			input:  "SELECT ID, Name FROM (SELECT ci.ID, ci.Name, ci.CountryCode, ci.District, ci.Population FROM city AS ci) as it",
+			output: "Name subquery column",
+			line:   0,
+			col:    15,
+		},
+		{
 			name:   "select subquery member ident parent head",
 			input:  "SELECT it.ID, it.Name FROM (SELECT ci.ID, ci.Name, ci.CountryCode, ci.District, ci.Population FROM city AS ci) as it",
 			output: "it subquery",
