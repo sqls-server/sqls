@@ -228,12 +228,27 @@ func (c *Completer) SubQueryColumnCandidates(infos []*parseutil.SubQueryInfo) []
 	for _, info := range infos {
 		for _, view := range info.Views {
 			for _, col := range view.SubQueryColumns {
-				candidate := lsp.CompletionItem{
-					Label:  col.DisplayName(),
-					Kind:   lsp.FieldCompletion,
-					Detail: subQueryColumnDetail(info.Name),
+				if col.ColumnName == "*" {
+					tableCols, ok := c.DBCache.ColumnDescs(col.ParentTable.Name)
+					if !ok {
+						continue
+					}
+					for _, tableCol := range tableCols {
+						candidate := lsp.CompletionItem{
+							Label:  tableCol.Name,
+							Kind:   lsp.FieldCompletion,
+							Detail: subQueryColumnDetail(info.Name),
+						}
+						candidates = append(candidates, candidate)
+					}
+				} else {
+					candidate := lsp.CompletionItem{
+						Label:  col.DisplayName(),
+						Kind:   lsp.FieldCompletion,
+						Detail: subQueryColumnDetail(info.Name),
+					}
+					candidates = append(candidates, candidate)
 				}
-				candidates = append(candidates, candidate)
 			}
 		}
 	}

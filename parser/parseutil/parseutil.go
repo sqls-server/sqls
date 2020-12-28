@@ -396,12 +396,22 @@ func parseSubQueryColumns(idents ast.Node, tables []*TableInfo) ([]*SubQueryColu
 	subqueryCols := []*SubQueryColumn{}
 	switch v := idents.(type) {
 	case *ast.Identifer:
-		subqueryCol := &SubQueryColumn{ColumnName: v.NoQuateString()}
-		if len(tables) == 1 {
-			subqueryCol.ParentTable = tables[0]
+		ident := v.NoQuateString()
+		if ident == "*" {
+			for _, table := range tables {
+				subqueryCol := &SubQueryColumn{
+					ColumnName:  ident,
+					ParentTable: table,
+				}
+				subqueryCols = append(subqueryCols, subqueryCol)
+			}
+		} else {
+			subqueryCol := &SubQueryColumn{ColumnName: ident}
+			if len(tables) == 1 {
+				subqueryCol.ParentTable = tables[0]
+			}
+			subqueryCols = append(subqueryCols, subqueryCol)
 		}
-		subqueryCols = append(subqueryCols, subqueryCol)
-		// FIXME アスタリスクパターンを追加
 	case *ast.IdentiferList:
 		idents := filterTokens(v.GetTokens(), identifierMatcher)
 		for _, ident := range idents {
@@ -412,7 +422,6 @@ func parseSubQueryColumns(idents ast.Node, tables []*TableInfo) ([]*SubQueryColu
 			subqueryCols = append(subqueryCols, resSubqueryCols...)
 		}
 	case *ast.MemberIdentifer:
-		// FIXME 子供がアスタリスクパターンを追加
 		subqueryCols = append(
 			subqueryCols,
 			&SubQueryColumn{
