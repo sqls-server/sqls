@@ -422,7 +422,6 @@ func parseSubQueryColumns(idents ast.Node, tables []*TableInfo) ([]*SubQueryColu
 			subqueryCols = append(subqueryCols, resSubqueryCols...)
 		}
 	case *ast.MemberIdentifer:
-		// FIXME 子供がアスタリスクパターンを追加
 		subqueryCols = append(
 			subqueryCols,
 			&SubQueryColumn{

@@ -532,6 +532,42 @@ func TestExtractSubQueryViews(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:  "join sub query member asterisk identifier",
+			input: "select * from (select `c`.*, `cl`.* from country as c join countrylanguage as cl on cl.CountryCode = c.Code) as ti",
+			pos:   token.Pos{Line: 0, Col: 1},
+			want: []*SubQueryInfo{
+				{
+					Name: "ti",
+					Views: []*SubQueryView{
+						{
+							SubQueryColumns: []*SubQueryColumn{
+								{
+									ParentTable: &TableInfo{
+										DatabaseSchema: "",
+										Name:           "country",
+										Alias:          "c",
+									},
+									ParentName: "c",
+									ColumnName: "*",
+									AliasName:  "",
+								},
+								{
+									ParentTable: &TableInfo{
+										DatabaseSchema: "",
+										Name:           "countrylanguage",
+										Alias:          "cl",
+									},
+									ParentName: "cl",
+									ColumnName: "*",
+									AliasName:  "",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 	for _, tt := range testcases {
 		t.Run(tt.name, func(t *testing.T) {
