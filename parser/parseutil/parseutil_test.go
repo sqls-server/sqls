@@ -460,9 +460,6 @@ func TestExtractSubQueryViews(t *testing.T) {
 				},
 			},
 		},
-		// select * from (select `c`.`Name` as `country_name`, `cl`.`Language` as `country_language` from country as c join countrylanguage as cl on cl.CountryCode = c.Code) as ti
-		// select * from (select * from country as c join countrylanguage as cl on cl.CountryCode = c.Code) as ti
-		// select * from (select `c`.* as, `cl`.* from country as c join countrylanguage as cl on cl.CountryCode = c.Code) as ti
 		{
 			name:  "join sub query",
 			input: "select ti.country_name, ti.country_language from (select `c`.`Name` as `country_name`, `cl`.`Language` as `country_language` from country as c join countrylanguage as cl on cl.CountryCode = c.Code) as ti",
@@ -492,6 +489,42 @@ func TestExtractSubQueryViews(t *testing.T) {
 									ParentName: "cl",
 									ColumnName: "Language",
 									AliasName:  "country_language",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:  "join sub query asterisk identifier",
+			input: "select * from (select * from country as c join countrylanguage as cl on cl.CountryCode = c.Code) as ti",
+			pos:   token.Pos{Line: 0, Col: 1},
+			want: []*SubQueryInfo{
+				{
+					Name: "ti",
+					Views: []*SubQueryView{
+						{
+							SubQueryColumns: []*SubQueryColumn{
+								{
+									ParentTable: &TableInfo{
+										DatabaseSchema: "",
+										Name:           "country",
+										Alias:          "c",
+									},
+									ParentName: "",
+									ColumnName: "*",
+									AliasName:  "",
+								},
+								{
+									ParentTable: &TableInfo{
+										DatabaseSchema: "",
+										Name:           "countrylanguage",
+										Alias:          "cl",
+									},
+									ParentName: "",
+									ColumnName: "*",
+									AliasName:  "",
 								},
 							},
 						},
