@@ -735,7 +735,7 @@ var subQueryCase = []completionTestCase{
 		},
 	},
 	{
-		name:  "subquery columns",
+		name:  "subquery parent table columns",
 		input: "SELECT t. FROM (SELECT ID as city_id, Name as city_name FROM city) as t",
 		line:  0,
 		col:   9,
@@ -754,6 +754,32 @@ var subQueryCase = []completionTestCase{
 			"sub2",
 			"city_name",
 			"country_name",
+		},
+	},
+	{
+		name:  "subquery asterisk columns",
+		input: "SELECT  FROM (SELECT * FROM city) as t",
+		line:  0,
+		col:   7,
+		want: []string{
+			"ID",
+			"Name",
+			"CountryCode",
+			"District",
+			"Population",
+		},
+	},
+	{
+		name:  "subquery parent asterisk table columns",
+		input: "SELECT t. FROM (SELECT * FROM city) as t",
+		line:  0,
+		col:   9,
+		want: []string{
+			"ID",
+			"Name",
+			"CountryCode",
+			"District",
+			"Population",
 		},
 	},
 }
