@@ -1,5 +1,5 @@
 NAME := sqls
-VERSION := v0.2.0
+VERSION := v0.2.1
 REVISION := $(shell git rev-parse --short HEAD)
 GOVERSION := $(go version)
 
