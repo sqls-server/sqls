@@ -203,8 +203,8 @@ var memberIdentifierTargetMatcher = astutil.NodeMatcher{
 	ExpectTokens: []token.Kind{
 		token.Mult,
 	},
-	ExpectSQLType: []dialect.KeywordKind{
-		dialect.Unmatched,
+	NodeTypes: []ast.NodeType{
+		ast.TypeIdentifer,
 	},
 }
 

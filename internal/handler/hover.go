@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -74,7 +75,7 @@ func hover(text string, params lsp.HoverParams, dbCache *database.DBCache) (*lsp
 	}
 
 	// Check hover type
-	ctx := getHoverTypes(nodeWalker)
+	ctx := getHoverTypes(nodeWalker, hoverEnv)
 
 	// Create hover contents
 	var hoverContent *lsp.MarkupContent
@@ -157,6 +158,20 @@ func (e *hoverEnvironment) getColumnRealName(aliasedName string) (string, bool) 
 		}
 	}
 	return "", false
+}
+
+func (e *hoverEnvironment) getSubQueryView(name string) (*parseutil.SubQueryInfo, bool) {
+	for _, subQuery := range e.subQueries {
+		if subQuery.Name == name {
+			return subQuery, true
+		}
+	}
+	return nil, false
+}
+
+func (e *hoverEnvironment) isSubQuery(name string) bool {
+	_, ok := e.getSubQueryView(name)
+	return ok
 }
 
 func collectEnvirontment(parsed ast.TokenList, pos token.Pos) (*hoverEnvironment, error) {
@@ -250,7 +265,12 @@ func hoverContentFromParentIdent(ctx *hoverContext, identName string, dbCache *d
 			return tableHoverInfo(tableName, columns)
 		}
 	case parentTypeSubQuery:
-		return nil
+		subQueryName := identName
+		subQueryView, ok := hoverEnv.getSubQueryView(subQueryName)
+		if !ok {
+			return nil
+		}
+		return subqueryHoverInfo(subQueryView, dbCache)
 	}
 	return nil
 }
@@ -275,7 +295,11 @@ func hoverContentFromChildIdent(ctx *hoverContext, identName string, dbCache *da
 		}
 		return nil
 	case parentTypeSubQuery:
-		return nil
+		subQueryView, ok := hoverEnv.getSubQueryView(ctx.parent.Name)
+		if !ok {
+			return nil
+		}
+		return subqueryColumnHoverInfo(identName, subQueryView, dbCache)
 	}
 	return nil
 }
@@ -292,6 +316,59 @@ func tableHoverInfo(tableName string, cols []*database.ColumnDesc) *lsp.MarkupCo
 		Kind:  lsp.Markdown,
 		Value: database.TableDoc(tableName, cols),
 	}
+}
+
+func subqueryHoverInfo(subQuery *parseutil.SubQueryInfo, dbCache *database.DBCache) *lsp.MarkupContent {
+	return &lsp.MarkupContent{
+		Kind:  lsp.Markdown,
+		Value: subqueryDoc(subQuery.Name, subQuery.Views, dbCache),
+	}
+}
+
+func subqueryColumnHoverInfo(identName string, subQuery *parseutil.SubQueryInfo, dbCache *database.DBCache) *lsp.MarkupContent {
+	return &lsp.MarkupContent{
+		Kind:  lsp.Markdown,
+		Value: subqueryColumnDoc(identName, subQuery.Views, dbCache),
+	}
+}
+
+func subqueryDoc(name string, views []*parseutil.SubQueryView, dbCache *database.DBCache) string {
+	buf := new(bytes.Buffer)
+	fmt.Fprintf(buf, "%s subquery", name)
+	fmt.Fprintln(buf)
+	fmt.Fprintln(buf)
+	for _, view := range views {
+		for _, colmun := range view.SubQueryColumns {
+			columnDesc, ok := dbCache.Column(colmun.ParentTable.Name, colmun.ColumnName)
+			if !ok {
+				continue
+			}
+			fmt.Fprintf(buf, "- %s(%s.%s): %s", colmun.DisplayName(), colmun.ParentTable.Name, colmun.ColumnName, columnDesc.OnelineDesc())
+			fmt.Fprintln(buf)
+		}
+	}
+	return buf.String()
+}
+
+func subqueryColumnDoc(identName string, views []*parseutil.SubQueryView, dbCache *database.DBCache) string {
+	buf := new(bytes.Buffer)
+	fmt.Fprintf(buf, "%s subquery column", identName)
+	fmt.Fprintln(buf)
+	fmt.Fprintln(buf)
+	for _, view := range views {
+		for _, colmun := range view.SubQueryColumns {
+			if identName != colmun.ColumnName && identName != colmun.AliasName {
+				continue
+			}
+			columnDesc, ok := dbCache.Column(colmun.ParentTable.Name, colmun.ColumnName)
+			if !ok {
+				continue
+			}
+			fmt.Fprintf(buf, "- %s.%s: %s", colmun.ParentTable.Name, colmun.ColumnName, columnDesc.OnelineDesc())
+			fmt.Fprintln(buf)
+		}
+	}
+	return buf.String()
 }
 
 func hoverTypeIs(hoverTypes []hoverType, expect hoverType) bool {
@@ -341,7 +418,7 @@ type hoverContext struct {
 	parent *hoverParent
 }
 
-func getHoverTypes(nw *parseutil.NodeWalker) *hoverContext {
+func getHoverTypes(nw *parseutil.NodeWalker, hoverEnv *hoverEnvironment) *hoverContext {
 	memberIdentifierMatcher := astutil.NodeMatcher{
 		NodeTypes: []ast.NodeType{ast.TypeMemberIdentifer},
 	}
@@ -360,9 +437,16 @@ func getHoverTypes(nw *parseutil.NodeWalker) *hoverContext {
 				hoverTypeView,
 				hoverTypeFunction,
 			}
+			name := mi.Parent.String()
 			p = &hoverParent{
 				Type: parentTypeTable,
-				Name: mi.Parent.String(),
+				Name: name,
+			}
+			if hoverEnv.isSubQuery(name) {
+				p = &hoverParent{
+					Type: parentTypeSubQuery,
+					Name: name,
+				}
 			}
 		} else {
 			t = []hoverType{
@@ -388,9 +472,16 @@ func getHoverTypes(nw *parseutil.NodeWalker) *hoverContext {
 				hoverTypeSubQueryColumn,
 				hoverTypeFunction,
 			}
+			name := mi.Parent.String()
 			p = &hoverParent{
 				Type: parentTypeTable,
-				Name: mi.Parent.String(),
+				Name: name,
+			}
+			if hoverEnv.isSubQuery(name) {
+				p = &hoverParent{
+					Type: parentTypeSubQuery,
+					Name: name,
+				}
 			}
 		} else {
 			t = []hoverType{

@@ -99,14 +99,25 @@ func TestExtractSubQueryViews(t *testing.T) {
 					Name: "sub",
 					Views: []*SubQueryView{
 						{
-							Table: &TableInfo{
-								DatabaseSchema: "world",
-								Name:           "city",
-								Alias:          "ci",
-							},
-							Columns: []string{
-								"ID",
-								"Name",
+							SubQueryColumns: []*SubQueryColumn{
+								{
+									ParentTable: &TableInfo{
+										DatabaseSchema: "world",
+										Name:           "city",
+										Alias:          "ci",
+									},
+									ParentName: "ci",
+									ColumnName: "ID",
+								},
+								{
+									ParentTable: &TableInfo{
+										DatabaseSchema: "world",
+										Name:           "city",
+										Alias:          "ci",
+									},
+									ParentName: "ci",
+									ColumnName: "Name",
+								},
 							},
 						},
 					},
@@ -122,13 +133,15 @@ func TestExtractSubQueryViews(t *testing.T) {
 					Name: "sub1",
 					Views: []*SubQueryView{
 						{
-							Table: &TableInfo{
-								DatabaseSchema: "",
-								Name:           "city",
-								Alias:          "",
-							},
-							Columns: []string{
-								"*",
+							SubQueryColumns: []*SubQueryColumn{
+								{
+									ParentTable: &TableInfo{
+										DatabaseSchema: "",
+										Name:           "city",
+										Alias:          "",
+									},
+									ColumnName: "*",
+								},
 							},
 						},
 					},
@@ -137,13 +150,15 @@ func TestExtractSubQueryViews(t *testing.T) {
 					Name: "sub2",
 					Views: []*SubQueryView{
 						{
-							Table: &TableInfo{
-								DatabaseSchema: "",
-								Name:           "country",
-								Alias:          "",
-							},
-							Columns: []string{
-								"*",
+							SubQueryColumns: []*SubQueryColumn{
+								{
+									ParentTable: &TableInfo{
+										DatabaseSchema: "",
+										Name:           "country",
+										Alias:          "",
+									},
+									ColumnName: "*",
+								},
 							},
 						},
 					},
@@ -159,14 +174,27 @@ func TestExtractSubQueryViews(t *testing.T) {
 					Name: "sub",
 					Views: []*SubQueryView{
 						{
-							Table: &TableInfo{
-								DatabaseSchema: "world",
-								Name:           "city",
-								Alias:          "ci",
-							},
-							Columns: []string{
-								"city_id",
-								"city_name",
+							SubQueryColumns: []*SubQueryColumn{
+								{
+									ParentTable: &TableInfo{
+										DatabaseSchema: "world",
+										Name:           "city",
+										Alias:          "ci",
+									},
+									ParentName: "ci",
+									ColumnName: "ID",
+									AliasName:  "city_id",
+								},
+								{
+									ParentTable: &TableInfo{
+										DatabaseSchema: "world",
+										Name:           "city",
+										Alias:          "ci",
+									},
+									ParentName: "ci",
+									ColumnName: "Name",
+									AliasName:  "city_name",
+								},
 							},
 						},
 					},
@@ -180,7 +208,7 @@ func TestExtractSubQueryViews(t *testing.T) {
 			want:  nil,
 		},
 		{
-			name:  "astrisk identifier",
+			name:  "asterisk identifier",
 			input: "SELECT * FROM (SELECT * FROM world.city AS ci) AS sub",
 			pos:   token.Pos{Line: 0, Col: 14},
 			want: []*SubQueryInfo{
@@ -188,13 +216,15 @@ func TestExtractSubQueryViews(t *testing.T) {
 					Name: "sub",
 					Views: []*SubQueryView{
 						{
-							Table: &TableInfo{
-								DatabaseSchema: "world",
-								Name:           "city",
-								Alias:          "ci",
-							},
-							Columns: []string{
-								"*",
+							SubQueryColumns: []*SubQueryColumn{
+								{
+									ParentTable: &TableInfo{
+										DatabaseSchema: "world",
+										Name:           "city",
+										Alias:          "ci",
+									},
+									ColumnName: "*",
+								},
 							},
 						},
 					},
@@ -210,14 +240,119 @@ func TestExtractSubQueryViews(t *testing.T) {
 					Name: "ot",
 					Views: []*SubQueryView{
 						{
-							Table: &TableInfo{
-								DatabaseSchema: "world",
-								Name:           "city",
-								Alias:          "it",
-							},
-							Columns: []string{
-								"ID",
-								"Name",
+							SubQueryColumns: []*SubQueryColumn{
+								{
+									ParentTable: &TableInfo{
+										DatabaseSchema: "world",
+										Name:           "city",
+										Alias:          "it",
+										SubQueryColumns: []*SubQueryColumn{
+											{
+												ParentTable: &TableInfo{
+													DatabaseSchema: "world",
+													Name:           "city",
+													Alias:          "ci",
+												},
+												ParentName: "ci",
+												ColumnName: "ID",
+											},
+											{
+												ParentTable: &TableInfo{
+													DatabaseSchema: "world",
+													Name:           "city",
+													Alias:          "ci",
+												},
+												ParentName: "ci",
+												ColumnName: "Name",
+											},
+											{
+												ParentTable: &TableInfo{
+													DatabaseSchema: "world",
+													Name:           "city",
+													Alias:          "ci",
+												},
+												ParentName: "ci",
+												ColumnName: "CountryCode",
+											},
+											{
+												ParentTable: &TableInfo{
+													DatabaseSchema: "world",
+													Name:           "city",
+													Alias:          "ci",
+												},
+												ParentName: "ci",
+												ColumnName: "District",
+											},
+											{
+												ParentTable: &TableInfo{
+													DatabaseSchema: "world",
+													Name:           "city",
+													Alias:          "ci",
+												},
+												ParentName: "ci",
+												ColumnName: "Population",
+											},
+										},
+									},
+									ParentName: "it",
+									ColumnName: "ID",
+								},
+								{
+									ParentTable: &TableInfo{
+										DatabaseSchema: "world",
+										Name:           "city",
+										Alias:          "it",
+										SubQueryColumns: []*SubQueryColumn{
+											{
+												ParentTable: &TableInfo{
+													DatabaseSchema: "world",
+													Name:           "city",
+													Alias:          "ci",
+												},
+												ParentName: "ci",
+												ColumnName: "ID",
+											},
+											{
+												ParentTable: &TableInfo{
+													DatabaseSchema: "world",
+													Name:           "city",
+													Alias:          "ci",
+												},
+												ParentName: "ci",
+												ColumnName: "Name",
+											},
+											{
+												ParentTable: &TableInfo{
+													DatabaseSchema: "world",
+													Name:           "city",
+													Alias:          "ci",
+												},
+												ParentName: "ci",
+												ColumnName: "CountryCode",
+											},
+											{
+												ParentTable: &TableInfo{
+													DatabaseSchema: "world",
+													Name:           "city",
+													Alias:          "ci",
+												},
+												ParentName: "ci",
+												ColumnName: "District",
+											},
+											{
+												ParentTable: &TableInfo{
+													DatabaseSchema: "world",
+													Name:           "city",
+													Alias:          "ci",
+												},
+												ParentName: "ci",
+												ColumnName: "Population",
+											},
+										},
+									},
+									ParentName: "it",
+									ColumnName: "Name",
+								},
 							},
 						},
 					},
@@ -233,17 +368,52 @@ func TestExtractSubQueryViews(t *testing.T) {
 					Name: "it",
 					Views: []*SubQueryView{
 						{
-							Table: &TableInfo{
-								DatabaseSchema: "world",
-								Name:           "city",
-								Alias:          "ci",
-							},
-							Columns: []string{
-								"ID",
-								"Name",
-								"CountryCode",
-								"District",
-								"Population",
+							SubQueryColumns: []*SubQueryColumn{
+								{
+									ParentTable: &TableInfo{
+										DatabaseSchema: "world",
+										Name:           "city",
+										Alias:          "ci",
+									},
+									ParentName: "ci",
+									ColumnName: "ID",
+								},
+								{
+									ParentTable: &TableInfo{
+										DatabaseSchema: "world",
+										Name:           "city",
+										Alias:          "ci",
+									},
+									ParentName: "ci",
+									ColumnName: "Name",
+								},
+								{
+									ParentTable: &TableInfo{
+										DatabaseSchema: "world",
+										Name:           "city",
+										Alias:          "ci",
+									},
+									ParentName: "ci",
+									ColumnName: "CountryCode",
+								},
+								{
+									ParentTable: &TableInfo{
+										DatabaseSchema: "world",
+										Name:           "city",
+										Alias:          "ci",
+									},
+									ParentName: "ci",
+									ColumnName: "District",
+								},
+								{
+									ParentTable: &TableInfo{
+										DatabaseSchema: "world",
+										Name:           "city",
+										Alias:          "ci",
+									},
+									ParentName: "ci",
+									ColumnName: "Population",
+								},
 							},
 						},
 					},
@@ -265,14 +435,64 @@ func TestExtractSubQueryViews(t *testing.T) {
 					Name: "t",
 					Views: []*SubQueryView{
 						{
-							Table: &TableInfo{
-								DatabaseSchema: "world",
-								Name:           "city",
-								Alias:          "t",
+							SubQueryColumns: []*SubQueryColumn{
+								{
+									ParentTable: &TableInfo{
+										DatabaseSchema: "world",
+										Name:           "city",
+										Alias:          "ci",
+									},
+									ParentName: "ci",
+									ColumnName: "ID",
+								},
+								{
+									ParentTable: &TableInfo{
+										DatabaseSchema: "world",
+										Name:           "city",
+										Alias:          "ci",
+									},
+									ParentName: "ci",
+									ColumnName: "Name",
+								},
 							},
-							Columns: []string{
-								"ID",
-								"Name",
+						},
+					},
+				},
+			},
+		},
+		// select * from (select `c`.`Name` as `country_name`, `cl`.`Language` as `country_language` from country as c join countrylanguage as cl on cl.CountryCode = c.Code) as ti
+		// select * from (select * from country as c join countrylanguage as cl on cl.CountryCode = c.Code) as ti
+		// select * from (select `c`.* as, `cl`.* from country as c join countrylanguage as cl on cl.CountryCode = c.Code) as ti
+		{
+			name:  "join sub query",
+			input: "select ti.country_name, ti.country_language from (select `c`.`Name` as `country_name`, `cl`.`Language` as `country_language` from country as c join countrylanguage as cl on cl.CountryCode = c.Code) as ti",
+			pos:   token.Pos{Line: 0, Col: 1},
+			want: []*SubQueryInfo{
+				{
+					Name: "ti",
+					Views: []*SubQueryView{
+						{
+							SubQueryColumns: []*SubQueryColumn{
+								{
+									ParentTable: &TableInfo{
+										DatabaseSchema: "",
+										Name:           "country",
+										Alias:          "c",
+									},
+									ParentName: "c",
+									ColumnName: "Name",
+									AliasName:  "country_name",
+								},
+								{
+									ParentTable: &TableInfo{
+										DatabaseSchema: "",
+										Name:           "countrylanguage",
+										Alias:          "cl",
+									},
+									ParentName: "cl",
+									ColumnName: "Language",
+									AliasName:  "country_language",
+								},
 							},
 						},
 					},
@@ -288,7 +508,7 @@ func TestExtractSubQueryViews(t *testing.T) {
 				t.Fatalf("error: %+v", err)
 			}
 			if d := cmp.Diff(tt.want, got); d != "" {
-				t.Errorf("unmatched value: %s", d)
+				t.Errorf("unmatched value(- want, + got): %s", d)
 			}
 		})
 	}
@@ -347,7 +567,7 @@ func TestExtractTable(t *testing.T) {
 			pos:   token.Pos{Line: 0, Col: 1},
 			want: []*TableInfo{
 				{
-					Name: "abc",
+					Name:  "abc",
 					Alias: "a",
 				},
 			},
@@ -358,7 +578,7 @@ func TestExtractTable(t *testing.T) {
 			pos:   token.Pos{Line: 0, Col: 1},
 			want: []*TableInfo{
 				{
-					Name: "abc",
+					Name:  "abc",
 					Alias: "a",
 				},
 			},
