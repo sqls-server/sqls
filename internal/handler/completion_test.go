@@ -128,6 +128,15 @@ var selectExprCase = []completionTestCase{
 		},
 	},
 	{
+		name:  "quoted child columns",
+		input: "select city.`Na from city",
+		line:  0,
+		col:   15,
+		want: []string{
+			"`Name`",
+		},
+	},
+	{
 		name:  "filterd table columns",
 		input: "select Cou from city",
 		line:  0,
@@ -324,6 +333,16 @@ var tableReferenceCase = []completionTestCase{
 		want: []string{
 			"country",
 			"countrylanguage",
+		},
+	},
+	{
+		name:  "from quoted tables",
+		input: "select CountryCode from `co",
+		line:  0,
+		col:   26,
+		want: []string{
+			"`country`",
+			"`countrylanguage`",
 		},
 	},
 	{

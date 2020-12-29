@@ -52,6 +52,8 @@ FROM
 		{"", input, 3, 6, ""},
 		{"", input, 4, 5, "h"},
 		{"", "`ident", 1, 6, "`ident"},
+		{"", "parent.`ident", 1, 13, "`ident"},
+		{"", "`parent`.`ident", 1, 15, "`ident"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
