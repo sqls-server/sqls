@@ -197,7 +197,11 @@ func (c *Completer) SubQueryCandidates(infos []*parseutil.SubQueryInfo) []lsp.Co
 		candidate := lsp.CompletionItem{
 			Label:  info.Name,
 			Kind:   lsp.FieldCompletion,
-			Detail: "sub query",
+			Detail: "subquery",
+			Documentation: lsp.MarkupContent{
+				Kind:  lsp.Markdown,
+				Value: database.SubqueryDoc(info.Name, info.Views, c.DBCache),
+			},
 		}
 		candidates = append(candidates, candidate)
 	}
@@ -219,6 +223,10 @@ func (c *Completer) SubQueryColumnCandidates(infos []*parseutil.SubQueryInfo) []
 							Label:  tableCol.Name,
 							Kind:   lsp.FieldCompletion,
 							Detail: subQueryColumnDetail(info.Name),
+							Documentation: lsp.MarkupContent{
+								Kind:  lsp.Markdown,
+								Value: database.SubqueryColumnDoc(tableCol.Name, info.Views, c.DBCache),
+							},
 						}
 						candidates = append(candidates, candidate)
 					}
@@ -227,6 +235,10 @@ func (c *Completer) SubQueryColumnCandidates(infos []*parseutil.SubQueryInfo) []
 						Label:  col.DisplayName(),
 						Kind:   lsp.FieldCompletion,
 						Detail: subQueryColumnDetail(info.Name),
+						Documentation: lsp.MarkupContent{
+							Kind:  lsp.Markdown,
+							Value: database.SubqueryColumnDoc(col.DisplayName(), info.Views, c.DBCache),
+						},
 					}
 					candidates = append(candidates, candidate)
 				}
@@ -239,7 +251,7 @@ func (c *Completer) SubQueryColumnCandidates(infos []*parseutil.SubQueryInfo) []
 func subQueryColumnDetail(subQueryAliasName string) string {
 	detail := strings.Join(
 		[]string{
-			"column from",
+			"subquery column from",
 			"\"" + subQueryAliasName + "\"",
 		},
 		" ",
