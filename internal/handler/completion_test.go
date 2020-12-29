@@ -326,6 +326,22 @@ var tableReferenceCase = []completionTestCase{
 		},
 	},
 	{
+		name:  "from quoted tables",
+		input: "select CountryCode from `",
+		line:  0,
+		col:   25,
+		want: []string{
+			"`city`",
+			"`country`",
+			"`countrylanguage`",
+			"`information_schema`",
+			"`mysql`",
+			"`performance_schema`",
+			"`sys`",
+			"`world`",
+		},
+	},
+	{
 		name:  "from filterd tables",
 		input: "select CountryCode from co",
 		line:  0,
@@ -336,7 +352,7 @@ var tableReferenceCase = []completionTestCase{
 		},
 	},
 	{
-		name:  "from quoted tables",
+		name:  "from quoted filterd tables",
 		input: "select CountryCode from `co",
 		line:  0,
 		col:   26,
@@ -397,6 +413,17 @@ var tableReferenceCase = []completionTestCase{
 			"city",
 			"country",
 			"countrylanguage",
+		},
+	},
+	{
+		name:  "insert quoted tables",
+		input: "INSERT INTO `",
+		line:  0,
+		col:   13,
+		want: []string{
+			"`city`",
+			"`country`",
+			"`countrylanguage`",
 		},
 	},
 	{
@@ -754,6 +781,15 @@ var subQueryCase = []completionTestCase{
 		},
 	},
 	{
+		name:  "quoted subquery parent",
+		input: "SELECT ` FROM (SELECT ID as city_id, Name as city_name FROM city) as t",
+		line:  0,
+		col:   8,
+		want: []string{
+			"`t`",
+		},
+	},
+	{
 		name:  "subquery parent table columns",
 		input: "SELECT t. FROM (SELECT ID as city_id, Name as city_name FROM city) as t",
 		line:  0,
@@ -761,6 +797,16 @@ var subQueryCase = []completionTestCase{
 		want: []string{
 			"city_id",
 			"city_name",
+		},
+	},
+	{
+		name:  "subquery parent table quoted columns",
+		input: "SELECT t.` FROM (SELECT ID as city_id, Name as city_name FROM city) as t",
+		line:  0,
+		col:   10,
+		want: []string{
+			"`city_id`",
+			"`city_name`",
 		},
 	},
 	{

@@ -134,22 +134,46 @@ func (c *Completer) Complete(text string, params lsp.CompletionParams, lowercase
 
 	items := []lsp.CompletionItem{}
 	if completionTypeIs(ctx.types, CompletionTypeColumn) {
-		items = append(items, c.columnCandidates(definedTables, ctx.parent, withBackQuote)...)
+		candidates := c.columnCandidates(definedTables, ctx.parent)
+		if withBackQuote {
+			candidates = toQuotedCandidates(candidates)
+		}
+		items = append(items, candidates...)
 	}
 	if completionTypeIs(ctx.types, CompletionTypeReferencedTable) {
-		items = append(items, c.ReferencedTableCandidates(definedTables)...)
+		candidates := c.ReferencedTableCandidates(definedTables)
+		if withBackQuote {
+			candidates = toQuotedCandidates(candidates)
+		}
+		items = append(items, candidates...)
 	}
 	if completionTypeIs(ctx.types, CompletionTypeTable) {
-		items = append(items, c.TableCandidates(ctx.parent, definedTables, withBackQuote)...)
+		candidates := c.TableCandidates(ctx.parent, definedTables)
+		if withBackQuote {
+			candidates = toQuotedCandidates(candidates)
+		}
+		items = append(items, candidates...)
 	}
 	if completionTypeIs(ctx.types, CompletionTypeSchema) {
-		items = append(items, c.SchemaCandidates()...)
+		candidates := c.SchemaCandidates()
+		if withBackQuote {
+			candidates = toQuotedCandidates(candidates)
+		}
+		items = append(items, candidates...)
 	}
 	if completionTypeIs(ctx.types, CompletionTypeSubQuery) {
-		items = append(items, c.SubQueryCandidates(definedSubQuerys)...)
+		candidates := c.SubQueryCandidates(definedSubQuerys)
+		if withBackQuote {
+			candidates = toQuotedCandidates(candidates)
+		}
+		items = append(items, candidates...)
 	}
 	if completionTypeIs(ctx.types, CompletionTypeSubQueryColumn) {
-		items = append(items, c.SubQueryColumnCandidates(definedSubQuerys)...)
+		candidates := c.SubQueryColumnCandidates(definedSubQuerys)
+		if withBackQuote {
+			candidates = toQuotedCandidates(candidates)
+		}
+		items = append(items, candidates...)
 	}
 	if completionTypeIs(ctx.types, CompletionTypeKeyword) {
 		items = append(items, c.keywordCandidates(lowercaseKeywords)...)
@@ -361,4 +385,13 @@ func getBeforeCursorText(text string, line, char int) string {
 		i++
 	}
 	return writer.String()
+}
+
+func toQuotedCandidates(candidates []lsp.CompletionItem) []lsp.CompletionItem {
+	quotedCandidates := make([]lsp.CompletionItem, len(candidates))
+	for i, candidate := range candidates {
+		candidate.Label = fmt.Sprintf("`%s`", candidate.Label)
+		quotedCandidates[i] = candidate
+	}
+	return quotedCandidates
 }
