@@ -173,8 +173,6 @@ func ExtractSubQueryViews(parsed ast.TokenList, pos token.Pos) ([]*SubQueryInfo,
 			Name: subQuery.AliasedName.String(),
 			Views: []*SubQueryView{
 				{
-					// Table:           tables[0],
-					// Columns:         cols,
 					SubQueryColumns: subqueryCols,
 				},
 			},
