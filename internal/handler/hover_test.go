@@ -155,7 +155,7 @@ func TestHover(t *testing.T) {
 		{
 			name:   "select subquery ident parent",
 			input:  "SELECT ID, Name FROM (SELECT ci.ID, ci.Name, ci.CountryCode, ci.District, ci.Population FROM city AS ci) as it",
-			output: "ID subquery column\n\n- city.ID: int(11) PRI auto_increment\n",
+			output: "ID subquery column\n\n- ID(city.ID): int(11) PRI auto_increment\n",
 			line:   0,
 			col:    8,
 		},
@@ -169,17 +169,24 @@ func TestHover(t *testing.T) {
 		{
 			name:   "select subquery member ident child",
 			input:  "SELECT it.ID, it.Name FROM (SELECT ci.ID, ci.Name, ci.CountryCode, ci.District, ci.Population FROM city AS ci) as it",
-			output: "ID subquery column\n\n- city.ID: int(11) PRI auto_increment\n",
+			output: "ID subquery column\n\n- ID(city.ID): int(11) PRI auto_increment\n",
 			line:   0,
 			col:    11,
 		},
-		// {
-		// 	name:   "select subquery asterisk ident parent",
-		// 	input:  "SELECT it.ID, it.Name FROM (SELECT * FROM city) as it",
-		// 	output: "it subquery\n\n- ID(city.ID): int(11) PRI auto_increment\n- Name(city.Name): char(35)\n- CountryCode(city.CountryCode): char(3) MUL\n- District(city.District): char(20)\n- Population(city.Population): int(11)\n",
-		// 	line:   0,
-		// 	col:    8,
-		// },
+		{
+			name:   "select subquery with asterisk ident parent",
+			input:  "SELECT it.ID, it.Name FROM (SELECT * FROM city) as it",
+			output: "it subquery\n\n- ID(city.ID): int(11) PRI auto_increment\n- Name(city.Name): char(35)\n- CountryCode(city.CountryCode): char(3) MUL\n- District(city.District): char(20)\n- Population(city.Population): int(11)\n",
+			line:   0,
+			col:    8,
+		},
+		{
+			name:   "select subquery with asterisk ident child",
+			input:  "SELECT it.ID, it.Name FROM (SELECT * FROM city) as it",
+			output: "ID subquery column\n\n- ID(city.ID): int(11) PRI auto_increment\n",
+			line:   0,
+			col:    11,
+		},
 		{
 			name:   "select aliased select identifer",
 			input:  "SELECT ID AS city_id, Name AS city_name FROM city",

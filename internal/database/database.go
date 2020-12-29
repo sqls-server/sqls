@@ -94,12 +94,24 @@ func SubqueryDoc(name string, views []*parseutil.SubQueryView, dbCache *DBCache)
 	fmt.Fprintln(buf)
 	for _, view := range views {
 		for _, colmun := range view.SubQueryColumns {
-			columnDesc, ok := dbCache.Column(colmun.ParentTable.Name, colmun.ColumnName)
-			if !ok {
-				continue
+			if colmun.ColumnName == "*" {
+				tableCols, ok := dbCache.ColumnDescs(colmun.ParentTable.Name)
+				if !ok {
+					continue
+				}
+				for _, tableCol := range tableCols {
+					fmt.Fprintf(buf, "- %s(%s.%s): %s", tableCol.Name, colmun.ParentTable.Name, tableCol.Name, tableCol.OnelineDesc())
+					fmt.Fprintln(buf)
+				}
+			} else {
+				columnDesc, ok := dbCache.Column(colmun.ParentTable.Name, colmun.ColumnName)
+				if !ok {
+					continue
+				}
+				fmt.Fprintf(buf, "- %s(%s.%s): %s", colmun.DisplayName(), colmun.ParentTable.Name, colmun.ColumnName, columnDesc.OnelineDesc())
+				fmt.Fprintln(buf)
+
 			}
-			fmt.Fprintf(buf, "- %s(%s.%s): %s", colmun.DisplayName(), colmun.ParentTable.Name, colmun.ColumnName, columnDesc.OnelineDesc())
-			fmt.Fprintln(buf)
 		}
 	}
 	return buf.String()
@@ -112,15 +124,29 @@ func SubqueryColumnDoc(identName string, views []*parseutil.SubQueryView, dbCach
 	fmt.Fprintln(buf)
 	for _, view := range views {
 		for _, colmun := range view.SubQueryColumns {
-			if identName != colmun.ColumnName && identName != colmun.AliasName {
-				continue
+			if colmun.ColumnName == "*" {
+				tableCols, ok := dbCache.ColumnDescs(colmun.ParentTable.Name)
+				if !ok {
+					continue
+				}
+				for _, tableCol := range tableCols {
+					if identName == tableCol.Name {
+						fmt.Fprintf(buf, "- %s(%s.%s): %s", identName, colmun.ParentTable.Name, tableCol.Name, tableCol.OnelineDesc())
+						fmt.Fprintln(buf)
+						continue
+					}
+				}
+			} else {
+				if identName != colmun.ColumnName && identName != colmun.AliasName {
+					continue
+				}
+				columnDesc, ok := dbCache.Column(colmun.ParentTable.Name, colmun.ColumnName)
+				if !ok {
+					continue
+				}
+				fmt.Fprintf(buf, "- %s(%s.%s): %s", identName, colmun.ParentTable.Name, colmun.ColumnName, columnDesc.OnelineDesc())
+				fmt.Fprintln(buf)
 			}
-			columnDesc, ok := dbCache.Column(colmun.ParentTable.Name, colmun.ColumnName)
-			if !ok {
-				continue
-			}
-			fmt.Fprintf(buf, "- %s.%s: %s", colmun.ParentTable.Name, colmun.ColumnName, columnDesc.OnelineDesc())
-			fmt.Fprintln(buf)
 		}
 	}
 	return buf.String()
