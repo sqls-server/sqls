@@ -1,9 +1,9 @@
 package handler
 
 import (
-	"strings"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/lighttiger2505/sqls/internal/config"
 	"github.com/lighttiger2505/sqls/internal/database"
 	"github.com/lighttiger2505/sqls/internal/lsp"
@@ -64,184 +64,135 @@ func TestHover(t *testing.T) {
 		{
 			name:   "select ident head",
 			input:  "SELECT ID, Name FROM city",
-			output: "city.ID column",
+			output: "city.ID column\n\nint(11) PRI auto_increment\n",
 			line:   0,
 			col:    8,
 		},
 		{
 			name:   "select ident tail",
 			input:  "SELECT ID, Name FROM city",
-			output: "city.Name column",
+			output: "city.Name column\n\nchar(35)\n",
 			line:   0,
 			col:    15,
 		},
 		{
 			name:   "select quated ident head",
 			input:  "SELECT `ID`, Name FROM city",
-			output: "city.ID column",
+			output: "city.ID column\n\nint(11) PRI auto_increment\n",
 			line:   0,
 			col:    8,
 		},
 		{
 			name:   "select quated ident head",
 			input:  "SELECT `ID`, Name FROM city",
-			output: "city.ID column",
+			output: "city.ID column\n\nint(11) PRI auto_increment\n",
 			line:   0,
 			col:    11,
 		},
 		{
 			name:   "table ident head",
 			input:  "SELECT ID, Name FROM city",
-			output: "city table",
+			output: "city table\n\n- ID: int(11) PRI auto_increment\n- Name: char(35)\n- CountryCode: char(3) MUL\n- District: char(20)\n- Population: int(11)\n",
 			line:   0,
 			col:    22,
 		},
 		{
 			name:   "table ident tail",
 			input:  "SELECT ID, Name FROM city",
-			output: "city table",
+			output: "city table\n\n- ID: int(11) PRI auto_increment\n- Name: char(35)\n- CountryCode: char(3) MUL\n- District: char(20)\n- Population: int(11)\n",
 			line:   0,
 			col:    25,
 		},
 		{
 			name:   "select member ident parent head",
 			input:  "SELECT city.ID, city.Name FROM city",
-			output: "city table",
+			output: "city table\n\n- ID: int(11) PRI auto_increment\n- Name: char(35)\n- CountryCode: char(3) MUL\n- District: char(20)\n- Population: int(11)\n",
 			line:   0,
 			col:    8,
 		},
 		{
 			name:   "select member ident parent tail",
 			input:  "SELECT city.ID, city.Name FROM city",
-			output: "city table",
+			output: "city table\n\n- ID: int(11) PRI auto_increment\n- Name: char(35)\n- CountryCode: char(3) MUL\n- District: char(20)\n- Population: int(11)\n",
 			line:   0,
 			col:    20,
 		},
 		{
 			name:   "select member ident child dot",
 			input:  "SELECT city.ID, city.Name FROM city",
-			output: "city.ID column",
+			output: "city.ID column\n\nint(11) PRI auto_increment\n",
 			line:   0,
 			col:    12,
 		},
 		{
 			name:   "select member ident child head",
 			input:  "SELECT city.ID, city.Name FROM city",
-			output: "city.ID column",
+			output: "city.ID column\n\nint(11) PRI auto_increment\n",
 			line:   0,
 			col:    13,
 		},
 		{
 			name:   "select member ident child tail",
 			input:  "SELECT city.ID, city.Name FROM city",
-			output: "city.Name column",
+			output: "city.Name column\n\nchar(35)\n",
 			line:   0,
 			col:    25,
 		},
 		{
-			name:   "select aliased member ident parent head",
+			name:   "select aliased member ident parent",
 			input:  "SELECT ci.ID, ci.Name FROM city AS ci",
-			output: "city table",
+			output: "city table\n\n- ID: int(11) PRI auto_increment\n- Name: char(35)\n- CountryCode: char(3) MUL\n- District: char(20)\n- Population: int(11)\n",
 			line:   0,
 			col:    8,
 		},
 		{
-			name:   "select aliased member ident parent tail",
+			name:   "select aliased member ident child",
 			input:  "SELECT ci.ID, ci.Name FROM city AS ci",
-			output: "city table",
-			line:   0,
-			col:    16,
-		},
-		{
-			name:   "select aliased member ident child head",
-			input:  "SELECT ci.ID, ci.Name FROM city AS ci",
-			output: "city.ID column",
+			output: "city.ID column\n\nint(11) PRI auto_increment\n",
 			line:   0,
 			col:    10,
 		},
 		{
-			name:   "select aliased member ident child head",
-			input:  "SELECT ci.ID, ci.Name FROM city AS ci",
-			output: "city.ID column",
-			line:   0,
-			col:    11,
-		},
-		{
-			name:   "select aliased member ident child tail",
-			input:  "SELECT ci.ID, ci.Name FROM city AS ci",
-			output: "city.Name column",
-			line:   0,
-			col:    21,
-		},
-		{
-			name:   "select subquery ident parent head",
+			name:   "select subquery ident parent",
 			input:  "SELECT ID, Name FROM (SELECT ci.ID, ci.Name, ci.CountryCode, ci.District, ci.Population FROM city AS ci) as it",
-			output: "ID subquery column",
+			output: "ID subquery column\n\n- city.ID: int(11) PRI auto_increment\n",
 			line:   0,
 			col:    8,
 		},
 		{
-			name:   "select subquery ident parent head",
-			input:  "SELECT ID, Name FROM (SELECT ci.ID, ci.Name, ci.CountryCode, ci.District, ci.Population FROM city AS ci) as it",
-			output: "Name subquery column",
-			line:   0,
-			col:    15,
-		},
-		{
-			name:   "select subquery member ident parent head",
+			name:   "select subquery member ident parent",
 			input:  "SELECT it.ID, it.Name FROM (SELECT ci.ID, ci.Name, ci.CountryCode, ci.District, ci.Population FROM city AS ci) as it",
-			output: "it subquery",
+			output: "it subquery\n\n- ID(city.ID): int(11) PRI auto_increment\n- Name(city.Name): char(35)\n- CountryCode(city.CountryCode): char(3) MUL\n- District(city.District): char(20)\n- Population(city.Population): int(11)\n",
 			line:   0,
 			col:    8,
 		},
 		{
-			name:   "select subquery member ident parent tail",
+			name:   "select subquery member ident child",
 			input:  "SELECT it.ID, it.Name FROM (SELECT ci.ID, ci.Name, ci.CountryCode, ci.District, ci.Population FROM city AS ci) as it",
-			output: "it subquery",
-			line:   0,
-			col:    16,
-		},
-		{
-			name:   "select subquery member ident child head",
-			input:  "SELECT it.ID, it.Name FROM (SELECT ci.ID, ci.Name, ci.CountryCode, ci.District, ci.Population FROM city AS ci) as it",
-			output: "ID subquery column",
+			output: "ID subquery column\n\n- city.ID: int(11) PRI auto_increment\n",
 			line:   0,
 			col:    11,
 		},
+		// {
+		// 	name:   "select subquery asterisk ident parent",
+		// 	input:  "SELECT it.ID, it.Name FROM (SELECT * FROM city) as it",
+		// 	output: "it subquery\n\n- ID(city.ID): int(11) PRI auto_increment\n- Name(city.Name): char(35)\n- CountryCode(city.CountryCode): char(3) MUL\n- District(city.District): char(20)\n- Population(city.Population): int(11)\n",
+		// 	line:   0,
+		// 	col:    8,
+		// },
 		{
-			name:   "select subquery member ident child tail",
-			input:  "SELECT it.ID, it.Name FROM (SELECT ci.ID, ci.Name, ci.CountryCode, ci.District, ci.Population FROM city AS ci) as it",
-			output: "Name subquery column",
-			line:   0,
-			col:    21,
-		},
-		{
-			name:   "select aliased select identifer head",
+			name:   "select aliased select identifer",
 			input:  "SELECT ID AS city_id, Name AS city_name FROM city",
-			output: "city.ID column",
+			output: "city.ID column\n\nint(11) PRI auto_increment\n",
 			line:   0,
 			col:    14,
 		},
 		{
-			name:   "select aliased select identifer tail",
-			input:  "SELECT ID AS city_id, Name AS city_name FROM city",
-			output: "city.Name column",
-			line:   0,
-			col:    39,
-		},
-		{
-			name:   "select aliased select member identifer head",
+			name:   "select aliased select member identifer",
 			input:  "SELECT city.ID AS city_id, city.Name AS city_name FROM city",
-			output: "city.ID column",
+			output: "city.ID column\n\nint(11) PRI auto_increment\n",
 			line:   0,
 			col:    19,
-		},
-		{
-			name:   "select aliased select member identifer tail",
-			input:  "SELECT city.ID AS city_id, city.Name AS city_name FROM city",
-			output: "city.Name column",
-			line:   0,
-			col:    49,
 		},
 		{
 			name: "multi line head",
@@ -250,7 +201,7 @@ func TestHover(t *testing.T) {
   Name
 FROM city
 `,
-			output: "city.Name column",
+			output: "city.Name column\n\nchar(35)\n",
 			line:   2,
 			col:    3,
 		},
@@ -261,7 +212,7 @@ FROM city
   Name
 FROM city
 `,
-			output: "city.Name column",
+			output: "city.Name column\n\nchar(35)\n",
 			line:   2,
 			col:    6,
 		},
@@ -305,14 +256,17 @@ FROM city
 				t.Errorf("found hover, %q", got.Contents.Value)
 				return
 			}
-			testHover(t, tt.output, got)
+			// testHover(t, tt.output, got.Contents.Value)
+			if diff := cmp.Diff(tt.output, got.Contents.Value); diff != "" {
+				t.Errorf("unmatch hover contents (- want, + got):\n%s", diff)
+			}
 		})
 	}
 }
 
-func testHover(t *testing.T, want string, hover lsp.Hover) {
+func testHover(t *testing.T, want string, got string) {
 	t.Helper()
-	if !strings.HasPrefix(hover.Contents.Value, want) {
-		t.Errorf("unmatched hover content prefix got: %q, expect: %q", hover.Contents.Value, want)
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("unmatch (- want, + got):\n%s", diff)
 	}
 }
