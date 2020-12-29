@@ -336,54 +336,15 @@ func tableHoverInfo(tableName string, cols []*database.ColumnDesc) *lsp.MarkupCo
 func subqueryHoverInfo(subQuery *parseutil.SubQueryInfo, dbCache *database.DBCache) *lsp.MarkupContent {
 	return &lsp.MarkupContent{
 		Kind:  lsp.Markdown,
-		Value: subqueryDoc(subQuery.Name, subQuery.Views, dbCache),
+		Value: database.SubqueryDoc(subQuery.Name, subQuery.Views, dbCache),
 	}
 }
 
 func subqueryColumnHoverInfo(identName string, subQuery *parseutil.SubQueryInfo, dbCache *database.DBCache) *lsp.MarkupContent {
 	return &lsp.MarkupContent{
 		Kind:  lsp.Markdown,
-		Value: subqueryColumnDoc(identName, subQuery.Views, dbCache),
+		Value: database.SubqueryColumnDoc(identName, subQuery.Views, dbCache),
 	}
-}
-
-func subqueryDoc(name string, views []*parseutil.SubQueryView, dbCache *database.DBCache) string {
-	buf := new(bytes.Buffer)
-	fmt.Fprintf(buf, "%s subquery", name)
-	fmt.Fprintln(buf)
-	fmt.Fprintln(buf)
-	for _, view := range views {
-		for _, colmun := range view.SubQueryColumns {
-			columnDesc, ok := dbCache.Column(colmun.ParentTable.Name, colmun.ColumnName)
-			if !ok {
-				continue
-			}
-			fmt.Fprintf(buf, "- %s(%s.%s): %s", colmun.DisplayName(), colmun.ParentTable.Name, colmun.ColumnName, columnDesc.OnelineDesc())
-			fmt.Fprintln(buf)
-		}
-	}
-	return buf.String()
-}
-
-func subqueryColumnDoc(identName string, views []*parseutil.SubQueryView, dbCache *database.DBCache) string {
-	buf := new(bytes.Buffer)
-	fmt.Fprintf(buf, "%s subquery column", identName)
-	fmt.Fprintln(buf)
-	fmt.Fprintln(buf)
-	for _, view := range views {
-		for _, colmun := range view.SubQueryColumns {
-			if identName != colmun.ColumnName && identName != colmun.AliasName {
-				continue
-			}
-			columnDesc, ok := dbCache.Column(colmun.ParentTable.Name, colmun.ColumnName)
-			if !ok {
-				continue
-			}
-			fmt.Fprintf(buf, "- %s.%s: %s", colmun.ParentTable.Name, colmun.ColumnName, columnDesc.OnelineDesc())
-			fmt.Fprintln(buf)
-		}
-	}
-	return buf.String()
 }
 
 func hoverTypeIs(hoverTypes []hoverType, expect hoverType) bool {

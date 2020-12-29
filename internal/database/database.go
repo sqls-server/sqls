@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/lighttiger2505/sqls/parser/parseutil"
 )
 
 var (
@@ -81,6 +83,45 @@ func TableDoc(tableName string, cols []*ColumnDesc) string {
 	for _, col := range cols {
 		fmt.Fprintf(buf, "- %s", col.OnelineDescWithName())
 		fmt.Fprintln(buf)
+	}
+	return buf.String()
+}
+
+func SubqueryDoc(name string, views []*parseutil.SubQueryView, dbCache *DBCache) string {
+	buf := new(bytes.Buffer)
+	fmt.Fprintf(buf, "%s subquery", name)
+	fmt.Fprintln(buf)
+	fmt.Fprintln(buf)
+	for _, view := range views {
+		for _, colmun := range view.SubQueryColumns {
+			columnDesc, ok := dbCache.Column(colmun.ParentTable.Name, colmun.ColumnName)
+			if !ok {
+				continue
+			}
+			fmt.Fprintf(buf, "- %s(%s.%s): %s", colmun.DisplayName(), colmun.ParentTable.Name, colmun.ColumnName, columnDesc.OnelineDesc())
+			fmt.Fprintln(buf)
+		}
+	}
+	return buf.String()
+}
+
+func SubqueryColumnDoc(identName string, views []*parseutil.SubQueryView, dbCache *DBCache) string {
+	buf := new(bytes.Buffer)
+	fmt.Fprintf(buf, "%s subquery column", identName)
+	fmt.Fprintln(buf)
+	fmt.Fprintln(buf)
+	for _, view := range views {
+		for _, colmun := range view.SubQueryColumns {
+			if identName != colmun.ColumnName && identName != colmun.AliasName {
+				continue
+			}
+			columnDesc, ok := dbCache.Column(colmun.ParentTable.Name, colmun.ColumnName)
+			if !ok {
+				continue
+			}
+			fmt.Fprintf(buf, "- %s.%s: %s", colmun.ParentTable.Name, colmun.ColumnName, columnDesc.OnelineDesc())
+			fmt.Fprintln(buf)
+		}
 	}
 	return buf.String()
 }
