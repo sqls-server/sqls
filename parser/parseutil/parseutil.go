@@ -285,16 +285,6 @@ func filterTokenList(reader *astutil.NodeReader, matcher astutil.NodeMatcher) as
 	return &ast.Statement{Toks: res}
 }
 
-func filterTokens(toks []ast.Node, matcher astutil.NodeMatcher) []ast.Node {
-	res := []ast.Node{}
-	for _, tok := range toks {
-		if matcher.IsMatch(tok) {
-			res = append(res, tok)
-		}
-	}
-	return res
-}
-
 func parseTableInfo(idents ast.Node) ([]*TableInfo, error) {
 	res := []*TableInfo{}
 	switch v := idents.(type) {
@@ -329,8 +319,7 @@ func parseTableInfo(idents ast.Node) ([]*TableInfo, error) {
 
 func identifierListToTableInfo(il *ast.IdentiferList) ([]*TableInfo, error) {
 	tis := []*TableInfo{}
-	idents := filterTokens(il.GetTokens(), identifierMatcher)
-	for _, ident := range idents {
+	for _, ident := range il.GetIdentifers() {
 		switch v := ident.(type) {
 		case *ast.Identifer:
 			ti := &TableInfo{
@@ -411,8 +400,7 @@ func parseSubQueryColumns(idents ast.Node, tables []*TableInfo) ([]*SubQueryColu
 			subqueryCols = append(subqueryCols, subqueryCol)
 		}
 	case *ast.IdentiferList:
-		idents := filterTokens(v.GetTokens(), identifierMatcher)
-		for _, ident := range idents {
+		for _, ident := range v.GetIdentifers() {
 			resSubqueryCols, err := parseSubQueryColumns(ident, tables)
 			if err != nil {
 				return nil, err
