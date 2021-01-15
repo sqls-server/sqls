@@ -116,6 +116,8 @@ func (s *Server) handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.
 		return s.handleTextDocumentFormatting(ctx, conn, req)
 	case "textDocument/rangeFormatting":
 		return s.handleTextDocumentRangeFormatting(ctx, conn, req)
+	case "textDocument/signatureHelp":
+		return s.handleTextDocumentSignatureHelp(ctx, conn, req)
 	}
 	return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeMethodNotFound, Message: fmt.Sprintf("method not supported: %s", req.Method)}
 }
@@ -136,7 +138,14 @@ func (s *Server) handleInitialize(ctx context.Context, conn *jsonrpc2.Conn, req 
 			HoverProvider:      true,
 			CodeActionProvider: true,
 			CompletionProvider: &lsp.CompletionOptions{
-				TriggerCharacters: []string{"."},
+				TriggerCharacters: []string{"(", "."},
+			},
+			SignatureHelpProvider: &lsp.SignatureHelpOptions{
+				TriggerCharacters:   []string{"(", ","},
+				RetriggerCharacters: []string{"(", ","},
+				WorkDoneProgressOptions: lsp.WorkDoneProgressOptions{
+					WorkDoneProgress: false,
+				},
 			},
 			DefinitionProvider:              false,
 			DocumentFormattingProvider:      true,

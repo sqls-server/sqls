@@ -61,7 +61,11 @@ type CompletionOptions struct {
 	TriggerCharacters []string `json:"triggerCharacters"`
 }
 
-type SignatureHelpOptions struct{}
+type SignatureHelpOptions struct {
+	TriggerCharacters   []string `json:"triggerCharacters,omitempty"`
+	RetriggerCharacters []string `json:"retriggerCharacters,omitempty"`
+	WorkDoneProgressOptions
+}
 
 type CodeActionOptions struct {
 	CodeActionKinds []CodeActionKind
@@ -344,5 +348,50 @@ type DocumentRangeFormattingParams struct {
 	TextDocument TextDocumentIdentifier `json:"textDocument"`
 	Range        Range                  `json:"range"`
 	Options      FormattingOptions      `json:"options"`
+	WorkDoneProgressParams
+}
+
+type ParameterInformation struct {
+	Label         string `json:"label"`
+	Documentation string `json:"documentation,omitempty"`
+}
+
+type SignatureInformation struct {
+	Label           string                 `json:"label"`
+	Documentation   string                 `json:"documentation,omitempty"`
+	Parameters      []ParameterInformation `json:"parameters,omitempty"`
+	ActiveParameter float64                `json:"activeParameter,omitempty"`
+}
+
+type SignatureHelp struct {
+	Signatures      []SignatureInformation `json:"signatures"`
+	ActiveSignature float64                `json:"activeSignature"`
+	ActiveParameter float64                `json:"activeParameter"`
+}
+
+type SignatureHelpClientCapabilities struct {
+	DynamicRegistration  bool `json:"dynamicRegistration,omitempty"`
+	SignatureInformation struct {
+		DocumentationFormat  []MarkupKind `json:"documentationFormat,omitempty"`
+		ParameterInformation struct {
+			LabelOffsetSupport bool `json:"labelOffsetSupport,omitempty"`
+		} `json:"parameterInformation,omitempty"`
+		ActiveParameterSupport bool `json:"activeParameterSupport,omitempty"`
+	} `json:"signatureInformation,omitempty"`
+	ContextSupport bool `json:"contextSupport,omitempty"`
+}
+
+type SignatureHelpTriggerKind float64
+
+type SignatureHelpContext struct {
+	TriggerKind         SignatureHelpTriggerKind `json:"triggerKind"`
+	TriggerCharacter    string                   `json:"triggerCharacter,omitempty"`
+	IsRetrigger         bool                     `json:"isRetrigger"`
+	ActiveSignatureHelp SignatureHelp            `json:"activeSignatureHelp,omitempty"`
+}
+
+type SignatureHelpParams struct {
+	Context SignatureHelpContext `json:"context,omitempty"`
+	TextDocumentPositionParams
 	WorkDoneProgressParams
 }
