@@ -77,7 +77,14 @@ func TestInitialized(t *testing.T) {
 			TextDocumentSync: lsp.TDSKFull,
 			HoverProvider:    true,
 			CompletionProvider: &lsp.CompletionOptions{
-				TriggerCharacters: []string{"."},
+				TriggerCharacters: []string{"(", "."},
+			},
+			SignatureHelpProvider: &lsp.SignatureHelpOptions{
+				TriggerCharacters:   []string{"(", ","},
+				RetriggerCharacters: []string{"(", ","},
+				WorkDoneProgressOptions: lsp.WorkDoneProgressOptions{
+					WorkDoneProgress: false,
+				},
 			},
 			CodeActionProvider:              true,
 			DefinitionProvider:              false,
