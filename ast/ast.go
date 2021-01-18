@@ -317,7 +317,11 @@ func (p *Parenthesis) SetTokens(toks []Node) { p.Toks = toks }
 func (p *Parenthesis) Pos() token.Pos        { return findFrom(p) }
 func (p *Parenthesis) End() token.Pos        { return findTo(p) }
 func (p *Parenthesis) Inner() TokenList {
-	return &ParenthesisInner{Toks: p.Toks[1 : len(p.Toks)-1]}
+	endPos := len(p.Toks) - 1
+	if p.Toks[endPos].String() != ")" {
+		endPos = len(p.Toks)
+	}
+	return &ParenthesisInner{Toks: p.Toks[1:endPos]}
 }
 
 type ParenthesisInner struct {
