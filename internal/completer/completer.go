@@ -320,7 +320,7 @@ func getCompletionTypes(nw *parseutil.NodeWalker) *CompletionContext {
 				CompletionTypeKeyword,
 			}
 		}
-	case syntaxPos == parseutil.InsertValue:
+	case syntaxPos == parseutil.InsertColumn:
 		t = []completionType{
 			CompletionTypeColumn,
 			CompletionTypeView,
