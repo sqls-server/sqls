@@ -228,3 +228,95 @@ func TestExtractAliasedIdentifer(t *testing.T) {
 		})
 	}
 }
+
+func TestExtractInsertColumns(t *testing.T) {
+	testcases := []struct {
+		name  string
+		input string
+		want  []string
+	}{
+		{
+			name:  "full",
+			input: "insert into city (ID, Name, CountryCode) VALUES (123, 'aaa', '2020')",
+			want: []string{
+				"ID, Name, CountryCode",
+			},
+		},
+		{
+			name:  "with out statement",
+			input: "city (ID, Name, CountryCode) VALUES (123, 'aaa', '2020')",
+			want: []string{
+				"ID, Name, CountryCode",
+			},
+		},
+		{
+			name:  "minimum",
+			input: "city (ID, Name, CountryCode)",
+			want: []string{
+				"ID, Name, CountryCode",
+			},
+		},
+	}
+	for _, tt := range testcases {
+		t.Run(tt.name, func(t *testing.T) {
+			query := initExtractTable(t, tt.input)
+			gots := ExtractInsertColumns(query)
+
+			if len(gots) != len(tt.want) {
+				t.Errorf("contain nodes %d, got %d (%v)", len(tt.want), len(gots), gots)
+				return
+			}
+			for i, got := range gots {
+				if tt.want[i] != got.String() {
+					t.Errorf("expected %q, got %q", tt.want[i], got.String())
+				}
+			}
+		})
+	}
+}
+
+func TestExtractInsertValues(t *testing.T) {
+	testcases := []struct {
+		name  string
+		input string
+		want  []string
+	}{
+		{
+			name:  "full",
+			input: "insert into city (ID, Name, CountryCode) VALUES (123, 'aaa', '2020')",
+			want: []string{
+				"123, 'aaa', '2020'",
+			},
+		},
+		{
+			name:  "with out statement",
+			input: "city (ID, Name, CountryCode) VALUES (123, 'aaa', '2020')",
+			want: []string{
+				"123, 'aaa', '2020'",
+			},
+		},
+		{
+			name:  "minimum",
+			input: "VALUES (123, 'aaa', '2020')",
+			want: []string{
+				"123, 'aaa', '2020'",
+			},
+		},
+	}
+	for _, tt := range testcases {
+		t.Run(tt.name, func(t *testing.T) {
+			query := initExtractTable(t, tt.input)
+			gots := ExtractInsertValues(query)
+
+			if len(gots) != len(tt.want) {
+				t.Errorf("contain nodes %d, got %d (%v)", len(tt.want), len(gots), gots)
+				return
+			}
+			for i, got := range gots {
+				if tt.want[i] != got.String() {
+					t.Errorf("expected %q, got %q", tt.want[i], got.String())
+				}
+			}
+		})
+	}
+}
