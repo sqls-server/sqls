@@ -19,7 +19,15 @@ jobs:
         with:
           go-version: 1.15
       -
-        name: Run GoReleaser xcgo
+        name: Run GoReleaser(xcgo) Snapshot
+        if: github.event_name != 'tags'
+        run: |
+          make snapshot
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      -
+        name: Run GoReleaser(xcgo) Publish
+        if: github.event_name == 'tags'
         run: |
           make publish
         env:
