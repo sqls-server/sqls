@@ -26,7 +26,14 @@
 
 # docker
 docker
+.docker
 
 # build dist
 sqls
 dist/
+
+# direnv
+.envrc
+
+# vim
+tags
