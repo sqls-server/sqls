@@ -13,7 +13,7 @@ import (
 	"time"
 	"unicode"
 
-	pq "github.com/lib/pq"
+	_ "github.com/jackc/pgx/v4/stdlib"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/xerrors"
 )
@@ -41,13 +41,13 @@ func postgreSQLOpen(dbConnCfg *DBConfig) (*DBConnection, error) {
 		conn = dbConn
 		sshConn = dbSSHConn
 	} else {
-		dbConn, err := sql.Open("postgres", dsn)
+		dbConn, err := sql.Open("pgx", dsn)
 		if err != nil {
 			return nil, err
 		}
 		conn = dbConn
 	}
-	if err := conn.Ping(); err != nil {
+	if err = conn.Ping(); err != nil {
 		return nil, err
 	}
 
@@ -65,7 +65,7 @@ type PostgreSQLViaSSHDialer struct {
 }
 
 func (d *PostgreSQLViaSSHDialer) Open(s string) (_ driver.Conn, err error) {
-	return pq.DialOpen(d, s)
+	return nil, nil
 }
 
 func (d *PostgreSQLViaSSHDialer) Dial(network, address string) (net.Conn, error) {
