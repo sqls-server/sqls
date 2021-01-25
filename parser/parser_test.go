@@ -1016,7 +1016,27 @@ func TestParseIdentifierList(t *testing.T) {
 				testParenthesis(t, list[0], input)
 				parenthesis := list[0].(*ast.Parenthesis)
 				tokens := parenthesis.Inner().GetTokens()
-				testIdentifierList(t, tokens[0], "foo, bar, foobar")
+				il := testIdentifierList(t, tokens[0], "foo, bar, foobar")
+
+				testIdentifierList_GetIndex(t, il, genPosOneline(0), -1)
+				testIdentifierList_GetIndex(t, il, genPosOneline(1), 0)
+				testIdentifierList_GetIndex(t, il, genPosOneline(2), 0)
+				testIdentifierList_GetIndex(t, il, genPosOneline(3), 0)
+				testIdentifierList_GetIndex(t, il, genPosOneline(4), 0)
+				testIdentifierList_GetIndex(t, il, genPosOneline(5), 1)
+				testIdentifierList_GetIndex(t, il, genPosOneline(6), 1)
+				testIdentifierList_GetIndex(t, il, genPosOneline(7), 1)
+				testIdentifierList_GetIndex(t, il, genPosOneline(8), 1)
+				testIdentifierList_GetIndex(t, il, genPosOneline(9), 1)
+				testIdentifierList_GetIndex(t, il, genPosOneline(10), 2)
+				testIdentifierList_GetIndex(t, il, genPosOneline(11), 2)
+				testIdentifierList_GetIndex(t, il, genPosOneline(12), 2)
+				testIdentifierList_GetIndex(t, il, genPosOneline(13), 2)
+				testIdentifierList_GetIndex(t, il, genPosOneline(14), 2)
+				testIdentifierList_GetIndex(t, il, genPosOneline(15), 2)
+				testIdentifierList_GetIndex(t, il, genPosOneline(16), 2)
+				testIdentifierList_GetIndex(t, il, genPosOneline(17), 2)
+				testIdentifierList_GetIndex(t, il, genPosOneline(18), -1)
 			},
 		},
 		{
@@ -1352,14 +1372,23 @@ func testAliased(t *testing.T, node ast.Node, expect string, realName, aliasedNa
 	}
 }
 
-func testIdentifierList(t *testing.T, node ast.Node, expect string) {
+func testIdentifierList(t *testing.T, node ast.Node, expect string) *ast.IdentiferList {
 	t.Helper()
-	_, ok := node.(*ast.IdentiferList)
+	il, ok := node.(*ast.IdentiferList)
 	if !ok {
 		t.Fatalf("invalid type want IdentiferList got %T", node)
 	}
 	if expect != node.String() {
 		t.Errorf("expected %q, got %q", expect, node.String())
+	}
+	return il
+}
+
+func testIdentifierList_GetIndex(t *testing.T, il *ast.IdentiferList, pos token.Pos, expect int) {
+	t.Helper()
+	got := il.GetIndex(pos)
+	if expect != got {
+		t.Errorf("expected %d, got %d", expect, got)
 	}
 }
 

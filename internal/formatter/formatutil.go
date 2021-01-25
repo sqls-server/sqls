@@ -1,9 +1,6 @@
 package formatter
 
 import (
-	"fmt"
-	"os"
-
 	"github.com/lighttiger2505/sqls/ast"
 	"github.com/lighttiger2505/sqls/token"
 )
@@ -46,11 +43,3 @@ var commaNode = ast.NewItem(&token.Token{
 	Kind:  token.Comma,
 	Value: ",",
 })
-
-func dPrintln(a ...interface{}) {
-	fmt.Fprintln(os.Stderr, a...)
-}
-
-func dPrintf(format string, a ...interface{}) {
-	fmt.Fprintf(os.Stderr, format, a...)
-}

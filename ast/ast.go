@@ -395,6 +395,7 @@ func (s *Statement) End() token.Pos        { return findTo(s) }
 type IdentiferList struct {
 	Toks       []Node
 	Identifers []Node
+	Commas     []Node
 }
 
 func (il *IdentiferList) String() string {
@@ -410,6 +411,25 @@ func (il *IdentiferList) SetTokens(toks []Node) { il.Toks = toks }
 func (il *IdentiferList) Pos() token.Pos        { return findFrom(il) }
 func (il *IdentiferList) End() token.Pos        { return findTo(il) }
 func (il *IdentiferList) GetIdentifers() []Node { return il.Identifers }
+func (il *IdentiferList) GetIndex(pos token.Pos) int {
+	if !isEnclose(il, pos) {
+		return -1
+	}
+	var idx int
+	for _, comma := range il.Commas {
+		if 0 > token.ComparePos(comma.Pos(), pos) {
+			idx += 1
+		}
+	}
+	return idx
+}
+
+func isEnclose(node Node, pos token.Pos) bool {
+	if 0 <= token.ComparePos(pos, node.Pos()) && 0 >= token.ComparePos(pos, node.End()) {
+		return true
+	}
+	return false
+}
 
 type SwitchCase struct {
 	Toks []Node

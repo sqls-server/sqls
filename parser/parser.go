@@ -573,6 +573,7 @@ func parseIdentifierList(reader *astutil.NodeReader) ast.Node {
 	startIndex := reader.Index - 1
 	tmpReader := reader.CopyReader()
 	tmpReader.NextNode(true)
+	commas := []ast.Node{tmpReader.CurNode}
 
 	var (
 		endIndex, peekIndex int
@@ -603,6 +604,7 @@ func parseIdentifierList(reader *astutil.NodeReader) ast.Node {
 			break
 		}
 		tmpReader.NextNode(true)
+		commas = append(commas, tmpReader.CurNode)
 	}
 
 	reader.Index = tmpReader.Index
@@ -610,6 +612,7 @@ func parseIdentifierList(reader *astutil.NodeReader) ast.Node {
 	return &ast.IdentiferList{
 		Toks:       reader.NodesWithRange(startIndex, endIndex+1),
 		Identifers: idents,
+		Commas:     commas,
 	}
 }
 

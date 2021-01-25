@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 
 	"github.com/lighttiger2505/sqls/internal/lsp"
 	"github.com/lighttiger2505/sqls/parser"
@@ -36,7 +35,6 @@ func (s *Server) handleTextDocumentSignatureHelp(ctx context.Context, conn *json
 }
 
 func SignatureHelp(text string, params lsp.SignatureHelpParams) (*lsp.SignatureHelp, error) {
-	log.Println("SignatureHelp")
 	parsed, err := parser.Parse(text)
 	if err != nil {
 		return nil, err
@@ -51,24 +49,40 @@ func SignatureHelp(text string, params lsp.SignatureHelpParams) (*lsp.SignatureH
 
 	switch {
 	case signatureHelpIs(types, SignatureHelpTypeInsertValue):
-		return &lsp.SignatureHelp{
+		insert, err := parseutil.ExtractInsert(parsed, pos)
+		if err != nil {
+			return nil, err
+		}
+		if !insert.Enable() {
+			return nil, err
+		}
+
+		table := insert.GetTable()
+		cols := insert.GetColumns()
+		paramIdx := insert.GetValues().GetIndex(pos)
+
+		params := []lsp.ParameterInformation{}
+		for _, col := range cols.GetIdentifers() {
+			p := lsp.ParameterInformation{
+				Label: col.String(),
+			}
+			params = append(params, p)
+		}
+		signatureLabel := fmt.Sprintf("%s (%s)", table.Name, cols.String())
+		sh := &lsp.SignatureHelp{
 			Signatures: []lsp.SignatureInformation{
 				{
-					Label:         "aaa",
-					Documentation: "bbb",
-					Parameters: []lsp.ParameterInformation{
-						{
-							Label:         "ccc",
-							Documentation: "ddd",
-						},
-					},
-					ActiveParameter: 0.0,
+					Label:         signatureLabel,
+					Documentation: "hogehoge",
+					Parameters:    params,
 				},
 			},
 			ActiveSignature: 0.0,
-			ActiveParameter: 0.0,
-		}, nil
+			ActiveParameter: float64(paramIdx),
+		}
+		return sh, nil
 	default:
+		// pass
 		return nil, nil
 	}
 }
@@ -92,7 +106,6 @@ func (sht signatureHelpType) String() string {
 
 func getSignatureHelpTypes(nw *parseutil.NodeWalker) []signatureHelpType {
 	syntaxPos := parseutil.CheckSyntaxPosition(nw)
-	log.Println("syntax pos", syntaxPos)
 	types := []signatureHelpType{}
 	switch {
 	case syntaxPos == parseutil.InsertValue:
