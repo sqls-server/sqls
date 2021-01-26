@@ -47,6 +47,10 @@ sqls aims to provide advanced intelligence for you to edit sql in your own edito
 
 ![hover](./imgs/sqls_hover.gif)
 
+#### Signature Help
+
+![signature_help](./imgs/sqls_signature_help.gif)
+
 #### Document Formatting
 
 Coming soon.
