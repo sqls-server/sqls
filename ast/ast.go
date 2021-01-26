@@ -317,7 +317,11 @@ func (p *Parenthesis) SetTokens(toks []Node) { p.Toks = toks }
 func (p *Parenthesis) Pos() token.Pos        { return findFrom(p) }
 func (p *Parenthesis) End() token.Pos        { return findTo(p) }
 func (p *Parenthesis) Inner() TokenList {
-	return &ParenthesisInner{Toks: p.Toks[1 : len(p.Toks)-1]}
+	endPos := len(p.Toks) - 1
+	if p.Toks[endPos].String() != ")" {
+		endPos = len(p.Toks)
+	}
+	return &ParenthesisInner{Toks: p.Toks[1:endPos]}
 }
 
 type ParenthesisInner struct {
@@ -391,6 +395,7 @@ func (s *Statement) End() token.Pos        { return findTo(s) }
 type IdentiferList struct {
 	Toks       []Node
 	Identifers []Node
+	Commas     []Node
 }
 
 func (il *IdentiferList) String() string {
@@ -406,6 +411,25 @@ func (il *IdentiferList) SetTokens(toks []Node) { il.Toks = toks }
 func (il *IdentiferList) Pos() token.Pos        { return findFrom(il) }
 func (il *IdentiferList) End() token.Pos        { return findTo(il) }
 func (il *IdentiferList) GetIdentifers() []Node { return il.Identifers }
+func (il *IdentiferList) GetIndex(pos token.Pos) int {
+	if !isEnclose(il, pos) {
+		return -1
+	}
+	var idx int
+	for _, comma := range il.Commas {
+		if 0 > token.ComparePos(comma.Pos(), pos) {
+			idx += 1
+		}
+	}
+	return idx
+}
+
+func isEnclose(node Node, pos token.Pos) bool {
+	if 0 <= token.ComparePos(pos, node.Pos()) && 0 >= token.ComparePos(pos, node.End()) {
+		return true
+	}
+	return false
+}
 
 type SwitchCase struct {
 	Toks []Node

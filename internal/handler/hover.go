@@ -522,7 +522,7 @@ func getHoverTypes(nw *parseutil.NodeWalker, hoverEnv *hoverEnvironment) *hoverC
 				hoverTypeKeyword,
 			}
 		}
-	case syntaxPos == parseutil.InsertValue:
+	case syntaxPos == parseutil.InsertColumn:
 		t = []hoverType{
 			hoverTypeColumn,
 			hoverTypeTable,

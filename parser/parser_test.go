@@ -193,21 +193,14 @@ func TestParseParenthesis(t *testing.T) {
 		},
 		{
 			name:  "not close parenthesis",
-			input: "select (select (x3) x2 and (y2) bar",
+			input: "select (select (x3) x2 and (y2) bar ",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
-				testStatement(t, stmts[0], 10, input)
+				testStatement(t, stmts[0], 3, input)
 
 				list := stmts[0].GetTokens()
 				testItem(t, list[0], "select")
 				testItem(t, list[1], " ")
-				testItem(t, list[2], "(")
-				testItem(t, list[3], "select")
-				testItem(t, list[4], " ")
-				testAliased(t, list[5], "(x3) x2", "(x3)", "x2")
-				testItem(t, list[6], " ")
-				testItem(t, list[7], "and")
-				testItem(t, list[8], " ")
-				testAliased(t, list[9], "(y2) bar", "(y2)", "bar")
+				testParenthesis(t, list[2], "(select (x3) x2 and (y2) bar ")
 			},
 		},
 	}
@@ -1023,17 +1016,36 @@ func TestParseIdentifierList(t *testing.T) {
 				testParenthesis(t, list[0], input)
 				parenthesis := list[0].(*ast.Parenthesis)
 				tokens := parenthesis.Inner().GetTokens()
-				testIdentifierList(t, tokens[0], "foo, bar, foobar")
+				il := testIdentifierList(t, tokens[0], "foo, bar, foobar")
+
+				testIdentifierList_GetIndex(t, il, genPosOneline(0), -1)
+				testIdentifierList_GetIndex(t, il, genPosOneline(1), 0)
+				testIdentifierList_GetIndex(t, il, genPosOneline(2), 0)
+				testIdentifierList_GetIndex(t, il, genPosOneline(3), 0)
+				testIdentifierList_GetIndex(t, il, genPosOneline(4), 0)
+				testIdentifierList_GetIndex(t, il, genPosOneline(5), 1)
+				testIdentifierList_GetIndex(t, il, genPosOneline(6), 1)
+				testIdentifierList_GetIndex(t, il, genPosOneline(7), 1)
+				testIdentifierList_GetIndex(t, il, genPosOneline(8), 1)
+				testIdentifierList_GetIndex(t, il, genPosOneline(9), 1)
+				testIdentifierList_GetIndex(t, il, genPosOneline(10), 2)
+				testIdentifierList_GetIndex(t, il, genPosOneline(11), 2)
+				testIdentifierList_GetIndex(t, il, genPosOneline(12), 2)
+				testIdentifierList_GetIndex(t, il, genPosOneline(13), 2)
+				testIdentifierList_GetIndex(t, il, genPosOneline(14), 2)
+				testIdentifierList_GetIndex(t, il, genPosOneline(15), 2)
+				testIdentifierList_GetIndex(t, il, genPosOneline(16), 2)
+				testIdentifierList_GetIndex(t, il, genPosOneline(17), 2)
+				testIdentifierList_GetIndex(t, il, genPosOneline(18), -1)
 			},
 		},
 		{
 			name:  "invalid parenthesis",
 			input: "(foo, bar,",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
-				testStatement(t, stmts[0], 2, input)
+				testStatement(t, stmts[0], 1, input)
 				list := stmts[0].GetTokens()
-				testItem(t, list[0], "(")
-				testIdentifierList(t, list[1], "foo, bar,")
+				testParenthesis(t, list[0], input)
 			},
 		},
 		{
@@ -1315,7 +1327,7 @@ func testParenthesis(t *testing.T, node ast.Node, expect string) *ast.Parenthesi
 	t.Helper()
 	parenthesis, ok := node.(*ast.Parenthesis)
 	if !ok {
-		t.Fatalf("invalid type want Parenthesis got %T", node)
+		t.Errorf("invalid type want Parenthesis got %T", node)
 	}
 	if expect != node.String() {
 		t.Errorf("expected %q, got %q", expect, node.String())
@@ -1360,14 +1372,23 @@ func testAliased(t *testing.T, node ast.Node, expect string, realName, aliasedNa
 	}
 }
 
-func testIdentifierList(t *testing.T, node ast.Node, expect string) {
+func testIdentifierList(t *testing.T, node ast.Node, expect string) *ast.IdentiferList {
 	t.Helper()
-	_, ok := node.(*ast.IdentiferList)
+	il, ok := node.(*ast.IdentiferList)
 	if !ok {
 		t.Fatalf("invalid type want IdentiferList got %T", node)
 	}
 	if expect != node.String() {
 		t.Errorf("expected %q, got %q", expect, node.String())
+	}
+	return il
+}
+
+func testIdentifierList_GetIndex(t *testing.T, il *ast.IdentiferList, pos token.Pos, expect int) {
+	t.Helper()
+	got := il.GetIndex(pos)
+	if expect != got {
+		t.Errorf("expected %d, got %d", expect, got)
 	}
 }
 

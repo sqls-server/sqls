@@ -5,6 +5,24 @@ import (
 	"github.com/lighttiger2505/sqls/ast/astutil"
 )
 
+type (
+	prefixParseFn func(reader *astutil.NodeReader) []ast.Node
+	infixParseFn  func(reader *astutil.NodeReader) []ast.Node
+)
+
+func parsePrefix(reader *astutil.NodeReader, matcher astutil.NodeMatcher, fn prefixParseFn) []ast.Node {
+	var replaceNodes []ast.Node
+	for reader.NextNode(false) {
+		if reader.CurNodeIs(matcher) {
+			replaceNodes = append(replaceNodes, fn(reader)...)
+		} else if list, ok := reader.CurNode.(ast.TokenList); ok {
+			newReader := astutil.NewNodeReader(list)
+			replaceNodes = append(replaceNodes, parsePrefix(newReader, matcher, fn)...)
+		}
+	}
+	return replaceNodes
+}
+
 func ExtractSelectExpr(parsed ast.TokenList) []ast.Node {
 	prefixMatcher := astutil.NodeMatcher{
 		ExpectKeyword: []string{
@@ -122,6 +140,70 @@ func ExtractAliasedIdentifer(parsed ast.TokenList) []ast.Node {
 		results = append(results, node)
 	}
 	return results
+}
+
+func ExtractInsertColumns(parsed ast.TokenList) []ast.Node {
+	insertTableIdentifer := astutil.NodeMatcher{
+		NodeTypes: []ast.NodeType{
+			ast.TypeIdentifer,
+			ast.TypeMemberIdentifer,
+			ast.TypeAliased,
+		},
+	}
+	return parsePrefix(astutil.NewNodeReader(parsed), insertTableIdentifer, parseInsertColumns)
+}
+
+func parseInsertColumns(reader *astutil.NodeReader) []ast.Node {
+	insertColumnsParenthesis := astutil.NodeMatcher{
+		NodeTypes: []ast.NodeType{
+			ast.TypeParenthesis,
+		},
+	}
+	if !reader.PeekNodeIs(true, insertColumnsParenthesis) {
+		return []ast.Node{}
+	}
+
+	_, parenthesisNode := reader.PeekNode(true)
+	parenthesis, ok := parenthesisNode.(*ast.Parenthesis)
+	if !ok {
+		return []ast.Node{}
+	}
+	identList, ok := parenthesis.Inner().GetTokens()[0].(*ast.IdentiferList)
+	if !ok {
+		return []ast.Node{}
+	}
+	return []ast.Node{identList}
+}
+
+func ExtractInsertValues(parsed ast.TokenList) []ast.Node {
+	insertTableIdentifer := astutil.NodeMatcher{
+		ExpectKeyword: []string{
+			"VALUES",
+		},
+	}
+	return parsePrefix(astutil.NewNodeReader(parsed), insertTableIdentifer, parseInsertColumns)
+}
+
+func parseInsertValues(reader *astutil.NodeReader) []ast.Node {
+	insertColumnsParenthesis := astutil.NodeMatcher{
+		NodeTypes: []ast.NodeType{
+			ast.TypeParenthesis,
+		},
+	}
+	if !reader.PeekNodeIs(true, insertColumnsParenthesis) {
+		return []ast.Node{}
+	}
+
+	_, parenthesisNode := reader.PeekNode(true)
+	parenthesis, ok := parenthesisNode.(*ast.Parenthesis)
+	if !ok {
+		return []ast.Node{}
+	}
+	identList, ok := parenthesis.Inner().GetTokens()[0].(*ast.IdentiferList)
+	if !ok {
+		return []ast.Node{}
+	}
+	return []ast.Node{identList}
 }
 
 func filterPrefixGroup(reader *astutil.NodeReader, prefixMatcher astutil.NodeMatcher, peekMatcher astutil.NodeMatcher) []ast.Node {

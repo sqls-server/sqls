@@ -153,6 +153,7 @@ var parenthesisCloseMatcher = astutil.NodeMatcher{
 
 func parseParenthesis(reader *astutil.NodeReader) ast.Node {
 	nodes := []ast.Node{reader.CurNode}
+	startIndex := reader.Index - 1
 	tmpReader := reader.CopyReader()
 	for tmpReader.NextNode(false) {
 		if _, ok := reader.CurNode.(ast.TokenList); ok {
@@ -170,7 +171,22 @@ func parseParenthesis(reader *astutil.NodeReader) ast.Node {
 			nodes = append(nodes, tmpReader.CurNode)
 		}
 	}
-	return reader.CurNode
+
+	// Include white space after the comma
+	var endIndex int
+	peekIndex, peekNode := tmpReader.PeekNode(true)
+	if peekNode != nil {
+		endIndex = peekIndex - 1
+		tmpReader.Index = endIndex + 1
+	} else {
+		tailIndex, tailNode := tmpReader.TailNode()
+		endIndex = tailIndex - 1
+		tmpReader.Index = tailIndex
+		tmpReader.CurNode = tailNode
+	}
+	reader.Index = tmpReader.Index
+	reader.CurNode = tmpReader.CurNode
+	return &ast.Parenthesis{Toks: reader.NodesWithRange(startIndex, endIndex+1)}
 }
 
 var functionPrefixMatcher = astutil.NodeMatcher{
@@ -557,6 +573,7 @@ func parseIdentifierList(reader *astutil.NodeReader) ast.Node {
 	startIndex := reader.Index - 1
 	tmpReader := reader.CopyReader()
 	tmpReader.NextNode(true)
+	commas := []ast.Node{tmpReader.CurNode}
 
 	var (
 		endIndex, peekIndex int
@@ -587,6 +604,7 @@ func parseIdentifierList(reader *astutil.NodeReader) ast.Node {
 			break
 		}
 		tmpReader.NextNode(true)
+		commas = append(commas, tmpReader.CurNode)
 	}
 
 	reader.Index = tmpReader.Index
@@ -594,6 +612,7 @@ func parseIdentifierList(reader *astutil.NodeReader) ast.Node {
 	return &ast.IdentiferList{
 		Toks:       reader.NodesWithRange(startIndex, endIndex+1),
 		Identifers: idents,
+		Commas:     commas,
 	}
 }
 
