@@ -27,19 +27,19 @@ func genInsertPositionTest(col int, wantActiveParameter int) signatureHelpTestCa
 			Signatures: []lsp.SignatureInformation{
 				{
 					Label:         "city (ID, Name, CountryCode)",
-					Documentation: "hogehoge",
+					Documentation: "city table columns",
 					Parameters: []lsp.ParameterInformation{
 						{
 							Label:         "ID",
-							Documentation: "",
+							Documentation: "int(11) PRI auto_increment",
 						},
 						{
 							Label:         "Name",
-							Documentation: "",
+							Documentation: "char(35)",
 						},
 						{
 							Label:         "CountryCode",
-							Documentation: "",
+							Documentation: "char(3) MUL",
 						},
 					},
 				},

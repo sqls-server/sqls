@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/lighttiger2505/sqls/internal/database"
 	"github.com/lighttiger2505/sqls/internal/lsp"
 	"github.com/lighttiger2505/sqls/parser"
 	"github.com/lighttiger2505/sqls/parser/parseutil"
@@ -27,14 +28,14 @@ func (s *Server) handleTextDocumentSignatureHelp(ctx context.Context, conn *json
 		return nil, fmt.Errorf("document not found: %s", params.TextDocument.URI)
 	}
 
-	res, err := SignatureHelp(f.Text, params)
+	res, err := SignatureHelp(f.Text, params, s.worker.Cache())
 	if err != nil {
 		return nil, err
 	}
 	return res, nil
 }
 
-func SignatureHelp(text string, params lsp.SignatureHelpParams) (*lsp.SignatureHelp, error) {
+func SignatureHelp(text string, params lsp.SignatureHelpParams, dbCache *database.DBCache) (*lsp.SignatureHelp, error) {
 	parsed, err := parser.Parse(text)
 	if err != nil {
 		return nil, err
@@ -60,20 +61,29 @@ func SignatureHelp(text string, params lsp.SignatureHelpParams) (*lsp.SignatureH
 		table := insert.GetTable()
 		cols := insert.GetColumns()
 		paramIdx := insert.GetValues().GetIndex(pos)
+		tableName := table.Name
 
 		params := []lsp.ParameterInformation{}
 		for _, col := range cols.GetIdentifers() {
+			colName := col.String()
+			colDoc := ""
+			colDesc, ok := dbCache.Column(tableName, colName)
+			if ok {
+				colDoc = colDesc.OnelineDesc()
+			}
 			p := lsp.ParameterInformation{
-				Label: col.String(),
+				Label:         colName,
+				Documentation: colDoc,
 			}
 			params = append(params, p)
 		}
-		signatureLabel := fmt.Sprintf("%s (%s)", table.Name, cols.String())
+
+		signatureLabel := fmt.Sprintf("%s (%s)", tableName, cols.String())
 		sh := &lsp.SignatureHelp{
 			Signatures: []lsp.SignatureInformation{
 				{
 					Label:         signatureLabel,
-					Documentation: "hogehoge",
+					Documentation: fmt.Sprintf("%s table columns", tableName),
 					Parameters:    params,
 				},
 			},
