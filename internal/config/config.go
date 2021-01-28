@@ -26,6 +26,7 @@ type Config struct {
 
 func newConfig() *Config {
 	cfg := &Config{}
+	cfg.LowercaseKeywords = false
 	return cfg
 }
 

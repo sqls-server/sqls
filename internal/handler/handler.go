@@ -382,7 +382,8 @@ func (s *Server) getConfig() *config.Config {
 }
 
 func validConfig(cfg *config.Config) bool {
-	if cfg != nil && len(cfg.Connections) > 0 {
+	// if cfg != nil && len(cfg.Connections) > 0 {
+	if cfg != nil {
 		return true
 	}
 	return false

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -11,62 +12,89 @@ import (
 	"github.com/lighttiger2505/sqls/internal/lsp"
 )
 
-func TestFormatting(t *testing.T) {
+var formattingOptionTab = lsp.FormattingOptions{
+	TabSize:                0.0,
+	InsertSpaces:           false,
+	TrimTrailingWhitespace: false,
+	InsertFinalNewline:     false,
+	TrimFinalNewlines:      false,
+}
+
+var formattingOptionIndentSpace2 = lsp.FormattingOptions{
+	TabSize:                2.0,
+	InsertSpaces:           true,
+	TrimTrailingWhitespace: false,
+	InsertFinalNewline:     false,
+	TrimFinalNewlines:      false,
+}
+
+var formattingOptionIndentSpace4 = lsp.FormattingOptions{
+	TabSize:                4.0,
+	InsertSpaces:           true,
+	TrimTrailingWhitespace: false,
+	InsertFinalNewline:     false,
+	TrimFinalNewlines:      false,
+}
+
+type formattingTestCase struct {
+	name  string
+	input string
+	want  string
+}
+
+func testFormatting(t *testing.T, testCases []formattingTestCase, options lsp.FormattingOptions) {
 	tx := newTestContext()
 	tx.initServer(t)
 	defer tx.tearDown()
 
 	uri := "file:///Users/octref/Code/css-test/test.sql"
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			// Open dummy file
+			didOpenParams := lsp.DidOpenTextDocumentParams{
+				TextDocument: lsp.TextDocumentItem{
+					URI:        uri,
+					LanguageID: "sql",
+					Version:    0,
+					Text:       tt.input,
+				},
+			}
+			if err := tx.conn.Call(tx.ctx, "textDocument/didOpen", didOpenParams, nil); err != nil {
+				t.Fatal("conn.Call textDocument/didOpen:", err)
+			}
+			tx.testFile(t, didOpenParams.TextDocument.URI, didOpenParams.TextDocument.Text)
+			// Create completion params
+			formattingParams := lsp.DocumentFormattingParams{
+				TextDocument: lsp.TextDocumentIdentifier{
+					URI: uri,
+				},
+				Options: options,
+				WorkDoneProgressParams: lsp.WorkDoneProgressParams{
+					WorkDoneToken: nil,
+				},
+			}
 
-	type formattingTestCase struct {
-		name  string
-		input string
-		want  string
-	}
-
-	testDir, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	testFileInfos, err := ioutil.ReadDir("testdata")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	testCase := []formattingTestCase{}
-
-	// Add golden file test
-	const (
-		inputFileSuffix  = ".input.sql"
-		goldenFileSuffix = ".golden.sql"
-	)
-	for _, testFileInfo := range testFileInfos {
-		inputFileName := testFileInfo.Name()
-		if !strings.HasSuffix(inputFileName, inputFileSuffix) {
-			continue
-		}
-
-		testName := testFileInfo.Name()[:len(inputFileName)-len(inputFileSuffix)]
-		inputPath := filepath.Join(testDir, "testdata", inputFileName)
-		goldenPath := filepath.Join(testDir, "testdata", testName+goldenFileSuffix)
-
-		input, err := ioutil.ReadFile(inputPath)
-		if err != nil {
-			t.Errorf("Cannot read input file, Path=%s, Err=%+v", inputPath, err)
-			continue
-		}
-		golden, err := ioutil.ReadFile(goldenPath)
-		if err != nil {
-			t.Errorf("Cannot read input file, Path=%s, Err=%+v", goldenPath, err)
-			continue
-		}
-		testCase = append(testCase, formattingTestCase{
-			name:  testName,
-			input: string(input),
-			want:  string(golden)[:len(string(golden))-len("\n")],
+			var got []lsp.TextEdit
+			if err := tx.conn.Call(tx.ctx, "textDocument/formatting", formattingParams, &got); err != nil {
+				t.Fatal("conn.Call textDocument/formatting:", err)
+			}
+			if diff := cmp.Diff(tt.want, got[0].NewText); diff != "" {
+				t.Errorf("unmatch (- want, + got):\n%s", diff)
+				t.Errorf("unmatch\nwant: %q\ngot : %q", tt.want, got[0].NewText)
+			}
 		})
 	}
+}
 
+func TestFormattingBase(t *testing.T) {
+	testCase, err := loadFormatTestCaseByTestdata("format")
+	if err != nil {
+		t.Fatal(err)
+	}
+	testFormatting(t, testCase, formattingOptionTab)
+}
+
+func TestFormattingMinimal(t *testing.T) {
 	// Add minimal case test
 	minimalTestCase := []formattingTestCase{
 		{
@@ -105,48 +133,67 @@ func TestFormatting(t *testing.T) {
 			want:  "1,\n2,\n3,\n4",
 		},
 	}
-	testCase = append(testCase, minimalTestCase...)
+	testFormatting(t, minimalTestCase, formattingOptionTab)
+}
 
-	for _, tt := range testCase {
-		t.Run(tt.name, func(t *testing.T) {
-			// Open dummy file
-			didOpenParams := lsp.DidOpenTextDocumentParams{
-				TextDocument: lsp.TextDocumentItem{
-					URI:        uri,
-					LanguageID: "sql",
-					Version:    0,
-					Text:       tt.input,
-				},
-			}
-			if err := tx.conn.Call(tx.ctx, "textDocument/didOpen", didOpenParams, nil); err != nil {
-				t.Fatal("conn.Call textDocument/didOpen:", err)
-			}
-			tx.testFile(t, didOpenParams.TextDocument.URI, didOpenParams.TextDocument.Text)
-			// Create completion params
-			formattingParams := lsp.DocumentFormattingParams{
-				TextDocument: lsp.TextDocumentIdentifier{
-					URI: uri,
-				},
-				Options: lsp.FormattingOptions{
-					TabSize:                0.0,
-					InsertSpaces:           false,
-					TrimTrailingWhitespace: false,
-					InsertFinalNewline:     false,
-					TrimFinalNewlines:      false,
-				},
-				WorkDoneProgressParams: lsp.WorkDoneProgressParams{
-					WorkDoneToken: nil,
-				},
-			}
+func TestFormattingWithOptionSpace2(t *testing.T) {
+	testCase, err := loadFormatTestCaseByTestdata("format_option_space2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	testFormatting(t, testCase, formattingOptionIndentSpace2)
+}
 
-			var got []lsp.TextEdit
-			if err := tx.conn.Call(tx.ctx, "textDocument/formatting", formattingParams, &got); err != nil {
-				t.Fatal("conn.Call textDocument/formatting:", err)
-			}
-			if diff := cmp.Diff(tt.want, got[0].NewText); diff != "" {
-				t.Errorf("unmatch (- want, + got):\n%s", diff)
-				t.Errorf("unmatch\nwant: %q\ngot : %q", tt.want, got[0].NewText)
-			}
+func TestFormattingWithOptionSpace4(t *testing.T) {
+	testCase, err := loadFormatTestCaseByTestdata("format_option_space4")
+	if err != nil {
+		t.Fatal(err)
+	}
+	testFormatting(t, testCase, formattingOptionIndentSpace4)
+}
+
+func loadFormatTestCaseByTestdata(targetDir string) ([]formattingTestCase, error) {
+	packageDir, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+	testDir := filepath.Join(packageDir, "testdata", targetDir)
+	testFileInfos, err := ioutil.ReadDir(testDir)
+	if err != nil {
+		return nil, err
+	}
+
+	testCase := []formattingTestCase{}
+	const (
+		inputFileSuffix  = ".input.sql"
+		goldenFileSuffix = ".golden.sql"
+	)
+
+	for _, testFileInfo := range testFileInfos {
+		inputFileName := testFileInfo.Name()
+		if !strings.HasSuffix(inputFileName, inputFileSuffix) {
+			continue
+		}
+
+		testName := testFileInfo.Name()[:len(inputFileName)-len(inputFileSuffix)]
+		inputPath := filepath.Join(testDir, inputFileName)
+		goldenPath := filepath.Join(testDir, testName+goldenFileSuffix)
+
+		input, err := ioutil.ReadFile(inputPath)
+		if err != nil {
+			return nil, fmt.Errorf("Cannot read input file, Path=%s, Err=%+v", inputPath, err)
+			continue
+		}
+		golden, err := ioutil.ReadFile(goldenPath)
+		if err != nil {
+			return nil, fmt.Errorf("Cannot read input file, Path=%s, Err=%+v", goldenPath, err)
+			continue
+		}
+		testCase = append(testCase, formattingTestCase{
+			name:  testName,
+			input: string(input),
+			want:  string(golden)[:len(string(golden))-len("\n")],
 		})
 	}
+	return testCase, nil
 }

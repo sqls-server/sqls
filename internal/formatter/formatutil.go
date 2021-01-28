@@ -14,12 +14,20 @@ var whitespaceNode = ast.NewItem(&token.Token{
 	Value: " ",
 })
 
+func whiteSpaceNodes(num int) []ast.Node {
+	res := make([]ast.Node, num)
+	for i := 0; i < num; i++ {
+		res[i] = whitespaceNode
+	}
+	return res
+}
+
 var linebreakNode = ast.NewItem(&token.Token{
 	Kind:  token.Whitespace,
 	Value: "\n",
 })
 
-var indentNode = ast.NewItem(&token.Token{
+var tabNode = ast.NewItem(&token.Token{
 	Kind:  token.Whitespace,
 	Value: "\t",
 })

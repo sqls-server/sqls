@@ -27,7 +27,10 @@ func Format(text string, params lsp.DocumentFormattingParams) ([]lsp.TextEdit, e
 		Line:      parsed.End().Line,
 		Character: parsed.End().Col,
 	}
-	formatted := Eval(parsed, &formatEnvironment{})
+	env := &formatEnvironment{
+		options: params.Options,
+	}
+	formatted := Eval(parsed, env)
 
 	res := []lsp.TextEdit{
 		{
@@ -44,6 +47,7 @@ func Format(text string, params lsp.DocumentFormattingParams) ([]lsp.TextEdit, e
 type formatEnvironment struct {
 	reader      *astutil.NodeReader
 	indentLevel int
+	options     lsp.FormattingOptions
 }
 
 func (e *formatEnvironment) indentLevelReset() {
@@ -59,9 +63,13 @@ func (e *formatEnvironment) indentLevelDown() {
 }
 
 func (e *formatEnvironment) genIndent() []ast.Node {
+	indent := whiteSpaceNodes(int(e.options.TabSize))
+	if !e.options.InsertSpaces {
+		indent = []ast.Node{tabNode}
+	}
 	nodes := []ast.Node{}
 	for i := 0; i < e.indentLevel; i++ {
-		nodes = append(nodes, indentNode)
+		nodes = append(nodes, indent...)
 	}
 	return nodes
 }
