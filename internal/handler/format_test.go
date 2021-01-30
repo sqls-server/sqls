@@ -54,9 +54,19 @@ type formattingTestCase struct {
 func testFormatting(t *testing.T, testCases []formattingTestCase, options lsp.FormattingOptions, cfg *config.Config) {
 	tx := newTestContext()
 	tx.initServer(t)
-	tx.server.SpecificFileCfg = cfg
 	defer tx.tearDown()
 
+	didChangeConfigurationParams := lsp.DidChangeConfigurationParams{
+		Settings: struct {
+			SQLS *config.Config "json:\"sqls\""
+		}{
+			SQLS: cfg,
+		},
+	}
+
+	if err := tx.conn.Call(tx.ctx, "workspace/didChangeConfiguration", didChangeConfigurationParams, nil); err != nil {
+		t.Fatal("conn.Call workspace/didChangeConfiguration:", err)
+	}
 	uri := "file:///Users/octref/Code/css-test/test.sql"
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
