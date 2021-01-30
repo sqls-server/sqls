@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/lighttiger2505/sqls/internal/config"
 	"github.com/lighttiger2505/sqls/internal/lsp"
 )
 
@@ -36,15 +37,24 @@ var formattingOptionIndentSpace4 = lsp.FormattingOptions{
 	TrimFinalNewlines:      false,
 }
 
+var upperCaseConfig = &config.Config{
+	LowercaseKeywords: false,
+}
+
+var lowerCaseConfig = &config.Config{
+	LowercaseKeywords: true,
+}
+
 type formattingTestCase struct {
 	name  string
 	input string
 	want  string
 }
 
-func testFormatting(t *testing.T, testCases []formattingTestCase, options lsp.FormattingOptions) {
+func testFormatting(t *testing.T, testCases []formattingTestCase, options lsp.FormattingOptions, cfg *config.Config) {
 	tx := newTestContext()
 	tx.initServer(t)
+	tx.server.SpecificFileCfg = cfg
 	defer tx.tearDown()
 
 	uri := "file:///Users/octref/Code/css-test/test.sql"
@@ -91,7 +101,7 @@ func TestFormattingBase(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	testFormatting(t, testCase, formattingOptionTab)
+	testFormatting(t, testCase, formattingOptionTab, lowerCaseConfig)
 }
 
 func TestFormattingMinimal(t *testing.T) {
@@ -133,7 +143,7 @@ func TestFormattingMinimal(t *testing.T) {
 			want:  "1,\n2,\n3,\n4",
 		},
 	}
-	testFormatting(t, minimalTestCase, formattingOptionTab)
+	testFormatting(t, minimalTestCase, formattingOptionTab, lowerCaseConfig)
 }
 
 func TestFormattingWithOptionSpace2(t *testing.T) {
@@ -141,7 +151,7 @@ func TestFormattingWithOptionSpace2(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	testFormatting(t, testCase, formattingOptionIndentSpace2)
+	testFormatting(t, testCase, formattingOptionIndentSpace2, lowerCaseConfig)
 }
 
 func TestFormattingWithOptionSpace4(t *testing.T) {
@@ -149,7 +159,15 @@ func TestFormattingWithOptionSpace4(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	testFormatting(t, testCase, formattingOptionIndentSpace4)
+	testFormatting(t, testCase, formattingOptionIndentSpace4, lowerCaseConfig)
+}
+
+func TestFormattingWithOptionUpper(t *testing.T) {
+	testCase, err := loadFormatTestCaseByTestdata("upper_case")
+	if err != nil {
+		t.Fatal(err)
+	}
+	testFormatting(t, testCase, formattingOptionTab, upperCaseConfig)
 }
 
 func loadFormatTestCaseByTestdata(targetDir string) ([]formattingTestCase, error) {
@@ -182,12 +200,10 @@ func loadFormatTestCaseByTestdata(targetDir string) ([]formattingTestCase, error
 		input, err := ioutil.ReadFile(inputPath)
 		if err != nil {
 			return nil, fmt.Errorf("Cannot read input file, Path=%s, Err=%+v", inputPath, err)
-			continue
 		}
 		golden, err := ioutil.ReadFile(goldenPath)
 		if err != nil {
 			return nil, fmt.Errorf("Cannot read input file, Path=%s, Err=%+v", goldenPath, err)
-			continue
 		}
 		testCase = append(testCase, formattingTestCase{
 			name:  testName,

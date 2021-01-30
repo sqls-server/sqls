@@ -376,7 +376,7 @@ func (s *Server) getConfig() *config.Config {
 	case validConfig(s.DefaultFileCfg):
 		cfg = s.DefaultFileCfg
 	default:
-		cfg = nil
+		cfg = config.NewConfig()
 	}
 	return cfg
 }

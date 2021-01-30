@@ -24,14 +24,14 @@ type Config struct {
 	Connections       []*database.DBConfig `json:"connections" yaml:"connections"`
 }
 
-func newConfig() *Config {
+func NewConfig() *Config {
 	cfg := &Config{}
 	cfg.LowercaseKeywords = false
 	return cfg
 }
 
 func GetDefaultConfig() (*Config, error) {
-	cfg := newConfig()
+	cfg := NewConfig()
 	if err := cfg.Load(ymlConfigPath); err != nil {
 		return nil, err
 	}
@@ -39,7 +39,7 @@ func GetDefaultConfig() (*Config, error) {
 }
 
 func GetConfig(fp string) (*Config, error) {
-	cfg := newConfig()
+	cfg := NewConfig()
 	expandPath, err := expand(fp)
 	if err != nil {
 		return nil, err

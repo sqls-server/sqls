@@ -236,14 +236,20 @@ type Identifer struct {
 	Tok *SQLToken
 }
 
-func (i *Identifer) Type() NodeType                    { return TypeIdentifer }
-func (i *Identifer) String() string                    { return i.Tok.String() }
-func (i *Identifer) Render(opts *RenderOptions) string { return i.Tok.Render(opts) }
-func (i *Identifer) NoQuateString() string             { return i.Tok.NoQuateString() }
-func (i *Identifer) GetToken() *SQLToken               { return i.Tok }
-func (i *Identifer) Pos() token.Pos                    { return i.Tok.From }
-func (i *Identifer) End() token.Pos                    { return i.Tok.To }
-func (i *Identifer) IsWildcard() bool                  { return i.Tok.MatchKind(token.Mult) }
+func (i *Identifer) Type() NodeType { return TypeIdentifer }
+func (i *Identifer) String() string { return i.Tok.String() }
+func (i *Identifer) Render(opts *RenderOptions) string {
+	tmpOpts := &RenderOptions{
+		LowerCase:       false,
+		IdentiferQuated: opts.IdentiferQuated,
+	}
+	return i.Tok.Render(tmpOpts)
+}
+func (i *Identifer) NoQuateString() string { return i.Tok.NoQuateString() }
+func (i *Identifer) GetToken() *SQLToken   { return i.Tok }
+func (i *Identifer) Pos() token.Pos        { return i.Tok.From }
+func (i *Identifer) End() token.Pos        { return i.Tok.To }
+func (i *Identifer) IsWildcard() bool      { return i.Tok.MatchKind(token.Mult) }
 
 type Operator struct {
 	Toks     []Node
@@ -540,22 +546,23 @@ func (t *SQLToken) Render(opts *RenderOptions) string {
 }
 
 func renderSQLWord(v *token.SQLWord, opts *RenderOptions) string {
-	isKeyword := false
-	if v.Kind != dialect.Unmatched {
-		isKeyword = true
+	isIdentifer := false
+	if v.Kind == dialect.Unmatched {
+		isIdentifer = true
 	}
 
-	if isKeyword {
+	if isIdentifer {
 		if opts.IdentiferQuated {
 			v.QuoteStyle = '`'
 			return v.String()
 		}
 		return v.NoQuateString()
 	} else {
+		// is keyword
 		if opts.LowerCase {
 			return strings.ToLower(v.String())
 		}
-		return strings.ToLower(v.String())
+		return strings.ToUpper(v.String())
 	}
 }
 
