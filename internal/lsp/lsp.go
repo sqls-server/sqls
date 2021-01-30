@@ -395,3 +395,27 @@ type SignatureHelpParams struct {
 	TextDocumentPositionParams
 	WorkDoneProgressParams
 }
+
+type ShowMessageParams struct {
+	Type    MessageType `json:"type"`
+	Message string      `json:"message"`
+}
+
+type ShowMessageRequestParams struct {
+	Type    MessageType         `json:"type"`
+	Message string              `json:"message"`
+	Actions []MessageActionItem `json:"actions,omitempty"`
+}
+
+type MessageActionItem struct {
+	Title string `json:"title"`
+}
+
+type MessageType float64
+
+var (
+	Error   MessageType = 1
+	Warning MessageType = 2
+	Info    MessageType = 3
+	Log     MessageType = 4
+)

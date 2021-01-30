@@ -155,10 +155,20 @@ func (s *Server) handleInitialize(ctx context.Context, conn *jsonrpc2.Conn, req 
 
 	// Initialize database database connection
 	// NOTE: If no connection is found at this point, it is possible that the connection settings are sent to workspace config, so don't make an error
-	if err := s.reconnectionDB(ctx); err != nil && err != ErrNoConnection {
-		return nil, err
+	messenger := lsp.NewLspMessenger(conn)
+	if err := s.reconnectionDB(ctx); err != nil {
+		if err != ErrNoConnection {
+			if err := messenger.ShowInfo(ctx, err.Error()); err != nil {
+				log.Println("send info", err.Error())
+				return nil, err
+			}
+		} else {
+			log.Println("send err", err.Error())
+			if err := messenger.ShowError(ctx, err.Error()); err != nil {
+				return nil, err
+			}
+		}
 	}
-
 	return result, nil
 }
 
@@ -290,8 +300,19 @@ func (s *Server) handleWorkspaceDidChangeConfiguration(ctx context.Context, conn
 	}
 
 	// Initialize database database connection
-	if err := s.reconnectionDB(ctx); err != nil && err != ErrNoConnection {
-		return nil, err
+	messenger := lsp.NewLspMessenger(conn)
+	if err := s.reconnectionDB(ctx); err != nil {
+		if err != ErrNoConnection {
+			if err := messenger.ShowInfo(ctx, err.Error()); err != nil {
+				log.Println("send info", err.Error())
+				return nil, err
+			}
+		} else {
+			log.Println("send err", err.Error())
+			if err := messenger.ShowError(ctx, err.Error()); err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	return nil, nil

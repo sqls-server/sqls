@@ -42,7 +42,7 @@ func mysqlOpen(dbConnCfg *DBConfig) (*DBConnection, error) {
 		conn = dbConn
 	}
 	if err := conn.Ping(); err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("cannot ping to database, %+v", err)
 	}
 
 	conn.SetMaxIdleConns(DefaultMaxIdleConns)
