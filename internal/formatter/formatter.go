@@ -6,7 +6,6 @@ import (
 	"github.com/lighttiger2505/sqls/ast"
 	"github.com/lighttiger2505/sqls/ast/astutil"
 	"github.com/lighttiger2505/sqls/internal/config"
-	"github.com/lighttiger2505/sqls/internal/debug"
 	"github.com/lighttiger2505/sqls/internal/lsp"
 	"github.com/lighttiger2505/sqls/parser"
 	"github.com/lighttiger2505/sqls/token"
@@ -34,7 +33,6 @@ func Format(text string, params lsp.DocumentFormattingParams, cfg *config.Config
 	}
 	formatted := Eval(parsed, env)
 
-	debug.DPrintln("LowercaseKeywords", cfg.LowercaseKeywords)
 	opts := &ast.RenderOptions{
 		LowerCase: cfg.LowercaseKeywords,
 	}
