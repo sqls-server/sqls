@@ -53,7 +53,7 @@ sqls aims to provide advanced intelligence for you to edit sql in your own edito
 
 #### Document Formatting
 
-Coming soon.
+![document_format](./imgs/sqls_document_format.gif)
 
 ## Installation
 
