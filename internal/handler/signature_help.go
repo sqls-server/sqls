@@ -36,6 +36,10 @@ func (s *Server) handleTextDocumentSignatureHelp(ctx context.Context, conn *json
 }
 
 func SignatureHelp(text string, params lsp.SignatureHelpParams, dbCache *database.DBCache) (*lsp.SignatureHelp, error) {
+	if dbCache == nil {
+		return nil, nil
+	}
+
 	parsed, err := parser.Parse(text)
 	if err != nil {
 		return nil, err
