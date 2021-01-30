@@ -926,6 +926,77 @@ func TestComplete(t *testing.T) {
 
 }
 
+func TestCompleteNoneDBConnection(t *testing.T) {
+	tx := newTestContext()
+	tx.initServer(t)
+	defer tx.tearDown()
+
+	didChangeConfigurationParams := lsp.DidChangeConfigurationParams{
+		Settings: struct {
+			SQLS *config.Config "json:\"sqls\""
+		}{
+			SQLS: &config.Config{
+				Connections: []*database.DBConfig{},
+			},
+		},
+	}
+	if err := tx.conn.Call(tx.ctx, "workspace/didChangeConfiguration", didChangeConfigurationParams, nil); err != nil {
+		t.Fatal("conn.Call workspace/didChangeConfiguration:", err)
+	}
+
+	uri := "file:///Users/octref/Code/css-test/test.sql"
+	testcaseMap := map[string][]completionTestCase{
+		"statement":       statementCase,
+		"select expr":     selectExprCase,
+		"table reference": tableReferenceCase,
+		"col name":        colNameCase,
+		"case value":      caseValueCase,
+		"subquery":        subQueryCase,
+	}
+
+	for k, v := range testcaseMap {
+		for _, tt := range v {
+			t.Run(k+" "+tt.name, func(t *testing.T) {
+				// Open dummy file
+				didOpenParams := lsp.DidOpenTextDocumentParams{
+					TextDocument: lsp.TextDocumentItem{
+						URI:        uri,
+						LanguageID: "sql",
+						Version:    0,
+						Text:       tt.input,
+					},
+				}
+				if err := tx.conn.Call(tx.ctx, "textDocument/didOpen", didOpenParams, nil); err != nil {
+					t.Fatal("conn.Call textDocument/didOpen:", err)
+				}
+				tx.testFile(t, didOpenParams.TextDocument.URI, didOpenParams.TextDocument.Text)
+				// Create completion params
+				commpletionParams := lsp.CompletionParams{
+					TextDocumentPositionParams: lsp.TextDocumentPositionParams{
+						TextDocument: lsp.TextDocumentIdentifier{
+							URI: uri,
+						},
+						Position: lsp.Position{
+							Line:      tt.line,
+							Character: tt.col,
+						},
+					},
+					CompletionContext: lsp.CompletionContext{
+						TriggerKind:      0,
+						TriggerCharacter: nil,
+					},
+				}
+
+				var got []lsp.CompletionItem
+				if err := tx.conn.Call(tx.ctx, "textDocument/completion", commpletionParams, &got); err != nil {
+					t.Fatal("conn.Call textDocument/completion:", err)
+				}
+				// testCompletionItem(t, tt.want, tt.bad, got)
+			})
+		}
+	}
+}
+
 func testCompletionItem(t *testing.T, expectLabels []string, badLabels []string, gotItems []lsp.CompletionItem) {
 	t.Helper()
 

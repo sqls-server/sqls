@@ -26,9 +26,6 @@ func (c *Completer) keywordCandidates(lower bool) []lsp.CompletionItem {
 
 func (c *Completer) columnCandidates(targetTables []*parseutil.TableInfo, parent *completionParent) []lsp.CompletionItem {
 	candidates := []lsp.CompletionItem{}
-	if c.DBCache == nil {
-		return candidates
-	}
 
 	switch parent.Type {
 	case ParentTypeNone:
@@ -93,9 +90,6 @@ func columnDetail(tableName string) string {
 
 func (c *Completer) ReferencedTableCandidates(targetTables []*parseutil.TableInfo) []lsp.CompletionItem {
 	candidates := []lsp.CompletionItem{}
-	if c.DBCache == nil {
-		return candidates
-	}
 
 	for _, targetTable := range targetTables {
 		includeTables := []*parseutil.TableInfo{}
@@ -112,9 +106,6 @@ func (c *Completer) ReferencedTableCandidates(targetTables []*parseutil.TableInf
 
 func (c *Completer) TableCandidates(parent *completionParent, targetTables []*parseutil.TableInfo) []lsp.CompletionItem {
 	candidates := []lsp.CompletionItem{}
-	if c.DBCache == nil {
-		return candidates
-	}
 
 	switch parent.Type {
 	case ParentTypeNone:
@@ -261,9 +252,6 @@ func subQueryColumnDetail(subQueryAliasName string) string {
 
 func (c *Completer) SchemaCandidates() []lsp.CompletionItem {
 	candidates := []lsp.CompletionItem{}
-	if c.DBCache == nil {
-		return candidates
-	}
 	dbs := c.DBCache.SortedSchemas()
 	for _, db := range dbs {
 		candidate := lsp.CompletionItem{

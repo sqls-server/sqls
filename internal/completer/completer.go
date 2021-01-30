@@ -133,48 +133,52 @@ func (c *Completer) Complete(text string, params lsp.CompletionParams, lowercase
 	withBackQuote := strings.HasPrefix(lastWord, "`")
 
 	items := []lsp.CompletionItem{}
-	if completionTypeIs(ctx.types, CompletionTypeColumn) {
-		candidates := c.columnCandidates(definedTables, ctx.parent)
-		if withBackQuote {
-			candidates = toQuotedCandidates(candidates)
+
+	if c.DBCache != nil {
+		if completionTypeIs(ctx.types, CompletionTypeColumn) {
+			candidates := c.columnCandidates(definedTables, ctx.parent)
+			if withBackQuote {
+				candidates = toQuotedCandidates(candidates)
+			}
+			items = append(items, candidates...)
 		}
-		items = append(items, candidates...)
-	}
-	if completionTypeIs(ctx.types, CompletionTypeReferencedTable) {
-		candidates := c.ReferencedTableCandidates(definedTables)
-		if withBackQuote {
-			candidates = toQuotedCandidates(candidates)
+		if completionTypeIs(ctx.types, CompletionTypeReferencedTable) {
+			candidates := c.ReferencedTableCandidates(definedTables)
+			if withBackQuote {
+				candidates = toQuotedCandidates(candidates)
+			}
+			items = append(items, candidates...)
 		}
-		items = append(items, candidates...)
-	}
-	if completionTypeIs(ctx.types, CompletionTypeTable) {
-		candidates := c.TableCandidates(ctx.parent, definedTables)
-		if withBackQuote {
-			candidates = toQuotedCandidates(candidates)
+		if completionTypeIs(ctx.types, CompletionTypeTable) {
+			candidates := c.TableCandidates(ctx.parent, definedTables)
+			if withBackQuote {
+				candidates = toQuotedCandidates(candidates)
+			}
+			items = append(items, candidates...)
 		}
-		items = append(items, candidates...)
-	}
-	if completionTypeIs(ctx.types, CompletionTypeSchema) {
-		candidates := c.SchemaCandidates()
-		if withBackQuote {
-			candidates = toQuotedCandidates(candidates)
+		if completionTypeIs(ctx.types, CompletionTypeSchema) {
+			candidates := c.SchemaCandidates()
+			if withBackQuote {
+				candidates = toQuotedCandidates(candidates)
+			}
+			items = append(items, candidates...)
 		}
-		items = append(items, candidates...)
-	}
-	if completionTypeIs(ctx.types, CompletionTypeSubQuery) {
-		candidates := c.SubQueryCandidates(definedSubQuerys)
-		if withBackQuote {
-			candidates = toQuotedCandidates(candidates)
+		if completionTypeIs(ctx.types, CompletionTypeSubQuery) {
+			candidates := c.SubQueryCandidates(definedSubQuerys)
+			if withBackQuote {
+				candidates = toQuotedCandidates(candidates)
+			}
+			items = append(items, candidates...)
 		}
-		items = append(items, candidates...)
-	}
-	if completionTypeIs(ctx.types, CompletionTypeSubQueryColumn) {
-		candidates := c.SubQueryColumnCandidates(definedSubQuerys)
-		if withBackQuote {
-			candidates = toQuotedCandidates(candidates)
+		if completionTypeIs(ctx.types, CompletionTypeSubQueryColumn) {
+			candidates := c.SubQueryColumnCandidates(definedSubQuerys)
+			if withBackQuote {
+				candidates = toQuotedCandidates(candidates)
+			}
+			items = append(items, candidates...)
 		}
-		items = append(items, candidates...)
 	}
+
 	if completionTypeIs(ctx.types, CompletionTypeKeyword) {
 		items = append(items, c.keywordCandidates(lowercaseKeywords)...)
 	}

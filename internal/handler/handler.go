@@ -290,7 +290,7 @@ func (s *Server) handleWorkspaceDidChangeConfiguration(ctx context.Context, conn
 	}
 
 	// Initialize database database connection
-	if err := s.reconnectionDB(ctx); err != nil {
+	if err := s.reconnectionDB(ctx); err != nil && err != ErrNoConnection {
 		return nil, err
 	}
 
