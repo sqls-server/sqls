@@ -27,8 +27,14 @@ const (
 	TypeNull
 )
 
+type RenderOptions struct {
+	LowerCase       bool
+	IdentiferQuated bool
+}
+
 type Node interface {
 	String() string
+	Render(opts *RenderOptions) string
 	Type() NodeType
 	Pos() token.Pos
 	End() token.Pos
@@ -47,10 +53,11 @@ type TokenList interface {
 
 type Null struct{}
 
-func (n *Null) String() string { return "" }
-func (n *Null) Type() NodeType { return TypeNull }
-func (n *Null) Pos() token.Pos { return token.Pos{} }
-func (n *Null) End() token.Pos { return token.Pos{} }
+func (n *Null) String() string                    { return "" }
+func (n *Null) Render(opts *RenderOptions) string { return n.String() }
+func (n *Null) Type() NodeType                    { return TypeNull }
+func (n *Null) Pos() token.Pos                    { return token.Pos{} }
+func (n *Null) End() token.Pos                    { return token.Pos{} }
 
 type Item struct {
 	Tok *SQLToken
@@ -59,23 +66,23 @@ type Item struct {
 func NewItem(tok *token.Token) Node {
 	return &Item{NewSQLToken(tok)}
 }
-func (i *Item) String() string        { return i.Tok.String() }
-func (i *Item) NoQuateString() string { return i.Tok.NoQuateString() }
-func (i *Item) Type() NodeType        { return TypeItem }
-func (i *Item) GetToken() *SQLToken   { return i.Tok }
-func (i *Item) Pos() token.Pos        { return i.Tok.From }
-func (i *Item) End() token.Pos        { return i.Tok.To }
+func (i *Item) String() string                    { return i.Tok.String() }
+func (i *Item) NoQuateString() string             { return i.Tok.NoQuateString() }
+func (i *Item) Render(opts *RenderOptions) string { return i.Tok.Render(opts) }
+func (i *Item) Type() NodeType                    { return TypeItem }
+func (i *Item) GetToken() *SQLToken               { return i.Tok }
+func (i *Item) Pos() token.Pos                    { return i.Tok.From }
+func (i *Item) End() token.Pos                    { return i.Tok.To }
 
 type ItemWith struct {
 	Toks []Node
 }
 
 func (iw *ItemWith) String() string {
-	var strs []string
-	for _, t := range iw.Toks {
-		strs = append(strs, t.String())
-	}
-	return strings.Join(strs, "")
+	return joinString(iw.Toks)
+}
+func (iw *ItemWith) Render(opts *RenderOptions) string {
+	return joinRender(iw.Toks, opts)
 }
 func (iw *ItemWith) Type() NodeType        { return TypeMultiKeyword }
 func (iw *ItemWith) GetTokens() []Node     { return iw.Toks }
@@ -89,11 +96,10 @@ type MultiKeyword struct {
 }
 
 func (mk *MultiKeyword) String() string {
-	var strs []string
-	for _, t := range mk.Toks {
-		strs = append(strs, t.String())
-	}
-	return strings.Join(strs, "")
+	return joinString(mk.Toks)
+}
+func (mk *MultiKeyword) Render(opts *RenderOptions) string {
+	return joinRender(mk.Toks, opts)
 }
 func (mk *MultiKeyword) Type() NodeType        { return TypeMultiKeyword }
 func (mk *MultiKeyword) GetTokens() []Node     { return mk.Toks }
@@ -138,6 +144,13 @@ func (mi *MemberIdentifer) String() string {
 	var strs []string
 	for _, t := range mi.Toks {
 		strs = append(strs, t.String())
+	}
+	return strings.Join(strs, "")
+}
+func (mi *MemberIdentifer) Render(opts *RenderOptions) string {
+	var strs []string
+	for _, t := range mi.Toks {
+		strs = append(strs, t.Render(opts))
 	}
 	return strings.Join(strs, "")
 }
@@ -200,6 +213,13 @@ func (a *Aliased) String() string {
 	}
 	return strings.Join(strs, "")
 }
+func (a *Aliased) Render(opts *RenderOptions) string {
+	var strs []string
+	for _, t := range a.Toks {
+		strs = append(strs, t.Render(opts))
+	}
+	return strings.Join(strs, "")
+}
 func (a *Aliased) Type() NodeType        { return TypeAliased }
 func (a *Aliased) GetTokens() []Node     { return a.Toks }
 func (a *Aliased) SetTokens(toks []Node) { a.Toks = toks }
@@ -216,13 +236,14 @@ type Identifer struct {
 	Tok *SQLToken
 }
 
-func (i *Identifer) Type() NodeType        { return TypeIdentifer }
-func (i *Identifer) String() string        { return i.Tok.String() }
-func (i *Identifer) NoQuateString() string { return i.Tok.NoQuateString() }
-func (i *Identifer) GetToken() *SQLToken   { return i.Tok }
-func (i *Identifer) Pos() token.Pos        { return i.Tok.From }
-func (i *Identifer) End() token.Pos        { return i.Tok.To }
-func (i *Identifer) IsWildcard() bool      { return i.Tok.MatchKind(token.Mult) }
+func (i *Identifer) Type() NodeType                    { return TypeIdentifer }
+func (i *Identifer) String() string                    { return i.Tok.String() }
+func (i *Identifer) Render(opts *RenderOptions) string { return i.Tok.Render(opts) }
+func (i *Identifer) NoQuateString() string             { return i.Tok.NoQuateString() }
+func (i *Identifer) GetToken() *SQLToken               { return i.Tok }
+func (i *Identifer) Pos() token.Pos                    { return i.Tok.From }
+func (i *Identifer) End() token.Pos                    { return i.Tok.To }
+func (i *Identifer) IsWildcard() bool                  { return i.Tok.MatchKind(token.Mult) }
 
 type Operator struct {
 	Toks     []Node
@@ -232,11 +253,10 @@ type Operator struct {
 }
 
 func (o *Operator) String() string {
-	var strs []string
-	for _, t := range o.Toks {
-		strs = append(strs, t.String())
-	}
-	return strings.Join(strs, "")
+	return joinString(o.Toks)
+}
+func (o *Operator) Render(opts *RenderOptions) string {
+	return joinRender(o.Toks, opts)
 }
 func (o *Operator) Type() NodeType        { return TypeOperator }
 func (o *Operator) GetTokens() []Node     { return o.Toks }
@@ -270,11 +290,10 @@ type Comparison struct {
 }
 
 func (c *Comparison) String() string {
-	var strs []string
-	for _, t := range c.Toks {
-		strs = append(strs, t.String())
-	}
-	return strings.Join(strs, "")
+	return joinString(c.Toks)
+}
+func (c *Comparison) Render(opts *RenderOptions) string {
+	return joinRender(c.Toks, opts)
 }
 func (c *Comparison) Type() NodeType        { return TypeComparison }
 func (c *Comparison) GetTokens() []Node     { return c.Toks }
@@ -305,11 +324,10 @@ type Parenthesis struct {
 }
 
 func (p *Parenthesis) String() string {
-	var strs []string
-	for _, t := range p.Toks {
-		strs = append(strs, t.String())
-	}
-	return strings.Join(strs, "")
+	return joinString(p.Toks)
+}
+func (p *Parenthesis) Render(opts *RenderOptions) string {
+	return joinRender(p.Toks, opts)
 }
 func (p *Parenthesis) Type() NodeType        { return TypeParenthesis }
 func (p *Parenthesis) GetTokens() []Node     { return p.Toks }
@@ -329,11 +347,10 @@ type ParenthesisInner struct {
 }
 
 func (p *ParenthesisInner) String() string {
-	var strs []string
-	for _, t := range p.Toks {
-		strs = append(strs, t.String())
-	}
-	return strings.Join(strs, "")
+	return joinString(p.Toks)
+}
+func (p *ParenthesisInner) Render(opts *RenderOptions) string {
+	return joinRender(p.Toks, opts)
 }
 func (p *ParenthesisInner) Type() NodeType        { return TypeParenthesisInner }
 func (p *ParenthesisInner) GetTokens() []Node     { return p.Toks }
@@ -346,11 +363,10 @@ type FunctionLiteral struct {
 }
 
 func (fl *FunctionLiteral) String() string {
-	var strs []string
-	for _, t := range fl.Toks {
-		strs = append(strs, t.String())
-	}
-	return strings.Join(strs, "")
+	return joinString(fl.Toks)
+}
+func (fl *FunctionLiteral) Render(opts *RenderOptions) string {
+	return joinRender(fl.Toks, opts)
 }
 func (fl *FunctionLiteral) Type() NodeType        { return TypeFunctionLiteral }
 func (fl *FunctionLiteral) GetTokens() []Node     { return fl.Toks }
@@ -363,11 +379,10 @@ type Query struct {
 }
 
 func (q *Query) String() string {
-	var strs []string
-	for _, t := range q.Toks {
-		strs = append(strs, t.String())
-	}
-	return strings.Join(strs, "")
+	return joinString(q.Toks)
+}
+func (q *Query) Render(opts *RenderOptions) string {
+	return joinRender(q.Toks, opts)
 }
 func (q *Query) Type() NodeType        { return TypeQuery }
 func (q *Query) GetTokens() []Node     { return q.Toks }
@@ -380,11 +395,10 @@ type Statement struct {
 }
 
 func (s *Statement) String() string {
-	var strs []string
-	for _, t := range s.Toks {
-		strs = append(strs, t.String())
-	}
-	return strings.Join(strs, "")
+	return joinString(s.Toks)
+}
+func (s *Statement) Render(opts *RenderOptions) string {
+	return joinRender(s.Toks, opts)
 }
 func (s *Statement) Type() NodeType        { return TypeStatement }
 func (s *Statement) GetTokens() []Node     { return s.Toks }
@@ -399,11 +413,10 @@ type IdentiferList struct {
 }
 
 func (il *IdentiferList) String() string {
-	var strs []string
-	for _, t := range il.Toks {
-		strs = append(strs, t.String())
-	}
-	return strings.Join(strs, "")
+	return joinString(il.Toks)
+}
+func (il *IdentiferList) Render(opts *RenderOptions) string {
+	return joinRender(il.Toks, opts)
 }
 func (il *IdentiferList) Type() NodeType        { return TypeIdentiferList }
 func (il *IdentiferList) GetTokens() []Node     { return il.Toks }
@@ -435,18 +448,17 @@ type SwitchCase struct {
 	Toks []Node
 }
 
-func (il *SwitchCase) String() string {
-	var strs []string
-	for _, t := range il.Toks {
-		strs = append(strs, t.String())
-	}
-	return strings.Join(strs, "")
+func (sc *SwitchCase) String() string {
+	return joinString(sc.Toks)
 }
-func (il *SwitchCase) Type() NodeType        { return TypeSwitchCase }
-func (il *SwitchCase) GetTokens() []Node     { return il.Toks }
-func (il *SwitchCase) SetTokens(toks []Node) { il.Toks = toks }
-func (il *SwitchCase) Pos() token.Pos        { return findFrom(il) }
-func (il *SwitchCase) End() token.Pos        { return findTo(il) }
+func (sc *SwitchCase) Render(opts *RenderOptions) string {
+	return joinRender(sc.Toks, opts)
+}
+func (sc *SwitchCase) Type() NodeType        { return TypeSwitchCase }
+func (sc *SwitchCase) GetTokens() []Node     { return sc.Toks }
+func (sc *SwitchCase) SetTokens(toks []Node) { sc.Toks = toks }
+func (sc *SwitchCase) Pos() token.Pos        { return findFrom(sc) }
+func (sc *SwitchCase) End() token.Pos        { return findTo(sc) }
 
 type SQLToken struct {
 	Node
@@ -516,6 +528,37 @@ func (t *SQLToken) NoQuateString() string {
 	}
 }
 
+func (t *SQLToken) Render(opts *RenderOptions) string {
+	switch v := t.Value.(type) {
+	case *token.SQLWord:
+		return renderSQLWord(v, opts)
+	case string:
+		return v
+	default:
+		return " "
+	}
+}
+
+func renderSQLWord(v *token.SQLWord, opts *RenderOptions) string {
+	isKeyword := false
+	if v.Kind != dialect.Unmatched {
+		isKeyword = true
+	}
+
+	if isKeyword {
+		if opts.IdentiferQuated {
+			v.QuoteStyle = '`'
+			return v.String()
+		}
+		return v.NoQuateString()
+	} else {
+		if opts.LowerCase {
+			return strings.ToLower(v.String())
+		}
+		return strings.ToLower(v.String())
+	}
+}
+
 func findFrom(node Node) token.Pos {
 	if list, ok := node.(TokenList); ok {
 		nodes := list.GetTokens()
@@ -530,4 +573,20 @@ func findTo(node Node) token.Pos {
 		return findTo(nodes[len(nodes)-1])
 	}
 	return node.End()
+}
+
+func joinString(nodes []Node) string {
+	var strs []string
+	for _, n := range nodes {
+		strs = append(strs, n.String())
+	}
+	return strings.Join(strs, "")
+}
+
+func joinRender(nodes []Node, opts *RenderOptions) string {
+	var strs []string
+	for _, n := range nodes {
+		strs = append(strs, n.Render(opts))
+	}
+	return strings.Join(strs, "")
 }

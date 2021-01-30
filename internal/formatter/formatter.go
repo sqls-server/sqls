@@ -32,13 +32,17 @@ func Format(text string, params lsp.DocumentFormattingParams) ([]lsp.TextEdit, e
 	}
 	formatted := Eval(parsed, env)
 
+	opts := &ast.RenderOptions{
+		LowerCase:       false,
+		IdentiferQuated: false,
+	}
 	res := []lsp.TextEdit{
 		{
 			Range: lsp.Range{
 				Start: st,
 				End:   en,
 			},
-			NewText: formatted.String(),
+			NewText: formatted.Render(opts),
 		},
 	}
 	return res, nil
