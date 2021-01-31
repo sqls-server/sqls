@@ -201,50 +201,26 @@ FROM city
 	},
 }
 
-func TestHover(t *testing.T) {
+func TestHoverMain(t *testing.T) {
 	tx := newTestContext()
 	tx.setup(t)
 	defer tx.tearDown()
 
-	didChangeConfigurationParams := lsp.DidChangeConfigurationParams{
-		Settings: struct {
-			SQLS *config.Config "json:\"sqls\""
-		}{
-			SQLS: &config.Config{
-				Connections: []*database.DBConfig{
-					{
-						Driver:         "mock",
-						DataSourceName: "",
-					},
-				},
-			},
+	cfg := &config.Config{
+		Connections: []*database.DBConfig{
+			{Driver: "mock"},
 		},
 	}
-	if err := tx.conn.Call(tx.ctx, "workspace/didChangeConfiguration", didChangeConfigurationParams, nil); err != nil {
-		t.Fatal("conn.Call workspace/didChangeConfiguration:", err)
-	}
+	tx.addWorkspaceConfig(t, cfg)
 
-	uri := "file:///Users/octref/Code/css-test/test.sql"
 	for _, tt := range hoverTestCases {
 		t.Run(tt.name, func(t *testing.T) {
-			// Open dummy file
-			didOpenParams := lsp.DidOpenTextDocumentParams{
-				TextDocument: lsp.TextDocumentItem{
-					URI:        uri,
-					LanguageID: "sql",
-					Version:    0,
-					Text:       tt.input,
-				},
-			}
-			if err := tx.conn.Call(tx.ctx, "textDocument/didOpen", didOpenParams, nil); err != nil {
-				t.Fatal("conn.Call textDocument/didOpen:", err)
-			}
-			tx.testFile(t, didOpenParams.TextDocument.URI, didOpenParams.TextDocument.Text)
-			// Create hover params
+			tx.textDocumentDidOpen(t, testFileURI, tt.input)
+
 			hoverParams := lsp.HoverParams{
 				TextDocumentPositionParams: lsp.TextDocumentPositionParams{
 					TextDocument: lsp.TextDocumentIdentifier{
-						URI: uri,
+						URI: testFileURI,
 					},
 					Position: lsp.Position{
 						Line:      tt.line,
@@ -252,18 +228,17 @@ func TestHover(t *testing.T) {
 					},
 				},
 			}
-
 			var got lsp.Hover
 			err := tx.conn.Call(tx.ctx, "textDocument/hover", hoverParams, &got)
 			if err != nil {
 				t.Errorf("conn.Call textDocument/hover: %+v", err)
 				return
 			}
+
 			if tt.output == "" && got.Contents.Value != "" {
 				t.Errorf("found hover, %q", got.Contents.Value)
 				return
 			}
-			// testHover(t, tt.output, got.Contents.Value)
 			if diff := cmp.Diff(tt.output, got.Contents.Value); diff != "" {
 				t.Errorf("unmatch hover contents (- want, + got):\n%s", diff)
 			}
@@ -276,40 +251,19 @@ func TestHoverNoneDBConnection(t *testing.T) {
 	tx.setup(t)
 	defer tx.tearDown()
 
-	didChangeConfigurationParams := lsp.DidChangeConfigurationParams{
-		Settings: struct {
-			SQLS *config.Config "json:\"sqls\""
-		}{
-			SQLS: &config.Config{
-				Connections: []*database.DBConfig{},
-			},
-		},
+	cfg := &config.Config{
+		Connections: []*database.DBConfig{},
 	}
-	if err := tx.conn.Call(tx.ctx, "workspace/didChangeConfiguration", didChangeConfigurationParams, nil); err != nil {
-		t.Fatal("conn.Call workspace/didChangeConfiguration:", err)
-	}
+	tx.addWorkspaceConfig(t, cfg)
 
-	uri := "file:///Users/octref/Code/css-test/test.sql"
 	for _, tt := range hoverTestCases {
 		t.Run(tt.name, func(t *testing.T) {
-			// Open dummy file
-			didOpenParams := lsp.DidOpenTextDocumentParams{
-				TextDocument: lsp.TextDocumentItem{
-					URI:        uri,
-					LanguageID: "sql",
-					Version:    0,
-					Text:       tt.input,
-				},
-			}
-			if err := tx.conn.Call(tx.ctx, "textDocument/didOpen", didOpenParams, nil); err != nil {
-				t.Fatal("conn.Call textDocument/didOpen:", err)
-			}
-			tx.testFile(t, didOpenParams.TextDocument.URI, didOpenParams.TextDocument.Text)
-			// Create hover params
+			tx.textDocumentDidOpen(t, testFileURI, tt.input)
+
 			hoverParams := lsp.HoverParams{
 				TextDocumentPositionParams: lsp.TextDocumentPositionParams{
 					TextDocument: lsp.TextDocumentIdentifier{
-						URI: uri,
+						URI: testFileURI,
 					},
 					Position: lsp.Position{
 						Line:      tt.line,
@@ -317,7 +271,7 @@ func TestHoverNoneDBConnection(t *testing.T) {
 					},
 				},
 			}
-
+			// Without a DB connection, it is not possible to provide functions using the DB connection, so just make sure that no errors occur.
 			var got lsp.Hover
 			err := tx.conn.Call(tx.ctx, "textDocument/hover", hoverParams, &got)
 			if err != nil {

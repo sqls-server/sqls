@@ -9,8 +9,11 @@ import (
 
 	"github.com/sourcegraph/jsonrpc2"
 
+	"github.com/lighttiger2505/sqls/internal/config"
 	"github.com/lighttiger2505/sqls/internal/lsp"
 )
+
+const testFileURI = "file:///Users/octref/Code/css-test/test.sql"
 
 type TestContext struct {
 	h          jsonrpc2.Handler
@@ -65,6 +68,34 @@ func (tx *TestContext) initServer(t *testing.T) {
 	if err := tx.conn.Call(tx.ctx, "initialize", params, nil); err != nil {
 		t.Fatal("conn.Call initialize:", err)
 	}
+}
+
+func (tx *TestContext) addWorkspaceConfig(t *testing.T, cfg *config.Config) {
+	didChangeConfigurationParams := lsp.DidChangeConfigurationParams{
+		Settings: struct {
+			SQLS *config.Config "json:\"sqls\""
+		}{
+			SQLS: cfg,
+		},
+	}
+	if err := tx.conn.Call(tx.ctx, "workspace/didChangeConfiguration", didChangeConfigurationParams, nil); err != nil {
+		t.Fatal("conn.Call workspace/didChangeConfiguration:", err)
+	}
+}
+
+func (tx *TestContext) textDocumentDidOpen(t *testing.T, uri, input string) {
+	didOpenParams := lsp.DidOpenTextDocumentParams{
+		TextDocument: lsp.TextDocumentItem{
+			URI:        testFileURI,
+			LanguageID: "sql",
+			Version:    0,
+			Text:       input,
+		},
+	}
+	if err := tx.conn.Call(tx.ctx, "textDocument/didOpen", didOpenParams, nil); err != nil {
+		t.Fatal("conn.Call textDocument/didOpen:", err)
+	}
+	tx.testFile(t, didOpenParams.TextDocument.URI, didOpenParams.TextDocument.Text)
 }
 
 func TestInitialized(t *testing.T) {
