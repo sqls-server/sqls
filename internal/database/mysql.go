@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/go-sql-driver/mysql"
+	"github.com/lighttiger2505/sqls/dialect"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/xerrors"
 )
@@ -123,6 +124,10 @@ type MySQLDBRepository struct {
 
 func NewMySQLDBRepository(conn *sql.DB) DBRepository {
 	return &MySQLDBRepository{Conn: conn}
+}
+
+func (db *MySQLDBRepository) Driver() dialect.DatabaseDriver {
+	return dialect.DatabaseDriverMySQL
 }
 
 func (db *MySQLDBRepository) CurrentDatabase(ctx context.Context) (string, error) {

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/lighttiger2505/sqls/dialect"
 	"github.com/lighttiger2505/sqls/parser/parseutil"
 )
 
@@ -21,6 +22,7 @@ const (
 )
 
 type DBRepository interface {
+	Driver() dialect.DatabaseDriver
 	CurrentDatabase(ctx context.Context) (string, error)
 	Databases(ctx context.Context) ([]string, error)
 	CurrentSchema(ctx context.Context) (string, error)

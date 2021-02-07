@@ -14,6 +14,7 @@ import (
 	"unicode"
 
 	pq "github.com/lib/pq"
+	"github.com/lighttiger2505/sqls/dialect"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/xerrors"
 )
@@ -110,6 +111,10 @@ type PostgreSQLDBRepository struct {
 
 func NewPostgreSQLDBRepository(conn *sql.DB) DBRepository {
 	return &PostgreSQLDBRepository{Conn: conn}
+}
+
+func (db *PostgreSQLDBRepository) Driver() dialect.DatabaseDriver {
+	return dialect.DatabaseDriverPostgreSQL
 }
 
 func (db *PostgreSQLDBRepository) CurrentDatabase(ctx context.Context) (string, error) {

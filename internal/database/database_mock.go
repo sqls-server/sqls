@@ -3,6 +3,8 @@ package database
 import (
 	"context"
 	"database/sql"
+
+	"github.com/lighttiger2505/sqls/dialect"
 )
 
 type MockDBRepository struct {
@@ -60,6 +62,10 @@ func NewMockDBRepository(conn *sql.DB) DBRepository {
 			return &sql.Rows{}, nil
 		},
 	}
+}
+
+func (m *MockDBRepository) Driver() dialect.DatabaseDriver {
+	return "mock"
 }
 
 func (m *MockDBRepository) CurrentDatabase(ctx context.Context) (string, error) {

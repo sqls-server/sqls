@@ -4,12 +4,13 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/lighttiger2505/sqls/dialect"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/xerrors"
 )
 
-var driverOpeners = make(map[string]Opener)
-var driverFactories = make(map[string]Factory)
+var driverOpeners = make(map[dialect.DatabaseDriver]Opener)
+var driverFactories = make(map[dialect.DatabaseDriver]Factory)
 
 type Opener func(*DBConfig) (*DBConnection, error)
 type Factory func(*sql.DB) DBRepository
@@ -34,21 +35,21 @@ func (db *DBConnection) Close() error {
 	return nil
 }
 
-func RegisterOpen(name string, opener Opener) {
+func RegisterOpen(name dialect.DatabaseDriver, opener Opener) {
 	if _, ok := driverOpeners[name]; ok {
 		panic(fmt.Sprintf("driver open %s method is already registered", name))
 	}
 	driverOpeners[name] = opener
 }
 
-func RegisterFactory(name string, factory Factory) {
+func RegisterFactory(name dialect.DatabaseDriver, factory Factory) {
 	if _, ok := driverFactories[name]; ok {
 		panic(fmt.Sprintf("driver factory %s already registered", name))
 	}
 	driverFactories[name] = factory
 }
 
-func Registered(name string) bool {
+func Registered(name dialect.DatabaseDriver) bool {
 	_, ok1 := driverOpeners[name]
 	_, ok2 := driverFactories[name]
 	return ok1 && ok2
@@ -62,7 +63,7 @@ func Open(cfg *DBConfig) (*DBConnection, error) {
 	return OpenFn(cfg)
 }
 
-func CreateRepository(driver string, db *sql.DB) (DBRepository, error) {
+func CreateRepository(driver dialect.DatabaseDriver, db *sql.DB) (DBRepository, error) {
 	FactoryFn, ok := driverFactories[driver]
 	if !ok {
 		return nil, xerrors.Errorf("driver not found, %s", driver)

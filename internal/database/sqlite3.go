@@ -6,12 +6,13 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/lighttiger2505/sqls/dialect"
 	_ "github.com/mattn/go-sqlite3"
 )
 
 func init() {
-	RegisterOpen("sqlite3", sqlite3Open)
-	RegisterFactory("sqlite3", NewSQLite3DBRepository)
+	RegisterOpen(dialect.DatabaseDriverSQLite3, sqlite3Open)
+	RegisterFactory(dialect.DatabaseDriverSQLite3, NewSQLite3DBRepository)
 }
 
 func sqlite3Open(connCfg *DBConfig) (*DBConnection, error) {
@@ -32,6 +33,10 @@ type SQLite3DBRepository struct {
 
 func NewSQLite3DBRepository(conn *sql.DB) DBRepository {
 	return &SQLite3DBRepository{Conn: conn}
+}
+
+func (db *SQLite3DBRepository) Driver() dialect.DatabaseDriver {
+	return dialect.DatabaseDriverSQLite3
 }
 
 func (db *SQLite3DBRepository) CurrentDatabase(ctx context.Context) (string, error) {

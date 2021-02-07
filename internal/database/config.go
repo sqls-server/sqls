@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 
+	"github.com/lighttiger2505/sqls/dialect"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/xerrors"
 )
@@ -17,18 +18,18 @@ const (
 )
 
 type DBConfig struct {
-	Alias          string            `json:"alias" yaml:"alias"`
-	Driver         string            `json:"driver" yaml:"driver"`
-	DataSourceName string            `json:"dataSourceName" yaml:"dataSourceName"`
-	Proto          Proto             `json:"proto" yaml:"proto"`
-	User           string            `json:"user" yaml:"user"`
-	Passwd         string            `json:"passwd" yaml:"passwd"`
-	Host           string            `json:"host" yaml:"host"`
-	Port           int               `json:"port" yaml:"port"`
-	Path           string            `json:"path" yaml:"path"`
-	DBName         string            `json:"dbName" yaml:"dbName"`
-	Params         map[string]string `json:"params" yaml:"params"`
-	SSHCfg         *SSHConfig        `json:"sshConfig" yaml:"sshConfig"`
+	Alias          string                 `json:"alias" yaml:"alias"`
+	Driver         dialect.DatabaseDriver `json:"driver" yaml:"driver"`
+	DataSourceName string                 `json:"dataSourceName" yaml:"dataSourceName"`
+	Proto          Proto                  `json:"proto" yaml:"proto"`
+	User           string                 `json:"user" yaml:"user"`
+	Passwd         string                 `json:"passwd" yaml:"passwd"`
+	Host           string                 `json:"host" yaml:"host"`
+	Port           int                    `json:"port" yaml:"port"`
+	Path           string                 `json:"path" yaml:"path"`
+	DBName         string                 `json:"dbName" yaml:"dbName"`
+	Params         map[string]string      `json:"params" yaml:"params"`
+	SSHCfg         *SSHConfig             `json:"sshConfig" yaml:"sshConfig"`
 }
 
 type SSHConfig struct {

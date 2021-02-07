@@ -8,7 +8,7 @@ import (
 	"github.com/lighttiger2505/sqls/parser/parseutil"
 )
 
-func (c *Completer) keywordCandidates(lower bool) []lsp.CompletionItem {
+func (c *Completer) keywordCandidates(lower bool, keywords []string) []lsp.CompletionItem {
 	candidates := []lsp.CompletionItem{}
 	for _, k := range keywords {
 		candidate := lsp.CompletionItem{

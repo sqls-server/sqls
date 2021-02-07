@@ -9,6 +9,7 @@ import (
 
 	"github.com/lighttiger2505/sqls/ast"
 	"github.com/lighttiger2505/sqls/ast/astutil"
+	"github.com/lighttiger2505/sqls/dialect"
 	"github.com/lighttiger2505/sqls/internal/database"
 	"github.com/lighttiger2505/sqls/internal/lsp"
 	"github.com/lighttiger2505/sqls/parser"
@@ -58,34 +59,9 @@ func (ct completionType) String() string {
 	}
 }
 
-var keywords = []string{
-	"ACCESS", "ADD", "ALL", "ALTER TABLE", "AND", "ANY", "AS",
-	"ASC", "AUTO_INCREMENT", "BEFORE", "BEGIN", "BETWEEN",
-	"BIGINT", "BINARY", "BY", "CASE", "CHANGE MASTER TO", "CHAR",
-	"CHARACTER SET", "CHECK", "COLLATE", "COLUMN", "COMMENT",
-	"COMMIT", "CONSTRAINT", "CREATE", "CURRENT",
-	"CURRENT_TIMESTAMP", "DATABASE", "DATE", "DECIMAL", "DEFAULT",
-	"DELETE FROM", "DESC", "DESCRIBE", "DROP",
-	"ELSE", "END", "ENGINE", "ESCAPE", "EXISTS", "FILE", "FLOAT",
-	"FOR", "FOREIGN KEY", "FORMAT", "FROM", "FULL", "FUNCTION",
-	"GRANT", "GROUP BY", "HAVING", "HOST", "IDENTIFIED", "IN",
-	"INCREMENT", "INDEX", "INSERT INTO", "INT", "INTEGER",
-	"INTERVAL", "INTO", "IS", "JOIN", "KEY", "LEFT", "LEVEL",
-	"LIKE", "LIMIT", "LOCK", "LOGS", "LONG", "MASTER",
-	"MEDIUMINT", "MODE", "MODIFY", "NOT", "NULL", "NUMBER",
-	"OFFSET", "ON", "OPTION", "OR", "ORDER BY", "OUTER", "OWNER",
-	"PASSWORD", "PORT", "PRIMARY", "PRIVILEGES", "PROCESSLIST",
-	"PURGE", "REFERENCES", "REGEXP", "RENAME", "REPAIR", "RESET",
-	"REVOKE", "RIGHT", "ROLLBACK", "ROW", "ROWS", "ROW_FORMAT",
-	"SAVEPOINT", "SELECT", "SESSION", "SET", "SHARE", "SHOW",
-	"SLAVE", "SMALLINT", "SMALLINT", "START", "STOP", "TABLE",
-	"THEN", "TINYINT", "TO", "TRANSACTION", "TRIGGER", "TRUNCATE",
-	"UNION", "UNIQUE", "UNSIGNED", "UPDATE", "USE", "USER",
-	"USING", "VALUES", "VARCHAR", "VIEW", "WHEN", "WHERE", "WITH",
-}
-
 type Completer struct {
 	DBCache *database.DBCache
+	Driver  dialect.DatabaseDriver
 }
 
 func NewCompleter(dbCache *database.DBCache) *Completer {
@@ -180,7 +156,8 @@ func (c *Completer) Complete(text string, params lsp.CompletionParams, lowercase
 	}
 
 	if completionTypeIs(ctx.types, CompletionTypeKeyword) {
-		items = append(items, c.keywordCandidates(lowercaseKeywords)...)
+		drivers := dialect.DataBaseKeywords(c.Driver)
+		items = append(items, c.keywordCandidates(lowercaseKeywords, drivers)...)
 	}
 
 	items = filterCandidates(items, lastWord)
