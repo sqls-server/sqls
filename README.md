@@ -65,6 +65,7 @@ go get github.com/lighttiger2505/sqls
 
 - [sqls.vim](https://github.com/lighttiger2505/sqls.vim)
 - [vscode-sqls](https://github.com/lighttiger2505/vscode-sqls)
+- [sqls.nvim](https://github.com/nanotee/sqls.nvim)
 
 ## DB Configuration
 
@@ -162,6 +163,27 @@ In `coc-settings.json` opened by `:CocConfig`
             "shell": true
         }
     }
+}
+```
+
+* setting example with [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig/blob/master/CONFIG.md#sqls).
+
+```lua
+require'lspconfig'.sqls.setup{
+  settings = {
+    sqls = {
+      connections = {
+        {
+          driver = 'mysql',
+          dataSourceName = 'root:root@tcp(127.0.0.1:13306)/world',
+        },
+        {
+          driver = 'postgresql',
+          dataSourceName = 'host=127.0.0.1 port=15432 user=postgres password=mysecretpassword1234 dbname=dvdrental sslmode=disable',
+        },
+      },
+    },
+  },
 }
 ```
 
