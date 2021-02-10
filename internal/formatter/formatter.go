@@ -28,10 +28,13 @@ func Format(text string, params lsp.DocumentFormattingParams, cfg *config.Config
 		Line:      parsed.End().Line,
 		Character: parsed.End().Col,
 	}
-	env := &formatEnvironment{
-		options: params.Options,
-	}
-	formatted := Eval(parsed, env)
+
+	// formatted := Eval(parsed, env)
+	var formatted ast.Node
+	formatted = parsed
+	formatted = Eval(parsed, newFormatEnvironment(params.Options))
+	// formatted = EvalIndent(parsed, newFormatEnvironment(params.Options))
+	// formatted = EvalTrailingWhitespace(formatted, newFormatEnvironment(params.Options))
 
 	opts := &ast.RenderOptions{
 		LowerCase: cfg.LowercaseKeywords,
@@ -52,6 +55,12 @@ type formatEnvironment struct {
 	reader      *astutil.NodeReader
 	indentLevel int
 	options     lsp.FormattingOptions
+
+	indentNode ast.Node
+}
+
+func newFormatEnvironment(options lsp.FormattingOptions) *formatEnvironment {
+	return &formatEnvironment{options: options}
 }
 
 func (e *formatEnvironment) indentLevelReset() {
@@ -66,14 +75,18 @@ func (e *formatEnvironment) indentLevelDown() {
 	e.indentLevel--
 }
 
-func (e *formatEnvironment) genIndent() []ast.Node {
-	indent := whiteSpaceNodes(int(e.options.TabSize))
-	if !e.options.InsertSpaces {
-		indent = []ast.Node{tabNode}
+func (e *formatEnvironment) getIndent() []ast.Node {
+	if e.indentNode == nil {
+		indent := whiteSpaceNodes(int(e.options.TabSize))
+		if !e.options.InsertSpaces {
+			indent = []ast.Node{tabNode}
+		}
+		e.indentNode = &ast.Indent{Toks: indent}
 	}
-	nodes := []ast.Node{}
+
+	nodes := make([]ast.Node, e.indentLevel)
 	for i := 0; i < e.indentLevel; i++ {
-		nodes = append(nodes, indent...)
+		nodes[i] = e.indentNode
 	}
 	return nodes
 }
@@ -176,7 +189,7 @@ func formatItem(node ast.Node, env *formatEnvironment) ast.Node {
 	}
 	if outdentBeforeMatcher.IsMatch(node) {
 		env.indentLevelDown()
-		results = unshift(results, env.genIndent()...)
+		results = unshift(results, env.getIndent()...)
 		results = unshift(results, linebreakNode)
 	}
 	indentBeforeMatcher := astutil.NodeMatcher{
@@ -186,7 +199,7 @@ func formatItem(node ast.Node, env *formatEnvironment) ast.Node {
 	}
 	if indentBeforeMatcher.IsMatch(node) {
 		env.indentLevelUp()
-		results = unshift(results, env.genIndent()...)
+		results = unshift(results, env.getIndent()...)
 		results = unshift(results, linebreakNode)
 	}
 	linebreakBeforeMatcher := astutil.NodeMatcher{
@@ -198,7 +211,7 @@ func formatItem(node ast.Node, env *formatEnvironment) ast.Node {
 		},
 	}
 	if linebreakBeforeMatcher.IsMatch(node) {
-		results = unshift(results, env.genIndent()...)
+		results = unshift(results, env.getIndent()...)
 		results = unshift(results, linebreakNode)
 	}
 
@@ -217,7 +230,7 @@ func formatItem(node ast.Node, env *formatEnvironment) ast.Node {
 	if linebreakWithIndentAfterMatcher.IsMatch(node) {
 		results = append(results, linebreakNode)
 		env.indentLevelUp()
-		results = append(results, env.genIndent()...)
+		results = append(results, env.getIndent()...)
 	}
 	indentAfterMatcher := astutil.NodeMatcher{
 		ExpectKeyword: []string{
@@ -234,7 +247,7 @@ func formatItem(node ast.Node, env *formatEnvironment) ast.Node {
 	}
 	if linebreakAfterMatcher.IsMatch(node) {
 		results = append(results, linebreakNode)
-		results = append(results, env.genIndent()...)
+		results = append(results, env.getIndent()...)
 	}
 
 	return &ast.ItemWith{Toks: results}
@@ -276,7 +289,7 @@ func formatMultiKeyword(node *ast.MultiKeyword, env *formatEnvironment) ast.Node
 	}
 	if outdentBeforeMatcher.IsMatch(node) {
 		env.indentLevelDown()
-		results = unshift(results, env.genIndent()...)
+		results = unshift(results, env.getIndent()...)
 		results = unshift(results, linebreakNode)
 	}
 
@@ -287,7 +300,7 @@ func formatMultiKeyword(node *ast.MultiKeyword, env *formatEnvironment) ast.Node
 	if linebreakWithIndentAfterMatcher.IsMatch(node) {
 		results = append(results, linebreakNode)
 		env.indentLevelUp()
-		results = append(results, env.genIndent()...)
+		results = append(results, env.getIndent()...)
 	}
 
 	return &ast.ItemWith{Toks: results}
@@ -367,11 +380,11 @@ func formatParenthesis(node *ast.Parenthesis, env *formatEnvironment) ast.Node {
 	startIndentLevel := env.indentLevel
 	env.indentLevelUp()
 	results = append(results, linebreakNode)
-	results = append(results, env.genIndent()...)
+	results = append(results, env.getIndent()...)
 	results = append(results, Eval(node.Inner(), env))
 	env.indentLevel = startIndentLevel
 	results = append(results, linebreakNode)
-	results = append(results, env.genIndent()...)
+	results = append(results, env.getIndent()...)
 	results = append(results, rparenNode)
 	// results = append(results, whitespaceNode)
 	return &ast.ItemWith{Toks: results}
@@ -389,7 +402,7 @@ func formatIdentiferList(identiferList *ast.IdentiferList, env *formatEnvironmen
 		results = append(results, Eval(ident, env))
 		if i != len(idents)-1 {
 			results = append(results, commaNode, linebreakNode)
-			results = append(results, env.genIndent()...)
+			results = append(results, env.getIndent()...)
 		}
 	}
 	return &ast.ItemWith{Toks: results}

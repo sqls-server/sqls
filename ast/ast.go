@@ -25,6 +25,7 @@ const (
 	TypeIdentiferList
 	TypeSwitchCase
 	TypeNull
+	TypeIndent
 )
 
 type RenderOptions struct {
@@ -73,6 +74,22 @@ func (i *Item) Type() NodeType                    { return TypeItem }
 func (i *Item) GetToken() *SQLToken               { return i.Tok }
 func (i *Item) Pos() token.Pos                    { return i.Tok.From }
 func (i *Item) End() token.Pos                    { return i.Tok.To }
+
+type Indent struct {
+	Toks []Node
+}
+
+func (i *Indent) String() string {
+	return joinString(i.Toks)
+}
+func (i *Indent) Render(opts *RenderOptions) string {
+	return joinRender(i.Toks, opts)
+}
+func (i *Indent) Type() NodeType        { return TypeIndent }
+func (i *Indent) GetTokens() []Node     { return i.Toks }
+func (i *Indent) SetTokens(toks []Node) { i.Toks = toks }
+func (i *Indent) Pos() token.Pos        { return findFrom(i) }
+func (i *Indent) End() token.Pos        { return findTo(i) }
 
 type ItemWith struct {
 	Toks []Node
