@@ -250,7 +250,7 @@ func formatItem(node ast.Node, env *formatEnvironment) ast.Node {
 		results = append(results, env.getIndent()...)
 	}
 
-	return &ast.ItemWith{Toks: results}
+	return &ast.Formatted{Toks: results}
 }
 
 func formatMultiKeyword(node *ast.MultiKeyword, env *formatEnvironment) ast.Node {
@@ -303,7 +303,7 @@ func formatMultiKeyword(node *ast.MultiKeyword, env *formatEnvironment) ast.Node
 		results = append(results, env.getIndent()...)
 	}
 
-	return &ast.ItemWith{Toks: results}
+	return &ast.Formatted{Toks: results}
 }
 
 func formatAliased(node *ast.Aliased, env *formatEnvironment) ast.Node {
@@ -323,23 +323,12 @@ func formatAliased(node *ast.Aliased, env *formatEnvironment) ast.Node {
 			Eval(node.AliasedName, env),
 		}
 	}
-	return &ast.ItemWith{Toks: results}
+	node.SetTokens(results)
+	return node
 }
 
 func formatIdentifer(node ast.Node, env *formatEnvironment) ast.Node {
-	results := []ast.Node{node}
-	// results := []ast.Node{node, whitespaceNode}
-
-	// commaMatcher := astutil.NodeMatcher{
-	// 	ExpectTokens: []token.Kind{
-	// 		token.Comma,
-	// 	},
-	// }
-	// if !env.reader.PeekNodeIs(true, commaMatcher) {
-	// 	results = append(results, whitespaceNode)
-	// }
-
-	return &ast.ItemWith{Toks: results}
+	return node
 }
 
 func formatMemberIdentifer(node *ast.MemberIdentifer, env *formatEnvironment) ast.Node {
@@ -348,7 +337,8 @@ func formatMemberIdentifer(node *ast.MemberIdentifer, env *formatEnvironment) as
 		periodNode,
 		Eval(node.Child, env),
 	}
-	return &ast.ItemWith{Toks: results}
+	node.SetTokens(results)
+	return node
 }
 
 func formatOperator(node *ast.Operator, env *formatEnvironment) ast.Node {
@@ -359,7 +349,8 @@ func formatOperator(node *ast.Operator, env *formatEnvironment) ast.Node {
 		whitespaceNode,
 		Eval(node.Right, env),
 	}
-	return &ast.ItemWith{Toks: results}
+	node.SetTokens(results)
+	return node
 }
 
 func formatComparison(node *ast.Comparison, env *formatEnvironment) ast.Node {
@@ -370,12 +361,12 @@ func formatComparison(node *ast.Comparison, env *formatEnvironment) ast.Node {
 		whitespaceNode,
 		Eval(node.Right, env),
 	}
-	return &ast.ItemWith{Toks: results}
+	node.SetTokens(results)
+	return node
 }
 
 func formatParenthesis(node *ast.Parenthesis, env *formatEnvironment) ast.Node {
 	results := []ast.Node{}
-	// results = append(results, whitespaceNode)
 	results = append(results, lparenNode)
 	startIndentLevel := env.indentLevel
 	env.indentLevelUp()
@@ -386,13 +377,13 @@ func formatParenthesis(node *ast.Parenthesis, env *formatEnvironment) ast.Node {
 	results = append(results, linebreakNode)
 	results = append(results, env.getIndent()...)
 	results = append(results, rparenNode)
-	// results = append(results, whitespaceNode)
-	return &ast.ItemWith{Toks: results}
+
+	node.SetTokens(results)
+	return node
 }
 
 func formatFunctionLiteral(node *ast.FunctionLiteral, env *formatEnvironment) ast.Node {
-	results := []ast.Node{node}
-	return &ast.ItemWith{Toks: results}
+	return node
 }
 
 func formatIdentiferList(identiferList *ast.IdentiferList, env *formatEnvironment) ast.Node {
@@ -405,7 +396,8 @@ func formatIdentiferList(identiferList *ast.IdentiferList, env *formatEnvironmen
 			results = append(results, env.getIndent()...)
 		}
 	}
-	return &ast.ItemWith{Toks: results}
+	identiferList.SetTokens(results)
+	return identiferList
 }
 
 func formatTokenList(list ast.TokenList, env *formatEnvironment) ast.Node {
@@ -413,7 +405,13 @@ func formatTokenList(list ast.TokenList, env *formatEnvironment) ast.Node {
 	reader := astutil.NewNodeReader(list)
 	for reader.NextNode(true) {
 		env.reader = reader
-		results = append(results, Eval(reader.CurNode, env))
+		res := Eval(reader.CurNode, env)
+		formatted, ok := res.(*ast.Formatted)
+		if ok {
+			results = append(results, formatted.GetTokens()...)
+		} else {
+			results = append(results, res)
+		}
 	}
 	reader.Node.SetTokens(results)
 	return reader.Node

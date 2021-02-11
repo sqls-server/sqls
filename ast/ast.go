@@ -91,21 +91,21 @@ func (i *Indent) SetTokens(toks []Node) { i.Toks = toks }
 func (i *Indent) Pos() token.Pos        { return findFrom(i) }
 func (i *Indent) End() token.Pos        { return findTo(i) }
 
-type ItemWith struct {
+type Formatted struct {
 	Toks []Node
 }
 
-func (iw *ItemWith) String() string {
-	return joinString(iw.Toks)
+func (f *Formatted) String() string {
+	return joinString(f.Toks)
 }
-func (iw *ItemWith) Render(opts *RenderOptions) string {
-	return joinRender(iw.Toks, opts)
+func (f *Formatted) Render(opts *RenderOptions) string {
+	return joinRender(f.Toks, opts)
 }
-func (iw *ItemWith) Type() NodeType        { return TypeMultiKeyword }
-func (iw *ItemWith) GetTokens() []Node     { return iw.Toks }
-func (iw *ItemWith) SetTokens(toks []Node) { iw.Toks = toks }
-func (iw *ItemWith) Pos() token.Pos        { return findFrom(iw) }
-func (iw *ItemWith) End() token.Pos        { return findTo(iw) }
+func (f *Formatted) Type() NodeType        { return TypeMultiKeyword }
+func (f *Formatted) GetTokens() []Node     { return f.Toks }
+func (f *Formatted) SetTokens(toks []Node) { f.Toks = toks }
+func (f *Formatted) Pos() token.Pos        { return findFrom(f) }
+func (f *Formatted) End() token.Pos        { return findTo(f) }
 
 type MultiKeyword struct {
 	Toks     []Node
