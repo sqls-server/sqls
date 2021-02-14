@@ -2,6 +2,7 @@ package formatter
 
 import (
 	"errors"
+	"log"
 
 	"github.com/lighttiger2505/sqls/ast"
 	"github.com/lighttiger2505/sqls/ast/astutil"
@@ -73,6 +74,10 @@ func (e *formatEnvironment) indentLevelUp() {
 
 func (e *formatEnvironment) indentLevelDown() {
 	e.indentLevel--
+	if e.indentLevel < 0 {
+		log.Printf("invalid indent level, %d\n", e.indentLevel)
+		e.indentLevel = 0
+	}
 }
 
 func (e *formatEnvironment) getIndent() []ast.Node {
