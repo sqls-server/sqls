@@ -1,152 +1,50 @@
 package formatter
 
 import (
-	"errors"
-	"log"
-
 	"github.com/lighttiger2505/sqls/ast"
 	"github.com/lighttiger2505/sqls/ast/astutil"
-	"github.com/lighttiger2505/sqls/internal/config"
-	"github.com/lighttiger2505/sqls/internal/lsp"
-	"github.com/lighttiger2505/sqls/parser"
 	"github.com/lighttiger2505/sqls/token"
 )
 
-func Format(text string, params lsp.DocumentFormattingParams, cfg *config.Config) ([]lsp.TextEdit, error) {
-	if text == "" {
-		return nil, errors.New("empty")
-	}
-	parsed, err := parser.Parse(text)
-	if err != nil {
-		return nil, err
-	}
-
-	st := lsp.Position{
-		Line:      parsed.Pos().Line,
-		Character: parsed.Pos().Col,
-	}
-	en := lsp.Position{
-		Line:      parsed.End().Line,
-		Character: parsed.End().Col,
-	}
-
-	var formatted ast.Node
-	formatted = parsed
-	formatted = Eval(parsed, newFormatEnvironment(params.Options))
-	formatted = EvalTrailingWhitespace(formatted, newFormatEnvironment(params.Options))
-
-	opts := &ast.RenderOptions{
-		LowerCase: cfg.LowercaseKeywords,
-	}
-	res := []lsp.TextEdit{
-		{
-			Range: lsp.Range{
-				Start: st,
-				End:   en,
-			},
-			NewText: formatted.Render(opts),
-		},
-	}
-	return res, nil
-}
-
-type formatEnvironment struct {
-	reader      *astutil.NodeReader
-	indentLevel int
-	options     lsp.FormattingOptions
-
-	indentNode ast.Node
-}
-
-func newFormatEnvironment(options lsp.FormattingOptions) *formatEnvironment {
-	return &formatEnvironment{options: options}
-}
-
-func (e *formatEnvironment) indentLevelReset() {
-	e.indentLevel = 0
-}
-
-func (e *formatEnvironment) indentLevelUp() {
-	e.indentLevel++
-}
-
-func (e *formatEnvironment) indentLevelDown() {
-	e.indentLevel--
-	if e.indentLevel < 0 {
-		log.Printf("invalid indent level, %d\n", e.indentLevel)
-		e.indentLevel = 0
-	}
-}
-
-func (e *formatEnvironment) getIndent() []ast.Node {
-	if e.indentNode == nil {
-		indent := whiteSpaceNodes(int(e.options.TabSize))
-		if !e.options.InsertSpaces {
-			indent = []ast.Node{tabNode}
-		}
-		e.indentNode = &ast.Indent{Toks: indent}
-	}
-
-	nodes := make([]ast.Node, e.indentLevel)
-	for i := 0; i < e.indentLevel; i++ {
-		nodes[i] = e.indentNode
-	}
-	return nodes
-}
-
-// type prefixFormatFn func(nodes []ast.Node, reader *astutil.NodeReader, env formatEnvironment) ([]ast.Node, formatEnvironment)
-//
-// type prefixFormatMap struct {
-// 	matcher   *astutil.NodeMatcher
-// 	formatter prefixFormatFn
-// }
-
-// func (pfm *prefixFormatMap) isMatch(reader *astutil.NodeReader) bool {
-// 	if pfm.matcher != nil && reader.CurNodeIs(*pfm.matcher) {
-// 		return true
-// 	}
-// 	return false
-// }
-
-func Eval(node ast.Node, env *formatEnvironment) ast.Node {
+func EvalIndent(node ast.Node, env *formatEnvironment) ast.Node {
 	switch node := node.(type) {
 	// case *ast.Query:
 	// 	return formatQuery(node, env)
 	// case *ast.Statement:
 	// 	return formatStatement(node, env)
 	case *ast.Item:
-		return formatItem(node, env)
+		return indentItem(node, env)
 	case *ast.MultiKeyword:
-		return formatMultiKeyword(node, env)
-	case *ast.Aliased:
-		return formatAliased(node, env)
-	case *ast.Identifer:
-		return formatIdentifer(node, env)
-	case *ast.MemberIdentifer:
-		return formatMemberIdentifer(node, env)
-	case *ast.Operator:
-		return formatOperator(node, env)
-	case *ast.Comparison:
-		return formatComparison(node, env)
+		return indentMultiKeyword(node, env)
+	// case *ast.Aliased:
+	// 	return pipeAppendEnv(indentAliased(node, env))
+	// case *ast.Identifer:
+	// 	return pipeAppendEnv(indentIdentifer(node, env))
+	// case *ast.MemberIdentifer:
+	// 	return pipeAppendEnv(indentMemberIdentifer(node, env))
+	// case *ast.Operator:
+	// 	return pipeAppendEnv(indentOperator(node, env))
+	// case *ast.Comparison:
+	// 	return pipeAppendEnv(indentComparison(node, env))
 	case *ast.Parenthesis:
-		return formatParenthesis(node, env)
+		return indentParenthesis(node, env)
 	// case *ast.ParenthesisInner:
-	case *ast.FunctionLiteral:
-		return formatFunctionLiteral(node, env)
+	// case *ast.FunctionLiteral:
+	// 	return pipeAppendEnv(indentFunctionLiteral(node, env))
 	case *ast.IdentiferList:
-		return formatIdentiferList(node, env)
+		return indentIdentiferList(node, env)
 	// case *ast.SwitchCase:
 	// case *ast.Null:
 	default:
 		if list, ok := node.(ast.TokenList); ok {
-			return formatTokenList(list, env)
+			return indentTokenList(list, env)
 		} else {
-			return formatNode(node, env)
+			return indentNode(node, env)
 		}
 	}
 }
 
-func formatItem(node ast.Node, env *formatEnvironment) ast.Node {
+func indentItem(node ast.Node, env *formatEnvironment) ast.Node {
 	results := []ast.Node{node}
 
 	// whitespaceAfterMatcher := astutil.NodeMatcher{
@@ -256,7 +154,7 @@ func formatItem(node ast.Node, env *formatEnvironment) ast.Node {
 	return &ast.Formatted{Toks: results}
 }
 
-func formatMultiKeyword(node *ast.MultiKeyword, env *formatEnvironment) ast.Node {
+func indentMultiKeyword(node *ast.MultiKeyword, env *formatEnvironment) ast.Node {
 	results := []ast.Node{}
 	for i, kw := range node.GetKeywords() {
 		results = append(results, kw)
@@ -309,67 +207,76 @@ func formatMultiKeyword(node *ast.MultiKeyword, env *formatEnvironment) ast.Node
 	return &ast.Formatted{Toks: results}
 }
 
-func formatAliased(node *ast.Aliased, env *formatEnvironment) ast.Node {
-	var results []ast.Node
-	if node.IsAs {
-		results = []ast.Node{
-			Eval(node.RealName, env),
-			whitespaceNode,
-			node.As,
-			whitespaceNode,
-			Eval(node.AliasedName, env),
-		}
-	} else {
-		results = []ast.Node{
-			Eval(node.RealName, env),
-			whitespaceNode,
-			Eval(node.AliasedName, env),
-		}
-	}
-	node.SetTokens(results)
-	return node
-}
+// func indentAliased(node *ast.Aliased, env *formatEnvironment) ast.Node {
+// 	var results []ast.Node
+// 	if node.IsAs {
+// 		results = []ast.Node{
+// 			Eval(node.RealName, env),
+// 			whitespaceNode,
+// 			node.As,
+// 			whitespaceNode,
+// 			Eval(node.AliasedName, env),
+// 		}
+// 	} else {
+// 		results = []ast.Node{
+// 			Eval(node.RealName, env),
+// 			whitespaceNode,
+// 			Eval(node.AliasedName, env),
+// 		}
+// 	}
+// 	return &ast.ItemWith{Toks: results}
+// }
 
-func formatIdentifer(node ast.Node, env *formatEnvironment) ast.Node {
-	return node
-}
+// func indentIdentifer(node ast.Node, env *formatEnvironment) ast.Node {
+// 	results := []ast.Node{node}
+// 	// results := []ast.Node{node, whitespaceNode}
+//
+// 	// commaMatcher := astutil.NodeMatcher{
+// 	// 	ExpectTokens: []token.Kind{
+// 	// 		token.Comma,
+// 	// 	},
+// 	// }
+// 	// if !env.reader.PeekNodeIs(true, commaMatcher) {
+// 	// 	results = append(results, whitespaceNode)
+// 	// }
+//
+// 	return &ast.ItemWith{Toks: results}
+// }
 
-func formatMemberIdentifer(node *ast.MemberIdentifer, env *formatEnvironment) ast.Node {
-	results := []ast.Node{
-		Eval(node.Parent, env),
-		periodNode,
-		Eval(node.Child, env),
-	}
-	node.SetTokens(results)
-	return node
-}
+// func indentMemberIdentifer(node *ast.MemberIdentifer, env *formatEnvironment) ast.Node {
+// 	results := []ast.Node{
+// 		Eval(node.Parent, env),
+// 		periodNode,
+// 		Eval(node.Child, env),
+// 	}
+// 	return &ast.ItemWith{Toks: results}
+// }
 
-func formatOperator(node *ast.Operator, env *formatEnvironment) ast.Node {
-	results := []ast.Node{
-		Eval(node.Left, env),
-		whitespaceNode,
-		node.Operator,
-		whitespaceNode,
-		Eval(node.Right, env),
-	}
-	node.SetTokens(results)
-	return node
-}
+// func indentOperator(node *ast.Operator, env *formatEnvironment) ast.Node {
+// 	results := []ast.Node{
+// 		Eval(node.Left, env),
+// 		whitespaceNode,
+// 		node.Operator,
+// 		whitespaceNode,
+// 		Eval(node.Right, env),
+// 	}
+// 	return &ast.ItemWith{Toks: results}
+// }
 
-func formatComparison(node *ast.Comparison, env *formatEnvironment) ast.Node {
-	results := []ast.Node{
-		Eval(node.Left, env),
-		whitespaceNode,
-		node.Comparison,
-		whitespaceNode,
-		Eval(node.Right, env),
-	}
-	node.SetTokens(results)
-	return node
-}
+// func indentComparison(node *ast.Comparison, env *formatEnvironment) ast.Node {
+// 	results := []ast.Node{
+// 		Eval(node.Left, env),
+// 		whitespaceNode,
+// 		node.Comparison,
+// 		whitespaceNode,
+// 		Eval(node.Right, env),
+// 	}
+// 	return &ast.ItemWith{Toks: results}
+// }
 
-func formatParenthesis(node *ast.Parenthesis, env *formatEnvironment) ast.Node {
+func indentParenthesis(node *ast.Parenthesis, env *formatEnvironment) ast.Node {
 	results := []ast.Node{}
+	// results = append(results, whitespaceNode)
 	results = append(results, lparenNode)
 	startIndentLevel := env.indentLevel
 	env.indentLevelUp()
@@ -380,16 +287,16 @@ func formatParenthesis(node *ast.Parenthesis, env *formatEnvironment) ast.Node {
 	results = append(results, linebreakNode)
 	results = append(results, env.getIndent()...)
 	results = append(results, rparenNode)
-
-	node.SetTokens(results)
-	return node
+	// results = append(results, whitespaceNode)
+	return &ast.Formatted{Toks: results}
 }
 
-func formatFunctionLiteral(node *ast.FunctionLiteral, env *formatEnvironment) ast.Node {
-	return node
-}
+// func indentFunctionLiteral(node *ast.FunctionLiteral, env *formatEnvironment) ast.Node {
+// 	results := []ast.Node{node}
+// 	return &ast.ItemWith{Toks: results}
+// }
 
-func formatIdentiferList(identiferList *ast.IdentiferList, env *formatEnvironment) ast.Node {
+func indentIdentiferList(identiferList *ast.IdentiferList, env *formatEnvironment) ast.Node {
 	idents := identiferList.GetIdentifers()
 	results := []ast.Node{}
 	for i, ident := range idents {
@@ -399,27 +306,20 @@ func formatIdentiferList(identiferList *ast.IdentiferList, env *formatEnvironmen
 			results = append(results, env.getIndent()...)
 		}
 	}
-	identiferList.SetTokens(results)
-	return identiferList
+	return &ast.Formatted{Toks: results}
 }
 
-func formatTokenList(list ast.TokenList, env *formatEnvironment) ast.Node {
+func indentTokenList(list ast.TokenList, env *formatEnvironment) ast.Node {
 	results := []ast.Node{}
 	reader := astutil.NewNodeReader(list)
 	for reader.NextNode(false) {
 		env.reader = reader
-		res := Eval(reader.CurNode, env)
-		formatted, ok := res.(*ast.Formatted)
-		if ok {
-			results = append(results, formatted.GetTokens()...)
-		} else {
-			results = append(results, res)
-		}
+		results = append(results, EvalIndent(reader.CurNode, env))
 	}
 	reader.Node.SetTokens(results)
 	return reader.Node
 }
 
-func formatNode(node ast.Node, env *formatEnvironment) ast.Node {
+func indentNode(node ast.Node, env *formatEnvironment) ast.Node {
 	return node
 }

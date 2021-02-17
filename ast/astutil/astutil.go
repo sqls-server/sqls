@@ -106,6 +106,19 @@ func NewNodeReader(list ast.TokenList) *NodeReader {
 	}
 }
 
+func NewNodeReaderInc(node ast.Node) *NodeReader {
+	list, ok := node.(ast.TokenList)
+	if ok {
+		return &NodeReader{
+			Node: list,
+		}
+	}
+	q := &ast.Query{Toks: []ast.Node{node}}
+	return &NodeReader{
+		Node: q,
+	}
+}
+
 func (nr *NodeReader) CopyReader() *NodeReader {
 	return &NodeReader{
 		Node:  nr.Node,
