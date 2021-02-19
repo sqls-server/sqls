@@ -11,12 +11,24 @@ type (
 	infixFormatFn  func(reader *astutil.NodeReader) ast.Node
 )
 
+var indentMatcher = astutil.NodeMatcher{
+	NodeTypes: []ast.NodeType{
+		ast.TypeIndent,
+	},
+}
+
+var wsMatcher = astutil.NodeMatcher{
+	ExpectTokens: []token.Kind{
+		token.Whitespace,
+	},
+}
+
 func formatPrefixGroup(reader *astutil.NodeReader, matcher astutil.NodeMatcher, fn prefixFormatFn) ast.Node {
 	var replaceNodes []ast.Node
 	for reader.NextNode(false) {
 		if reader.CurNodeIs(matcher) {
 			replaceNodes = append(replaceNodes, fn(reader))
-		} else if list, ok := reader.CurNode.(ast.TokenList); ok {
+		} else if list, ok := reader.CurNode.(ast.TokenList); ok && !reader.CurNodeIs(indentMatcher) {
 			newReader := astutil.NewNodeReader(list)
 			replaceNodes = append(replaceNodes, formatPrefixGroup(newReader, matcher, fn))
 		} else {
@@ -33,7 +45,7 @@ func formatInfixGroup(reader *astutil.NodeReader, matcher astutil.NodeMatcher, i
 	for reader.NextNode(false) {
 		if reader.PeekNodeIs(ignoreWhiteSpace, matcher) {
 			replaceNodes = append(replaceNodes, fn(reader))
-		} else if list, ok := reader.CurNode.(ast.TokenList); ok {
+		} else if list, ok := reader.CurNode.(ast.TokenList); ok && !reader.CurNodeIs(indentMatcher) {
 			newReader := astutil.NewNodeReader(list)
 			replaceNodes = append(replaceNodes, formatInfixGroup(newReader, matcher, ignoreWhiteSpace, fn))
 		} else {
@@ -50,6 +62,7 @@ func EvalTrailingWhitespace(node ast.Node, env *formatEnvironment) ast.Node {
 	result = formatPrefixGroup(astutil.NewNodeReaderInc(result), indentPrefixMatcher, formatIndent)
 
 	result = formatInfixGroup(astutil.NewNodeReaderInc(result), lineBreakInfixMatcher, false, formatLineBreakInfix)
+	result = formatInfixGroup(astutil.NewNodeReaderInc(result), whitespaceInfixMatcher, false, formatWhitespaceInfix)
 	return result
 }
 
@@ -115,6 +128,24 @@ func formatLineBreakInfix(reader *astutil.NodeReader) ast.Node {
 		if reader.PeekNodeIs(false, lineBreakInfixMatcher) {
 			reader.NextNode(false)
 			return reader.CurNode
+		}
+	}
+	return curNode
+}
+
+var whitespaceInfixMatcher = astutil.NodeMatcher{
+	ExpectTokens: []token.Kind{
+		token.Whitespace,
+	},
+}
+
+func formatWhitespaceInfix(reader *astutil.NodeReader) ast.Node {
+	curNode := reader.CurNode
+	for reader.PeekNodeIs(false, wsMatcher) {
+		if reader.CurNodeIs(wsMatcher) {
+			reader.NextNode(false)
+		} else {
+			break
 		}
 	}
 	return curNode
