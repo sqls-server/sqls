@@ -1,0 +1,16 @@
+connections:
+  - alias: mysql_with_bastion
+    driver: mysql
+    dataSourceName: ""
+    proto: tcp
+    user: admin
+    passwd: Q+ACgv12ABx/
+    host: 192.168.121.163
+    port: 3306
+    dbName: world
+    sshConfig:
+      host: ""
+      port: 22
+      user: vagrant
+      passPhrase: passphrase1234
+      privateKey: /home/lighttiger2505/.ssh/id_rsa

@@ -1,0 +1,4 @@
+connections:
+  - alias: sqls_sqlite3
+    driver: sqlite3
+    dataSourceName: ""
