@@ -2,7 +2,6 @@ package config
 
 import (
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -26,7 +25,6 @@ type Config struct {
 }
 
 func (c *Config) Validate() error {
-	fmt.Println("Validate")
 	if len(c.Connections) > 0 {
 		return c.Connections[0].Validate()
 	}
