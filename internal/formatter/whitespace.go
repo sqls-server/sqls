@@ -23,6 +23,12 @@ var wsMatcher = astutil.NodeMatcher{
 	},
 }
 
+var lineBreakMatcher = astutil.NodeMatcher{
+	ExpectKeyword: []string{
+		"\n",
+	},
+}
+
 func formatPrefixGroup(reader *astutil.NodeReader, matcher astutil.NodeMatcher, fn prefixFormatFn) ast.Node {
 	var replaceNodes []ast.Node
 	for reader.NextNode(false) {
@@ -58,74 +64,49 @@ func formatInfixGroup(reader *astutil.NodeReader, matcher astutil.NodeMatcher, i
 
 func EvalTrailingWhitespace(node ast.Node, env *formatEnvironment) ast.Node {
 	result := node
-	result = formatPrefixGroup(astutil.NewNodeReaderInc(result), lineBreakPrefixMatcher, formatLineBreak)
-	result = formatPrefixGroup(astutil.NewNodeReaderInc(result), indentPrefixMatcher, formatIndent)
+	result = formatPrefixGroup(astutil.NewNodeReaderInc(result), lineBreakMatcher, trailLinebreakAfterWhitespace)
+	result = formatPrefixGroup(astutil.NewNodeReaderInc(result), indentMatcher, trailIndentAfterWhitespace)
+	result = formatPrefixGroup(astutil.NewNodeReaderInc(result), indentMatcher, trailIndentAfterLinebreak)
 
-	result = formatInfixGroup(astutil.NewNodeReaderInc(result), lineBreakInfixMatcher, false, formatLineBreakInfix)
-	result = formatInfixGroup(astutil.NewNodeReaderInc(result), whitespaceInfixMatcher, false, formatWhitespaceInfix)
+	result = formatInfixGroup(astutil.NewNodeReaderInc(result), lineBreakMatcher, false, trailLinebreakBeforeWhitespace)
+	result = formatInfixGroup(astutil.NewNodeReaderInc(result), wsMatcher, false, trailDualWhitespace)
 	return result
 }
 
-var lineBreakPrefixMatcher = astutil.NodeMatcher{
-	ExpectKeyword: []string{
-		"\n",
-	},
-}
-
-func formatLineBreak(reader *astutil.NodeReader) ast.Node {
+func trailLinebreakAfterWhitespace(reader *astutil.NodeReader) ast.Node {
 	lineBreakNode := reader.CurNode
-	wsMatcher := astutil.NodeMatcher{
-		ExpectTokens: []token.Kind{
-			token.Whitespace,
-		},
-	}
 	for reader.PeekNodeIs(false, wsMatcher) {
 		reader.NextNode(false)
 	}
 	return lineBreakNode
 }
 
-var indentPrefixMatcher = astutil.NodeMatcher{
-	NodeTypes: []ast.NodeType{
-		ast.TypeIndent,
-	},
-}
-
-func formatIndent(reader *astutil.NodeReader) ast.Node {
-	tabNode := reader.CurNode
-	wsMatcher := astutil.NodeMatcher{
-		ExpectTokens: []token.Kind{
-			token.Whitespace,
-		},
-	}
+func trailIndentAfterWhitespace(reader *astutil.NodeReader) ast.Node {
+	indentNode := reader.CurNode
 	for reader.PeekNodeIs(false, wsMatcher) {
 		reader.NextNode(false)
 	}
-	return tabNode
+	return indentNode
 }
 
-var lineBreakInfixMatcher = astutil.NodeMatcher{
-	ExpectKeyword: []string{
-		"\n",
-	},
-}
-
-func formatLineBreakInfix(reader *astutil.NodeReader) ast.Node {
-	curNode := reader.CurNode
-	wsMatcher := astutil.NodeMatcher{
-		ExpectTokens: []token.Kind{
-			token.Whitespace,
-		},
+func trailIndentAfterLinebreak(reader *astutil.NodeReader) ast.Node {
+	indentNode := reader.CurNode
+	for reader.PeekNodeIs(false, lineBreakMatcher) {
+		reader.NextNode(false)
 	}
+	return indentNode
+}
 
+func trailLinebreakBeforeWhitespace(reader *astutil.NodeReader) ast.Node {
+	curNode := reader.CurNode
 	if !reader.CurNodeIs(wsMatcher) {
-		formatted := formatInfixGroup(astutil.NewNodeReaderInc(reader.CurNode), lineBreakInfixMatcher, false, formatLineBreakInfix)
+		formatted := formatInfixGroup(astutil.NewNodeReaderInc(reader.CurNode), lineBreakMatcher, false, trailLinebreakBeforeWhitespace)
 		reader.Replace(formatted, reader.Index-1)
 		return curNode
 	}
 
 	for reader.CurNodeIs(wsMatcher) {
-		if reader.PeekNodeIs(false, lineBreakInfixMatcher) {
+		if reader.PeekNodeIs(false, lineBreakMatcher) {
 			reader.NextNode(false)
 			return reader.CurNode
 		}
@@ -139,7 +120,7 @@ var whitespaceInfixMatcher = astutil.NodeMatcher{
 	},
 }
 
-func formatWhitespaceInfix(reader *astutil.NodeReader) ast.Node {
+func trailDualWhitespace(reader *astutil.NodeReader) ast.Node {
 	curNode := reader.CurNode
 	for reader.PeekNodeIs(false, wsMatcher) {
 		if reader.CurNodeIs(wsMatcher) {

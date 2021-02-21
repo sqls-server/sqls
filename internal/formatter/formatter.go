@@ -32,6 +32,7 @@ func Format(text string, params lsp.DocumentFormattingParams, cfg *config.Config
 
 	var formatted ast.Node
 	formatted = parsed
+	formatted = EvalTrailingWhitespace(formatted, newFormatEnvironment(params.Options))
 	formatted = Eval(parsed, newFormatEnvironment(params.Options))
 	formatted = EvalTrailingWhitespace(formatted, newFormatEnvironment(params.Options))
 
@@ -94,26 +95,8 @@ func (e *formatEnvironment) getIndent() []ast.Node {
 	return nodes
 }
 
-// type prefixFormatFn func(nodes []ast.Node, reader *astutil.NodeReader, env formatEnvironment) ([]ast.Node, formatEnvironment)
-//
-// type prefixFormatMap struct {
-// 	matcher   *astutil.NodeMatcher
-// 	formatter prefixFormatFn
-// }
-
-// func (pfm *prefixFormatMap) isMatch(reader *astutil.NodeReader) bool {
-// 	if pfm.matcher != nil && reader.CurNodeIs(*pfm.matcher) {
-// 		return true
-// 	}
-// 	return false
-// }
-
 func Eval(node ast.Node, env *formatEnvironment) ast.Node {
 	switch node := node.(type) {
-	// case *ast.Query:
-	// 	return formatQuery(node, env)
-	// case *ast.Statement:
-	// 	return formatStatement(node, env)
 	case *ast.Item:
 		return formatItem(node, env)
 	case *ast.MultiKeyword:
@@ -130,13 +113,10 @@ func Eval(node ast.Node, env *formatEnvironment) ast.Node {
 		return formatComparison(node, env)
 	case *ast.Parenthesis:
 		return formatParenthesis(node, env)
-	// case *ast.ParenthesisInner:
 	case *ast.FunctionLiteral:
 		return formatFunctionLiteral(node, env)
 	case *ast.IdentiferList:
 		return formatIdentiferList(node, env)
-	// case *ast.SwitchCase:
-	// case *ast.Null:
 	default:
 		if list, ok := node.(ast.TokenList); ok {
 			return formatTokenList(list, env)
@@ -148,32 +128,6 @@ func Eval(node ast.Node, env *formatEnvironment) ast.Node {
 
 func formatItem(node ast.Node, env *formatEnvironment) ast.Node {
 	results := []ast.Node{node}
-
-	// whitespaceAfterMatcher := astutil.NodeMatcher{
-	// 	ExpectKeyword: []string{
-	// 		"JOIN",
-	// 		"ON",
-	// 		"AND",
-	// 		"OR",
-	// 		"LIMIT",
-	// 		"WHEN",
-	// 		"ELSE",
-	// 	},
-	// }
-	// if whitespaceAfterMatcher.IsMatch(node) {
-	// 	results = append(results, whitespaceNode)
-	// }
-	// whitespaceAroundMatcher := astutil.NodeMatcher{
-	// 	ExpectKeyword: []string{
-	// 		"BETWEEN",
-	// 		"USING",
-	// 		"THEN",
-	// 	},
-	// }
-	// if whitespaceAroundMatcher.IsMatch(node) {
-	// 	results = unshift(results, whitespaceNode)
-	// 	results = append(results, whitespaceNode)
-	// }
 
 	// Add an adjustment indent before the cursor
 	outdentBeforeMatcher := astutil.NodeMatcher{
@@ -279,13 +233,6 @@ func formatMultiKeyword(node *ast.MultiKeyword, env *formatEnvironment) ast.Node
 		"ORDER BY",
 	}
 
-	// whitespaceAfterMatcher := astutil.NodeMatcher{
-	// 	ExpectKeyword: joinKeywords,
-	// }
-	// if whitespaceAfterMatcher.IsMatch(node) {
-	// 	results = append(results, whitespaceNode)
-	// }
-
 	// Add an adjustment indent before the cursor
 	outdentBeforeMatcher := astutil.NodeMatcher{
 		ExpectKeyword: append(joinKeywords, byKeywords...),
@@ -380,7 +327,6 @@ func formatParenthesis(node *ast.Parenthesis, env *formatEnvironment) ast.Node {
 	results = append(results, linebreakNode)
 	results = append(results, env.getIndent()...)
 	results = append(results, rparenNode)
-
 	node.SetTokens(results)
 	return node
 }
