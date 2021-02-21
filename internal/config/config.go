@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -22,6 +23,14 @@ var (
 type Config struct {
 	LowercaseKeywords bool                 `json:"lowercaseKeywords" yaml:"lowercaseKeywords"`
 	Connections       []*database.DBConfig `json:"connections" yaml:"connections"`
+}
+
+func (c *Config) Validate() error {
+	fmt.Println("Validate")
+	if len(c.Connections) > 0 {
+		return c.Connections[0].Validate()
+	}
+	return nil
 }
 
 func NewConfig() *Config {
@@ -68,6 +77,10 @@ func (c *Config) Load(fp string) error {
 
 	if err = yaml.Unmarshal(b, c); err != nil {
 		return xerrors.Errorf("failed unmarshal yaml, %+v", err, string(b))
+	}
+
+	if err := c.Validate(); err != nil {
+		return xerrors.Errorf("failed validation, %+v", err)
 	}
 	return nil
 }

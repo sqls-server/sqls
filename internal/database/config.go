@@ -1,6 +1,7 @@
 package database
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 
@@ -32,12 +33,66 @@ type DBConfig struct {
 	SSHCfg         *SSHConfig             `json:"sshConfig" yaml:"sshConfig"`
 }
 
+func (c *DBConfig) Validate() error {
+	if c.Driver == "" {
+		return errors.New("required: connections[].driver")
+	}
+
+	switch c.Driver {
+	case dialect.DatabaseDriverMySQL, dialect.DatabaseDriverPostgreSQL:
+		if c.DataSourceName == "" && c.Proto == "" {
+			return errors.New("required: connections[].dataSourceName or connections[].proto")
+		}
+
+		if c.DataSourceName == "" && c.Proto != "" {
+			if c.User == "" {
+				return errors.New("required: connections[].user")
+			}
+			switch c.Proto {
+			case ProtoTCP, ProtoUDP:
+				if c.Host == "" {
+					return errors.New("required: connections[].host")
+				}
+			case ProtoUnix:
+				if c.Path == "" {
+					return errors.New("required: connections[].path")
+				}
+			default:
+				return errors.New("invalid: connections[].proto")
+			}
+			if c.SSHCfg != nil {
+				return c.SSHCfg.Validate()
+			}
+		}
+	case dialect.DatabaseDriverSQLite3:
+		if c.DataSourceName == "" {
+			return errors.New("required: connections[].dataSourceName")
+		}
+	default:
+		return errors.New("invalid: connections[].driver")
+	}
+	return nil
+}
+
 type SSHConfig struct {
 	Host       string `json:"host" yaml:"host"`
 	Port       int    `json:"port" yaml:"port"`
 	User       string `json:"user" yaml:"user"`
 	PassPhrase string `json:"passPhrase" yaml:"passPhrase"`
 	PrivateKey string `json:"privateKey" yaml:"privateKey"`
+}
+
+func (c *SSHConfig) Validate() error {
+	if c.Host == "" {
+		return errors.New("required: connections[]sshConfig.host")
+	}
+	if c.User == "" {
+		return errors.New("required: connections[].sshConfig.user")
+	}
+	if c.PrivateKey == "" {
+		return errors.New("required: connections[].sshConfig.privateKey")
+	}
+	return nil
 }
 
 func (s *SSHConfig) Endpoint() string {
