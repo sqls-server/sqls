@@ -387,12 +387,25 @@ const (
 func DataBaseKeywords(driver DatabaseDriver) []string {
 	switch driver {
 	case DatabaseDriverMySQL:
-		return mysql8Keyword
+		return mysql57Keyword
 	case DatabaseDriverPostgreSQL:
 		return postgresql13Keywords
 	case DatabaseDriverSQLite3:
 		return sqliteKeywords
 	default:
 		return sqliteKeywords
+	}
+}
+
+func DataBaseFunctions(driver DatabaseDriver) []string {
+	switch driver {
+	case DatabaseDriverMySQL:
+		return mysql57function
+	case DatabaseDriverPostgreSQL:
+		return []string{}
+	case DatabaseDriverSQLite3:
+		return []string{}
+	default:
+		return []string{}
 	}
 }

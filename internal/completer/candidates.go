@@ -24,6 +24,22 @@ func (c *Completer) keywordCandidates(lower bool, keywords []string) []lsp.Compl
 	return candidates
 }
 
+func (c *Completer) functionCandidates(lower bool, keywords []string) []lsp.CompletionItem {
+	candidates := []lsp.CompletionItem{}
+	for _, k := range keywords {
+		candidate := lsp.CompletionItem{
+			Label:  k,
+			Kind:   lsp.FunctionCompletion,
+			Detail: "Function",
+		}
+		if lower {
+			candidate.Label = strings.ToLower(candidate.Label)
+		}
+		candidates = append(candidates, candidate)
+	}
+	return candidates
+}
+
 func (c *Completer) columnCandidates(targetTables []*parseutil.TableInfo, parent *completionParent) []lsp.CompletionItem {
 	candidates := []lsp.CompletionItem{}
 

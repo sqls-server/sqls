@@ -159,6 +159,10 @@ func (c *Completer) Complete(text string, params lsp.CompletionParams, lowercase
 		drivers := dialect.DataBaseKeywords(c.Driver)
 		items = append(items, c.keywordCandidates(lowercaseKeywords, drivers)...)
 	}
+	if completionTypeIs(ctx.types, CompletionTypeFunction) {
+		drivers := dialect.DataBaseFunctions(c.Driver)
+		items = append(items, c.functionCandidates(lowercaseKeywords, drivers)...)
+	}
 
 	items = filterCandidates(items, lastWord)
 
