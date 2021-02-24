@@ -1,8 +1,8 @@
 version: '3'
 services:
-  mysql:
-    image: mysql:5.7
-    container_name: sqls_mysql
+  mysql8:
+    image: mysql:8
+    container_name: sqls_mysql8
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: world
@@ -11,13 +11,40 @@ services:
       TZ: 'Asia/Tokyo'
     command: mysqld --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     volumes:
-    - ./.docker/mysql/data:/var/lib/mysql
+    - ./.docker/mysql/data:/var/lib/mysql8
+    ports:
+    - 13307:3306
+  mysql57:
+    image: mysql:5.7
+    container_name: sqls_mysql57
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: world
+      MYSQL_USER: docker
+      MYSQL_PASSWORD: docker
+      TZ: 'Asia/Tokyo'
+    command: mysqld --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    volumes:
+    - ./.docker/mysql/data:/var/lib/mysql57
     ports:
     - 13306:3306
-    restart: always
-  db:
+  mysql56:
+    image: mysql:5.6
+    container_name: sqls_mysql56
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: world
+      MYSQL_USER: docker
+      MYSQL_PASSWORD: docker
+      TZ: 'Asia/Tokyo'
+    command: mysqld --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    volumes:
+    - ./.docker/mysql/data:/var/lib/mysql56
+    ports:
+    - 13305:3306
+  postgres12:
     image: postgres:12-alpine
-    container_name: sqls_postgres
+    container_name: sqls_postgres12
     ports: 
       - "15432:5432"
     environment:
@@ -28,4 +55,3 @@ services:
       - DATABASE_HOST=localhost
     volumes:
       - ./.docker/postgres/data:/var/lib/postgresql/data
-    restart: always

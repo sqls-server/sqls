@@ -15,7 +15,13 @@ import (
 
 func init() {
 	RegisterOpen("mysql", mysqlOpen)
+	RegisterOpen("mysql8", mysqlOpen)
+	RegisterOpen("mysql57", mysqlOpen)
+	RegisterOpen("mysql56", mysqlOpen)
 	RegisterFactory("mysql", NewMySQLDBRepository)
+	RegisterFactory("mysql8", NewMySQLDBRepository)
+	RegisterFactory("mysql57", NewMySQLDBRepository)
+	RegisterFactory("mysql56", NewMySQLDBRepository)
 }
 
 func mysqlOpen(dbConnCfg *DBConfig) (*DBConnection, error) {
@@ -52,6 +58,7 @@ func mysqlOpen(dbConnCfg *DBConfig) (*DBConnection, error) {
 	return &DBConnection{
 		Conn:    conn,
 		SSHConn: sshConn,
+		Driver:  dbConnCfg.Driver,
 	}, nil
 }
 
@@ -119,7 +126,8 @@ func genMysqlConfig(connCfg *DBConfig) (*mysql.Config, error) {
 }
 
 type MySQLDBRepository struct {
-	Conn *sql.DB
+	Conn   *sql.DB
+	driver dialect.DatabaseDriver
 }
 
 func NewMySQLDBRepository(conn *sql.DB) DBRepository {
@@ -127,7 +135,7 @@ func NewMySQLDBRepository(conn *sql.DB) DBRepository {
 }
 
 func (db *MySQLDBRepository) Driver() dialect.DatabaseDriver {
-	return dialect.DatabaseDriverMySQL
+	return db.driver
 }
 
 func (db *MySQLDBRepository) CurrentDatabase(ctx context.Context) (string, error) {

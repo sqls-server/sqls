@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/lighttiger2505/sqls/dialect"
 	"github.com/lighttiger2505/sqls/internal/completer"
 	"github.com/lighttiger2505/sqls/internal/lsp"
 	"github.com/sourcegraph/jsonrpc2"
@@ -26,13 +25,12 @@ func (s *Server) handleTextDocumentCompletion(ctx context.Context, conn *jsonrpc
 		return nil, fmt.Errorf("document not found: %s", params.TextDocument.URI)
 	}
 
-	var driver dialect.DatabaseDriver
-	connectionCfg := s.topConnection()
-	if connectionCfg != nil {
-		driver = connectionCfg.Driver
-	}
 	c := completer.NewCompleter(s.worker.Cache())
-	c.Driver = driver
+	if s.dbConn != nil {
+		c.Driver = s.dbConn.Driver
+	} else {
+		c.Driver = ""
+	}
 	completionItems, err := c.Complete(f.Text, params, s.getConfig().LowercaseKeywords)
 	if err != nil {
 		return nil, err

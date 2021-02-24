@@ -18,6 +18,7 @@ type Factory func(*sql.DB) DBRepository
 type DBConnection struct {
 	Conn    *sql.DB
 	SSHConn *ssh.Client
+	Driver  dialect.DatabaseDriver
 }
 
 func (db *DBConnection) Close() error {
