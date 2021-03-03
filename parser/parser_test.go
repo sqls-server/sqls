@@ -1066,11 +1066,17 @@ func TestParseIdentifierList(t *testing.T) {
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 4, input)
 				list := stmts[0].GetTokens()
-				testParenthesis(t, list[0], "(foo, bar, foobar)")
-				parenthesis := list[0].(*ast.Parenthesis)
-				tokens := parenthesis.Inner().GetTokens()
-				testIdentifierList(t, tokens[0], "foo, bar, foobar")
-				// il := testIdentifierList(t, tokens[0], "foo, bar, foobar")
+
+				parenthesis1 := testParenthesis(t, list[0], "(foo, bar, foobar)")
+				tokens1 := parenthesis1.Inner().GetTokens()
+				testIdentifierList(t, tokens1[0], "foo, bar, foobar")
+
+				testItem(t, list[1], ",")
+				testItem(t, list[2], " ")
+
+				parenthesis2 := testParenthesis(t, list[3], "(fooo, barr, fooobarr)")
+				tokens2 := parenthesis2.Inner().GetTokens()
+				testIdentifierList(t, tokens2[0], "fooo, barr, fooobarr")
 			},
 		},
 		{

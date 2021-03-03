@@ -20,11 +20,13 @@ type (
 func parsePrefixGroup(reader *astutil.NodeReader, matcher astutil.NodeMatcher, fn prefixParseFn) ast.TokenList {
 	var replaceNodes []ast.Node
 	for reader.NextNode(false) {
+		if list, ok := reader.CurNode.(ast.TokenList); ok {
+			newReader := astutil.NewNodeReader(list)
+			replaceNode := parsePrefixGroup(newReader, matcher, fn)
+			reader.Replace(replaceNode, reader.Index-1)
+		}
 		if reader.CurNodeIs(matcher) {
 			replaceNodes = append(replaceNodes, fn(reader))
-		} else if list, ok := reader.CurNode.(ast.TokenList); ok {
-			newReader := astutil.NewNodeReader(list)
-			replaceNodes = append(replaceNodes, parsePrefixGroup(newReader, matcher, fn))
 		} else {
 			replaceNodes = append(replaceNodes, reader.CurNode)
 		}
@@ -36,11 +38,13 @@ func parsePrefixGroup(reader *astutil.NodeReader, matcher astutil.NodeMatcher, f
 func parseInfixGroup(reader *astutil.NodeReader, matcher astutil.NodeMatcher, ignoreWhiteSpace bool, fn infixParseFn) ast.TokenList {
 	var replaceNodes []ast.Node
 	for reader.NextNode(false) {
+		if list, ok := reader.CurNode.(ast.TokenList); ok {
+			newReader := astutil.NewNodeReader(list)
+			replaceNode := parseInfixGroup(newReader, matcher, ignoreWhiteSpace, fn)
+			reader.Replace(replaceNode, reader.Index-1)
+		}
 		if reader.PeekNodeIs(ignoreWhiteSpace, matcher) {
 			replaceNodes = append(replaceNodes, fn(reader))
-		} else if list, ok := reader.CurNode.(ast.TokenList); ok {
-			newReader := astutil.NewNodeReader(list)
-			replaceNodes = append(replaceNodes, parseInfixGroup(newReader, matcher, ignoreWhiteSpace, fn))
 		} else {
 			replaceNodes = append(replaceNodes, reader.CurNode)
 		}
@@ -480,15 +484,6 @@ var aliasRecursionMatcher = astutil.NodeMatcher{
 }
 
 func parseAliasedWithoutAs(reader *astutil.NodeReader) ast.Node {
-	if reader.CurNodeIs(aliasRecursionMatcher) {
-		if list, ok := reader.CurNode.(ast.TokenList); ok {
-			// FIXME: more simplity
-			// For sub query
-			parenthesis := parsePrefixGroup(astutil.NewNodeReader(list), aliasLeftMatcher, parseAliasedWithoutAs)
-			reader.Replace(parenthesis, reader.Index-1)
-		}
-	}
-
 	if !reader.PeekNodeIs(true, aliasRightMatcher) {
 		return reader.CurNode
 	}
@@ -509,14 +504,6 @@ func parseAliasedWithoutAs(reader *astutil.NodeReader) ast.Node {
 func parseAliased(reader *astutil.NodeReader) ast.Node {
 	if !reader.CurNodeIs(aliasLeftMatcher) {
 		return reader.CurNode
-	}
-	if reader.CurNodeIs(aliasRecursionMatcher) {
-		if list, ok := reader.CurNode.(ast.TokenList); ok {
-			// FIXME: more simplity
-			// For sub query
-			parenthesis := parseInfixGroup(astutil.NewNodeReader(list), aliasInfixMatcher, true, parseAliased)
-			reader.Replace(parenthesis, reader.Index-1)
-		}
 	}
 
 	realName := reader.CurNode
@@ -657,8 +644,6 @@ func parseExpressionInParenthesis(reader *astutil.NodeReader) ast.Node {
 	if list, ok := reader.CurNode.(ast.TokenList); ok {
 		list = parseInfixGroup(astutil.NewNodeReader(list), operatorInfixMatcher, true, parseOperator)
 		list = parseInfixGroup(astutil.NewNodeReader(list), comparisonInfixMatcher, true, parseComparison)
-		list = parseInfixGroup(astutil.NewNodeReader(list), aliasInfixMatcher, true, parseAliased)
-		list = parseInfixGroup(astutil.NewNodeReader(list), identifierListInfixMatcher, true, parseIdentifierList)
 		return list
 	}
 	return reader.CurNode
