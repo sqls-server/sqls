@@ -1,8 +1,6 @@
 package parseutil
 
 import (
-	"fmt"
-
 	"github.com/lighttiger2505/sqls/ast"
 	"github.com/lighttiger2505/sqls/ast/astutil"
 	"github.com/lighttiger2505/sqls/token"
@@ -136,7 +134,6 @@ func isInsertValues(nw *NodeWalker) bool {
 			return true
 		}
 		if nw.PrevNodesIsWithDepth(true, genTokenMatcher([]token.Kind{token.Comma}), depth) {
-			fmt.Println("PrevNodesIs Comma")
 			return true
 		}
 	}

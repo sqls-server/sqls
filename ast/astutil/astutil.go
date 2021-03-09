@@ -167,13 +167,6 @@ func (nr *NodeReader) CurNodeIs(nm NodeMatcher) bool {
 	return false
 }
 
-func isEnclose(node ast.Node, pos token.Pos) bool {
-	if 0 <= token.ComparePos(pos, node.Pos()) && 0 >= token.ComparePos(pos, node.End()) {
-		return true
-	}
-	return false
-}
-
 func IsEnclose(node ast.Node, pos token.Pos) bool {
 	if 0 <= token.ComparePos(pos, node.Pos()) && 0 >= token.ComparePos(pos, node.End()) {
 		return true
@@ -183,7 +176,7 @@ func IsEnclose(node ast.Node, pos token.Pos) bool {
 
 func (nr *NodeReader) CurNodeEncloseIs(pos token.Pos) bool {
 	if nr.CurNode != nil {
-		return isEnclose(nr.CurNode, pos)
+		return IsEnclose(nr.CurNode, pos)
 	}
 	return false
 }
@@ -191,7 +184,7 @@ func (nr *NodeReader) CurNodeEncloseIs(pos token.Pos) bool {
 func (nr *NodeReader) PeekNodeEncloseIs(pos token.Pos) bool {
 	_, peekNode := nr.PeekNode(false)
 	if peekNode != nil {
-		return isEnclose(peekNode, pos)
+		return IsEnclose(peekNode, pos)
 	}
 	return false
 }
