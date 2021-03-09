@@ -3,6 +3,7 @@ package parseutil
 import (
 	"github.com/lighttiger2505/sqls/ast"
 	"github.com/lighttiger2505/sqls/ast/astutil"
+	"github.com/lighttiger2505/sqls/token"
 )
 
 type (
@@ -159,6 +160,7 @@ func parseInsertColumns(reader *astutil.NodeReader) []ast.Node {
 			ast.TypeParenthesis,
 		},
 	}
+
 	if !reader.PeekNodeIs(true, insertColumnsParenthesis) {
 		return []ast.Node{}
 	}
@@ -168,20 +170,34 @@ func parseInsertColumns(reader *astutil.NodeReader) []ast.Node {
 	if !ok {
 		return []ast.Node{}
 	}
-	identList, ok := parenthesis.Inner().GetTokens()[0].(*ast.IdentiferList)
-	if !ok {
-		return []ast.Node{}
+
+	inner, ok := parenthesis.Inner().(*ast.IdentiferList)
+	if ok {
+		return []ast.Node{inner}
 	}
-	return []ast.Node{identList}
+	firstToken, ok := parenthesis.Inner().GetTokens()[0].(*ast.IdentiferList)
+	if ok {
+		return []ast.Node{firstToken}
+	}
+	return []ast.Node{}
 }
 
-func ExtractInsertValues(parsed ast.TokenList) []ast.Node {
+func ExtractInsertValues(parsed ast.TokenList, pos token.Pos) []ast.Node {
 	insertTableIdentifer := astutil.NodeMatcher{
+		ExpectTokens: []token.Kind{
+			token.Comma,
+		},
 		ExpectKeyword: []string{
 			"VALUES",
 		},
 	}
-	return parsePrefix(astutil.NewNodeReader(parsed), insertTableIdentifer, parseInsertColumns)
+	values := parsePrefix(astutil.NewNodeReader(parsed), insertTableIdentifer, parseInsertValues)
+	for _, v := range values {
+		if astutil.IsEnclose(v, pos) {
+			return []ast.Node{v}
+		}
+	}
+	return []ast.Node{}
 }
 
 func parseInsertValues(reader *astutil.NodeReader) []ast.Node {

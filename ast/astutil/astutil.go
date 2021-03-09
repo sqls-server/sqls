@@ -174,6 +174,13 @@ func isEnclose(node ast.Node, pos token.Pos) bool {
 	return false
 }
 
+func IsEnclose(node ast.Node, pos token.Pos) bool {
+	if 0 <= token.ComparePos(pos, node.Pos()) && 0 >= token.ComparePos(pos, node.End()) {
+		return true
+	}
+	return false
+}
+
 func (nr *NodeReader) CurNodeEncloseIs(pos token.Pos) bool {
 	if nr.CurNode != nil {
 		return isEnclose(nr.CurNode, pos)

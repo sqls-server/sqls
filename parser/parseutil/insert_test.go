@@ -17,17 +17,43 @@ func TestExtractInsert(t *testing.T) {
 		vals  string
 	}{
 		{
-			name:  "",
+			name:  "single",
 			input: "insert into city (ID, Name, CountryCode) VALUES (123, 'aaa', '2020')",
 			pos: token.Pos{
 				Line: 0,
-				Col:  1,
+				Col:  50,
 			},
 			tbl: &TableInfo{
 				Name: "city",
 			},
 			cols: "ID, Name, CountryCode",
 			vals: "123, 'aaa', '2020'",
+		},
+		{
+			name:  "multi forcus first",
+			input: "insert into city (ID, Name, CountryCode) VALUES (123, 'aaa', '2020'), (456, 'bbb', '2021')",
+			pos: token.Pos{
+				Line: 0,
+				Col:  50,
+			},
+			tbl: &TableInfo{
+				Name: "city",
+			},
+			cols: "ID, Name, CountryCode",
+			vals: "123, 'aaa', '2020'",
+		},
+		{
+			name:  "multi forcus second",
+			input: "insert into city (ID, Name, CountryCode) VALUES (123, 'aaa', '2020'), (456, 'bbb', '2021')",
+			pos: token.Pos{
+				Line: 0,
+				Col:  72,
+			},
+			tbl: &TableInfo{
+				Name: "city",
+			},
+			cols: "ID, Name, CountryCode",
+			vals: "456, 'bbb', '2021'",
 		},
 	}
 
