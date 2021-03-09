@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -17,20 +18,70 @@ type signatureHelpTestCase struct {
 	want  lsp.SignatureHelp
 }
 
-// input is "insert into city (ID, Name, CountryCode) VALUES (123, 'aaa', '2020')"
 var signatureHelpTestCases = []signatureHelpTestCase{
-	genInsertPositionTest(50, 0),
-	genInsertPositionTest(52, 0),
-	genInsertPositionTest(53, 1),
-	genInsertPositionTest(59, 1),
-	genInsertPositionTest(60, 2),
-	genInsertPositionTest(67, 2),
+	// single record
+	// input is "insert into city (ID, Name, CountryCode) VALUES (123, 'aaa', '2020')"
+	genSingleRecordInsertTest(50, 0),
+	genSingleRecordInsertTest(52, 0),
+	genSingleRecordInsertTest(53, 1),
+	genSingleRecordInsertTest(59, 1),
+	genSingleRecordInsertTest(60, 2),
+	genSingleRecordInsertTest(67, 2),
+
+	// multi record
+	// input is "insert into city (ID, Name, CountryCode) VALUES (123, 'aaa', '2020'), (456, 'bbb', '2021')"
+	genMultiRecordInsertTest(50, 0),
+	genMultiRecordInsertTest(52, 0),
+	genMultiRecordInsertTest(53, 1),
+	genMultiRecordInsertTest(59, 1),
+	genMultiRecordInsertTest(60, 2),
+	genMultiRecordInsertTest(67, 2),
+
+	genMultiRecordInsertTest(72, 0),
+	genMultiRecordInsertTest(74, 0),
+	genMultiRecordInsertTest(76, 1),
+	genMultiRecordInsertTest(81, 1),
+	genMultiRecordInsertTest(83, 2),
+	genMultiRecordInsertTest(89, 2),
 }
 
-func genInsertPositionTest(col int, wantActiveParameter int) signatureHelpTestCase {
+func genSingleRecordInsertTest(col int, wantActiveParameter int) signatureHelpTestCase {
 	return signatureHelpTestCase{
-		name:  "",
+		name:  fmt.Sprintf("single record %d-%d", col, wantActiveParameter),
 		input: "insert into city (ID, Name, CountryCode) VALUES (123, 'aaa', '2020')",
+		line:  0,
+		col:   col,
+		want: lsp.SignatureHelp{
+			Signatures: []lsp.SignatureInformation{
+				{
+					Label:         "city (ID, Name, CountryCode)",
+					Documentation: "city table columns",
+					Parameters: []lsp.ParameterInformation{
+						{
+							Label:         "ID",
+							Documentation: "int(11) PRI auto_increment",
+						},
+						{
+							Label:         "Name",
+							Documentation: "char(35)",
+						},
+						{
+							Label:         "CountryCode",
+							Documentation: "char(3) MUL",
+						},
+					},
+				},
+			},
+			ActiveSignature: 0.0,
+			ActiveParameter: float64(wantActiveParameter),
+		},
+	}
+}
+
+func genMultiRecordInsertTest(col int, wantActiveParameter int) signatureHelpTestCase {
+	return signatureHelpTestCase{
+		name:  fmt.Sprintf("multi record %d-%d", col, wantActiveParameter),
+		input: "insert into city (ID, Name, CountryCode) VALUES (123, 'aaa', '2020'), (456, 'bbb', '2021')",
 		line:  0,
 		col:   col,
 		want: lsp.SignatureHelp{

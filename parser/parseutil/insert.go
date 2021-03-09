@@ -66,7 +66,7 @@ func ExtractInsert(parsed ast.TokenList, pos token.Pos) (*Insert, error) {
 	}
 
 	values := []*ast.IdentiferList{}
-	valuesNodes := ExtractInsertValues(stmt)
+	valuesNodes := ExtractInsertValues(stmt, pos)
 	for _, n := range valuesNodes {
 		n, ok := n.(*ast.IdentiferList)
 		if ok {

@@ -128,8 +128,14 @@ func isInsertValues(nw *NodeWalker) bool {
 			ast.TypeParenthesis,
 		},
 	}
-	if nw.CurNodeIs(ParenthesisMatcher) && nw.PrevNodesIs(true, genKeywordMatcher([]string{"VALUES"})) {
-		return true
+	depth, ok := nw.CurNodeDepth(ParenthesisMatcher)
+	if ok {
+		if nw.PrevNodesIsWithDepth(true, genKeywordMatcher([]string{"VALUES"}), depth) {
+			return true
+		}
+		if nw.PrevNodesIsWithDepth(true, genTokenMatcher([]token.Kind{token.Comma}), depth) {
+			return true
+		}
 	}
 	return false
 }

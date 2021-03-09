@@ -938,6 +938,27 @@ func TestParseAliased(t *testing.T) {
 				testItem(t, parenthesis[8], ")")
 			},
 		},
+		{
+			name:  "aliase in parenthesis",
+			input: "(SELECT ci.ID AS city_id, ci.Name AS city_name FROM world.city AS ci)",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+
+				list := stmts[0].GetTokens()
+				testParenthesis(t, list[0], input)
+
+				parenthesis := testTokenList(t, list[0], 9).GetTokens()
+				testItem(t, parenthesis[0], "(")
+				testItem(t, parenthesis[1], "SELECT")
+				testItem(t, parenthesis[2], " ")
+				testIdentifierList(t, parenthesis[3], "ci.ID AS city_id, ci.Name AS city_name")
+				testItem(t, parenthesis[4], " ")
+				testItem(t, parenthesis[5], "FROM")
+				testItem(t, parenthesis[6], " ")
+				testAliased(t, parenthesis[7], "world.city AS ci", "world.city", "ci")
+				testItem(t, parenthesis[8], ")")
+			},
+		},
 	}
 	for _, tt := range testcases {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1037,6 +1058,25 @@ func TestParseIdentifierList(t *testing.T) {
 				testIdentifierList_GetIndex(t, il, genPosOneline(16), 2)
 				testIdentifierList_GetIndex(t, il, genPosOneline(17), 2)
 				testIdentifierList_GetIndex(t, il, genPosOneline(18), -1)
+			},
+		},
+		{
+			name:  "parenthesis list",
+			input: "(foo, bar, foobar), (fooo, barr, fooobarr)",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 4, input)
+				list := stmts[0].GetTokens()
+
+				parenthesis1 := testParenthesis(t, list[0], "(foo, bar, foobar)")
+				tokens1 := parenthesis1.Inner().GetTokens()
+				testIdentifierList(t, tokens1[0], "foo, bar, foobar")
+
+				testItem(t, list[1], ",")
+				testItem(t, list[2], " ")
+
+				parenthesis2 := testParenthesis(t, list[3], "(fooo, barr, fooobarr)")
+				tokens2 := parenthesis2.Inner().GetTokens()
+				testIdentifierList(t, tokens2[0], "fooo, barr, fooobarr")
 			},
 		},
 		{
@@ -1374,12 +1414,12 @@ func testAliased(t *testing.T, node ast.Node, expect string, realName, aliasedNa
 
 func testIdentifierList(t *testing.T, node ast.Node, expect string) *ast.IdentiferList {
 	t.Helper()
+	if expect != node.String() {
+		t.Errorf("expected %q, got %q", expect, node.String())
+	}
 	il, ok := node.(*ast.IdentiferList)
 	if !ok {
 		t.Fatalf("invalid type want IdentiferList got %T", node)
-	}
-	if expect != node.String() {
-		t.Errorf("expected %q, got %q", expect, node.String())
 	}
 	return il
 }
