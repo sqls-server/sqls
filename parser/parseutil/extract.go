@@ -175,9 +175,12 @@ func parseInsertColumns(reader *astutil.NodeReader) []ast.Node {
 	if ok {
 		return []ast.Node{inner}
 	}
-	firstToken, ok := parenthesis.Inner().GetTokens()[0].(*ast.IdentiferList)
-	if ok {
-		return []ast.Node{firstToken}
+	list := parenthesis.Inner().GetTokens()
+	if len(list) > 0 {
+		firstToken, ok := list[0].(*ast.IdentiferList)
+		if ok {
+			return []ast.Node{firstToken}
+		}
 	}
 	return []ast.Node{}
 }
