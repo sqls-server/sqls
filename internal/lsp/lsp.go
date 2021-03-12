@@ -419,3 +419,70 @@ var (
 	Info    MessageType = 3
 	Log     MessageType = 4
 )
+
+type RenameParams struct {
+	TextDocument TextDocumentIdentifier `json:"textDocument"`
+	Position     Position               `json:"position"`
+	NewName      string                 `json:"newName"`
+	WorkDoneProgressParams
+}
+
+type RenameFile struct {
+	Kind    string            `json:"kind"`
+	OldURI  DocumentURI       `json:"oldUri"`
+	NewURI  DocumentURI       `json:"newUri"`
+	Options RenameFileOptions `json:"options,omitempty"`
+	ResourceOperation
+}
+
+type RenameClientCapabilities struct {
+	DynamicRegistration           bool                          `json:"dynamicRegistration,omitempty"`
+	PrepareSupport                bool                          `json:"prepareSupport,omitempty"`
+	PrepareSupportDefaultBehavior PrepareSupportDefaultBehavior `json:"prepareSupportDefaultBehavior,omitempty"`
+	HonorsChangeAnnotations       bool                          `json:"honorsChangeAnnotations,omitempty"`
+}
+
+type RenameFileOptions struct {
+	Overwrite      bool `json:"overwrite,omitempty"`
+	IgnoreIfExists bool `json:"ignoreIfExists,omitempty"`
+}
+
+type RenameFilesParams struct {
+	Files []FileRename `json:"files"`
+}
+
+type RenameOptions struct {
+	PrepareProvider bool `json:"prepareProvider,omitempty"`
+	WorkDoneProgressOptions
+}
+
+type FileRename struct {
+	OldURI string `json:"oldUri"`
+	NewURI string `json:"newUri"`
+}
+
+type DocumentURI string
+type PrepareSupportDefaultBehavior = interface{}
+
+type ResourceOperation struct {
+	Kind         string                     `json:"kind"`
+	AnnotationID ChangeAnnotationIdentifier `json:"annotationId,omitempty"`
+}
+
+type ChangeAnnotationIdentifier = string
+
+type WorkspaceEdit struct {
+	Changes           map[string][]TextEdit                 `json:"changes,omitempty"`
+	DocumentChanges   []TextDocumentEdit                    `json:"documentChanges,omitempty"`
+	ChangeAnnotations map[string]ChangeAnnotationIdentifier `json:"changeAnnotations,omitempty"`
+}
+
+type TextDocumentEdit struct {
+	TextDocument OptionalVersionedTextDocumentIdentifier `json:"textDocument"`
+	Edits        []TextEdit                              `json:"edits"`
+}
+
+type OptionalVersionedTextDocumentIdentifier struct {
+	Version int32 `json:"version"`
+	TextDocumentIdentifier
+}
