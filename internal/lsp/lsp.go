@@ -486,3 +486,17 @@ type OptionalVersionedTextDocumentIdentifier struct {
 	Version int32 `json:"version"`
 	TextDocumentIdentifier
 }
+
+type DefinitionParams struct {
+	TextDocumentPositionParams
+	WorkDoneProgressParams
+	PartialResultParams
+}
+
+type TypeDefinitionParams struct {
+	TextDocumentPositionParams
+	WorkDoneProgressParams
+	PartialResultParams
+}
+
+type Definition = []Location

@@ -118,7 +118,7 @@ func TestInitialized(t *testing.T) {
 				},
 			},
 			CodeActionProvider:              true,
-			DefinitionProvider:              false,
+			DefinitionProvider:              true,
 			DocumentFormattingProvider:      true,
 			DocumentRangeFormattingProvider: true,
 			RenameProvider:                  true,
