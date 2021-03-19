@@ -118,6 +118,8 @@ func (s *Server) handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.
 		return s.handleTextDocumentRangeFormatting(ctx, conn, req)
 	case "textDocument/signatureHelp":
 		return s.handleTextDocumentSignatureHelp(ctx, conn, req)
+	case "textDocument/rename":
+		return s.handleTextDocumentRename(ctx, conn, req)
 	}
 	return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeMethodNotFound, Message: fmt.Sprintf("method not supported: %s", req.Method)}
 }
@@ -150,6 +152,7 @@ func (s *Server) handleInitialize(ctx context.Context, conn *jsonrpc2.Conn, req 
 			DefinitionProvider:              false,
 			DocumentFormattingProvider:      true,
 			DocumentRangeFormattingProvider: true,
+			RenameProvider:                  true,
 		},
 	}
 

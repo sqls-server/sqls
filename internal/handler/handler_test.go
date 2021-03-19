@@ -121,6 +121,7 @@ func TestInitialized(t *testing.T) {
 			DefinitionProvider:              false,
 			DocumentFormattingProvider:      true,
 			DocumentRangeFormattingProvider: true,
+			RenameProvider:                  true,
 		},
 	}
 	var got lsp.InitializeResult
