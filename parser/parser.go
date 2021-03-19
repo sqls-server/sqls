@@ -550,6 +550,9 @@ var identifierListTargetMatcher = astutil.NodeMatcher{
 		ast.TypeOperator,
 		ast.TypeSwitchCase,
 	},
+	ExpectKeyword: []string{
+		"NULL",
+	},
 }
 
 func parseIdentifierList(reader *astutil.NodeReader) ast.Node {

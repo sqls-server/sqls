@@ -20,7 +20,7 @@ type signatureHelpTestCase struct {
 
 var signatureHelpTestCases = []signatureHelpTestCase{
 	// single record
-	// input is "insert into city (ID, Name, CountryCode) VALUES (123, 'aaa', '2020')"
+	// input is "insert into city (ID, Name, CountryCode) VALUES (123,  NULL, '2020')"
 	genSingleRecordInsertTest(50, 0),
 	genSingleRecordInsertTest(52, 0),
 	genSingleRecordInsertTest(53, 1),
@@ -48,7 +48,7 @@ var signatureHelpTestCases = []signatureHelpTestCase{
 func genSingleRecordInsertTest(col int, wantActiveParameter int) signatureHelpTestCase {
 	return signatureHelpTestCase{
 		name:  fmt.Sprintf("single record %d-%d", col, wantActiveParameter),
-		input: "insert into city (ID, Name, CountryCode) VALUES (123, 'aaa', '2020')",
+		input: "insert into city (ID, Name, CountryCode) VALUES (123,  NULL, '2020')",
 		line:  0,
 		col:   col,
 		want: lsp.SignatureHelp{

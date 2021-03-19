@@ -984,6 +984,15 @@ func TestParseIdentifierList(t *testing.T) {
 			},
 		},
 		{
+			name:  "with null",
+			input: "foo, null, foobar",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 1, input)
+				list := stmts[0].GetTokens()
+				testIdentifierList(t, list[0], input)
+			},
+		},
+		{
 			name:  "invalid single identifer without whitespace",
 			input: "foo,",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
