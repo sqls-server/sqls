@@ -52,7 +52,7 @@ func definition(url, text string, params lsp.DefinitionParams, dbCache *database
 		return nil, nil
 	}
 
-	aliases := parseutil.ExtractAliasedIdentifer(parsed)
+	aliases := parseutil.ExtractAliased(parsed)
 	if len(aliases) == 0 {
 		return nil, nil
 	}
@@ -62,7 +62,12 @@ func definition(url, text string, params lsp.DefinitionParams, dbCache *database
 		alias, _ := v.(*ast.Aliased)
 		if alias.AliasedName.String() == currentVariable.String() {
 			define = alias.AliasedName
+			break
 		}
+	}
+
+	if define == nil {
+		return nil, nil
 	}
 
 	res := []lsp.Location{

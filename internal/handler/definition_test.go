@@ -10,15 +10,65 @@ import (
 )
 
 var definitionTestCases = []struct {
-	name   string
-	input  string
-	output lsp.Definition
-	pos    lsp.Position
+	name  string
+	input string
+	pos   lsp.Position
+	want  lsp.Definition
 }{
 	{
-		name:  "",
+		name:  "subquery",
+		input: "SELECT it.ID, it.Name FROM (SELECT ci.ID, ci.Name, ci.CountryCode, ci.District, ci.Population FROM city AS ci) as it",
+		pos: lsp.Position{
+			Line:      0,
+			Character: 8,
+		},
+		want: []lsp.Location{
+			{
+				URI: testFileURI,
+				Range: lsp.Range{
+					Start: lsp.Position{
+						Line:      0,
+						Character: 114,
+					},
+					End: lsp.Position{
+						Line:      0,
+						Character: 116,
+					},
+				},
+			},
+		},
+	},
+	{
+		name:  "inner subquery",
+		input: "SELECT it.ID, it.Name FROM (SELECT ci.ID, ci.Name, ci.CountryCode, ci.District, ci.Population FROM city AS ci) as it",
+		pos: lsp.Position{
+			Line:      0,
+			Character: 36,
+		},
+		want: []lsp.Location{
+			{
+				URI: testFileURI,
+				Range: lsp.Range{
+					Start: lsp.Position{
+						Line:      0,
+						Character: 107,
+					},
+					End: lsp.Position{
+						Line:      0,
+						Character: 109,
+					},
+				},
+			},
+		},
+	},
+	{
+		name:  "alias",
 		input: "SELECT ci.ID, ci.Name FROM city as ci",
-		output: []lsp.Location{
+		pos: lsp.Position{
+			Line:      0,
+			Character: 8,
+		},
+		want: []lsp.Location{
 			{
 				URI: testFileURI,
 				Range: lsp.Range{
@@ -32,10 +82,6 @@ var definitionTestCases = []struct {
 					},
 				},
 			},
-		},
-		pos: lsp.Position{
-			Line:      0,
-			Character: 8,
 		},
 	},
 }
@@ -71,7 +117,7 @@ func TestDefinition(t *testing.T) {
 				return
 			}
 
-			if diff := cmp.Diff(tt.output, got); diff != "" {
+			if diff := cmp.Diff(tt.want, got); diff != "" {
 				t.Errorf("unmatch hover contents (- want, + got):\n%s", diff)
 			}
 		})
@@ -109,7 +155,7 @@ func TestTypeDefinition(t *testing.T) {
 				return
 			}
 
-			if diff := cmp.Diff(tt.output, got); diff != "" {
+			if diff := cmp.Diff(tt.want, got); diff != "" {
 				t.Errorf("unmatch hover contents (- want, + got):\n%s", diff)
 			}
 		})

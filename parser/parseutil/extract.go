@@ -119,6 +119,13 @@ func ExtractWhereCondition(parsed ast.TokenList) []ast.Node {
 	return filterPrefixGroup(astutil.NewNodeReader(parsed), prefixMatcher, peekMatcher)
 }
 
+func ExtractAliased(parsed ast.TokenList) []ast.Node {
+	reader := astutil.NewNodeReader(parsed)
+	matcher := astutil.NodeMatcher{NodeTypes: []ast.NodeType{ast.TypeAliased}}
+	aliases := reader.FindRecursive(matcher)
+	return aliases
+}
+
 func ExtractAliasedIdentifer(parsed ast.TokenList) []ast.Node {
 	reader := astutil.NewNodeReader(parsed)
 	matcher := astutil.NodeMatcher{NodeTypes: []ast.NodeType{ast.TypeAliased}}
