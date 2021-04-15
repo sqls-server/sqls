@@ -17,6 +17,68 @@ var renameTestCases = []struct {
 	pos     lsp.Position
 }{
 	{
+		name:    "subquery",
+		input:   "SELECT it.ID, it.Name FROM (SELECT ci.ID, ci.Name, ci.CountryCode, ci.District, ci.Population FROM city AS ci) as it",
+		newName: "ct",
+		output: lsp.WorkspaceEdit{
+			DocumentChanges: []lsp.TextDocumentEdit{
+				{
+					TextDocument: lsp.OptionalVersionedTextDocumentIdentifier{
+						Version: 0,
+						TextDocumentIdentifier: lsp.TextDocumentIdentifier{
+							URI: "file:///Users/octref/Code/css-test/test.sql",
+						},
+					},
+					Edits: []lsp.TextEdit{
+						{
+							Range: lsp.Range{
+								Start: lsp.Position{
+									Line:      0,
+									Character: 7,
+								},
+								End: lsp.Position{
+									Line:      0,
+									Character: 9,
+								},
+							},
+							NewText: "ct",
+						},
+						{
+							Range: lsp.Range{
+								Start: lsp.Position{
+									Line:      0,
+									Character: 14,
+								},
+								End: lsp.Position{
+									Line:      0,
+									Character: 16,
+								},
+							},
+							NewText: "ct",
+						},
+						{
+							Range: lsp.Range{
+								Start: lsp.Position{
+									Line:      0,
+									Character: 114,
+								},
+								End: lsp.Position{
+									Line:      0,
+									Character: 116,
+								},
+							},
+							NewText: "ct",
+						},
+					},
+				},
+			},
+		},
+		pos: lsp.Position{
+			Line:      0,
+			Character: 8,
+		},
+	},
+	{
 		name:    "ok",
 		input:   "SELECT ci.ID, ci.Name FROM city as ci",
 		newName: "ct",
