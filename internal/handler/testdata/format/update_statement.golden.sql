@@ -5,4 +5,3 @@ set
 where
 	ID = 123
 	and CountryCode = 'ABC'
-

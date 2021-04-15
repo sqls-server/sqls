@@ -17,4 +17,3 @@ where
 	and 4
 	or d is 'blue'
 limit 10
-

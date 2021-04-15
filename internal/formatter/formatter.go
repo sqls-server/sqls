@@ -32,9 +32,7 @@ func Format(text string, params lsp.DocumentFormattingParams, cfg *config.Config
 
 	var formatted ast.Node
 	formatted = parsed
-	formatted = EvalTrailingWhitespace(formatted, newFormatEnvironment(params.Options))
 	formatted = Eval(parsed, newFormatEnvironment(params.Options))
-	formatted = EvalTrailingWhitespace(formatted, newFormatEnvironment(params.Options))
 
 	opts := &ast.RenderOptions{
 		LowerCase: cfg.LowercaseKeywords,
@@ -121,13 +119,39 @@ func Eval(node ast.Node, env *formatEnvironment) ast.Node {
 		if list, ok := node.(ast.TokenList); ok {
 			return formatTokenList(list, env)
 		} else {
-			return formatNode(node, env)
+			return node
 		}
 	}
 }
 
 func formatItem(node ast.Node, env *formatEnvironment) ast.Node {
 	results := []ast.Node{node}
+
+	whitespaceAfterMatcher := astutil.NodeMatcher{
+		ExpectKeyword: []string{
+			"JOIN",
+			"ON",
+			"AND",
+			"OR",
+			"LIMIT",
+			"WHEN",
+			"ELSE",
+		},
+	}
+	if whitespaceAfterMatcher.IsMatch(node) {
+		results = append(results, whitespaceNode)
+	}
+	whitespaceAroundMatcher := astutil.NodeMatcher{
+		ExpectKeyword: []string{
+			"BETWEEN",
+			"USING",
+			"THEN",
+		},
+	}
+	if whitespaceAroundMatcher.IsMatch(node) {
+		results = unshift(results, whitespaceNode)
+		results = append(results, whitespaceNode)
+	}
 
 	// Add an adjustment indent before the cursor
 	outdentBeforeMatcher := astutil.NodeMatcher{
@@ -231,6 +255,13 @@ func formatMultiKeyword(node *ast.MultiKeyword, env *formatEnvironment) ast.Node
 	byKeywords := []string{
 		"GROUP BY",
 		"ORDER BY",
+	}
+
+	whitespaceAfterMatcher := astutil.NodeMatcher{
+		ExpectKeyword: joinKeywords,
+	}
+	if whitespaceAfterMatcher.IsMatch(node) {
+		results = append(results, whitespaceNode)
 	}
 
 	// Add an adjustment indent before the cursor
@@ -352,7 +383,7 @@ func formatIdentiferList(identiferList *ast.IdentiferList, env *formatEnvironmen
 func formatTokenList(list ast.TokenList, env *formatEnvironment) ast.Node {
 	results := []ast.Node{}
 	reader := astutil.NewNodeReader(list)
-	for reader.NextNode(false) {
+	for reader.NextNode(true) {
 		env.reader = reader
 		res := Eval(reader.CurNode, env)
 		formatted, ok := res.(*ast.Formatted)
@@ -364,8 +395,4 @@ func formatTokenList(list ast.TokenList, env *formatEnvironment) ast.Node {
 	}
 	reader.Node.SetTokens(results)
 	return reader.Node
-}
-
-func formatNode(node ast.Node, env *formatEnvironment) ast.Node {
-	return node
 }

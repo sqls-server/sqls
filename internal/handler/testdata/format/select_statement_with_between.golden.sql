@@ -15,4 +15,3 @@ where
 	c is true
 	and b between 3
 	and 4
-
