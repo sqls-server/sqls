@@ -17,4 +17,3 @@ WHERE
 	AND 4
 	OR d IS 'blue'
 LIMIT 10
-
