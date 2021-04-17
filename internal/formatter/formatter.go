@@ -136,6 +136,7 @@ func formatItem(node ast.Node, env *formatEnvironment) ast.Node {
 			"LIMIT",
 			"WHEN",
 			"ELSE",
+			"UPDATE",
 		},
 	}
 	if whitespaceAfterMatcher.IsMatch(node) {
@@ -201,6 +202,7 @@ func formatItem(node ast.Node, env *formatEnvironment) ast.Node {
 		ExpectKeyword: []string{
 			"SELECT",
 			"FROM",
+			"SET",
 			"WHERE",
 			"HAVING",
 		},
