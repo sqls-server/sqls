@@ -156,6 +156,48 @@ func TestFormattingMinimal(t *testing.T) {
 	testFormatting(t, minimalTestCase, formattingOptionTab, lowerCaseConfig)
 }
 
+func TestFormattingTrailing(t *testing.T) {
+	// Add minimal case test
+	minimalTestCase := []formattingTestCase{
+		{
+			name:  "multi keyword",
+			input: "inner \n\t join",
+			want:  "inner join",
+		},
+		{
+			name:  "aliased",
+			input: "foo \n\t as \n\t f",
+			want:  "foo as f",
+		},
+		{
+			name:  "member identifer",
+			input: "foo.id",
+			want:  "foo.id",
+		},
+		{
+			name:  "operator",
+			input: "1+ \n\t 2 \n\t - \n\t 3 \n\t * \n\t 4",
+			want:  "1 + 2 - 3 * 4",
+		},
+		{
+			name:  "comparison",
+			input: "1 \n\t < \n\t 2",
+			want:  "1 < 2",
+		},
+		// {
+		// 	name:  "parenthesis",
+		// 	input: "( 1  +   2    )     =      3",
+		// 	want:  "(1 + 2) = 3",
+		// },
+		{
+			name:  "identifier list",
+			input: "1 \n\t , \n\t 2 \n\t , \n\t 3 \n\t , \n\t 4",
+			want:  "1,\n2,\n3,\n4",
+		},
+	}
+	testFormatting(t, minimalTestCase, formattingOptionTab, lowerCaseConfig)
+}
+
 func TestFormattingWithOptionSpace2(t *testing.T) {
 	testCase, err := loadFormatTestCaseByTestdata("format_option_space2")
 	if err != nil {

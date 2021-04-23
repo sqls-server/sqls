@@ -26,6 +26,7 @@ const (
 	TypeSwitchCase
 	TypeNull
 	TypeIndent
+	TypeLineBreak
 )
 
 type RenderOptions struct {
@@ -39,6 +40,7 @@ type Node interface {
 	Type() NodeType
 	Pos() token.Pos
 	End() token.Pos
+	Flaten() []Node
 }
 
 type Token interface {
@@ -59,6 +61,7 @@ func (n *Null) Render(opts *RenderOptions) string { return n.String() }
 func (n *Null) Type() NodeType                    { return TypeNull }
 func (n *Null) Pos() token.Pos                    { return token.Pos{} }
 func (n *Null) End() token.Pos                    { return token.Pos{} }
+func (n *Null) Flaten() []Node                    { return flatten(n) }
 
 type Item struct {
 	Tok *SQLToken
@@ -74,6 +77,7 @@ func (i *Item) Type() NodeType                    { return TypeItem }
 func (i *Item) GetToken() *SQLToken               { return i.Tok }
 func (i *Item) Pos() token.Pos                    { return i.Tok.From }
 func (i *Item) End() token.Pos                    { return i.Tok.To }
+func (i *Item) Flaten() []Node                    { return flatten(i) }
 
 type Indent struct {
 	Toks []Node
@@ -90,6 +94,24 @@ func (i *Indent) GetTokens() []Node     { return i.Toks }
 func (i *Indent) SetTokens(toks []Node) { i.Toks = toks }
 func (i *Indent) Pos() token.Pos        { return findFrom(i) }
 func (i *Indent) End() token.Pos        { return findTo(i) }
+func (i *Indent) Flaten() []Node        { return flatten(i) }
+
+type LineBreak struct {
+	Toks []Node
+}
+
+func (lb *LineBreak) String() string {
+	return joinString(lb.Toks)
+}
+func (lb *LineBreak) Render(opts *RenderOptions) string {
+	return joinRender(lb.Toks, opts)
+}
+func (lb *LineBreak) Type() NodeType        { return TypeLineBreak }
+func (lb *LineBreak) GetTokens() []Node     { return lb.Toks }
+func (lb *LineBreak) SetTokens(toks []Node) { lb.Toks = toks }
+func (lb *LineBreak) Pos() token.Pos        { return findFrom(lb) }
+func (lb *LineBreak) End() token.Pos        { return findTo(lb) }
+func (lb *LineBreak) Flaten() []Node        { return flatten(lb) }
 
 type Formatted struct {
 	Toks []Node
@@ -106,6 +128,7 @@ func (f *Formatted) GetTokens() []Node     { return f.Toks }
 func (f *Formatted) SetTokens(toks []Node) { f.Toks = toks }
 func (f *Formatted) Pos() token.Pos        { return findFrom(f) }
 func (f *Formatted) End() token.Pos        { return findTo(f) }
+func (f *Formatted) Flaten() []Node        { return flatten(f) }
 
 type MultiKeyword struct {
 	Toks     []Node
@@ -124,6 +147,7 @@ func (mk *MultiKeyword) SetTokens(toks []Node) { mk.Toks = toks }
 func (mk *MultiKeyword) Pos() token.Pos        { return findFrom(mk) }
 func (mk *MultiKeyword) End() token.Pos        { return findTo(mk) }
 func (mk *MultiKeyword) GetKeywords() []Node   { return mk.Keywords }
+func (mk *MultiKeyword) Flaten() []Node        { return flatten(mk) }
 
 type MemberIdentifer struct {
 	Toks        []Node
@@ -176,6 +200,7 @@ func (mi *MemberIdentifer) GetTokens() []Node     { return mi.Toks }
 func (mi *MemberIdentifer) SetTokens(toks []Node) { mi.Toks = toks }
 func (mi *MemberIdentifer) Pos() token.Pos        { return findFrom(mi) }
 func (mi *MemberIdentifer) End() token.Pos        { return findTo(mi) }
+func (mi *MemberIdentifer) Flaten() []Node        { return flatten(mi) }
 func (mi *MemberIdentifer) setParent(node Node) {
 	mi.Parent = node
 	tok, ok := node.(Token)
@@ -242,6 +267,7 @@ func (a *Aliased) GetTokens() []Node     { return a.Toks }
 func (a *Aliased) SetTokens(toks []Node) { a.Toks = toks }
 func (a *Aliased) Pos() token.Pos        { return findFrom(a) }
 func (a *Aliased) End() token.Pos        { return findTo(a) }
+func (a *Aliased) Flaten() []Node        { return flatten(a) }
 func (a *Aliased) GetAliasedNameIdent() *Identifer {
 	if v, ok := a.AliasedName.(*Identifer); ok {
 		return v
@@ -266,6 +292,7 @@ func (i *Identifer) NoQuateString() string { return i.Tok.NoQuateString() }
 func (i *Identifer) GetToken() *SQLToken   { return i.Tok }
 func (i *Identifer) Pos() token.Pos        { return i.Tok.From }
 func (i *Identifer) End() token.Pos        { return i.Tok.To }
+func (i *Identifer) Flaten() []Node        { return flatten(i) }
 func (i *Identifer) IsWildcard() bool      { return i.Tok.MatchKind(token.Mult) }
 
 type Operator struct {
@@ -286,6 +313,7 @@ func (o *Operator) GetTokens() []Node     { return o.Toks }
 func (o *Operator) SetTokens(toks []Node) { o.Toks = toks }
 func (o *Operator) Pos() token.Pos        { return findFrom(o) }
 func (o *Operator) End() token.Pos        { return findTo(o) }
+func (o *Operator) Flaten() []Node        { return flatten(o) }
 func (o *Operator) GetLeft() Node {
 	if o.Left == nil {
 		return &Null{}
@@ -323,6 +351,7 @@ func (c *Comparison) GetTokens() []Node     { return c.Toks }
 func (c *Comparison) SetTokens(toks []Node) { c.Toks = toks }
 func (c *Comparison) Pos() token.Pos        { return findFrom(c) }
 func (c *Comparison) End() token.Pos        { return findTo(c) }
+func (c *Comparison) Flaten() []Node        { return flatten(c) }
 func (c *Comparison) GetLeft() Node {
 	if c.Left == nil {
 		return &Null{}
@@ -357,6 +386,7 @@ func (p *Parenthesis) GetTokens() []Node     { return p.Toks }
 func (p *Parenthesis) SetTokens(toks []Node) { p.Toks = toks }
 func (p *Parenthesis) Pos() token.Pos        { return findFrom(p) }
 func (p *Parenthesis) End() token.Pos        { return findTo(p) }
+func (p *Parenthesis) Flaten() []Node        { return flatten(p) }
 func (p *Parenthesis) Inner() TokenList {
 	endPos := len(p.Toks) - 1
 	if p.Toks[endPos].String() != ")" {
@@ -380,6 +410,7 @@ func (p *ParenthesisInner) GetTokens() []Node     { return p.Toks }
 func (p *ParenthesisInner) SetTokens(toks []Node) { p.Toks = toks }
 func (p *ParenthesisInner) Pos() token.Pos        { return findFrom(p) }
 func (p *ParenthesisInner) End() token.Pos        { return findTo(p) }
+func (p *ParenthesisInner) Flaten() []Node        { return flatten(p) }
 
 type FunctionLiteral struct {
 	Toks []Node
@@ -396,6 +427,7 @@ func (fl *FunctionLiteral) GetTokens() []Node     { return fl.Toks }
 func (fl *FunctionLiteral) SetTokens(toks []Node) { fl.Toks = toks }
 func (fl *FunctionLiteral) Pos() token.Pos        { return findFrom(fl) }
 func (fl *FunctionLiteral) End() token.Pos        { return findTo(fl) }
+func (fl *FunctionLiteral) Flaten() []Node        { return flatten(fl) }
 
 type Query struct {
 	Toks []Node
@@ -412,6 +444,7 @@ func (q *Query) GetTokens() []Node     { return q.Toks }
 func (q *Query) SetTokens(toks []Node) { q.Toks = toks }
 func (q *Query) Pos() token.Pos        { return findFrom(q) }
 func (q *Query) End() token.Pos        { return findTo(q) }
+func (q *Query) Flaten() []Node        { return flatten(q) }
 
 type Statement struct {
 	Toks []Node
@@ -428,6 +461,7 @@ func (s *Statement) GetTokens() []Node     { return s.Toks }
 func (s *Statement) SetTokens(toks []Node) { s.Toks = toks }
 func (s *Statement) Pos() token.Pos        { return findFrom(s) }
 func (s *Statement) End() token.Pos        { return findTo(s) }
+func (s *Statement) Flaten() []Node        { return flatten(s) }
 
 type IdentiferList struct {
 	Toks       []Node
@@ -446,6 +480,7 @@ func (il *IdentiferList) GetTokens() []Node     { return il.Toks }
 func (il *IdentiferList) SetTokens(toks []Node) { il.Toks = toks }
 func (il *IdentiferList) Pos() token.Pos        { return findFrom(il) }
 func (il *IdentiferList) End() token.Pos        { return findTo(il) }
+func (il *IdentiferList) Flaten() []Node        { return flatten(il) }
 func (il *IdentiferList) GetIdentifers() []Node { return il.Identifers }
 func (il *IdentiferList) GetIndex(pos token.Pos) int {
 	if !isEnclose(il, pos) {
@@ -482,6 +517,7 @@ func (sc *SwitchCase) GetTokens() []Node     { return sc.Toks }
 func (sc *SwitchCase) SetTokens(toks []Node) { sc.Toks = toks }
 func (sc *SwitchCase) Pos() token.Pos        { return findFrom(sc) }
 func (sc *SwitchCase) End() token.Pos        { return findTo(sc) }
+func (sc *SwitchCase) Flaten() []Node        { return flatten(sc) }
 
 type SQLToken struct {
 	Node
@@ -613,4 +649,25 @@ func joinRender(nodes []Node, opts *RenderOptions) string {
 		strs = append(strs, n.Render(opts))
 	}
 	return strings.Join(strs, "")
+}
+
+func flatten(n Node) []Node {
+	if _, ok := n.(*Indent); ok {
+		return []Node{n}
+	}
+	if _, ok := n.(*LineBreak); ok {
+		return []Node{n}
+	}
+
+	res := []Node{}
+	list, ok := n.(TokenList)
+	if ok {
+		for _, v := range list.GetTokens() {
+			res = append(res, flatten(v)...)
+		}
+		return res
+	}
+
+	tok, _ := n.(Token)
+	return []Node{tok}
 }

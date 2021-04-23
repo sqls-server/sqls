@@ -33,6 +33,7 @@ func Format(text string, params lsp.DocumentFormattingParams, cfg *config.Config
 	var formatted ast.Node
 	formatted = parsed
 	formatted = Eval(parsed, newFormatEnvironment(params.Options))
+	formatted = EvalTrailingWhitespace(parsed, newFormatEnvironment(params.Options))
 
 	opts := &ast.RenderOptions{
 		LowerCase: cfg.LowercaseKeywords,
@@ -77,11 +78,11 @@ func (e *formatEnvironment) indentLevelDown() {
 	}
 }
 
-func (e *formatEnvironment) getIndent() []ast.Node {
+func (e *formatEnvironment) getIndent() ast.Node {
 	if e.indentNode == nil {
 		indent := whiteSpaceNodes(int(e.options.TabSize))
 		if !e.options.InsertSpaces {
-			indent = []ast.Node{tabNode}
+			indent = []ast.Node{tabItem}
 		}
 		e.indentNode = &ast.Indent{Toks: indent}
 	}
@@ -90,7 +91,7 @@ func (e *formatEnvironment) getIndent() []ast.Node {
 	for i := 0; i < e.indentLevel; i++ {
 		nodes[i] = e.indentNode
 	}
-	return nodes
+	return &ast.Indent{Toks: nodes}
 }
 
 func Eval(node ast.Node, env *formatEnvironment) ast.Node {
@@ -127,33 +128,6 @@ func Eval(node ast.Node, env *formatEnvironment) ast.Node {
 func formatItem(node ast.Node, env *formatEnvironment) ast.Node {
 	results := []ast.Node{node}
 
-	whitespaceAfterMatcher := astutil.NodeMatcher{
-		ExpectKeyword: []string{
-			"JOIN",
-			"ON",
-			"AND",
-			"OR",
-			"LIMIT",
-			"WHEN",
-			"ELSE",
-			"UPDATE",
-		},
-	}
-	if whitespaceAfterMatcher.IsMatch(node) {
-		results = append(results, whitespaceNode)
-	}
-	whitespaceAroundMatcher := astutil.NodeMatcher{
-		ExpectKeyword: []string{
-			"BETWEEN",
-			"USING",
-			"THEN",
-		},
-	}
-	if whitespaceAroundMatcher.IsMatch(node) {
-		results = unshift(results, whitespaceNode)
-		results = append(results, whitespaceNode)
-	}
-
 	// Add an adjustment indent before the cursor
 	outdentBeforeMatcher := astutil.NodeMatcher{
 		ExpectKeyword: []string{
@@ -171,7 +145,7 @@ func formatItem(node ast.Node, env *formatEnvironment) ast.Node {
 	}
 	if outdentBeforeMatcher.IsMatch(node) {
 		env.indentLevelDown()
-		results = unshift(results, env.getIndent()...)
+		results = unshift(results, env.getIndent())
 		results = unshift(results, linebreakNode)
 	}
 	indentBeforeMatcher := astutil.NodeMatcher{
@@ -181,7 +155,7 @@ func formatItem(node ast.Node, env *formatEnvironment) ast.Node {
 	}
 	if indentBeforeMatcher.IsMatch(node) {
 		env.indentLevelUp()
-		results = unshift(results, env.getIndent()...)
+		results = unshift(results, env.getIndent())
 		results = unshift(results, linebreakNode)
 	}
 	linebreakBeforeMatcher := astutil.NodeMatcher{
@@ -193,7 +167,7 @@ func formatItem(node ast.Node, env *formatEnvironment) ast.Node {
 		},
 	}
 	if linebreakBeforeMatcher.IsMatch(node) {
-		results = unshift(results, env.getIndent()...)
+		results = unshift(results, env.getIndent())
 		results = unshift(results, linebreakNode)
 	}
 
@@ -213,7 +187,7 @@ func formatItem(node ast.Node, env *formatEnvironment) ast.Node {
 	if linebreakWithIndentAfterMatcher.IsMatch(node) {
 		results = append(results, linebreakNode)
 		env.indentLevelUp()
-		results = append(results, env.getIndent()...)
+		results = append(results, env.getIndent())
 	}
 	indentAfterMatcher := astutil.NodeMatcher{
 		ExpectKeyword: []string{
@@ -230,7 +204,7 @@ func formatItem(node ast.Node, env *formatEnvironment) ast.Node {
 	}
 	if linebreakAfterMatcher.IsMatch(node) {
 		results = append(results, linebreakNode)
-		results = append(results, env.getIndent()...)
+		results = append(results, env.getIndent())
 	}
 
 	return &ast.Formatted{Toks: results}
@@ -259,12 +233,12 @@ func formatMultiKeyword(node *ast.MultiKeyword, env *formatEnvironment) ast.Node
 		"ORDER BY",
 	}
 
-	whitespaceAfterMatcher := astutil.NodeMatcher{
-		ExpectKeyword: joinKeywords,
-	}
-	if whitespaceAfterMatcher.IsMatch(node) {
-		results = append(results, whitespaceNode)
-	}
+	// whitespaceAfterMatcher := astutil.NodeMatcher{
+	// 	ExpectKeyword: joinKeywords,
+	// }
+	// if whitespaceAfterMatcher.IsMatch(node) {
+	// 	results = append(results, whitespaceNode)
+	// }
 
 	// Add an adjustment indent before the cursor
 	outdentBeforeMatcher := astutil.NodeMatcher{
@@ -272,7 +246,7 @@ func formatMultiKeyword(node *ast.MultiKeyword, env *formatEnvironment) ast.Node
 	}
 	if outdentBeforeMatcher.IsMatch(node) {
 		env.indentLevelDown()
-		results = unshift(results, env.getIndent()...)
+		results = unshift(results, env.getIndent())
 		results = unshift(results, linebreakNode)
 	}
 
@@ -283,7 +257,7 @@ func formatMultiKeyword(node *ast.MultiKeyword, env *formatEnvironment) ast.Node
 	if linebreakWithIndentAfterMatcher.IsMatch(node) {
 		results = append(results, linebreakNode)
 		env.indentLevelUp()
-		results = append(results, env.getIndent()...)
+		results = append(results, env.getIndent())
 	}
 
 	return &ast.Formatted{Toks: results}
@@ -317,7 +291,7 @@ func formatIdentifer(node ast.Node, env *formatEnvironment) ast.Node {
 func formatMemberIdentifer(node *ast.MemberIdentifer, env *formatEnvironment) ast.Node {
 	results := []ast.Node{
 		Eval(node.Parent, env),
-		periodNode,
+		periodItem,
 		Eval(node.Child, env),
 	}
 	node.SetTokens(results)
@@ -350,16 +324,31 @@ func formatComparison(node *ast.Comparison, env *formatEnvironment) ast.Node {
 
 func formatParenthesis(node *ast.Parenthesis, env *formatEnvironment) ast.Node {
 	results := []ast.Node{}
-	results = append(results, lparenNode)
+	results = append(results, lparenItem)
 	startIndentLevel := env.indentLevel
-	env.indentLevelUp()
-	results = append(results, linebreakNode)
-	results = append(results, env.getIndent()...)
+
+	reader := astutil.NewNodeReader(node.Inner())
+	reader.NextNode(true)
+	selectMatcher := astutil.NodeMatcher{
+		ExpectKeyword: []string{
+			"SELECT",
+		},
+	}
+	if reader.CurNodeIs(selectMatcher) {
+		// subquery
+		env.indentLevelUp()
+		results = append(results, linebreakNode)
+		results = append(results, env.getIndent())
+		results = append(results, Eval(node.Inner(), env))
+		env.indentLevel = startIndentLevel
+		results = append(results, linebreakNode)
+		results = append(results, env.getIndent())
+		results = append(results, rparenItem)
+		node.SetTokens(results)
+		return node
+	}
 	results = append(results, Eval(node.Inner(), env))
-	env.indentLevel = startIndentLevel
-	results = append(results, linebreakNode)
-	results = append(results, env.getIndent()...)
-	results = append(results, rparenNode)
+	results = append(results, rparenItem)
 	node.SetTokens(results)
 	return node
 }
@@ -374,8 +363,8 @@ func formatIdentiferList(identiferList *ast.IdentiferList, env *formatEnvironmen
 	for i, ident := range idents {
 		results = append(results, Eval(ident, env))
 		if i != len(idents)-1 {
-			results = append(results, commaNode, linebreakNode)
-			results = append(results, env.getIndent()...)
+			results = append(results, commaItem, linebreakNode)
+			results = append(results, env.getIndent())
 		}
 	}
 	identiferList.SetTokens(results)
@@ -385,7 +374,7 @@ func formatIdentiferList(identiferList *ast.IdentiferList, env *formatEnvironmen
 func formatTokenList(list ast.TokenList, env *formatEnvironment) ast.Node {
 	results := []ast.Node{}
 	reader := astutil.NewNodeReader(list)
-	for reader.NextNode(true) {
+	for reader.NextNode(false) {
 		env.reader = reader
 		res := Eval(reader.CurNode, env)
 		formatted, ok := res.(*ast.Formatted)

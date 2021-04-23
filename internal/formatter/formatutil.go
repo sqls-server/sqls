@@ -22,32 +22,36 @@ func whiteSpaceNodes(num int) []ast.Node {
 	return res
 }
 
-var linebreakNode = ast.NewItem(&token.Token{
+var linebreakNode = &ast.LineBreak{
+	Toks: []ast.Node{linebreakItem},
+}
+
+var linebreakItem = ast.NewItem(&token.Token{
 	Kind:  token.Whitespace,
 	Value: "\n",
 })
 
-var tabNode = ast.NewItem(&token.Token{
+var tabItem = ast.NewItem(&token.Token{
 	Kind:  token.Whitespace,
 	Value: "\t",
 })
 
-var periodNode = ast.NewItem(&token.Token{
+var periodItem = ast.NewItem(&token.Token{
 	Kind:  token.Period,
 	Value: ".",
 })
 
-var lparenNode = ast.NewItem(&token.Token{
+var lparenItem = ast.NewItem(&token.Token{
 	Kind:  token.LParen,
 	Value: "(",
 })
 
-var rparenNode = ast.NewItem(&token.Token{
+var rparenItem = ast.NewItem(&token.Token{
 	Kind:  token.RParen,
 	Value: ")",
 })
 
-var commaNode = ast.NewItem(&token.Token{
+var commaItem = ast.NewItem(&token.Token{
 	Kind:  token.Comma,
 	Value: ",",
 })
