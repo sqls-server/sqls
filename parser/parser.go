@@ -20,11 +20,13 @@ type (
 func parsePrefixGroup(reader *astutil.NodeReader, matcher astutil.NodeMatcher, fn prefixParseFn) ast.TokenList {
 	var replaceNodes []ast.Node
 	for reader.NextNode(false) {
+		if list, ok := reader.CurNode.(ast.TokenList); ok {
+			newReader := astutil.NewNodeReader(list)
+			replaceNode := parsePrefixGroup(newReader, matcher, fn)
+			reader.Replace(replaceNode, reader.Index-1)
+		}
 		if reader.CurNodeIs(matcher) {
 			replaceNodes = append(replaceNodes, fn(reader))
-		} else if list, ok := reader.CurNode.(ast.TokenList); ok {
-			newReader := astutil.NewNodeReader(list)
-			replaceNodes = append(replaceNodes, parsePrefixGroup(newReader, matcher, fn))
 		} else {
 			replaceNodes = append(replaceNodes, reader.CurNode)
 		}
@@ -36,11 +38,13 @@ func parsePrefixGroup(reader *astutil.NodeReader, matcher astutil.NodeMatcher, f
 func parseInfixGroup(reader *astutil.NodeReader, matcher astutil.NodeMatcher, ignoreWhiteSpace bool, fn infixParseFn) ast.TokenList {
 	var replaceNodes []ast.Node
 	for reader.NextNode(false) {
+		if list, ok := reader.CurNode.(ast.TokenList); ok {
+			newReader := astutil.NewNodeReader(list)
+			replaceNode := parseInfixGroup(newReader, matcher, ignoreWhiteSpace, fn)
+			reader.Replace(replaceNode, reader.Index-1)
+		}
 		if reader.PeekNodeIs(ignoreWhiteSpace, matcher) {
 			replaceNodes = append(replaceNodes, fn(reader))
-		} else if list, ok := reader.CurNode.(ast.TokenList); ok {
-			newReader := astutil.NewNodeReader(list)
-			replaceNodes = append(replaceNodes, parseInfixGroup(newReader, matcher, ignoreWhiteSpace, fn))
 		} else {
 			replaceNodes = append(replaceNodes, reader.CurNode)
 		}
@@ -95,11 +99,11 @@ func (p *Parser) Parse() (ast.TokenList, error) {
 	root = parsePrefixGroup(astutil.NewNodeReader(root), parenthesisPrefixMatcher, parseParenthesis)
 	root = parsePrefixGroup(astutil.NewNodeReader(root), functionPrefixMatcher, parseFunctions)
 	root = parsePrefixGroup(astutil.NewNodeReader(root), identifierPrefixMatcher, parseIdentifier)
+	root = parseInfixGroup(astutil.NewNodeReader(root), memberIdentifierInfixMatcher, false, parseMemberIdentifier)
 	root = parsePrefixGroup(astutil.NewNodeReader(root), switchCaseOpenMatcher, parseCase)
 
 	root = parsePrefixGroup(astutil.NewNodeReader(root), expressionPrefixMatcher, parseExpressionInParenthesis)
 
-	root = parseInfixGroup(astutil.NewNodeReader(root), memberIdentifierInfixMatcher, false, parseMemberIdentifier)
 	root = parsePrefixGroup(astutil.NewNodeReader(root), genMultiKeywordPrefixMatcher(), parseMultiKeyword)
 	root = parseInfixGroup(astutil.NewNodeReader(root), operatorInfixMatcher, true, parseOperator)
 	root = parseInfixGroup(astutil.NewNodeReader(root), comparisonInfixMatcher, true, parseComparison)
@@ -153,6 +157,7 @@ var parenthesisCloseMatcher = astutil.NodeMatcher{
 
 func parseParenthesis(reader *astutil.NodeReader) ast.Node {
 	nodes := []ast.Node{reader.CurNode}
+	startIndex := reader.Index - 1
 	tmpReader := reader.CopyReader()
 	for tmpReader.NextNode(false) {
 		if _, ok := reader.CurNode.(ast.TokenList); ok {
@@ -170,7 +175,22 @@ func parseParenthesis(reader *astutil.NodeReader) ast.Node {
 			nodes = append(nodes, tmpReader.CurNode)
 		}
 	}
-	return reader.CurNode
+
+	// Include white space after the comma
+	var endIndex int
+	peekIndex, peekNode := tmpReader.PeekNode(true)
+	if peekNode != nil {
+		endIndex = peekIndex - 1
+		tmpReader.Index = endIndex + 1
+	} else {
+		tailIndex, tailNode := tmpReader.TailNode()
+		endIndex = tailIndex - 1
+		tmpReader.Index = tailIndex
+		tmpReader.CurNode = tailNode
+	}
+	reader.Index = tmpReader.Index
+	reader.CurNode = tmpReader.CurNode
+	return &ast.Parenthesis{Toks: reader.NodesWithRange(startIndex, endIndex+1)}
 }
 
 var functionPrefixMatcher = astutil.NodeMatcher{
@@ -464,15 +484,6 @@ var aliasRecursionMatcher = astutil.NodeMatcher{
 }
 
 func parseAliasedWithoutAs(reader *astutil.NodeReader) ast.Node {
-	if reader.CurNodeIs(aliasRecursionMatcher) {
-		if list, ok := reader.CurNode.(ast.TokenList); ok {
-			// FIXME: more simplity
-			// For sub query
-			parenthesis := parsePrefixGroup(astutil.NewNodeReader(list), aliasLeftMatcher, parseAliasedWithoutAs)
-			reader.Replace(parenthesis, reader.Index-1)
-		}
-	}
-
 	if !reader.PeekNodeIs(true, aliasRightMatcher) {
 		return reader.CurNode
 	}
@@ -493,14 +504,6 @@ func parseAliasedWithoutAs(reader *astutil.NodeReader) ast.Node {
 func parseAliased(reader *astutil.NodeReader) ast.Node {
 	if !reader.CurNodeIs(aliasLeftMatcher) {
 		return reader.CurNode
-	}
-	if reader.CurNodeIs(aliasRecursionMatcher) {
-		if list, ok := reader.CurNode.(ast.TokenList); ok {
-			// FIXME: more simplity
-			// For sub query
-			parenthesis := parseInfixGroup(astutil.NewNodeReader(list), aliasInfixMatcher, true, parseAliased)
-			reader.Replace(parenthesis, reader.Index-1)
-		}
 	}
 
 	realName := reader.CurNode
@@ -547,6 +550,9 @@ var identifierListTargetMatcher = astutil.NodeMatcher{
 		ast.TypeOperator,
 		ast.TypeSwitchCase,
 	},
+	ExpectKeyword: []string{
+		"NULL",
+	},
 }
 
 func parseIdentifierList(reader *astutil.NodeReader) ast.Node {
@@ -557,6 +563,7 @@ func parseIdentifierList(reader *astutil.NodeReader) ast.Node {
 	startIndex := reader.Index - 1
 	tmpReader := reader.CopyReader()
 	tmpReader.NextNode(true)
+	commas := []ast.Node{tmpReader.CurNode}
 
 	var (
 		endIndex, peekIndex int
@@ -587,6 +594,7 @@ func parseIdentifierList(reader *astutil.NodeReader) ast.Node {
 			break
 		}
 		tmpReader.NextNode(true)
+		commas = append(commas, tmpReader.CurNode)
 	}
 
 	reader.Index = tmpReader.Index
@@ -594,6 +602,7 @@ func parseIdentifierList(reader *astutil.NodeReader) ast.Node {
 	return &ast.IdentiferList{
 		Toks:       reader.NodesWithRange(startIndex, endIndex+1),
 		Identifers: idents,
+		Commas:     commas,
 	}
 }
 

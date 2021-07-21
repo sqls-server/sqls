@@ -14,6 +14,7 @@ import (
 	"unicode"
 
 	_ "github.com/jackc/pgx/v4/stdlib"
+	"github.com/lighttiger2505/sqls/dialect"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/xerrors"
 )
@@ -112,6 +113,10 @@ func NewPostgreSQLDBRepository(conn *sql.DB) DBRepository {
 	return &PostgreSQLDBRepository{Conn: conn}
 }
 
+func (db *PostgreSQLDBRepository) Driver() dialect.DatabaseDriver {
+	return dialect.DatabaseDriverPostgreSQL
+}
+
 func (db *PostgreSQLDBRepository) CurrentDatabase(ctx context.Context) (string, error) {
 	row := db.Conn.QueryRowContext(ctx, "SELECT current_database()")
 	var database string
@@ -130,6 +135,7 @@ func (db *PostgreSQLDBRepository) Databases(ctx context.Context) ([]string, erro
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer rows.Close()
 	databases := []string{}
 	for rows.Next() {
 		var database string
@@ -159,6 +165,7 @@ func (db *PostgreSQLDBRepository) Schemas(ctx context.Context) ([]string, error)
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer rows.Close()
 	databases := []string{}
 	for rows.Next() {
 		var database string
@@ -186,6 +193,7 @@ func (db *PostgreSQLDBRepository) SchemaTables(ctx context.Context) (map[string]
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 	databaseTables := map[string][]string{}
 	for rows.Next() {
 		var schema, table string
@@ -219,6 +227,7 @@ func (db *PostgreSQLDBRepository) Tables(ctx context.Context) ([]string, error) 
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer rows.Close()
 	tables := []string{}
 	for rows.Next() {
 		var table string
@@ -264,6 +273,7 @@ func (db *PostgreSQLDBRepository) DescribeDatabaseTable(ctx context.Context) ([]
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer rows.Close()
 	tableInfos := []*ColumnDesc{}
 	for rows.Next() {
 		var tableInfo ColumnDesc
@@ -321,6 +331,7 @@ func (db *PostgreSQLDBRepository) DescribeDatabaseTableBySchema(ctx context.Cont
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer rows.Close()
 	tableInfos := []*ColumnDesc{}
 	for rows.Next() {
 		var tableInfo ColumnDesc

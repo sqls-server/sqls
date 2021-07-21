@@ -44,6 +44,10 @@ func (s *Server) handleTextDocumentHover(ctx context.Context, conn *jsonrpc2.Con
 }
 
 func hover(text string, params lsp.HoverParams, dbCache *database.DBCache) (*lsp.Hover, error) {
+	if dbCache == nil {
+		return nil, nil
+	}
+
 	pos := token.Pos{
 		Line: params.Position.Line,
 		Col:  params.Position.Character + 1,
@@ -522,7 +526,7 @@ func getHoverTypes(nw *parseutil.NodeWalker, hoverEnv *hoverEnvironment) *hoverC
 				hoverTypeKeyword,
 			}
 		}
-	case syntaxPos == parseutil.InsertValue:
+	case syntaxPos == parseutil.InsertColumn:
 		t = []hoverType{
 			hoverTypeColumn,
 			hoverTypeTable,

@@ -5,12 +5,13 @@ import (
 
 	"github.com/lighttiger2505/sqls/ast"
 	"github.com/lighttiger2505/sqls/ast/astutil"
+	"github.com/lighttiger2505/sqls/internal/config"
 	"github.com/lighttiger2505/sqls/internal/lsp"
 	"github.com/lighttiger2505/sqls/parser"
 	"github.com/lighttiger2505/sqls/token"
 )
 
-func Format(text string, params lsp.DocumentFormattingParams) ([]lsp.TextEdit, error) {
+func Format(text string, params lsp.DocumentFormattingParams, cfg *config.Config) ([]lsp.TextEdit, error) {
 	if text == "" {
 		return nil, errors.New("empty")
 	}
@@ -27,15 +28,21 @@ func Format(text string, params lsp.DocumentFormattingParams) ([]lsp.TextEdit, e
 		Line:      parsed.End().Line,
 		Character: parsed.End().Col,
 	}
-	formatted := Eval(parsed, &formatEnvironment{})
+	env := &formatEnvironment{
+		options: params.Options,
+	}
+	formatted := Eval(parsed, env)
 
+	opts := &ast.RenderOptions{
+		LowerCase: cfg.LowercaseKeywords,
+	}
 	res := []lsp.TextEdit{
 		{
 			Range: lsp.Range{
 				Start: st,
 				End:   en,
 			},
-			NewText: formatted.String(),
+			NewText: formatted.Render(opts),
 		},
 	}
 	return res, nil
@@ -44,6 +51,7 @@ func Format(text string, params lsp.DocumentFormattingParams) ([]lsp.TextEdit, e
 type formatEnvironment struct {
 	reader      *astutil.NodeReader
 	indentLevel int
+	options     lsp.FormattingOptions
 }
 
 func (e *formatEnvironment) indentLevelReset() {
@@ -59,9 +67,13 @@ func (e *formatEnvironment) indentLevelDown() {
 }
 
 func (e *formatEnvironment) genIndent() []ast.Node {
+	indent := whiteSpaceNodes(int(e.options.TabSize))
+	if !e.options.InsertSpaces {
+		indent = []ast.Node{tabNode}
+	}
 	nodes := []ast.Node{}
 	for i := 0; i < e.indentLevel; i++ {
-		nodes = append(nodes, indentNode)
+		nodes = append(nodes, indent...)
 	}
 	return nodes
 }

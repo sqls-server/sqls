@@ -1,6 +1,7 @@
 package parseutil
 
 import (
+	"github.com/lighttiger2505/sqls/ast"
 	"github.com/lighttiger2505/sqls/ast/astutil"
 	"github.com/lighttiger2505/sqls/token"
 )
@@ -14,6 +15,7 @@ const (
 	WhereCondition SyntaxPosition = "where_conditon"
 	CaseValue      SyntaxPosition = "case_value"
 	TableReference SyntaxPosition = "table_reference"
+	InsertColumn   SyntaxPosition = "insert_column"
 	InsertValue    SyntaxPosition = "insert_value"
 	Unknown        SyntaxPosition = "unknown"
 )
@@ -87,9 +89,12 @@ func CheckSyntaxPosition(nw *NodeWalker) SyntaxPosition {
 		"TRUNCATE",
 	})):
 		res = TableReference
-	case nw.CurNodeIs(genTokenMatcher([]token.Kind{token.LParen})) || nw.PrevNodesIs(true, genTokenMatcher([]token.Kind{token.LParen})):
-		// Insert Statement
-		res = InsertValue
+	case isInsertColumns(nw):
+		if isInsertValues(nw) {
+			res = InsertValue
+		} else {
+			res = InsertColumn
+		}
 	default:
 		res = Unknown
 	}
@@ -106,4 +111,31 @@ func genTokenMatcher(tokens []token.Kind) astutil.NodeMatcher {
 	return astutil.NodeMatcher{
 		ExpectTokens: tokens,
 	}
+}
+
+func isInsertColumns(nw *NodeWalker) bool {
+	ParenthesisMatcher := astutil.NodeMatcher{
+		NodeTypes: []ast.NodeType{
+			ast.TypeParenthesis,
+		},
+	}
+	return nw.CurNodeIs(ParenthesisMatcher)
+}
+
+func isInsertValues(nw *NodeWalker) bool {
+	ParenthesisMatcher := astutil.NodeMatcher{
+		NodeTypes: []ast.NodeType{
+			ast.TypeParenthesis,
+		},
+	}
+	depth, ok := nw.CurNodeDepth(ParenthesisMatcher)
+	if ok {
+		if nw.PrevNodesIsWithDepth(true, genKeywordMatcher([]string{"VALUES"}), depth) {
+			return true
+		}
+		if nw.PrevNodesIsWithDepth(true, genTokenMatcher([]token.Kind{token.Comma}), depth) {
+			return true
+		}
+	}
+	return false
 }

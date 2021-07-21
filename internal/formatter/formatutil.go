@@ -1,9 +1,6 @@
 package formatter
 
 import (
-	"fmt"
-	"os"
-
 	"github.com/lighttiger2505/sqls/ast"
 	"github.com/lighttiger2505/sqls/token"
 )
@@ -17,12 +14,20 @@ var whitespaceNode = ast.NewItem(&token.Token{
 	Value: " ",
 })
 
+func whiteSpaceNodes(num int) []ast.Node {
+	res := make([]ast.Node, num)
+	for i := 0; i < num; i++ {
+		res[i] = whitespaceNode
+	}
+	return res
+}
+
 var linebreakNode = ast.NewItem(&token.Token{
 	Kind:  token.Whitespace,
 	Value: "\n",
 })
 
-var indentNode = ast.NewItem(&token.Token{
+var tabNode = ast.NewItem(&token.Token{
 	Kind:  token.Whitespace,
 	Value: "\t",
 })
@@ -46,11 +51,3 @@ var commaNode = ast.NewItem(&token.Token{
 	Kind:  token.Comma,
 	Value: ",",
 })
-
-func dPrintln(a ...interface{}) {
-	fmt.Fprintln(os.Stderr, a...)
-}
-
-func dPrintf(format string, a ...interface{}) {
-	fmt.Fprintf(os.Stderr, format, a...)
-}

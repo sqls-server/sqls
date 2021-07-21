@@ -8,13 +8,20 @@ import (
 	"strconv"
 
 	"github.com/go-sql-driver/mysql"
+	"github.com/lighttiger2505/sqls/dialect"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/xerrors"
 )
 
 func init() {
 	RegisterOpen("mysql", mysqlOpen)
+	RegisterOpen("mysql8", mysqlOpen)
+	RegisterOpen("mysql57", mysqlOpen)
+	RegisterOpen("mysql56", mysqlOpen)
 	RegisterFactory("mysql", NewMySQLDBRepository)
+	RegisterFactory("mysql8", NewMySQLDBRepository)
+	RegisterFactory("mysql57", NewMySQLDBRepository)
+	RegisterFactory("mysql56", NewMySQLDBRepository)
 }
 
 func mysqlOpen(dbConnCfg *DBConfig) (*DBConnection, error) {
@@ -42,7 +49,7 @@ func mysqlOpen(dbConnCfg *DBConfig) (*DBConnection, error) {
 		conn = dbConn
 	}
 	if err := conn.Ping(); err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("cannot ping to database, %+v", err)
 	}
 
 	conn.SetMaxIdleConns(DefaultMaxIdleConns)
@@ -51,6 +58,7 @@ func mysqlOpen(dbConnCfg *DBConfig) (*DBConnection, error) {
 	return &DBConnection{
 		Conn:    conn,
 		SSHConn: sshConn,
+		Driver:  dbConnCfg.Driver,
 	}, nil
 }
 
@@ -118,11 +126,16 @@ func genMysqlConfig(connCfg *DBConfig) (*mysql.Config, error) {
 }
 
 type MySQLDBRepository struct {
-	Conn *sql.DB
+	Conn   *sql.DB
+	driver dialect.DatabaseDriver
 }
 
 func NewMySQLDBRepository(conn *sql.DB) DBRepository {
 	return &MySQLDBRepository{Conn: conn}
+}
+
+func (db *MySQLDBRepository) Driver() dialect.DatabaseDriver {
+	return db.driver
 }
 
 func (db *MySQLDBRepository) CurrentDatabase(ctx context.Context) (string, error) {
@@ -139,6 +152,7 @@ func (db *MySQLDBRepository) Databases(ctx context.Context) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 	databases := []string{}
 	for rows.Next() {
 		var database string
@@ -174,6 +188,7 @@ func (db *MySQLDBRepository) SchemaTables(ctx context.Context) (map[string][]str
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 	databaseTables := map[string][]string{}
 	for rows.Next() {
 		var schema, table string
@@ -195,6 +210,7 @@ func (db *MySQLDBRepository) Tables(ctx context.Context) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 	tables := []string{}
 	for rows.Next() {
 		var table string
@@ -224,6 +240,7 @@ FROM information_schema.COLUMNS
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 	tableInfos := []*ColumnDesc{}
 	for rows.Next() {
 		var tableInfo ColumnDesc
@@ -264,6 +281,7 @@ WHERE information_schema.COLUMNS.TABLE_SCHEMA = ?
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 	tableInfos := []*ColumnDesc{}
 	for rows.Next() {
 		var tableInfo ColumnDesc

@@ -42,6 +42,15 @@ func (nw *NodeWalker) CurNodeIs(matcher astutil.NodeMatcher) bool {
 	return false
 }
 
+func (nw *NodeWalker) CurNodeDepth(matcher astutil.NodeMatcher) (int, bool) {
+	for i, reader := range nw.Paths {
+		if reader.CurNodeIs(matcher) {
+			return i, true
+		}
+	}
+	return 0, false
+}
+
 func (nw *NodeWalker) CurNodeMatches(matcher astutil.NodeMatcher) []ast.Node {
 	matches := []ast.Node{}
 	for _, reader := range nw.Paths {
@@ -90,6 +99,14 @@ func (nw *NodeWalker) PrevNodesIs(ignoreWitespace bool, matcher astutil.NodeMatc
 		if reader.PrevNodeIs(ignoreWitespace, matcher) {
 			return true
 		}
+	}
+	return false
+}
+
+func (nw *NodeWalker) PrevNodesIsWithDepth(ignoreWitespace bool, matcher astutil.NodeMatcher, depth int) bool {
+	reader := nw.Paths[depth]
+	if reader.PrevNodeIs(ignoreWitespace, matcher) {
+		return true
 	}
 	return false
 }

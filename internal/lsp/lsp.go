@@ -61,7 +61,11 @@ type CompletionOptions struct {
 	TriggerCharacters []string `json:"triggerCharacters"`
 }
 
-type SignatureHelpOptions struct{}
+type SignatureHelpOptions struct {
+	TriggerCharacters   []string `json:"triggerCharacters,omitempty"`
+	RetriggerCharacters []string `json:"retriggerCharacters,omitempty"`
+	WorkDoneProgressOptions
+}
 
 type CodeActionOptions struct {
 	CodeActionKinds []CodeActionKind
@@ -346,3 +350,153 @@ type DocumentRangeFormattingParams struct {
 	Options      FormattingOptions      `json:"options"`
 	WorkDoneProgressParams
 }
+
+type ParameterInformation struct {
+	Label         string `json:"label"`
+	Documentation string `json:"documentation,omitempty"`
+}
+
+type SignatureInformation struct {
+	Label           string                 `json:"label"`
+	Documentation   string                 `json:"documentation,omitempty"`
+	Parameters      []ParameterInformation `json:"parameters,omitempty"`
+	ActiveParameter float64                `json:"activeParameter,omitempty"`
+}
+
+type SignatureHelp struct {
+	Signatures      []SignatureInformation `json:"signatures"`
+	ActiveSignature float64                `json:"activeSignature"`
+	ActiveParameter float64                `json:"activeParameter"`
+}
+
+type SignatureHelpClientCapabilities struct {
+	DynamicRegistration  bool `json:"dynamicRegistration,omitempty"`
+	SignatureInformation struct {
+		DocumentationFormat  []MarkupKind `json:"documentationFormat,omitempty"`
+		ParameterInformation struct {
+			LabelOffsetSupport bool `json:"labelOffsetSupport,omitempty"`
+		} `json:"parameterInformation,omitempty"`
+		ActiveParameterSupport bool `json:"activeParameterSupport,omitempty"`
+	} `json:"signatureInformation,omitempty"`
+	ContextSupport bool `json:"contextSupport,omitempty"`
+}
+
+type SignatureHelpTriggerKind float64
+
+type SignatureHelpContext struct {
+	TriggerKind         SignatureHelpTriggerKind `json:"triggerKind"`
+	TriggerCharacter    string                   `json:"triggerCharacter,omitempty"`
+	IsRetrigger         bool                     `json:"isRetrigger"`
+	ActiveSignatureHelp SignatureHelp            `json:"activeSignatureHelp,omitempty"`
+}
+
+type SignatureHelpParams struct {
+	Context SignatureHelpContext `json:"context,omitempty"`
+	TextDocumentPositionParams
+	WorkDoneProgressParams
+}
+
+type ShowMessageParams struct {
+	Type    MessageType `json:"type"`
+	Message string      `json:"message"`
+}
+
+type ShowMessageRequestParams struct {
+	Type    MessageType         `json:"type"`
+	Message string              `json:"message"`
+	Actions []MessageActionItem `json:"actions,omitempty"`
+}
+
+type MessageActionItem struct {
+	Title string `json:"title"`
+}
+
+type MessageType float64
+
+var (
+	Error   MessageType = 1
+	Warning MessageType = 2
+	Info    MessageType = 3
+	Log     MessageType = 4
+)
+
+type RenameParams struct {
+	TextDocument TextDocumentIdentifier `json:"textDocument"`
+	Position     Position               `json:"position"`
+	NewName      string                 `json:"newName"`
+	WorkDoneProgressParams
+}
+
+type RenameFile struct {
+	Kind    string            `json:"kind"`
+	OldURI  DocumentURI       `json:"oldUri"`
+	NewURI  DocumentURI       `json:"newUri"`
+	Options RenameFileOptions `json:"options,omitempty"`
+	ResourceOperation
+}
+
+type RenameClientCapabilities struct {
+	DynamicRegistration           bool                          `json:"dynamicRegistration,omitempty"`
+	PrepareSupport                bool                          `json:"prepareSupport,omitempty"`
+	PrepareSupportDefaultBehavior PrepareSupportDefaultBehavior `json:"prepareSupportDefaultBehavior,omitempty"`
+	HonorsChangeAnnotations       bool                          `json:"honorsChangeAnnotations,omitempty"`
+}
+
+type RenameFileOptions struct {
+	Overwrite      bool `json:"overwrite,omitempty"`
+	IgnoreIfExists bool `json:"ignoreIfExists,omitempty"`
+}
+
+type RenameFilesParams struct {
+	Files []FileRename `json:"files"`
+}
+
+type RenameOptions struct {
+	PrepareProvider bool `json:"prepareProvider,omitempty"`
+	WorkDoneProgressOptions
+}
+
+type FileRename struct {
+	OldURI string `json:"oldUri"`
+	NewURI string `json:"newUri"`
+}
+
+type DocumentURI string
+type PrepareSupportDefaultBehavior = interface{}
+
+type ResourceOperation struct {
+	Kind         string                     `json:"kind"`
+	AnnotationID ChangeAnnotationIdentifier `json:"annotationId,omitempty"`
+}
+
+type ChangeAnnotationIdentifier = string
+
+type WorkspaceEdit struct {
+	Changes           map[string][]TextEdit                 `json:"changes,omitempty"`
+	DocumentChanges   []TextDocumentEdit                    `json:"documentChanges,omitempty"`
+	ChangeAnnotations map[string]ChangeAnnotationIdentifier `json:"changeAnnotations,omitempty"`
+}
+
+type TextDocumentEdit struct {
+	TextDocument OptionalVersionedTextDocumentIdentifier `json:"textDocument"`
+	Edits        []TextEdit                              `json:"edits"`
+}
+
+type OptionalVersionedTextDocumentIdentifier struct {
+	Version int32 `json:"version"`
+	TextDocumentIdentifier
+}
+
+type DefinitionParams struct {
+	TextDocumentPositionParams
+	WorkDoneProgressParams
+	PartialResultParams
+}
+
+type TypeDefinitionParams struct {
+	TextDocumentPositionParams
+	WorkDoneProgressParams
+	PartialResultParams
+}
+
+type Definition = []Location

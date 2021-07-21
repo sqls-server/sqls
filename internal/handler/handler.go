@@ -116,6 +116,14 @@ func (s *Server) handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.
 		return s.handleTextDocumentFormatting(ctx, conn, req)
 	case "textDocument/rangeFormatting":
 		return s.handleTextDocumentRangeFormatting(ctx, conn, req)
+	case "textDocument/signatureHelp":
+		return s.handleTextDocumentSignatureHelp(ctx, conn, req)
+	case "textDocument/rename":
+		return s.handleTextDocumentRename(ctx, conn, req)
+	case "textDocument/definition":
+		return s.handleDefinition(ctx, conn, req)
+	case "textDocument/typeDefinition":
+		return s.handleDefinition(ctx, conn, req)
 	}
 	return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeMethodNotFound, Message: fmt.Sprintf("method not supported: %s", req.Method)}
 }
@@ -136,20 +144,38 @@ func (s *Server) handleInitialize(ctx context.Context, conn *jsonrpc2.Conn, req 
 			HoverProvider:      true,
 			CodeActionProvider: true,
 			CompletionProvider: &lsp.CompletionOptions{
-				TriggerCharacters: []string{"."},
+				TriggerCharacters: []string{"(", "."},
 			},
-			DefinitionProvider:              false,
+			SignatureHelpProvider: &lsp.SignatureHelpOptions{
+				TriggerCharacters:   []string{"(", ","},
+				RetriggerCharacters: []string{"(", ","},
+				WorkDoneProgressOptions: lsp.WorkDoneProgressOptions{
+					WorkDoneProgress: false,
+				},
+			},
+			DefinitionProvider:              true,
 			DocumentFormattingProvider:      true,
 			DocumentRangeFormattingProvider: true,
+			RenameProvider:                  true,
 		},
 	}
 
 	// Initialize database database connection
 	// NOTE: If no connection is found at this point, it is possible that the connection settings are sent to workspace config, so don't make an error
-	if err := s.reconnectionDB(ctx); err != nil && err != ErrNoConnection {
-		return nil, err
+	messenger := lsp.NewLspMessenger(conn)
+	if err := s.reconnectionDB(ctx); err != nil {
+		if err != ErrNoConnection {
+			if err := messenger.ShowInfo(ctx, err.Error()); err != nil {
+				log.Println("send info", err.Error())
+				return nil, err
+			}
+		} else {
+			log.Println("send err", err.Error())
+			if err := messenger.ShowError(ctx, err.Error()); err != nil {
+				return nil, err
+			}
+		}
 	}
-
 	return result, nil
 }
 
@@ -281,8 +307,19 @@ func (s *Server) handleWorkspaceDidChangeConfiguration(ctx context.Context, conn
 	}
 
 	// Initialize database database connection
+	messenger := lsp.NewLspMessenger(conn)
 	if err := s.reconnectionDB(ctx); err != nil {
-		return nil, err
+		if err != ErrNoConnection {
+			if err := messenger.ShowInfo(ctx, err.Error()); err != nil {
+				log.Println("send info", err.Error())
+				return nil, err
+			}
+		} else {
+			log.Println("send err", err.Error())
+			if err := messenger.ShowError(ctx, err.Error()); err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	return nil, nil
@@ -367,13 +404,14 @@ func (s *Server) getConfig() *config.Config {
 	case validConfig(s.DefaultFileCfg):
 		cfg = s.DefaultFileCfg
 	default:
-		cfg = nil
+		cfg = config.NewConfig()
 	}
 	return cfg
 }
 
 func validConfig(cfg *config.Config) bool {
-	if cfg != nil && len(cfg.Connections) > 0 {
+	// if cfg != nil && len(cfg.Connections) > 0 {
+	if cfg != nil {
 		return true
 	}
 	return false

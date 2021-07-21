@@ -375,3 +375,52 @@ func MatchKeyword(upperWord string) KeywordKind {
 	}
 	return kind
 }
+
+type DatabaseDriver string
+
+const (
+	DatabaseDriverMySQL      DatabaseDriver = "mysql"
+	DatabaseDriverMySQL8     DatabaseDriver = "mysql8"
+	DatabaseDriverMySQL57    DatabaseDriver = "mysql57"
+	DatabaseDriverMySQL56    DatabaseDriver = "mysql56"
+	DatabaseDriverPostgreSQL DatabaseDriver = "postgresql"
+	DatabaseDriverSQLite3    DatabaseDriver = "sqlite3"
+)
+
+func DataBaseKeywords(driver DatabaseDriver) []string {
+	switch driver {
+	case DatabaseDriverMySQL:
+		return mysql8Keyword
+	case DatabaseDriverMySQL8:
+		return mysql8Keyword
+	case DatabaseDriverMySQL57:
+		return mysql57Keyword
+	case DatabaseDriverMySQL56:
+		return mysql56Keyword
+	case DatabaseDriverPostgreSQL:
+		return postgresql13Keywords
+	case DatabaseDriverSQLite3:
+		return sqliteKeywords
+	default:
+		return sqliteKeywords
+	}
+}
+
+func DataBaseFunctions(driver DatabaseDriver) []string {
+	switch driver {
+	case DatabaseDriverMySQL:
+		return mysql8Function
+	case DatabaseDriverMySQL8:
+		return mysql8Function
+	case DatabaseDriverMySQL57:
+		return mysql57function
+	case DatabaseDriverMySQL56:
+		return mysql56Function
+	case DatabaseDriverPostgreSQL:
+		return []string{}
+	case DatabaseDriverSQLite3:
+		return []string{}
+	default:
+		return []string{}
+	}
+}

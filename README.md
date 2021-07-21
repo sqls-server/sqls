@@ -47,9 +47,13 @@ sqls aims to provide advanced intelligence for you to edit sql in your own edito
 
 ![hover](./imgs/sqls_hover.gif)
 
+#### Signature Help
+
+![signature_help](./imgs/sqls_signature_help.gif)
+
 #### Document Formatting
 
-Coming soon.
+![document_format](./imgs/sqls_document_format.gif)
 
 ## Installation
 
@@ -61,6 +65,7 @@ go get github.com/lighttiger2505/sqls
 
 - [sqls.vim](https://github.com/lighttiger2505/sqls.vim)
 - [vscode-sqls](https://github.com/lighttiger2505/vscode-sqls)
+- [sqls.nvim](https://github.com/nanotee/sqls.nvim)
 
 ## DB Configuration
 
@@ -158,6 +163,27 @@ In `coc-settings.json` opened by `:CocConfig`
             "shell": true
         }
     }
+}
+```
+
+* setting example with [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig/blob/master/CONFIG.md#sqls).
+
+```lua
+require'lspconfig'.sqls.setup{
+  settings = {
+    sqls = {
+      connections = {
+        {
+          driver = 'mysql',
+          dataSourceName = 'root:root@tcp(127.0.0.1:13306)/world',
+        },
+        {
+          driver = 'postgresql',
+          dataSourceName = 'host=127.0.0.1 port=15432 user=postgres password=mysecretpassword1234 dbname=dvdrental sslmode=disable',
+        },
+      },
+    },
+  },
 }
 ```
 

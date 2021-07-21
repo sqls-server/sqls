@@ -1,0 +1,14 @@
+connections:
+  - alias: sqls_mysql
+    driver: mysql
+    dataSourceName: ""
+    proto: unix
+    user: root
+    passwd: root
+    host: 127.0.0.1
+    port: 13306
+    path: ""
+    dbName: world
+    params:
+      autocommit: "true"
+      tls: skip-verify

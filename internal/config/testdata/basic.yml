@@ -1,0 +1,45 @@
+lowercaseKeywords: true
+connections:
+  - alias: sqls_mysql
+    driver: mysql
+    dataSourceName: ""
+    proto: tcp
+    user: root
+    passwd: root
+    host: 127.0.0.1
+    port: 13306
+    path: ""
+    dbName: world
+    params:
+      autocommit: "true"
+      tls: skip-verify
+  - alias: sqls_sqlite3
+    driver: sqlite3
+    dataSourceName: "file:/home/lighttiger2505/chinook.db"
+  - alias: sqls_postgresql
+    driver: postgresql
+    dataSourceName: ""
+    proto: tcp
+    user: postgres
+    passwd: mysecretpassword1234
+    host: 127.0.0.1
+    port: 15432
+    path: ""
+    dbName: dvdrental
+    params:
+      sslmode: disable
+  - alias: mysql_with_bastion
+    driver: mysql
+    dataSourceName: ""
+    proto: tcp
+    user: admin
+    passwd: Q+ACgv12ABx/
+    host: 192.168.121.163
+    port: 3306
+    dbName: world
+    sshConfig:
+      host: 192.168.121.168
+      port: 22
+      user: vagrant
+      passPhrase: passphrase1234
+      privateKey: /home/lighttiger2505/.ssh/id_rsa

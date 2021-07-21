@@ -1,0 +1,5 @@
+connections:
+  - alias: sqls_mysql
+    driver: mysql
+    dataSourceName: ""
+    proto: ""

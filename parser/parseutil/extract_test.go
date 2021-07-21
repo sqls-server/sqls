@@ -2,6 +2,8 @@ package parseutil
 
 import (
 	"testing"
+
+	"github.com/lighttiger2505/sqls/token"
 )
 
 func TestExtractSelectExpr(t *testing.T) {
@@ -218,6 +220,122 @@ func TestExtractAliasedIdentifer(t *testing.T) {
 
 			if len(gots) != len(tt.want) {
 				t.Errorf("contain nodes %d, got %d", len(tt.want), len(gots))
+				return
+			}
+			for i, got := range gots {
+				if tt.want[i] != got.String() {
+					t.Errorf("expected %q, got %q", tt.want[i], got.String())
+				}
+			}
+		})
+	}
+}
+
+func TestExtractInsertColumns(t *testing.T) {
+	testcases := []struct {
+		name  string
+		input string
+		want  []string
+	}{
+		{
+			name:  "full",
+			input: "insert into city (ID, Name, CountryCode) VALUES (123, 'aaa', '2020')",
+			want: []string{
+				"ID, Name, CountryCode",
+			},
+		},
+		{
+			name:  "with out statement",
+			input: "city (ID, Name, CountryCode) VALUES (123, 'aaa', '2020')",
+			want: []string{
+				"ID, Name, CountryCode",
+			},
+		},
+		{
+			name:  "minimum",
+			input: "city (ID, Name, CountryCode)",
+			want: []string{
+				"ID, Name, CountryCode",
+			},
+		},
+	}
+	for _, tt := range testcases {
+		t.Run(tt.name, func(t *testing.T) {
+			query := initExtractTable(t, tt.input)
+			gots := ExtractInsertColumns(query)
+
+			if len(gots) != len(tt.want) {
+				t.Errorf("contain nodes %d, got %d (%v)", len(tt.want), len(gots), gots)
+				return
+			}
+			for i, got := range gots {
+				if tt.want[i] != got.String() {
+					t.Errorf("expected %q, got %q", tt.want[i], got.String())
+				}
+			}
+		})
+	}
+}
+
+func TestExtractInsertValues(t *testing.T) {
+	testcases := []struct {
+		name  string
+		input string
+		pos   token.Pos
+		want  []string
+	}{
+		{
+			name:  "full",
+			input: "insert into city (ID, Name, CountryCode) VALUES (123, 'aaa', '2020')",
+			pos: token.Pos{
+				Line: 0,
+				Col:  50,
+			},
+			want: []string{
+				"123, 'aaa', '2020'",
+			},
+		},
+		{
+			name:  "multi value",
+			input: "insert into city (ID, Name, CountryCode) VALUES (123, 'aaa', '2020'), (456, 'bbb', '2021')",
+			pos: token.Pos{
+				Line: 0,
+				Col:  72,
+			},
+			want: []string{
+				"456, 'bbb', '2021'",
+			},
+		},
+		{
+			name:  "with out statement",
+			input: "city (ID, Name, CountryCode) VALUES (123, 'aaa', '2020')",
+			pos: token.Pos{
+				Line: 0,
+				Col:  38,
+			},
+			want: []string{
+				"123, 'aaa', '2020'",
+			},
+		},
+		{
+			name:  "minimum",
+			input: "VALUES (123, 'aaa', '2020')",
+			pos: token.Pos{
+				Line: 0,
+				Col:  9,
+			},
+			want: []string{
+				"123, 'aaa', '2020'",
+			},
+		},
+	}
+	for _, tt := range testcases {
+		t.Run(tt.name, func(t *testing.T) {
+			query := initExtractTable(t, tt.input)
+			gots := ExtractInsertValues(query, tt.pos)
+
+			if len(gots) != len(tt.want) {
+				t.Errorf("contain nodes %d, got %d (%v)", len(tt.want), len(gots), gots)
 				return
 			}
 			for i, got := range gots {
