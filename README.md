@@ -15,7 +15,7 @@ sqls aims to provide advanced intelligence for you to edit sql in your own edito
 ### Support RDBMS
 
 - MySQL([Go-MySQL-Driver](https://github.com/go-sql-driver/mysql))
-- PostgreSQL([pq](https://github.com/lib/pq))
+- PostgreSQL([pgx](https://github.com/jackc/pgx))
 - SQLite3([go-sqlite3](https://github.com/mattn/go-sqlite3))
 
 ### Language Server Features
@@ -57,7 +57,7 @@ sqls aims to provide advanced intelligence for you to edit sql in your own edito
 
 ## Installation
 
-```
+```shell
 go get github.com/lighttiger2505/sqls
 ```
 
@@ -120,7 +120,7 @@ connections:
 
 ### Workspace configuration Sample
 
-* setting example with vim-lsp.
+- setting example with vim-lsp.
 
 ```vim
 if executable('sqls')
@@ -149,7 +149,7 @@ if executable('sqls')
 endif
 ```
 
-* setting example with coc.nvim.
+- setting example with coc.nvim.
 
 In `coc-settings.json` opened by `:CocConfig`
 
@@ -166,7 +166,7 @@ In `coc-settings.json` opened by `:CocConfig`
 }
 ```
 
-* setting example with [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig/blob/master/CONFIG.md#sqls).
+- setting example with [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig/blob/master/CONFIG.md#sqls).
 
 ```lua
 require'lspconfig'.sqls.setup{
@@ -194,7 +194,7 @@ require'lspconfig'.sqls.setup{
 The first setting in `connections` is the default connection.
 
 | Key         | Description          |
-|-------------|----------------------|
+| ----------- | -------------------- |
 | connections | Database connections |
 
 ### connections
@@ -202,7 +202,7 @@ The first setting in `connections` is the default connection.
 `dataSourceName` takes precedence over the value set in `proto`, `user`, `passwd`, `host`, `port`, `dbName`, `params`.
 
 | Key            | Description                                 |
-|----------------|---------------------------------------------|
+| -------------- | ------------------------------------------- |
 | alias          | Connection alias name. Optional.            |
 | driver         | `mysql`, `postgresql`, `sqlite3`. Required. |
 | dataSourceName | Data source name.                           |
@@ -219,7 +219,7 @@ The first setting in `connections` is the default connection.
 #### sshConfig
 
 | Key        | Description                 |
-|------------|-----------------------------|
+| ---------- | --------------------------- |
 | host       | ssh host. Required.         |
 | port       | ssh port. Required.         |
 | user       | ssh user. Optional.         |
@@ -230,9 +230,9 @@ The first setting in `connections` is the default connection.
 
 See also.
 
-- https://github.com/go-sql-driver/mysql#dsn-data-source-name
-- https://godoc.org/github.com/lib/pq
-- https://github.com/mattn/go-sqlite3#connection-string
+- <https://github.com/go-sql-driver/mysql#dsn-data-source-name>
+- <https://pkg.go.dev/github.com/jackc/pgx/v4>
+- <https://github.com/mattn/go-sqlite3#connection-string>
 
 ## Contributors
 
