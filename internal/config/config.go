@@ -2,12 +2,12 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 
 	"github.com/lighttiger2505/sqls/internal/database"
-	"golang.org/x/xerrors"
 	"gopkg.in/yaml.v2"
 )
 
@@ -64,21 +64,21 @@ func (c *Config) Load(fp string) error {
 
 	file, err := os.OpenFile(fp, os.O_RDONLY, 0666)
 	if err != nil {
-		return xerrors.Errorf("cannot open config, %+v", err)
+		return fmt.Errorf("cannot open config, %w", err)
 	}
 	defer file.Close()
 
 	b, err := ioutil.ReadAll(file)
 	if err != nil {
-		return xerrors.Errorf("cannot read config, %+v", err)
+		return fmt.Errorf("cannot read config, %w", err)
 	}
 
 	if err = yaml.Unmarshal(b, c); err != nil {
-		return xerrors.Errorf("failed unmarshal yaml, %+v", err, string(b))
+		return fmt.Errorf("failed unmarshal yaml, %w, %s", err, string(b))
 	}
 
 	if err := c.Validate(); err != nil {
-		return xerrors.Errorf("failed validation, %+v", err)
+		return fmt.Errorf("failed validation, %w", err)
 	}
 	return nil
 }

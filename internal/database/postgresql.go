@@ -3,20 +3,19 @@ package database
 import (
 	"context"
 	"database/sql"
-	"database/sql/driver"
+	"fmt"
 	"log"
 	"net"
 	"net/url"
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 	"unicode"
 
-	_ "github.com/jackc/pgx/v4/stdlib"
+	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/stdlib"
 	"github.com/lighttiger2505/sqls/dialect"
 	"golang.org/x/crypto/ssh"
-	"golang.org/x/xerrors"
 )
 
 func init() {
@@ -61,26 +60,6 @@ func postgreSQLOpen(dbConnCfg *DBConfig) (*DBConnection, error) {
 	}, nil
 }
 
-type PostgreSQLViaSSHDialer struct {
-	client *ssh.Client
-}
-
-func (d *PostgreSQLViaSSHDialer) Open(s string) (_ driver.Conn, err error) {
-	return nil, nil
-}
-
-func (d *PostgreSQLViaSSHDialer) Dial(network, address string) (net.Conn, error) {
-	return d.client.Dial(network, address)
-}
-
-func (d *PostgreSQLViaSSHDialer) DialTimeout(network, address string, timeout time.Duration) (net.Conn, error) {
-	return d.client.Dial(network, address)
-}
-
-var (
-	sshConnCount int = 1
-)
-
 func openPostgreSQLViaSSH(dsn string, sshCfg *SSHConfig) (*sql.DB, *ssh.Client, error) {
 	sshConfig, err := sshCfg.ClientConfig()
 	if err != nil {
@@ -88,20 +67,19 @@ func openPostgreSQLViaSSH(dsn string, sshCfg *SSHConfig) (*sql.DB, *ssh.Client, 
 	}
 	sshConn, err := ssh.Dial("tcp", sshCfg.Endpoint(), sshConfig)
 	if err != nil {
-		return nil, nil, xerrors.Errorf("cannot ssh dial, %+v", err)
+		return nil, nil, fmt.Errorf("cannot ssh dial, %w", err)
 	}
 
-	// NOTE: This is a workaround to avoid the panic that occurs in the specifications of sql.driver
-	// See https://pkg.go.dev/database/sql#Register
-	// > If Register is called twice with the same name or if driver is nil, it panics
-	viaSSHDriver := "postgres+ssh" + strconv.Itoa(sshConnCount)
-	sql.Register(viaSSHDriver, &PostgreSQLViaSSHDialer{sshConn})
-	sshConnCount++
-
-	conn, err := sql.Open(viaSSHDriver, dsn)
+	conf, err := pgx.ParseConfig(dsn)
 	if err != nil {
-		return nil, nil, xerrors.Errorf("cannot connect database, %+v", err)
+		return nil, nil, err
 	}
+	conf.DialFunc = func(ctx context.Context, network, addr string) (net.Conn, error) {
+		return sshConn.Dial(network, addr)
+	}
+
+	conn := stdlib.OpenDB(*conf)
+
 	return conn, sshConn, nil
 }
 
@@ -385,7 +363,7 @@ func genPostgresConfig(connCfg *DBConfig) (string, error) {
 	case ProtoUnix:
 		q.Set("host", connCfg.Path)
 	default:
-		return "", xerrors.Errorf("default addr for network %s unknown", connCfg.Proto)
+		return "", fmt.Errorf("default addr for network %s unknown", connCfg.Proto)
 	}
 
 	for k, v := range connCfg.Params {

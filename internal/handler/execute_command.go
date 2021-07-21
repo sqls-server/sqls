@@ -17,7 +17,6 @@ import (
 	"github.com/lighttiger2505/sqls/parser"
 	"github.com/olekukonko/tablewriter"
 	"github.com/sourcegraph/jsonrpc2"
-	"golang.org/x/xerrors"
 )
 
 const (
@@ -357,7 +356,7 @@ func getStatements(text string) ([]*ast.Statement, error) {
 	for _, node := range parsed.GetTokens() {
 		stmt, ok := node.(*ast.Statement)
 		if !ok {
-			return nil, xerrors.Errorf("invalid type want Statement parsed %T", stmt)
+			return nil, fmt.Errorf("invalid type want Statement parsed %T", stmt)
 		}
 		stmts = append(stmts, stmt)
 	}

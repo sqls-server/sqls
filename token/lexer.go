@@ -1,12 +1,11 @@
 package token
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"strings"
 	"text/scanner"
-
-	errors "golang.org/x/xerrors"
 
 	"github.com/lighttiger2505/sqls/dialect"
 )
@@ -130,7 +129,7 @@ func (t *Tokenizer) Tokenize() ([]*Token, error) {
 
 	for {
 		t, err := t.NextToken()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
@@ -145,11 +144,11 @@ func (t *Tokenizer) Tokenize() ([]*Token, error) {
 func (t *Tokenizer) NextToken() (*Token, error) {
 	pos := t.Pos()
 	tok, str, err := t.next()
-	if err == io.EOF {
+	if errors.Is(err, io.EOF) {
 		return nil, io.EOF
 	}
 	if err != nil {
-		return &Token{Kind: ILLEGAL, Value: "", From: pos, To: t.Pos()}, errors.Errorf("tokenize failed: %w", err)
+		return &Token{Kind: ILLEGAL, Value: "", From: pos, To: t.Pos()}, fmt.Errorf("tokenize failed: %w", err)
 	}
 
 	return &Token{Kind: tok, Value: str, From: pos, To: t.Pos()}, nil
@@ -313,7 +312,7 @@ func (t *Tokenizer) next() (Kind, interface{}, error) {
 			t.Col += 2
 			return Neq, "!=", nil
 		}
-		return ILLEGAL, "", errors.Errorf("tokenizer error: illegal sequence %s%s", string(r), string(n))
+		return ILLEGAL, "", fmt.Errorf("tokenizer error: illegal sequence %s%s", string(r), string(n))
 
 	case r == '<':
 		t.Scanner.Next()
@@ -485,7 +484,7 @@ func (t *Tokenizer) tokenizeMultilineComment() (string, error) {
 			t.Col = 0
 			t.Line += 1
 		} else if n == scanner.EOF {
-			return "", errors.Errorf("unclosed multiline comment: %s at %+v", string(str), t.Pos())
+			return "", fmt.Errorf("unclosed multiline comment: %s at %+v", string(str), t.Pos())
 		} else {
 			t.Col += 1
 		}

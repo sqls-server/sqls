@@ -10,7 +10,6 @@ import (
 	"github.com/go-sql-driver/mysql"
 	"github.com/lighttiger2505/sqls/dialect"
 	"golang.org/x/crypto/ssh"
-	"golang.org/x/xerrors"
 )
 
 func init() {
@@ -49,7 +48,7 @@ func mysqlOpen(dbConnCfg *DBConfig) (*DBConnection, error) {
 		conn = dbConn
 	}
 	if err := conn.Ping(); err != nil {
-		return nil, xerrors.Errorf("cannot ping to database, %+v", err)
+		return nil, fmt.Errorf("cannot ping to database, %w", err)
 	}
 
 	conn.SetMaxIdleConns(DefaultMaxIdleConns)
@@ -77,12 +76,12 @@ func openMySQLViaSSH(dsn string, sshCfg *SSHConfig) (*sql.DB, *ssh.Client, error
 	}
 	sshConn, err := ssh.Dial("tcp", sshCfg.Endpoint(), sshConfig)
 	if err != nil {
-		return nil, nil, xerrors.Errorf("cannot ssh dial, %+v", err)
+		return nil, nil, fmt.Errorf("cannot ssh dial, %w", err)
 	}
 	mysql.RegisterDialContext("mysql+tcp", (&MySQLViaSSHDialer{sshConn}).Dial)
 	conn, err := sql.Open("mysql", dsn)
 	if err != nil {
-		return nil, nil, xerrors.Errorf("cannot connect database, %+v", err)
+		return nil, nil, fmt.Errorf("cannot connect database, %w", err)
 	}
 	return conn, sshConn, nil
 }
