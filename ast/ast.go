@@ -395,6 +395,12 @@ func (p *Parenthesis) Inner() TokenList {
 	return &ParenthesisInner{Toks: p.Toks[1:endPos]}
 }
 
+// func (p *Parenthesis) IsValues() bool {
+// 	i := p.Inner().GetTokens()[0]
+// 	_, ok := i.(*IdentiferList)
+// 	return ok
+// }
+
 type ParenthesisInner struct {
 	Toks []Node
 }

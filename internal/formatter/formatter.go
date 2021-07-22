@@ -115,7 +115,7 @@ func Eval(node ast.Node, env *formatEnvironment) ast.Node {
 	case *ast.FunctionLiteral:
 		return formatFunctionLiteral(node, env)
 	case *ast.IdentiferList:
-		return formatIdentiferList(node, env)
+		return formatIdentiferList(node, env, false)
 	default:
 		if list, ok := node.(ast.TokenList); ok {
 			return formatTokenList(list, env)
@@ -132,6 +132,8 @@ func formatItem(node ast.Node, env *formatEnvironment) ast.Node {
 	outdentBeforeMatcher := astutil.NodeMatcher{
 		ExpectKeyword: []string{
 			"FROM",
+			"INTO",
+			"VALUES",
 			"JOIN",
 			"WHERE",
 			"HAVING",
@@ -175,7 +177,10 @@ func formatItem(node ast.Node, env *formatEnvironment) ast.Node {
 	linebreakWithIndentAfterMatcher := astutil.NodeMatcher{
 		ExpectKeyword: []string{
 			"SELECT",
+			"INSERT",
 			"FROM",
+			"VALUES",
+			"INTO",
 			"SET",
 			"WHERE",
 			"HAVING",
@@ -232,13 +237,6 @@ func formatMultiKeyword(node *ast.MultiKeyword, env *formatEnvironment) ast.Node
 		"GROUP BY",
 		"ORDER BY",
 	}
-
-	// whitespaceAfterMatcher := astutil.NodeMatcher{
-	// 	ExpectKeyword: joinKeywords,
-	// }
-	// if whitespaceAfterMatcher.IsMatch(node) {
-	// 	results = append(results, whitespaceNode)
-	// }
 
 	// Add an adjustment indent before the cursor
 	outdentBeforeMatcher := astutil.NodeMatcher{
@@ -327,14 +325,14 @@ func formatParenthesis(node *ast.Parenthesis, env *formatEnvironment) ast.Node {
 	results = append(results, lparenItem)
 	startIndentLevel := env.indentLevel
 
-	reader := astutil.NewNodeReader(node.Inner())
-	reader.NextNode(true)
+	tmpReader := astutil.NewNodeReader(node.Inner())
+	tmpReader.NextNode(true)
 	selectMatcher := astutil.NodeMatcher{
 		ExpectKeyword: []string{
 			"SELECT",
 		},
 	}
-	if reader.CurNodeIs(selectMatcher) {
+	if tmpReader.CurNodeIs(selectMatcher) {
 		// subquery
 		env.indentLevelUp()
 		results = append(results, linebreakNode)
@@ -347,7 +345,15 @@ func formatParenthesis(node *ast.Parenthesis, env *formatEnvironment) ast.Node {
 		node.SetTokens(results)
 		return node
 	}
-	results = append(results, Eval(node.Inner(), env))
+
+	i := node.Inner().GetTokens()[0]
+	il, ok := i.(*ast.IdentiferList)
+	if ok {
+		results = append(results, formatIdentiferList(il, env, true))
+	} else {
+		results = append(results, Eval(node.Inner(), env))
+	}
+
 	results = append(results, rparenItem)
 	node.SetTokens(results)
 	return node
@@ -357,14 +363,18 @@ func formatFunctionLiteral(node *ast.FunctionLiteral, env *formatEnvironment) as
 	return node
 }
 
-func formatIdentiferList(identiferList *ast.IdentiferList, env *formatEnvironment) ast.Node {
+func formatIdentiferList(identiferList *ast.IdentiferList, env *formatEnvironment, inline bool) ast.Node {
 	idents := identiferList.GetIdentifers()
 	results := []ast.Node{}
 	for i, ident := range idents {
 		results = append(results, Eval(ident, env))
 		if i != len(idents)-1 {
-			results = append(results, commaItem, linebreakNode)
-			results = append(results, env.getIndent())
+			results = append(results, commaItem)
+			if inline {
+				results = append(results, whitespaceNode)
+			} else {
+				results = append(results, linebreakNode, env.getIndent())
+			}
 		}
 	}
 	identiferList.SetTokens(results)

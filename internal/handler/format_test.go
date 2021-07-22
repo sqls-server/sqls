@@ -160,6 +160,16 @@ func TestFormattingTrailing(t *testing.T) {
 	// Add minimal case test
 	minimalTestCase := []formattingTestCase{
 		{
+			name:  "whitespace",
+			input: "   inner    join   ",
+			want:  "inner join",
+		},
+		{
+			name:  "linebreak",
+			input: "\n\n\ninner\n\n\njoin\n\n\n",
+			want:  "inner join",
+		},
+		{
 			name:  "multi keyword",
 			input: "inner \n\t join",
 			want:  "inner join",
