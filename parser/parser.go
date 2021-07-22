@@ -2,6 +2,7 @@ package parser
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"strings"
 
@@ -9,7 +10,6 @@ import (
 	"github.com/lighttiger2505/sqls/ast/astutil"
 	"github.com/lighttiger2505/sqls/dialect"
 	"github.com/lighttiger2505/sqls/token"
-	"github.com/pkg/errors"
 )
 
 type (
@@ -74,7 +74,7 @@ func NewParser(src io.Reader, d dialect.Dialect) (*Parser, error) {
 	tokenizer := token.NewTokenizer(src, d)
 	tokens, err := tokenizer.Tokenize()
 	if err != nil {
-		return nil, errors.Errorf("tokenize err failed: %+v", err)
+		return nil, fmt.Errorf("tokenize err failed: %w", err)
 	}
 
 	parsed := []ast.Node{}

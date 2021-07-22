@@ -3,20 +3,19 @@ package database
 import (
 	"context"
 	"database/sql"
-	"database/sql/driver"
+	"fmt"
 	"log"
 	"net"
 	"net/url"
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 	"unicode"
 
-	pq "github.com/lib/pq"
+	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/stdlib"
 	"github.com/lighttiger2505/sqls/dialect"
 	"golang.org/x/crypto/ssh"
-	"golang.org/x/xerrors"
 )
 
 func init() {
@@ -42,13 +41,13 @@ func postgreSQLOpen(dbConnCfg *DBConfig) (*DBConnection, error) {
 		conn = dbConn
 		sshConn = dbSSHConn
 	} else {
-		dbConn, err := sql.Open("postgres", dsn)
+		dbConn, err := sql.Open("pgx", dsn)
 		if err != nil {
 			return nil, err
 		}
 		conn = dbConn
 	}
-	if err := conn.Ping(); err != nil {
+	if err = conn.Ping(); err != nil {
 		return nil, err
 	}
 
@@ -61,26 +60,6 @@ func postgreSQLOpen(dbConnCfg *DBConfig) (*DBConnection, error) {
 	}, nil
 }
 
-type PostgreSQLViaSSHDialer struct {
-	client *ssh.Client
-}
-
-func (d *PostgreSQLViaSSHDialer) Open(s string) (_ driver.Conn, err error) {
-	return pq.DialOpen(d, s)
-}
-
-func (d *PostgreSQLViaSSHDialer) Dial(network, address string) (net.Conn, error) {
-	return d.client.Dial(network, address)
-}
-
-func (d *PostgreSQLViaSSHDialer) DialTimeout(network, address string, timeout time.Duration) (net.Conn, error) {
-	return d.client.Dial(network, address)
-}
-
-var (
-	sshConnCount int = 1
-)
-
 func openPostgreSQLViaSSH(dsn string, sshCfg *SSHConfig) (*sql.DB, *ssh.Client, error) {
 	sshConfig, err := sshCfg.ClientConfig()
 	if err != nil {
@@ -88,20 +67,19 @@ func openPostgreSQLViaSSH(dsn string, sshCfg *SSHConfig) (*sql.DB, *ssh.Client, 
 	}
 	sshConn, err := ssh.Dial("tcp", sshCfg.Endpoint(), sshConfig)
 	if err != nil {
-		return nil, nil, xerrors.Errorf("cannot ssh dial, %+v", err)
+		return nil, nil, fmt.Errorf("cannot ssh dial, %w", err)
 	}
 
-	// NOTE: This is a workaround to avoid the panic that occurs in the specifications of sql.driver
-	// See https://pkg.go.dev/database/sql#Register
-	// > If Register is called twice with the same name or if driver is nil, it panics
-	viaSSHDriver := "postgres+ssh" + strconv.Itoa(sshConnCount)
-	sql.Register(viaSSHDriver, &PostgreSQLViaSSHDialer{sshConn})
-	sshConnCount++
-
-	conn, err := sql.Open(viaSSHDriver, dsn)
+	conf, err := pgx.ParseConfig(dsn)
 	if err != nil {
-		return nil, nil, xerrors.Errorf("cannot connect database, %+v", err)
+		return nil, nil, err
 	}
+	conf.DialFunc = func(ctx context.Context, network, addr string) (net.Conn, error) {
+		return sshConn.Dial(network, addr)
+	}
+
+	conn := stdlib.OpenDB(*conf)
+
 	return conn, sshConn, nil
 }
 
@@ -135,6 +113,7 @@ func (db *PostgreSQLDBRepository) Databases(ctx context.Context) ([]string, erro
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer rows.Close()
 	databases := []string{}
 	for rows.Next() {
 		var database string
@@ -164,6 +143,7 @@ func (db *PostgreSQLDBRepository) Schemas(ctx context.Context) ([]string, error)
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer rows.Close()
 	databases := []string{}
 	for rows.Next() {
 		var database string
@@ -191,6 +171,7 @@ func (db *PostgreSQLDBRepository) SchemaTables(ctx context.Context) (map[string]
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 	databaseTables := map[string][]string{}
 	for rows.Next() {
 		var schema, table string
@@ -224,6 +205,7 @@ func (db *PostgreSQLDBRepository) Tables(ctx context.Context) ([]string, error) 
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer rows.Close()
 	tables := []string{}
 	for rows.Next() {
 		var table string
@@ -269,6 +251,7 @@ func (db *PostgreSQLDBRepository) DescribeDatabaseTable(ctx context.Context) ([]
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer rows.Close()
 	tableInfos := []*ColumnDesc{}
 	for rows.Next() {
 		var tableInfo ColumnDesc
@@ -326,6 +309,7 @@ func (db *PostgreSQLDBRepository) DescribeDatabaseTableBySchema(ctx context.Cont
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer rows.Close()
 	tableInfos := []*ColumnDesc{}
 	for rows.Next() {
 		var tableInfo ColumnDesc
@@ -379,7 +363,7 @@ func genPostgresConfig(connCfg *DBConfig) (string, error) {
 	case ProtoUnix:
 		q.Set("host", connCfg.Path)
 	default:
-		return "", xerrors.Errorf("default addr for network %s unknown", connCfg.Proto)
+		return "", fmt.Errorf("default addr for network %s unknown", connCfg.Proto)
 	}
 
 	for k, v := range connCfg.Params {

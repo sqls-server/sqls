@@ -3,7 +3,7 @@ package database
 import (
 	"testing"
 
-	_ "github.com/lib/pq"
+	_ "github.com/jackc/pgx/v4/stdlib"
 )
 
 func Test_genPostgresConfig(t *testing.T) {

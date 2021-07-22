@@ -7,7 +7,6 @@ import (
 
 	"github.com/lighttiger2505/sqls/dialect"
 	"golang.org/x/crypto/ssh"
-	"golang.org/x/xerrors"
 )
 
 type Proto string
@@ -107,19 +106,19 @@ func (s *SSHConfig) Endpoint() string {
 func (s *SSHConfig) ClientConfig() (*ssh.ClientConfig, error) {
 	buffer, err := ioutil.ReadFile(s.PrivateKey)
 	if err != nil {
-		return nil, xerrors.Errorf("cannot read SSH private key file, PrivateKey=%s, %+v", s.PrivateKey, err)
+		return nil, fmt.Errorf("cannot read SSH private key file, PrivateKey=%s, %w", s.PrivateKey, err)
 	}
 
 	var key ssh.Signer
 	if s.PassPhrase != "" {
 		key, err = ssh.ParsePrivateKeyWithPassphrase(buffer, []byte(s.PassPhrase))
 		if err != nil {
-			return nil, xerrors.Errorf("cannot parse SSH private key file with passphrase, PrivateKey=%s, %+v", s.PrivateKey, err)
+			return nil, fmt.Errorf("cannot parse SSH private key file with passphrase, PrivateKey=%s, %w", s.PrivateKey, err)
 		}
 	} else {
 		key, err = ssh.ParsePrivateKey(buffer)
 		if err != nil {
-			return nil, xerrors.Errorf("cannot parse SSH private key file, PrivateKey=%s, %+v", s.PrivateKey, err)
+			return nil, fmt.Errorf("cannot parse SSH private key file, PrivateKey=%s, %w", s.PrivateKey, err)
 		}
 	}
 

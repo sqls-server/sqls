@@ -116,7 +116,7 @@ var dummyDatabases = []string{
 	"world",
 }
 var dummyDatabaseTables = map[string][]string{
-	"world": []string{
+	"world": {
 		"city",
 		"country",
 		"countrylanguage",

@@ -77,6 +77,7 @@ func (db *SQLite3DBRepository) Tables(ctx context.Context) ([]string, error) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer rows.Close()
 	tables := []string{}
 	for rows.Next() {
 		var table string
@@ -93,6 +94,7 @@ func (db *SQLite3DBRepository) describeTable(ctx context.Context, tableName stri
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer rows.Close()
 	tableInfos := []*ColumnDesc{}
 	for rows.Next() {
 		var id int

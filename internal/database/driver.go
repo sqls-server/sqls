@@ -6,7 +6,6 @@ import (
 
 	"github.com/lighttiger2505/sqls/dialect"
 	"golang.org/x/crypto/ssh"
-	"golang.org/x/xerrors"
 )
 
 var driverOpeners = make(map[dialect.DatabaseDriver]Opener)
@@ -59,7 +58,7 @@ func Registered(name dialect.DatabaseDriver) bool {
 func Open(cfg *DBConfig) (*DBConnection, error) {
 	OpenFn, ok := driverOpeners[cfg.Driver]
 	if !ok {
-		return nil, xerrors.Errorf("driver not found, %s", cfg.Driver)
+		return nil, fmt.Errorf("driver not found, %s", cfg.Driver)
 	}
 	return OpenFn(cfg)
 }
@@ -67,7 +66,7 @@ func Open(cfg *DBConfig) (*DBConnection, error) {
 func CreateRepository(driver dialect.DatabaseDriver, db *sql.DB) (DBRepository, error) {
 	FactoryFn, ok := driverFactories[driver]
 	if !ok {
-		return nil, xerrors.Errorf("driver not found, %s", driver)
+		return nil, fmt.Errorf("driver not found, %s", driver)
 	}
 	return FactoryFn(db), nil
 }

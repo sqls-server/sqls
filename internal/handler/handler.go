@@ -9,7 +9,6 @@ import (
 	"runtime"
 
 	"github.com/sourcegraph/jsonrpc2"
-	"golang.org/x/xerrors"
 
 	"github.com/lighttiger2505/sqls/internal/config"
 	"github.com/lighttiger2505/sqls/internal/database"
@@ -355,7 +354,7 @@ func (s *Server) newDBConnection(ctx context.Context) (*database.DBConnection, e
 		connCfg = s.getConnection(s.curConnectionIndex)
 	}
 	if connCfg == nil {
-		return nil, xerrors.Errorf("not found database connection config, index %d", s.curConnectionIndex+1)
+		return nil, fmt.Errorf("not found database connection config, index %d", s.curConnectionIndex+1)
 	}
 	if s.curDBName != "" {
 		connCfg.DBName = s.curDBName

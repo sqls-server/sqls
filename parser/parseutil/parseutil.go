@@ -1,10 +1,11 @@
 package parseutil
 
 import (
+	"fmt"
+
 	"github.com/lighttiger2505/sqls/ast"
 	"github.com/lighttiger2505/sqls/ast/astutil"
 	"github.com/lighttiger2505/sqls/token"
-	"golang.org/x/xerrors"
 )
 
 type TableInfo struct {
@@ -59,7 +60,7 @@ func extractFocusedStatement(parsed ast.TokenList, pos token.Pos) (ast.TokenList
 	nodeWalker := NewNodeWalker(parsed, pos)
 	matcher := astutil.NodeMatcher{NodeTypes: []ast.NodeType{ast.TypeStatement}}
 	if !nodeWalker.CurNodeIs(matcher) {
-		return nil, xerrors.Errorf("Not found statement, Node: %q, Position: (%d, %d)", parsed.String(), pos.Line, pos.Col)
+		return nil, fmt.Errorf("Not found statement, Node: %q, Position: (%d, %d)", parsed.String(), pos.Line, pos.Col)
 	}
 	stmt := nodeWalker.CurNodeTopMatched(matcher).(ast.TokenList)
 	return stmt, nil
@@ -156,7 +157,7 @@ func ExtractSubQueryViews(parsed ast.TokenList, pos token.Pos) ([]*SubQueryInfo,
 	for _, subQuery := range subQueries {
 		parenthesis, ok := subQuery.RealName.(*ast.Parenthesis)
 		if !ok {
-			return nil, xerrors.Errorf("is not sub query, query: %q, type: %T", stmt, stmt)
+			return nil, fmt.Errorf("is not sub query, query: %q, type: %T", stmt, stmt)
 		}
 
 		subqueryCols, _, err := extractSubQueryColumns(parenthesis.Inner())
@@ -312,7 +313,7 @@ func parseTableInfo(idents ast.Node) ([]*TableInfo, error) {
 		}
 		res = append(res, tis)
 	default:
-		return nil, xerrors.Errorf("unknown node type %T", v)
+		return nil, fmt.Errorf("unknown node type %T", v)
 	}
 	return res, nil
 }
@@ -335,7 +336,7 @@ func identifierListToTableInfo(il *ast.IdentiferList) ([]*TableInfo, error) {
 		case *ast.Aliased:
 			// pass
 		default:
-			return nil, xerrors.Errorf("failed parse table info, unknown node type %T, value %q in %q", ident, ident, il)
+			return nil, fmt.Errorf("failed parse table info, unknown node type %T, value %q in %q", ident, ident, il)
 		}
 	}
 	return tis, nil
@@ -358,7 +359,7 @@ func aliasedToTableInfo(aliased *ast.Aliased) (*TableInfo, error) {
 		ti.DatabaseSchema = tables[0].DatabaseSchema
 		ti.Name = tables[0].Name
 	default:
-		return nil, xerrors.Errorf(
+		return nil, fmt.Errorf(
 			"failed parse real name of alias, unknown node type %T, value %q",
 			aliased.RealName,
 			aliased.RealName,
@@ -370,7 +371,7 @@ func aliasedToTableInfo(aliased *ast.Aliased) (*TableInfo, error) {
 	case *ast.Identifer:
 		ti.Alias = v.NoQuateString()
 	default:
-		return nil, xerrors.Errorf(
+		return nil, fmt.Errorf(
 			"failed parse aliased name of alias, unknown node type %T, value %q",
 			aliased.AliasedName,
 			aliased.AliasedName,
@@ -424,7 +425,7 @@ func parseSubQueryColumns(idents ast.Node, tables []*TableInfo) ([]*SubQueryColu
 	// TODO Add case of function:
 	// case *ast.Function:
 	default:
-		return nil, xerrors.Errorf("failed parse sub query columns, unknown node type %T, value %q", idents, idents)
+		return nil, fmt.Errorf("failed parse sub query columns, unknown node type %T, value %q", idents, idents)
 	}
 
 	for _, subqueryCol := range subqueryCols {
@@ -455,7 +456,7 @@ func aliasedToSubQueryColumn(aliased *ast.Aliased) (*SubQueryColumn, error) {
 		}
 		return subqueryCol, nil
 	default:
-		return nil, xerrors.Errorf(
+		return nil, fmt.Errorf(
 			"failed trans alias to column, unknown node type %T, value %q",
 			aliased.AliasedName,
 			aliased.AliasedName,
