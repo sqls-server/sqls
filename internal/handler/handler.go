@@ -30,6 +30,12 @@ type Server struct {
 	curDBName          string
 	curConnectionIndex int
 
+	// The initOptionDBConfig is an optional param
+	// sent by the client as part of the LSP InitializationOptions
+	// payload. If non-nil, the server will ignore all
+	// other configuration sources (workspace and user).
+	initOptionDBConfig *database.DBConfig
+
 	worker *database.Worker
 	files  map[string]*File
 }
@@ -158,6 +164,8 @@ func (s *Server) handleInitialize(ctx context.Context, conn *jsonrpc2.Conn, req 
 			RenameProvider:                  true,
 		},
 	}
+
+	s.initOptionDBConfig = params.InitializationOptions.ConnectionConfig
 
 	// Initialize database database connection
 	// NOTE: If no connection is found at this point, it is possible that the connection settings are sent to workspace config, so don't make an error
@@ -378,6 +386,11 @@ func (s *Server) newDBRepository(ctx context.Context) (database.DBRepository, er
 }
 
 func (s *Server) topConnection() *database.DBConfig {
+	// if the init config is set, ignore all other connection configs
+	if s.initOptionDBConfig != nil {
+		return s.initOptionDBConfig
+	}
+
 	cfg := s.getConfig()
 	if cfg == nil || len(cfg.Connections) == 0 {
 		return nil
