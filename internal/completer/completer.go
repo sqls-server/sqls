@@ -165,8 +165,26 @@ func (c *Completer) Complete(text string, params lsp.CompletionParams, lowercase
 	}
 
 	items = filterCandidates(items, lastWord)
+	populateSortText(items)
 
 	return items, nil
+}
+
+// Override the sort text for each completion item.
+func populateSortText(items []lsp.CompletionItem) {
+	for i := range items {
+		items[i].SortText = getSortTextPrefix(items[i].Kind) + items[i].Label
+	}
+}
+
+// Some completion kinds are more relevant than others.
+// This prefix defines the alphabetic priority of each kind.
+func getSortTextPrefix(kind lsp.CompletionItemKind) string {
+	switch kind {
+	case lsp.FieldCompletion:
+		return "0"
+	}
+	return "9"
 }
 
 type ParentType int
