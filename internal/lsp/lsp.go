@@ -1,6 +1,9 @@
 package lsp
 
-import "github.com/lighttiger2505/sqls/internal/config"
+import (
+	"github.com/lighttiger2505/sqls/internal/config"
+	"github.com/lighttiger2505/sqls/internal/database"
+)
 
 // https://microsoft.github.io/language-server-protocol/specifications/specification-3-14/#initialize
 
@@ -14,6 +17,10 @@ type InitializeParams struct {
 }
 
 type InitializeOptions struct {
+	// Allow the LSP client to choose a database configuration.
+	// If set, the LSP server will ignore all other configuration
+	// sources, including the workspace and user configuration files.
+	ConnectionConfig *database.DBConfig `json:"connectionConfig,omitempty"`
 }
 
 type ClientCapabilities struct {
