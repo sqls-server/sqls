@@ -127,11 +127,14 @@ func (db *PostgreSQLDBRepository) Databases(ctx context.Context) ([]string, erro
 
 func (db *PostgreSQLDBRepository) CurrentSchema(ctx context.Context) (string, error) {
 	row := db.Conn.QueryRowContext(ctx, "SELECT current_schema()")
-	var database string
+	var database sql.NullString
 	if err := row.Scan(&database); err != nil {
 		return "", err
 	}
-	return database, nil
+	if database.Valid {
+		return database.String, nil
+	}
+	return "", nil
 }
 
 func (db *PostgreSQLDBRepository) Schemas(ctx context.Context) ([]string, error) {

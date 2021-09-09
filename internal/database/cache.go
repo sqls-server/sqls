@@ -27,6 +27,14 @@ func (u *DBCacheGenerator) GenerateDBCachePrimary(ctx context.Context) (*DBCache
 	if err != nil {
 		return nil, err
 	}
+	if dbCache.defaultSchema == "" {
+		var topKey string
+		for k, _ := range dbCache.Schemas {
+			topKey = k
+			continue
+		}
+		dbCache.defaultSchema = dbCache.Schemas[topKey]
+	}
 	dbCache.SchemaTables, err = u.repo.SchemaTables(ctx)
 	if err != nil {
 		return nil, err
