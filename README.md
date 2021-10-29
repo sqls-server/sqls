@@ -17,6 +17,7 @@ sqls aims to provide advanced intelligence for you to edit sql in your own edito
 - MySQL([Go-MySQL-Driver](https://github.com/go-sql-driver/mysql))
 - PostgreSQL([pgx](https://github.com/jackc/pgx))
 - SQLite3([go-sqlite3](https://github.com/mattn/go-sqlite3))
+- MSSQL([go-mssqldb](https://github.com/denisenkom/go-mssqldb))
 
 ### Language Server Features
 

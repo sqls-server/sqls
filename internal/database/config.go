@@ -72,6 +72,24 @@ func (c *DBConfig) Validate() error {
 		if c.DataSourceName == "" {
 			return errors.New("required: connections[].dataSourceName")
 		}
+	case dialect.DatabaseDriverMssql:
+		if c.DataSourceName == "" && c.Proto == "" {
+			return errors.New("required: connections[].dataSourceName or connections[].proto")
+		}
+		if c.DataSourceName == "" && c.Proto != "" {
+			if c.User == "" {
+				return errors.New("required: connections[].user")
+			}
+			switch c.Proto {
+			case ProtoTCP:
+				if c.Host == "" {
+					return errors.New("required: connections[].host")
+				}
+			case ProtoUDP, ProtoUnix:
+			default:
+				return errors.New("invalid: connections[].proto")
+			}
+		}
 	default:
 		return errors.New("invalid: connections[].driver")
 	}

@@ -45,7 +45,7 @@ services:
   postgres12:
     image: postgres:12-alpine
     container_name: sqls_postgres12
-    ports: 
+    ports:
       - "15432:5432"
     environment:
       - POSTGRES_USER=postgres
@@ -55,3 +55,13 @@ services:
       - DATABASE_HOST=localhost
     volumes:
       - ./.docker/postgres/data:/var/lib/postgresql/data
+  mssql2019:
+    image: mcr.microsoft.com/mssql/server:2019-latest
+    container_name: sqls_mssql2019
+    ports:
+      - "11433:1433"
+    environment:
+      SA_PASSWORD: Passw0rd
+      ACCEPT_EULA: Y
+    volumes:
+      - ./.docker/mssql/data:/var/opt/mssql/data
