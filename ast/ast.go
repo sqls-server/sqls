@@ -546,17 +546,13 @@ func (t *SQLToken) Render(opts *RenderOptions) string {
 }
 
 func renderSQLWord(v *token.SQLWord, opts *RenderOptions) string {
-	isIdentifer := false
-	if v.Kind == dialect.Unmatched {
-		isIdentifer = true
-	}
-
+	isIdentifer := v.Kind == dialect.Unmatched
 	if isIdentifer {
 		if opts.IdentiferQuated {
 			v.QuoteStyle = '`'
 			return v.String()
 		}
-		return v.NoQuateString()
+		return v.String()
 	} else {
 		// is keyword
 		if opts.LowerCase {
