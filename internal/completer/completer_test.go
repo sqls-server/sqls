@@ -122,9 +122,10 @@ func TestComplete(t *testing.T) {
 			text: "sel",
 			expected: []lsp.CompletionItem{
 				{
-					Label:  "SELECT",
-					Kind:   lsp.KeywordCompletion,
-					Detail: "keyword",
+					Label:    "SELECT",
+					Kind:     lsp.KeywordCompletion,
+					Detail:   "keyword",
+					SortText: "9SELECT",
 				},
 			},
 		},
@@ -134,9 +135,10 @@ func TestComplete(t *testing.T) {
 			lowerCase: true,
 			expected: []lsp.CompletionItem{
 				{
-					Label:  "select",
-					Kind:   lsp.KeywordCompletion,
-					Detail: "keyword",
+					Label:    "select",
+					Kind:     lsp.KeywordCompletion,
+					Detail:   "keyword",
+					SortText: "9select",
 				},
 			},
 		},
