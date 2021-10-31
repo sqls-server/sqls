@@ -30,7 +30,7 @@ func Test_genMssqlConfig(t *testing.T) {
 					"ApplicationIntent": "ReadOnly",
 				},
 			},
-			want:    "ApplicationIntent=ReadOnly;database=dvdrental;host=127.0.0.1;password=mysecretpassword1234;port=11433;user=sa",
+			want:    "ApplicationIntent=ReadOnly;database=dvdrental;password=mysecretpassword1234;port=11433;server=127.0.0.1;user=sa",
 			wantErr: false,
 		},
 	}
