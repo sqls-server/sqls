@@ -327,7 +327,7 @@ func genMssqlConfig(connCfg *DBConfig) (string, error) {
 		if port == 0 {
 			port = 1433
 		}
-		q.Set("host", host)
+		q.Set("server", host)
 		q.Set("port", strconv.Itoa(port))
 	case ProtoUDP, ProtoUnix:
 	default:
