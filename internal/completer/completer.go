@@ -10,6 +10,7 @@ import (
 	"github.com/lighttiger2505/sqls/ast"
 	"github.com/lighttiger2505/sqls/ast/astutil"
 	"github.com/lighttiger2505/sqls/dialect"
+	"github.com/lighttiger2505/sqls/internal/config"
 	"github.com/lighttiger2505/sqls/internal/database"
 	"github.com/lighttiger2505/sqls/internal/lsp"
 	"github.com/lighttiger2505/sqls/parser"
@@ -79,7 +80,7 @@ func completionTypeIs(completionTypes []completionType, expect completionType) b
 	return false
 }
 
-func (c *Completer) Complete(text string, params lsp.CompletionParams, lowercaseKeywords bool) ([]lsp.CompletionItem, error) {
+func (c *Completer) Complete(text string, params lsp.CompletionParams, cfg *config.Config) ([]lsp.CompletionItem, error) {
 	parsed, err := parser.Parse(text)
 	if err != nil {
 		return nil, err
@@ -155,13 +156,13 @@ func (c *Completer) Complete(text string, params lsp.CompletionParams, lowercase
 		}
 	}
 
-	if completionTypeIs(ctx.types, CompletionTypeKeyword) {
+	if completionTypeIs(ctx.types, CompletionTypeKeyword) && !cfg.IgnoreKeyword {
 		drivers := dialect.DataBaseKeywords(c.Driver)
-		items = append(items, c.keywordCandidates(lowercaseKeywords, drivers)...)
+		items = append(items, c.keywordCandidates(cfg.LowercaseKeywords, drivers)...)
 	}
 	if completionTypeIs(ctx.types, CompletionTypeFunction) {
 		drivers := dialect.DataBaseFunctions(c.Driver)
-		items = append(items, c.functionCandidates(lowercaseKeywords, drivers)...)
+		items = append(items, c.functionCandidates(cfg.LowercaseKeywords, drivers)...)
 	}
 
 	items = filterCandidates(items, lastWord)

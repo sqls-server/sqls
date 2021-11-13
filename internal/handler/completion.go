@@ -31,7 +31,7 @@ func (s *Server) handleTextDocumentCompletion(ctx context.Context, conn *jsonrpc
 	} else {
 		c.Driver = ""
 	}
-	completionItems, err := c.Complete(f.Text, params, s.getConfig().LowercaseKeywords)
+	completionItems, err := c.Complete(f.Text, params, s.getConfig())
 	if err != nil {
 		return nil, err
 	}

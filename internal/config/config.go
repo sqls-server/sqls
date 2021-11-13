@@ -21,6 +21,7 @@ var (
 
 type Config struct {
 	LowercaseKeywords bool                 `json:"lowercaseKeywords" yaml:"lowercaseKeywords"`
+	IgnoreKeyword     bool                 `json:"ignoreKeyword" yaml:"ignoreKeyword"`
 	Connections       []*database.DBConfig `json:"connections" yaml:"connections"`
 }
 
