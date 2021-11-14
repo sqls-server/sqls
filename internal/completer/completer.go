@@ -226,7 +226,6 @@ func getCompletionTypes(nw *parseutil.NodeWalker) *CompletionContext {
 				CompletionTypeColumn,
 				CompletionTypeSubQueryColumn,
 				CompletionTypeView,
-				CompletionTypeFunction,
 			}
 			p = &completionParent{
 				Type: ParentTypeTable,
@@ -241,7 +240,6 @@ func getCompletionTypes(nw *parseutil.NodeWalker) *CompletionContext {
 				CompletionTypeSubQuery,
 				CompletionTypeView,
 				CompletionTypeFunction,
-				CompletionTypeKeyword,
 			}
 			p = noneParent
 		}
@@ -255,7 +253,6 @@ func getCompletionTypes(nw *parseutil.NodeWalker) *CompletionContext {
 				CompletionTypeColumn,
 				CompletionTypeView,
 				CompletionTypeSubQueryColumn,
-				CompletionTypeFunction,
 			}
 			p = &completionParent{
 				Type: ParentTypeTable,
@@ -270,7 +267,6 @@ func getCompletionTypes(nw *parseutil.NodeWalker) *CompletionContext {
 				CompletionTypeSubQueryColumn,
 				CompletionTypeSubQuery,
 				CompletionTypeFunction,
-				CompletionTypeKeyword,
 			}
 		}
 	case syntaxPos == parseutil.TableReference:
@@ -281,7 +277,6 @@ func getCompletionTypes(nw *parseutil.NodeWalker) *CompletionContext {
 				CompletionTypeTable,
 				CompletionTypeView,
 				CompletionTypeSubQueryColumn,
-				CompletionTypeFunction,
 			}
 			p = &completionParent{
 				Type: ParentTypeSchema,
@@ -294,7 +289,6 @@ func getCompletionTypes(nw *parseutil.NodeWalker) *CompletionContext {
 				CompletionTypeSchema,
 				CompletionTypeView,
 				CompletionTypeSubQuery,
-				CompletionTypeKeyword,
 			}
 		}
 	case syntaxPos == parseutil.WhereCondition:
@@ -305,7 +299,6 @@ func getCompletionTypes(nw *parseutil.NodeWalker) *CompletionContext {
 				CompletionTypeColumn,
 				CompletionTypeView,
 				CompletionTypeSubQueryColumn,
-				CompletionTypeFunction,
 			}
 			p = &completionParent{
 				Type: ParentTypeTable,
@@ -320,7 +313,6 @@ func getCompletionTypes(nw *parseutil.NodeWalker) *CompletionContext {
 				CompletionTypeSubQueryColumn,
 				CompletionTypeSubQuery,
 				CompletionTypeFunction,
-				CompletionTypeKeyword,
 			}
 		}
 	case syntaxPos == parseutil.InsertColumn:
