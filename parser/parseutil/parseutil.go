@@ -192,7 +192,21 @@ func ExtractTable(parsed ast.TokenList, pos token.Pos) ([]*TableInfo, error) {
 	if encloseIsSubQuery(stmt, pos) {
 		list = extractFocusedSubQuery(stmt, pos)
 	}
-	return extractTableIdentifier(list, false)
+	tables, err := extractTableIdentifier(list, false)
+	if err != nil {
+		return nil, err
+	}
+
+	tableMap := map[string]*TableInfo{}
+	for _, table := range tables {
+		tableMap[table.DatabaseSchema+"\t"+table.Name] = table
+	}
+	cleanTables := []*TableInfo{}
+	for _, table := range tableMap {
+		cleanTables = append(cleanTables, table)
+	}
+
+	return cleanTables, nil
 }
 
 var identifierMatcher = astutil.NodeMatcher{
