@@ -188,6 +188,24 @@ require'lspconfig'.sqls.setup{
 }
 ```
 
+- Setting example for Sublime Text 4
+  
+  Install the LSP Client by Opening the command palette and run ```Package Control: Install Package```, then select ```LSP```.
+  
+  Open ```Preferences > Package Settings > LSP > Settings``` and add the ```"sqls"``` client configuration to the ```"clients"```:
+```
+{
+    "show_diagnostics_count_in_view_status": true,
+    "clients": {
+        "sqls": {
+            "enabled": true,
+            "command": ["/path/to/sqls binary"],
+            "selector": "source.sql"
+        }
+    }
+}
+```
+
 **I'm sorry. Please wait a little longer for other editor settings.**
 
 ### Configuration Params
