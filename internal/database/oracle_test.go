@@ -114,7 +114,12 @@ func Test_OracleOperation(t *testing.T) {
 				t.Errorf("NewOracleDBRepository() error = %v", err)
 				return
 			}
-
+			_, err = repo.SchemaTables(tt.ctx)
+			if err != nil {
+				t.Log(pt)
+				t.Errorf("NewOracleDBRepository() error = %v", err)
+				return
+			}
 			_, err = repo.Databases(tt.ctx)
 			if err != nil {
 				t.Errorf("NewOracleDBRepository() error = %v", err)

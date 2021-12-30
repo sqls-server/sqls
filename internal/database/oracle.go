@@ -103,12 +103,10 @@ func (db *OracleDBRepository) SchemaTables(ctx context.Context) (map[string][]st
 	rows, err := db.Conn.QueryContext(
 		ctx,
 		`
-	SELECT OWNER,
-		   TABLE_NAME,
-	  FROM SYS.USER_TABLES 
-  ORDER BY OWNER, 
-  		   TABLE_NAME
-	`)
+	SELECT OWNER, TABLE_NAME
+      FROM SYS.ALL_TABLES 
+  ORDER BY OWNER, TABLE_NAME
+		`)
 	if err != nil {
 		return nil, err
 	}
