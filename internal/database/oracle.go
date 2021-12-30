@@ -40,6 +40,7 @@ func genOracleConfig(connCfg *DBConfig) (string, error) {
 	if connCfg.DataSourceName != "" {
 		return connCfg.DataSourceName, nil
 	}
+
 	host, port := connCfg.Host, connCfg.Port
 	if host == "" {
 		host = "127.0.0.1"
@@ -47,8 +48,7 @@ func genOracleConfig(connCfg *DBConfig) (string, error) {
 	if port == 0 {
 		port = 1521
 	}
-	DSName := host + ":" + strconv.Itoa(port) + "/" + connCfg.DBName
-
+	DSName := connCfg.User + "/" + connCfg.Passwd + "@" + host + ":" + strconv.Itoa(port) + "/" + connCfg.DBName
 	return DSName, nil
 }
 
@@ -65,7 +65,7 @@ func (db *OracleDBRepository) Driver() dialect.DatabaseDriver {
 }
 
 func (db *OracleDBRepository) CurrentDatabase(ctx context.Context) (string, error) {
-	row := db.Conn.QueryRowContext(ctx, "SELECT SYS_CONTEXT('USERENV','INSTANCE_NAME') FROM DUAL")
+	row := db.Conn.QueryRowContext(ctx, "SELECT SYS_CONTEXT('USERENV','CURRENT_SCHEMA') FROM DUAL")
 	var database string
 	if err := row.Scan(&database); err != nil {
 		return "", err
@@ -74,6 +74,7 @@ func (db *OracleDBRepository) CurrentDatabase(ctx context.Context) (string, erro
 }
 
 func (db *OracleDBRepository) Databases(ctx context.Context) ([]string, error) {
+	// one DB per connection for Oracle
 	rows, err := db.Conn.QueryContext(ctx, "SELECT USERNAME FROM SYS.ALL_USERS ORDER BY USERNAME")
 	if err != nil {
 		return nil, err

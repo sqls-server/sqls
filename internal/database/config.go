@@ -90,6 +90,27 @@ func (c *DBConfig) Validate() error {
 				return errors.New("invalid: connections[].proto")
 			}
 		}
+	case dialect.DatabaseDriverOracle:
+		if c.DataSourceName == "" && c.Proto == "" {
+			return errors.New("required: connections[].dataSourceName or connections[].proto")
+		}
+		if c.DataSourceName == "" {
+			if c.User == "" {
+				return errors.New("required: connections[].user")
+			}
+			if c.Passwd == "" {
+				return errors.New("required: connections[].Passwd")
+			}
+			if c.Host == "" {
+				return errors.New("required: connections[].Host")
+			}
+			if c.Port <= 0 {
+				return errors.New("required: connections[].Port")
+			}
+			if c.DBName == "" {
+				return errors.New("required: connections[].DBName")
+			}
+		}
 	default:
 		return errors.New("invalid: connections[].driver")
 	}

@@ -5,6 +5,7 @@ go 1.16
 require (
 	github.com/denisenkom/go-mssqldb v0.11.0
 	github.com/go-sql-driver/mysql v1.6.0
+	github.com/godror/godror v0.29.0 // indirect
 	github.com/google/go-cmp v0.5.6
 	github.com/jackc/fake v0.0.0-20150926172116-812a484cc733 // indirect
 	github.com/jackc/pgx v3.6.2+incompatible

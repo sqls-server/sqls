@@ -1,0 +1,4 @@
+connections:
+  - alias: TestDB
+    driver: oracle
+    dataSourceName: "SYSTEM/P1ssword@localhost:1521/XE"
