@@ -9,7 +9,13 @@ import (
 	_ "github.com/godror/godror"
 )
 
-func Test_genOracleDummy(t *testing.T) {
+// 	Generic Testing template for multple DB driver
+//  Test_genDriver: Test if driver config correctly
+//  Test_ConnectByConfig: Test if Connection setup by config successful
+//  Test_BasicOperation: Test all function except DescribeDatabaseTableBySchema
+//  Test_SchemaTableOperation: Test DescribeDatabaseTableBySchema
+
+func Test_genDriver(t *testing.T) {
 	//db, err1 := sql.Open("godror", `user="SYSTEM" password="P1ssword" connectString="localhost:1521/XE"`)
 	db, err1 := sql.Open("godror", `SYSTEM/P1ssword@localhost:1521/XE`)
 	if err1 != nil {
@@ -52,10 +58,10 @@ func Test_genOracleDummy(t *testing.T) {
 
 		t.Error(result)
 	}
-	return
 }
 
-func Test_OracleOperation(t *testing.T) {
+func Test_ConnectByConfig(t *testing.T) {
+	// Suit all DB
 	tests := []struct {
 		name    string
 		connCfg *DBConfig
@@ -94,13 +100,80 @@ func Test_OracleOperation(t *testing.T) {
 		tt.ctx = context.Background()
 		t.Run(tt.name, func(t *testing.T) {
 			// Connect to DB
-			db, err := oracleOpen(tt.connCfg)
+			db, err := Open(tt.connCfg)
+			if err != nil {
+				t.Errorf("genOracleConfig() error = %v", err)
+				return
+			}
+			repo, err := CreateRepository(tt.connCfg.Driver, db.Conn)
+			if err != nil {
+				t.Errorf("NewOracleDBRepository() error = %v", err)
+				return
+			}
+			// End Connect to DB
+
+			pt, err := repo.CurrentDatabase(tt.ctx)
+			if err != nil {
+				t.Log(pt)
+				t.Errorf("NewOracleDBRepository() error = %v", err)
+				return
+			}
+		},
+		)
+	}
+}
+
+func Test_BasicOperation(t *testing.T) {
+	tests := []struct {
+		name    string
+		connCfg *DBConfig
+		want    string
+		wantErr bool
+		ctx     context.Context
+	}{
+		/*	{
+			name: "test1",
+			connCfg: &DBConfig{
+				Alias:  "TestDB",
+				Driver: "oracle",
+				Proto:  "tcp",
+				User:   "SYSTEM",
+				Passwd: "P1ssword",
+				Host:   "127.0.0.1",
+				Port:   1521,
+				Path:   "",
+				DBName: "XE",
+			},
+			want:    "XE",
+			wantErr: false,
+		},*/
+		{
+			name: "test2",
+			connCfg: &DBConfig{
+				Alias:          "TestDB",
+				Driver:         "oracle",
+				DataSourceName: "SYSTEM/P1ssword@localhost:1521/XE",
+			},
+			want:    "XE",
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		tt.ctx = context.Background()
+		t.Run(tt.name, func(t *testing.T) {
+			// Connect to DB
+			db, err := Open(tt.connCfg)
 
 			if err != nil {
 				t.Errorf("genOracleConfig() error = %v", err)
 				return
 			}
-			repo := NewOracleDBRepository(db.Conn)
+			repo, err := CreateRepository(tt.connCfg.Driver, db.Conn)
+			if err != nil {
+				t.Errorf("NewOracleDBRepository() error = %v", err)
+				return
+			}
+			// End Connect to DB
 
 			pt, err := repo.CurrentDatabase(tt.ctx)
 			if err != nil {
@@ -138,9 +211,11 @@ func Test_OracleOperation(t *testing.T) {
 			}
 			tt.ctx.Done()
 			for _, sch := range schemalist {
+				t.Errorf("sch %v", sch)
 				repo.DescribeDatabaseTableBySchema(tt.ctx, sch)
 				if err != nil {
-					t.Errorf("NewOracleDBRepository() error = %v", err)
+					t.Errorf("NewOracleDBRepository() error = %v", err.Error())
+					t.Fatal()
 					return
 				}
 				tt.ctx.Done()
@@ -150,5 +225,79 @@ func Test_OracleOperation(t *testing.T) {
 			repo.Query(tt.ctx, query)
 
 		})
+	}
+}
+
+func Test_SchemaTableOperation(t *testing.T) {
+	// Suit all DB
+	tests := []struct {
+		name    string
+		connCfg *DBConfig
+		want    string
+		wantErr bool
+		ctx     context.Context
+	}{
+		/*	{
+			name: "test1",
+			connCfg: &DBConfig{
+				Alias:  "TestDB",
+				Driver: "oracle",
+				Proto:  "tcp",
+				User:   "SYSTEM",
+				Passwd: "P1ssword",
+				Host:   "127.0.0.1",
+				Port:   1521,
+				Path:   "",
+				DBName: "XE",
+			},
+			want:    "XE",
+			wantErr: false,
+		},*/
+		{
+			name: "test2",
+			connCfg: &DBConfig{
+				Alias:          "TestDB",
+				Driver:         "oracle",
+				DataSourceName: "SYSTEM/P1ssword@localhost:1521/XE",
+			},
+			want:    "XE",
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		tt.ctx = context.Background()
+		t.Run(tt.name, func(t *testing.T) {
+			// Connect to DB
+			db, err := Open(tt.connCfg)
+
+			if err != nil {
+				t.Errorf("genOracleConfig() error = %v", err)
+				return
+			}
+			repo, err := CreateRepository(tt.connCfg.Driver, db.Conn)
+			if err != nil {
+				t.Errorf("NewOracleDBRepository() error = %v", err)
+				return
+			}
+			// End Connect to DB
+
+			schemalist, err := repo.Schemas(tt.ctx)
+			if err != nil {
+				t.Errorf("NewOracleDBRepository() error = %v", err)
+				return
+			}
+			tt.ctx.Done()
+			for _, sch := range schemalist {
+				t.Logf("sch %v", sch)
+				repo.DescribeDatabaseTableBySchema(tt.ctx, sch)
+				if err != nil {
+					t.Errorf("NewOracleDBRepository() error = %v", err.Error())
+					t.Fatal()
+					return
+				}
+				tt.ctx.Done()
+			}
+		},
+		)
 	}
 }

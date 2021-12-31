@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"log"
 	"strconv"
 
 	_ "github.com/godror/godror"
@@ -32,7 +33,8 @@ func oracleOpen(dbConnCfg *DBConfig) (*DBConnection, error) {
 	conn.SetMaxOpenConns(DefaultMaxOpenConns)
 
 	return &DBConnection{
-		Conn: conn,
+		Conn:   conn,
+		Driver: dialect.DatabaseDriverOracle,
 	}, nil
 }
 
@@ -193,17 +195,20 @@ func (db *OracleDBRepository) DescribeDatabaseTableBySchema(ctx context.Context,
 		TABLE_NAME,
 		COLUMN_NAME,
 		DATA_TYPE,
-		NULLABLE,
-		'',
+		CASE NULLABLE
+		WHEN 'Y' THEN 'YES'
+		ELSE 'NO'
+		END,
+		'1',
 		DATA_DEFAULT,
-		''
+		'1'
 		FROM SYS.ALL_TAB_COLUMNS
-		WHERE OWNER= ?
+		WHERE OWNER = :1
 `, schemaName)
 	if err != nil {
+		log.Println("schema", schemaName, err.Error())
 		return nil, err
 	}
-	defer rows.Close()
 	tableInfos := []*ColumnDesc{}
 	for rows.Next() {
 		var tableInfo ColumnDesc
@@ -222,6 +227,7 @@ func (db *OracleDBRepository) DescribeDatabaseTableBySchema(ctx context.Context,
 		}
 		tableInfos = append(tableInfos, &tableInfo)
 	}
+	defer rows.Close()
 	return tableInfos, nil
 }
 
