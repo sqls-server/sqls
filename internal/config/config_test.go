@@ -157,6 +157,23 @@ func TestGetConfig(t *testing.T) {
 			wantErr: true,
 			errMsg:  "failed validation, required: connections[].sshConfig.privateKey",
 		},
+		{
+			name: "oracle config",
+			args: args{
+				fp: "oracle.yaml",
+			},
+			want: &Config{
+				Connections: []*database.DBConfig{
+					{
+						Alias:          "TestDB",
+						Driver:         "oracle",
+						DataSourceName: "SYSTEM/P1ssword@localhost:1521/XE",
+					},
+				},
+			},
+			wantErr: true,
+			errMsg:  "failed validation, required: connections[].sshConfig.privateKey",
+		},
 	}
 	for _, tt := range tests {
 		packageDir, err := os.Getwd()
