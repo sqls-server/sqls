@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -84,7 +85,7 @@ func main() {
 	} else {
 		// Load default config
 		cfg, err := config.GetDefaultConfig()
-		if err != nil && err != config.ErrNotFoundConfig {
+		if err != nil && !errors.Is(config.ErrNotFoundConfig, err) {
 			log.Printf("cannot read default config, %+v", err)
 		}
 		server.DefaultFileCfg = cfg

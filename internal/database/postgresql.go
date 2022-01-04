@@ -353,7 +353,7 @@ func genPostgresConfig(connCfg *DBConfig) (string, error) {
 	q.Set("dbname", connCfg.DBName)
 
 	switch connCfg.Proto {
-	case ProtoTCP:
+	case ProtoTCP, ProtoUDP:
 		host, port := connCfg.Host, connCfg.Port
 		if host == "" {
 			host = "127.0.0.1"

@@ -22,7 +22,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v2
     - name: Install golangci-lint
-      run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.23.6
+      run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.43.0
     - name: Lint
       run: /home/runner/go/bin/golangci-lint run
     - name: Test

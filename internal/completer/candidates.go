@@ -61,6 +61,7 @@ func (c *Completer) columnCandidates(targetTables []*parseutil.TableInfo, parent
 			}
 		}
 	case ParentTypeSchema:
+		// pass
 	case ParentTypeTable:
 		for _, table := range targetTables {
 			if table.Name != parent.Name && table.Alias != parent.Name {
@@ -72,6 +73,8 @@ func (c *Completer) columnCandidates(targetTables []*parseutil.TableInfo, parent
 			}
 			candidates = append(candidates, generateColumnCandidates(table.Name, columns)...)
 		}
+	case ParentTypeSubQuery:
+		// pass
 	}
 	return candidates
 }
@@ -148,6 +151,9 @@ func (c *Completer) TableCandidates(parent *completionParent, targetTables []*pa
 			candidates = append(candidates, generateTableCandidates(tables, c.DBCache)...)
 		}
 	case ParentTypeTable:
+		// pass
+	case ParentTypeSubQuery:
+		// pass
 	}
 	return candidates
 }

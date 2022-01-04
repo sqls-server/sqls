@@ -54,6 +54,10 @@ func (ct completionType) String() string {
 		return "User"
 	case CompletionTypeSchema:
 		return "Schema"
+	case CompletionTypeSubQuery:
+		return "SubQuery"
+	case CompletionTypeSubQueryColumn:
+		return "SubQueryColumn"
 	default:
 		return ""
 	}
@@ -183,8 +187,36 @@ func getSortTextPrefix(kind lsp.CompletionItemKind) string {
 	switch kind {
 	case lsp.FieldCompletion:
 		return "0"
+	case lsp.FunctionCompletion:
+		return "10"
+	case
+		lsp.ClassCompletion,
+		lsp.ColorCompletion,
+		lsp.ConstantCompletion,
+		lsp.ConstructorCompletion,
+		lsp.EnumCompletion,
+		lsp.EnumMemberCompletion,
+		lsp.EventCompletion,
+		lsp.FileCompletion,
+		lsp.FolderCompletion,
+		lsp.InterfaceCompletion,
+		lsp.KeywordCompletion,
+		lsp.MethodCompletion,
+		lsp.ModuleCompletion,
+		lsp.OperatorCompletion,
+		lsp.PropertyCompletion,
+		lsp.ReferenceCompletion,
+		lsp.SnippetCompletion,
+		lsp.StructCompletion,
+		lsp.TextCompletion,
+		lsp.TypeParameterCompletion,
+		lsp.UnitCompletion,
+		lsp.ValueCompletion,
+		lsp.VariableCompletion:
+		return "9999"
+	default:
+		return "9999"
 	}
-	return "9"
 }
 
 type ParentType int
