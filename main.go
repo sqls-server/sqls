@@ -3,13 +3,13 @@ package main
 import (
 	"context"
 	"errors"
-	"flag"
 	"fmt"
 	"io"
 	"log"
 	"os"
 
 	"github.com/sourcegraph/jsonrpc2"
+	"github.com/urfave/cli/v2"
 
 	"github.com/lighttiger2505/sqls/internal/config"
 	"github.com/lighttiger2505/sqls/internal/handler"
@@ -21,33 +21,66 @@ var (
 	revision string
 )
 
-var (
-	ver        bool
-	help       bool
-	logfile    string
-	trace      bool
-	configFile string
-)
-
 func main() {
-	flag.BoolVar(&help, "help", false, "Print help.")
-	flag.BoolVar(&ver, "version", false, "Print version.")
-	flag.StringVar(&logfile, "log", "", "Also log to this file. (in addition to stderr)")
-	flag.StringVar(&configFile, "config", "", "Specifies an alternative per-user configuration file. If a configuration file is given on the command line, the workspace option (initializationOptions) will be ignored.")
-	flag.BoolVar(&trace, "trace", false, "Print all requests and responses.")
-	flag.Parse()
+	if err := realMain(); err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(1)
+	}
+	os.Exit(0)
+}
 
-	if help {
-		fmt.Fprintf(os.Stderr, "usage: sqls [flags]\n")
-		flag.PrintDefaults()
-		return
+func realMain() error {
+	app := &cli.App{
+		Name:    "sqls",
+		Version: fmt.Sprintf("Version:%s, Revision:%s\n", version, revision),
+		Usage:   "An implementation of the Language Server Protocol for SQL.",
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:    "log",
+				Aliases: []string{"l"},
+				Usage:   "Also log to this file. (in addition to stderr)",
+			},
+			&cli.StringFlag{
+				Name:    "config",
+				Aliases: []string{"c"},
+				Usage:   "Specifies an alternative per-user configuration file. If a configuration file is given on the command line, the workspace option (initializationOptions) will be ignored.",
+			},
+			&cli.BoolFlag{
+				Name:    "trace",
+				Aliases: []string{"t"},
+				Usage:   "Print all requests and responses.",
+			},
+		},
+		Action: func(c *cli.Context) error {
+			return serve(c)
+		},
+	}
+	cli.VersionFlag = &cli.BoolFlag{
+		Name:    "version",
+		Aliases: []string{"v"},
+		Usage:   "Print version.",
+	}
+	cli.HelpFlag = &cli.BoolFlag{
+		Name:    "help",
+		Aliases: []string{"h"},
+		Usage:   "Print help.",
 	}
 
-	if ver {
-		fmt.Fprintf(os.Stderr, "sqls Version:%s, Revision:%s\n", version, revision)
-		return
+	err := app.Run(os.Args)
+	if err != nil {
+		return err
 	}
 
+	return nil
+}
+
+func serve(c *cli.Context) error {
+	logfile := c.String("log")
+	configFile := c.String("config")
+	trace := c.Bool("trace")
+	fmt.Println(logfile, configFile, trace)
+
+	// Initialize log writer
 	var logWriter io.Writer
 	if logfile != "" {
 		f, err := os.OpenFile(logfile, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0660)
@@ -60,11 +93,6 @@ func main() {
 		logWriter = io.MultiWriter(os.Stderr)
 	}
 	log.SetOutput(logWriter)
-
-	if flag.NArg() != 0 {
-		flag.Usage()
-		os.Exit(1)
-	}
 
 	// Initialize language server
 	server := handler.NewServer()
@@ -79,14 +107,14 @@ func main() {
 	if configFile != "" {
 		cfg, err := config.GetConfig(configFile)
 		if err != nil {
-			log.Printf("cannot read specificed config, %+v", err)
+			return fmt.Errorf("cannot read specificed config, %+v", err)
 		}
 		server.SpecificFileCfg = cfg
 	} else {
 		// Load default config
 		cfg, err := config.GetDefaultConfig()
 		if err != nil && !errors.Is(config.ErrNotFoundConfig, err) {
-			log.Printf("cannot read default config, %+v", err)
+			return fmt.Errorf("cannot read default config, %+v", err)
 		}
 		server.DefaultFileCfg = cfg
 	}
@@ -106,6 +134,8 @@ func main() {
 		connOpt...,
 	).DisconnectNotify()
 	log.Println("sqls: connections closed")
+
+	return nil
 }
 
 type stdrwc struct{}
