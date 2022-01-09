@@ -51,6 +51,12 @@ func realMain() error {
 				Usage:   "edit config",
 				Action:  cmd.Config,
 			},
+			{
+				Name:    "test-connection",
+				Aliases: []string{"t"},
+				Usage:   "test connection",
+				Action:  cmd.TestConnection,
+			},
 		},
 		Action: func(c *cli.Context) error {
 			return cmd.Serve(c)

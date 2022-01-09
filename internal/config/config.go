@@ -25,10 +25,10 @@ type Config struct {
 }
 
 func (c *Config) Validate() error {
-	if len(c.Connections) > 0 {
-		return c.Connections[0].Validate()
+	if len(c.Connections) == 0 {
+		return errors.New("required: connections")
 	}
-	return nil
+	return c.Connections[0].Validate()
 }
 
 func NewConfig() *Config {
