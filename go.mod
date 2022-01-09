@@ -15,6 +15,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.8
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/sourcegraph/jsonrpc2 v0.1.0
+	github.com/urfave/cli/v2 v2.3.0 // indirect
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
 	gopkg.in/yaml.v2 v2.4.0
 )
