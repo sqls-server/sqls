@@ -16,7 +16,7 @@ var (
 )
 
 var (
-	ymlConfigPath = configFilePath("config.yml")
+	YamlConfigPath = configFilePath("config.yml")
 )
 
 type Config struct {
@@ -39,7 +39,7 @@ func NewConfig() *Config {
 
 func GetDefaultConfig() (*Config, error) {
 	cfg := NewConfig()
-	if err := cfg.Load(ymlConfigPath); err != nil {
+	if err := cfg.Load(YamlConfigPath); err != nil {
 		return nil, err
 	}
 	return cfg, nil

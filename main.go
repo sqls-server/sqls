@@ -7,6 +7,9 @@ import (
 	"io"
 	"log"
 	"os"
+	"os/exec"
+	"runtime"
+	"strings"
 
 	"github.com/sourcegraph/jsonrpc2"
 	"github.com/urfave/cli/v2"
@@ -49,6 +52,20 @@ func realMain() error {
 				Name:    "trace",
 				Aliases: []string{"t"},
 				Usage:   "Print all requests and responses.",
+			},
+		},
+		Commands: cli.Commands{
+			{
+				Name:    "config",
+				Aliases: []string{"c"},
+				Usage:   "edit config",
+				Action: func(c *cli.Context) error {
+					editorEnv := os.Getenv("EDITOR")
+					if editorEnv == "" {
+						editorEnv = "vim"
+					}
+					return OpenEditor(editorEnv, config.YamlConfigPath)
+				},
 			},
 		},
 		Action: func(c *cli.Context) error {
@@ -153,4 +170,20 @@ func (stdrwc) Close() error {
 		return err
 	}
 	return os.Stdout.Close()
+}
+
+func OpenEditor(program string, args ...string) error {
+	cmdargs := strings.Join(args, " ")
+	command := program + " " + cmdargs
+
+	var cmd *exec.Cmd
+	if runtime.GOOS == "windows" {
+		cmd = exec.Command("cmd", "/c", command)
+	} else {
+		cmd = exec.Command("sh", "-c", command)
+	}
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
 }
