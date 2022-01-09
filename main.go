@@ -107,14 +107,14 @@ func serve(c *cli.Context) error {
 	if configFile != "" {
 		cfg, err := config.GetConfig(configFile)
 		if err != nil {
-			return fmt.Errorf("cannot read specificed config, %+v", err)
+			return fmt.Errorf("cannot read specificed config, %w", err)
 		}
 		server.SpecificFileCfg = cfg
 	} else {
 		// Load default config
 		cfg, err := config.GetDefaultConfig()
 		if err != nil && !errors.Is(config.ErrNotFoundConfig, err) {
-			return fmt.Errorf("cannot read default config, %+v", err)
+			return fmt.Errorf("cannot read default config, %w", err)
 		}
 		server.DefaultFileCfg = cfg
 	}
