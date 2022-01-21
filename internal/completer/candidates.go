@@ -160,7 +160,7 @@ func generateTableCandidates(tables []string, dbCache *database.DBCache) []lsp.C
 	for _, tableName := range tables {
 		candidate := lsp.CompletionItem{
 			Label:  tableName,
-			Kind:   lsp.FieldCompletion,
+			Kind:   lsp.ClassCompletion,
 			Detail: "table",
 		}
 		cols, ok := dbCache.ColumnDescs(tableName)
@@ -186,7 +186,7 @@ func generateTableCandidatesByInfos(tables []*parseutil.TableInfo, dbCache *data
 		}
 		candidate := lsp.CompletionItem{
 			Label:  name,
-			Kind:   lsp.FieldCompletion,
+			Kind:   lsp.ClassCompletion,
 			Detail: detail,
 		}
 		cols, ok := dbCache.ColumnDescs(table.Name)
@@ -275,7 +275,7 @@ func (c *Completer) SchemaCandidates() []lsp.CompletionItem {
 	for _, db := range dbs {
 		candidate := lsp.CompletionItem{
 			Label:  db,
-			Kind:   lsp.FieldCompletion,
+			Kind:   lsp.ModuleCompletion,
 			Detail: "schema",
 		}
 		candidates = append(candidates, candidate)

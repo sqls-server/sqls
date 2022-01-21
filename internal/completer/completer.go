@@ -187,10 +187,13 @@ func getSortTextPrefix(kind lsp.CompletionItemKind) string {
 	switch kind {
 	case lsp.FieldCompletion:
 		return "0"
+	case lsp.ClassCompletion:
+		return "1"
+	case lsp.ModuleCompletion:
+		return "2"
 	case lsp.FunctionCompletion:
 		return "10"
 	case
-		lsp.ClassCompletion,
 		lsp.ColorCompletion,
 		lsp.ConstantCompletion,
 		lsp.ConstructorCompletion,
@@ -202,7 +205,6 @@ func getSortTextPrefix(kind lsp.CompletionItemKind) string {
 		lsp.InterfaceCompletion,
 		lsp.KeywordCompletion,
 		lsp.MethodCompletion,
-		lsp.ModuleCompletion,
 		lsp.OperatorCompletion,
 		lsp.PropertyCompletion,
 		lsp.ReferenceCompletion,
