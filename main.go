@@ -95,7 +95,6 @@ func serve(c *cli.Context) error {
 	logfile := c.String("log")
 	configFile := c.String("config")
 	trace := c.Bool("trace")
-	fmt.Println(logfile, configFile, trace)
 
 	// Initialize log writer
 	var logWriter io.Writer
