@@ -18,6 +18,7 @@ sqls aims to provide advanced intelligence for you to edit sql in your own edito
 - PostgreSQL([pgx](https://github.com/jackc/pgx))
 - SQLite3([go-sqlite3](https://github.com/mattn/go-sqlite3))
 - MSSQL([go-mssqldb](https://github.com/denisenkom/go-mssqldb))
+- H2([pgx](https://github.com/CodinGame/h2go))
 
 ### Language Server Features
 
@@ -223,7 +224,7 @@ The first setting in `connections` is the default connection.
 | Key            | Description                                 |
 | -------------- | ------------------------------------------- |
 | alias          | Connection alias name. Optional.            |
-| driver         | `mysql`, `postgresql`, `sqlite3`. Required. |
+| driver         | `mysql`, `postgresql`, `sqlite3`, `mssql`, `h2`. Required. |
 | dataSourceName | Data source name.                           |
 | proto          | `tcp`, `udp`, `unix`.                       |
 | user           | User name                                   |
