@@ -146,9 +146,6 @@ func (c *Completer) TableCandidates(parent *completionParent, targetTables []*pa
 		tables, ok := c.DBCache.SortedTablesByDBName(parent.Name)
 		if ok {
 			candidates = append(candidates, generateTableCandidates(tables, c.DBCache)...)
-		} else {
-			tables := c.DBCache.SortedTables()
-			candidates = append(candidates, generateTableCandidates(tables, c.DBCache)...)
 		}
 	case ParentTypeTable:
 		// pass
