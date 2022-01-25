@@ -107,7 +107,7 @@ func (db *MssqlDBRepository) Schemas(ctx context.Context) ([]string, error) {
 	rows, err := db.Conn.QueryContext(
 		ctx,
 		`
-	SELECT schema_name FROM information_schema.schemata
+	SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA
 	`)
 	if err != nil {
 		log.Fatal(err)
@@ -129,13 +129,13 @@ func (db *MssqlDBRepository) SchemaTables(ctx context.Context) (map[string][]str
 		ctx,
 		`
 	SELECT
-		table_schema,
-		table_name
+		TABLE_SCHEMA,
+		TABLE_NAME
 	FROM
-		information_schema.tables
+		INFORMATION_SCHEMA.TABLES
 	ORDER BY
-		table_schema,
-		table_name
+		TABLE_SCHEMA,
+		TABLE_NAME
 	`)
 	if err != nil {
 		return nil, err
@@ -162,14 +162,14 @@ func (db *MssqlDBRepository) Tables(ctx context.Context) ([]string, error) {
 		ctx,
 		`
 	SELECT
-	  table_name
+	  TABLE_NAME
 	FROM
-	  information_schema.tables
+	  INFORMATION_SCHEMA.TABLES
 	WHERE
-	  table_type = 'BASE TABLE'
-	  AND table_schema NOT IN ('information_schema')
+	  TABLE_TYPE = 'BASE TABLE'
+	  AND TABLE_SCHEMA NOT IN ('INFORMATION_SCHEMA', 'information_schema')
 	ORDER BY
-	  table_name
+	  TABLE_NAME
 	`)
 	if err != nil {
 		log.Fatal(err)
@@ -191,31 +191,31 @@ func (db *MssqlDBRepository) DescribeDatabaseTable(ctx context.Context) ([]*Colu
 		ctx,
 		`
 	SELECT
-		c.table_schema,
-		c.table_name,
-		c.column_name,
-		c.data_type,
-		c.is_nullable,
-		CASE tc.constraint_type
+		c.TABLE_SCHEMA,
+		c.TABLE_NAME,
+		c.COLUMN_NAME,
+		c.DATA_TYPE,
+		c.IS_NULLABLE,
+		CASE tc.CONSTRAINT_TYPE
 			WHEN 'PRIMARY KEY' THEN 'YES'
 			ELSE 'NO'
 		END,
-		c.column_default,
+		c.COLUMN_DEFAULT,
 		''
 	FROM
-		information_schema.columns c
+		INFORMATION_SCHEMA.COLUMNS c
 	LEFT JOIN
-		information_schema.constraint_column_usage ccu
-		ON c.table_name = ccu.table_name
-		AND c.column_name = ccu.column_name
-	LEFT JOIN information_schema.table_constraints tc ON
-		tc.table_catalog = c.table_catalog
-		AND tc.table_schema = c.table_schema
-		AND tc.table_name = c.table_name
-		AND tc.constraint_name = ccu.constraint_name
+		INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE ccu
+		ON c.TABLE_NAME = ccu.TABLE_NAME
+		AND c.COLUMN_NAME = ccu.COLUMN_NAME
+	LEFT JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc ON
+		tc.TABLE_CATALOG = c.TABLE_CATALOG
+		AND tc.TABLE_SCHEMA = c.TABLE_SCHEMA
+		AND tc.TABLE_NAME = c.TABLE_NAME
+		AND tc.CONSTRAINT_NAME = ccu.CONSTRAINT_NAME
 	ORDER BY
-		c.table_name,
-		c.ordinal_position
+		c.TABLE_NAME,
+		c.ORDINAL_POSITION
 	`)
 	if err != nil {
 		log.Fatal(err)
@@ -247,33 +247,33 @@ func (db *MssqlDBRepository) DescribeDatabaseTableBySchema(ctx context.Context, 
 		ctx,
 		`
 	SELECT
-		c.table_schema,
-		c.table_name,
-		c.column_name,
-		c.data_type,
-		c.is_nullable,
-		CASE tc.constraint_type
+		c.TABLE_SCHEMA,
+		c.TABLE_NAME,
+		c.COLUMN_NAME,
+		c.DATA_TYPE,
+		c.IS_NULLABLE,
+		CASE tc.CONSTRAINT_TYPE
 			WHEN 'PRIMARY KEY' THEN 'YES'
 			ELSE 'NO'
 		END,
-		c.column_default,
+		c.COLUMN_DEFAULT,
 		''
 	FROM
-		information_schema.columns c
+		INFORMATION_SCHEMA.COLUMNS c
 	LEFT JOIN
-		information_schema.constraint_column_usage ccu
-		ON c.table_name = ccu.table_name
-		AND c.column_name = ccu.column_name
-	LEFT JOIN information_schema.table_constraints tc ON
-		tc.table_catalog = c.table_catalog
-		AND tc.table_schema = c.table_schema
-		AND tc.table_name = c.table_name
-		AND tc.constraint_name = ccu.constraint_name
+		INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE ccu
+		ON c.TABLE_NAME = ccu.TABLE_NAME
+		AND c.COLUMN_NAME = ccu.COLUMN_NAME
+	LEFT JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc ON
+		tc.TABLE_CATALOG = c.TABLE_CATALOG
+		AND tc.TABLE_SCHEMA = c.TABLE_SCHEMA
+		AND tc.TABLE_NAME = c.TABLE_NAME
+		AND tc.CONSTRAINT_NAME = ccu.CONSTRAINT_NAME
 	WHERE
-		c.table_schema = $1
+		c.TABLE_SCHEMA = $1
 	ORDER BY
-		c.table_name,
-		c.ordinal_position
+		c.TABLE_NAME,
+		c.ORDINAL_POSITION
 	`, schemaName)
 	if err != nil {
 		log.Fatal(err)
