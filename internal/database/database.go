@@ -53,9 +53,11 @@ type ColumnDesc struct {
 func (cd *ColumnDesc) OnelineDesc() string {
 	items := []string{}
 	if cd.Type != "" {
-		items = append(items, cd.Type)
+		items = append(items, "`" + cd.Type + "`")
 	}
-	if cd.Key != "" {
+	if cd.Key == "YES" {
+		items = append(items, "PRIMARY KEY")
+	} else if cd.Key != "" && cd.Key != "NO" {
 		items = append(items, cd.Key)
 	}
 	if cd.Extra != "" {
@@ -64,26 +66,34 @@ func (cd *ColumnDesc) OnelineDesc() string {
 	return strings.Join(items, " ")
 }
 
-func (cd *ColumnDesc) OnelineDescWithName() string {
-	return fmt.Sprintf("%s: %s", cd.Name, cd.OnelineDesc())
-}
-
 func ColumnDoc(tableName string, colDesc *ColumnDesc) string {
 	buf := new(bytes.Buffer)
-	fmt.Fprintf(buf, "%s.%s column", tableName, colDesc.Name)
+	fmt.Fprintf(buf, "`%s`.`%s` column", tableName, colDesc.Name)
 	fmt.Fprintln(buf)
 	fmt.Fprintln(buf)
 	fmt.Fprintln(buf, colDesc.OnelineDesc())
 	return buf.String()
 }
 
+func Coalesce(str ...string) string {
+	for _, s := range str {
+		if s != "" {
+			return s
+		}
+	}
+	return ""
+}
+
 func TableDoc(tableName string, cols []*ColumnDesc) string {
 	buf := new(bytes.Buffer)
-	fmt.Fprintf(buf, "%s table", tableName)
+	fmt.Fprintf(buf, "# `%s` table", tableName)
 	fmt.Fprintln(buf)
 	fmt.Fprintln(buf)
+	fmt.Fprintln(buf)
+	fmt.Fprintln(buf, "| Name&nbsp;&nbsp; | Type&nbsp;&nbsp; | Primary&nbsp;key&nbsp;&nbsp; | Default&nbsp;&nbsp; | Extra&nbsp;&nbsp; |")
+	fmt.Fprintln(buf, "| :--------------- | :--------------- | :---------------------- | :------------------ | :---------------- |")
 	for _, col := range cols {
-		fmt.Fprintf(buf, "- %s", col.OnelineDescWithName())
+		fmt.Fprintf(buf, "| `%s` | `%s` | `%s` | `%s` | %s |", col.Name, col.Type, col.Key, Coalesce(col.Default.String, "-"), col.Extra)
 		fmt.Fprintln(buf)
 	}
 	return buf.String()

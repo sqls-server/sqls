@@ -59,15 +59,15 @@ func genSingleRecordInsertTest(col int, wantActiveParameter int) signatureHelpTe
 					Parameters: []lsp.ParameterInformation{
 						{
 							Label:         "ID",
-							Documentation: "int(11) PRI auto_increment",
+							Documentation: "`int(11)` PRI auto_increment",
 						},
 						{
 							Label:         "Name",
-							Documentation: "char(35)",
+							Documentation: "`char(35)`",
 						},
 						{
 							Label:         "CountryCode",
-							Documentation: "char(3) MUL",
+							Documentation: "`char(3)` MUL",
 						},
 					},
 				},
@@ -92,15 +92,15 @@ func genMultiRecordInsertTest(col int, wantActiveParameter int) signatureHelpTes
 					Parameters: []lsp.ParameterInformation{
 						{
 							Label:         "ID",
-							Documentation: "int(11) PRI auto_increment",
+							Documentation: "`int(11)` PRI auto_increment",
 						},
 						{
 							Label:         "Name",
-							Documentation: "char(35)",
+							Documentation: "`char(35)`",
 						},
 						{
 							Label:         "CountryCode",
-							Documentation: "char(3) MUL",
+							Documentation: "`char(3)` MUL",
 						},
 					},
 				},
