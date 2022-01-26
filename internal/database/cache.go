@@ -23,10 +23,15 @@ func (u *DBCacheGenerator) GenerateDBCachePrimary(ctx context.Context) (*DBCache
 	if err != nil {
 		return nil, err
 	}
-	dbCache.Schemas, err = u.genSchmeaCache(ctx)
+	schemas, err := u.genSchemaCache(ctx)
 	if err != nil {
 		return nil, err
 	}
+	dbCache.Schemas = make(map[string]string)
+	for index,element := range schemas{		
+		dbCache.Schemas[strings.ToUpper(index)] = element
+	}
+
 	if dbCache.defaultSchema == "" {
 		var topKey string
 		for k, _ := range dbCache.Schemas {
@@ -35,10 +40,15 @@ func (u *DBCacheGenerator) GenerateDBCachePrimary(ctx context.Context) (*DBCache
 		}
 		dbCache.defaultSchema = dbCache.Schemas[topKey]
 	}
-	dbCache.SchemaTables, err = u.repo.SchemaTables(ctx)
+	schemaTables, err := u.repo.SchemaTables(ctx)
 	if err != nil {
 		return nil, err
 	}
+	dbCache.SchemaTables = make(map[string][]string)
+	for index,element := range schemaTables{		
+		dbCache.SchemaTables[strings.ToUpper(index)] = element
+	}
+
 	dbCache.ColumnsWithParent, err = u.genColumnCacheCurrent(ctx, dbCache.defaultSchema)
 	if err != nil {
 		return nil, err
@@ -50,7 +60,7 @@ func (u *DBCacheGenerator) GenerateDBCacheSecondary(ctx context.Context) (map[st
 	return u.genColumnCacheAll(ctx)
 }
 
-func (u *DBCacheGenerator) genSchmeaCache(ctx context.Context) (map[string]string, error) {
+func (u *DBCacheGenerator) genSchemaCache(ctx context.Context) (map[string]string, error) {
 	dbs, err := u.repo.Schemas(ctx)
 	if err != nil {
 		return nil, err
@@ -81,7 +91,7 @@ func (u *DBCacheGenerator) genColumnCacheAll(ctx context.Context) (map[string][]
 func genColumnMap(columnDescs []*ColumnDesc) map[string][]*ColumnDesc {
 	columnMap := map[string][]*ColumnDesc{}
 	for _, desc := range columnDescs {
-		key := desc.Schema + "\t" + desc.Table
+		key := columnDatabaseKey(desc.Schema, desc.Table)
 		if _, ok := columnMap[key]; ok {
 			columnMap[key] = append(columnMap[key], desc)
 		} else {
@@ -114,7 +124,7 @@ func (dc *DBCache) SortedSchemas() []string {
 }
 
 func (dc *DBCache) SortedTablesByDBName(dbName string) (tbls []string, ok bool) {
-	tbls, ok = dc.SchemaTables[dbName]
+	tbls, ok = dc.SchemaTables[strings.ToUpper(dbName)]
 	sort.Strings(tbls)
 	return
 }
@@ -148,5 +158,5 @@ func (dc *DBCache) Column(tableName, colName string) (*ColumnDesc, bool) {
 }
 
 func columnDatabaseKey(dbName, tableName string) string {
-	return dbName + "\t" + tableName
+	return strings.ToUpper(dbName) + "\t" + strings.ToUpper(tableName)
 }
