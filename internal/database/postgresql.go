@@ -334,6 +334,73 @@ func (db *PostgreSQLDBRepository) DescribeDatabaseTableBySchema(ctx context.Cont
 	return tableInfos, nil
 }
 
+func (db *PostgreSQLDBRepository) DescribeForeignKeysBySchema(ctx context.Context, schemaName string) ([]*ForeignKey, error) {
+	rows, err := db.Conn.QueryContext(
+		ctx,
+		`
+	select kcu.CONSTRAINT_NAME,
+       kcu.TABLE_NAME,
+       kcu.COLUMN_NAME,
+       rel_kcu.TABLE_NAME,
+       rel_kcu.COLUMN_NAME
+	from INFORMATION_SCHEMA.TABLE_CONSTRAINTS tco
+			 join INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
+				  on tco.CONSTRAINT_SCHEMA = kcu.CONSTRAINT_SCHEMA
+					  and tco.CONSTRAINT_NAME = kcu.CONSTRAINT_NAME
+			 join INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS rco
+				  on tco.CONSTRAINT_SCHEMA = rco.CONSTRAINT_SCHEMA
+					  and tco.CONSTRAINT_NAME = rco.CONSTRAINT_NAME
+			 join INFORMATION_SCHEMA.KEY_COLUMN_USAGE rel_kcu
+				  on rco.UNIQUE_CONSTRAINT_SCHEMA = rel_kcu.CONSTRAINT_SCHEMA
+					  and rco.UNIQUE_CONSTRAINT_NAME = rel_kcu.CONSTRAINT_NAME
+					  and kcu.ORDINAL_POSITION = rel_kcu.ORDINAL_POSITION
+	where tco.CONSTRAINT_TYPE = 'FOREIGN KEY'
+	  and tco.CONSTRAINT_SCHEMA = $1
+	order by kcu.CONSTRAINT_NAME,
+			 kcu.ORDINAL_POSITION
+		`, schemaName)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() { _ = rows.Close() }()
+	var retVal []*ForeignKey
+	var prevFk string
+	var cur *ForeignKey
+	for rows.Next() {
+		var fkItem fkItemDesc
+		err := rows.Scan(
+			&fkItem.fkId,
+			&fkItem.table,
+			&fkItem.column,
+			&fkItem.refTable,
+			&fkItem.refColumn,
+		)
+		if err != nil {
+			return nil, err
+		}
+		var l, r ColumnBase
+		l.Schema = schemaName
+		l.Table = fkItem.table
+		l.Name = fkItem.column
+		r.Schema = l.Schema
+		r.Table = fkItem.refTable
+		r.Name = fkItem.refColumn
+		if fkItem.fkId != prevFk {
+			if cur != nil {
+				retVal = append(retVal, cur)
+			}
+			cur = new(ForeignKey)
+		}
+		*cur = append(*cur, [2]*ColumnBase{&l, &r})
+		prevFk = fkItem.fkId
+	}
+
+	if cur != nil {
+		retVal = append(retVal, cur)
+	}
+	return retVal, nil
+}
+
 func (db *PostgreSQLDBRepository) Exec(ctx context.Context, query string) (sql.Result, error) {
 	return db.Conn.ExecContext(ctx, query)
 }

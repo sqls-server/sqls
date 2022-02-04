@@ -165,3 +165,38 @@ func TestComplete(t *testing.T) {
 		})
 	}
 }
+
+func TestGenerateAlias(t *testing.T) {
+	noMatchesTable := make(map[string]interface{})
+	noMatchesTable["XX"] = true
+	matchesTable := make(map[string]interface{})
+	matchesTable["XX"] = true
+	matchesTable["T1"] = true
+
+	tests := []struct {
+		name  string
+		table string
+		tMap  map[string]interface{}
+		want  string
+	}{
+		{
+			"no matches",
+			"Table",
+			noMatchesTable,
+			"T1",
+		},
+		{
+			"matches",
+			"Table",
+			matchesTable,
+			"T2",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := generateTableAlias(tt.table, tt.tMap); got != tt.want {
+				t.Errorf("generateAlias() = %v, want  %v", got, tt.want)
+			}
+		})
+	}
+}

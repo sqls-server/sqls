@@ -32,6 +32,8 @@ const (
 	CompletionTypeChange
 	CompletionTypeUser
 	CompletionTypeSchema
+	CompletionTypeJoin
+	CompletionTypeJoinOn
 )
 
 func (ct completionType) String() string {
@@ -112,7 +114,7 @@ func (c *Completer) Complete(text string, params lsp.CompletionParams, lowercase
 	lastWord := getLastWord(text, params.Position.Line+1, params.Position.Character)
 	withBackQuote := strings.HasPrefix(lastWord, "`")
 
-	items := []lsp.CompletionItem{}
+	var items []lsp.CompletionItem
 
 	if c.DBCache != nil {
 		if completionTypeIs(ctx.types, CompletionTypeColumn) {
@@ -130,7 +132,11 @@ func (c *Completer) Complete(text string, params lsp.CompletionParams, lowercase
 			items = append(items, candidates...)
 		}
 		if completionTypeIs(ctx.types, CompletionTypeTable) {
-			candidates := c.TableCandidates(ctx.parent, definedTables)
+			excl := definedTables
+			if completionTypeIs(ctx.types, CompletionTypeJoin) {
+				excl = nil
+			}
+			candidates := c.TableCandidates(ctx.parent, excl)
 			if withBackQuote {
 				candidates = toQuotedCandidates(candidates)
 			}
@@ -156,6 +162,22 @@ func (c *Completer) Complete(text string, params lsp.CompletionParams, lowercase
 				candidates = toQuotedCandidates(candidates)
 			}
 			items = append(items, candidates...)
+		}
+		joinOn := completionTypeIs(ctx.types, CompletionTypeJoinOn)
+		if completionTypeIs(ctx.types, CompletionTypeJoin) || joinOn {
+			table, err := parseutil.ExtractLastTable(parsed, pos)
+			if err != nil {
+				return nil, err
+			}
+			tables, err := parseutil.ExtractPrevTables(parsed, pos)
+			if err != nil {
+				return nil, err
+			}
+			candidates := c.joinCandidates(table, tables, definedTables, joinOn, lowercaseKeywords)
+			if withBackQuote {
+				candidates = toQuotedCandidates(candidates) // what to do here?
+			}
+			items = append(candidates, items...)
 		}
 	}
 
@@ -185,6 +207,8 @@ func populateSortText(items []lsp.CompletionItem) {
 // This prefix defines the alphabetic priority of each kind.
 func getSortTextPrefix(kind lsp.CompletionItemKind) string {
 	switch kind {
+	case lsp.SnippetCompletion:
+		return "00"
 	case lsp.FieldCompletion:
 		return "0"
 	case lsp.ClassCompletion:
@@ -208,7 +232,6 @@ func getSortTextPrefix(kind lsp.CompletionItemKind) string {
 		lsp.OperatorCompletion,
 		lsp.PropertyCompletion,
 		lsp.ReferenceCompletion,
-		lsp.SnippetCompletion,
 		lsp.StructCompletion,
 		lsp.TextCompletion,
 		lsp.TypeParameterCompletion,
@@ -249,7 +272,7 @@ func getCompletionTypes(nw *parseutil.NodeWalker) *CompletionContext {
 	}
 
 	syntaxPos := parseutil.CheckSyntaxPosition(nw)
-	t := []completionType{}
+	var t []completionType
 	p := noneParent
 	switch {
 	case syntaxPos == parseutil.ColName:
@@ -348,6 +371,23 @@ func getCompletionTypes(nw *parseutil.NodeWalker) *CompletionContext {
 				CompletionTypeSubQuery,
 				CompletionTypeFunction,
 			}
+		}
+	case syntaxPos == parseutil.JoinClause:
+		t = []completionType{
+			CompletionTypeJoin,
+			CompletionTypeTable,
+			CompletionTypeReferencedTable,
+			CompletionTypeSchema,
+			CompletionTypeView,
+			CompletionTypeSubQuery,
+		}
+	case syntaxPos == parseutil.JoinOn:
+		t = []completionType{
+			CompletionTypeJoinOn,
+			CompletionTypeColumn,
+			CompletionTypeReferencedTable,
+			CompletionTypeSubQueryColumn,
+			CompletionTypeSubQuery,
 		}
 	case syntaxPos == parseutil.InsertColumn:
 		t = []completionType{

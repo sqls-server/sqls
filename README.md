@@ -34,6 +34,11 @@ sqls aims to provide advanced intelligence for you to edit sql in your own edito
 - DDL(Data Definition Language)
     - [ ] CREATE TABLE
     - [ ] ALTER TABLE
+  
+#### Join completion
+If the tables are connected with a foreign key sqls can complete ```JOIN``` statements
+
+![join_completion](imgs/sqls-fk_joins.gif)
 
 #### CodeAction
 

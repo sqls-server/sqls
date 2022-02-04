@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 	"net"
 	"strconv"
 
@@ -300,6 +301,31 @@ WHERE information_schema.COLUMNS.TABLE_SCHEMA = ?
 		tableInfos = append(tableInfos, &tableInfo)
 	}
 	return tableInfos, nil
+}
+
+func (db *MySQLDBRepository) DescribeForeignKeysBySchema(ctx context.Context, schemaName string) ([]*ForeignKey, error) {
+	rows, err := db.Conn.QueryContext(
+		ctx,
+		`
+		select fks.CONSTRAINT_NAME,
+		   fks.TABLE_NAME,
+		   kcu.COLUMN_NAME,
+		   fks.REFERENCED_TABLE_NAME,
+		   kcu.REFERENCED_COLUMN_NAME
+	from INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS fks
+			 join INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
+				  on fks.CONSTRAINT_SCHEMA = kcu.TABLE_SCHEMA
+					  and fks.TABLE_NAME = kcu.TABLE_NAME
+					  and fks.CONSTRAINT_NAME = kcu.CONSTRAINT_NAME
+	where fks.CONSTRAINT_SCHEMA = ?
+	order by fks.CONSTRAINT_NAME,
+			 kcu.ORDINAL_POSITION
+		`, schemaName)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() { _ = rows.Close() }()
+	return parseForeignKeys(rows, schemaName)
 }
 
 func (db *MySQLDBRepository) Exec(ctx context.Context, query string) (sql.Result, error) {
