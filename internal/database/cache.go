@@ -54,6 +54,9 @@ func (u *DBCacheGenerator) GenerateDBCachePrimary(ctx context.Context) (*DBCache
 		return nil, err
 	}
 	dbCache.ForeignKeys, err = u.genForeignKeysCache(ctx, dbCache.defaultSchema)
+	if err != nil {
+		return nil, err
+	}
 	return dbCache, nil
 }
 

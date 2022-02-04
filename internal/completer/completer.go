@@ -60,6 +60,10 @@ func (ct completionType) String() string {
 		return "SubQuery"
 	case CompletionTypeSubQueryColumn:
 		return "SubQueryColumn"
+	case CompletionTypeJoin:
+		return "Join clause"
+	case CompletionTypeJoinOn:
+		return "Join On condition"
 	default:
 		return ""
 	}

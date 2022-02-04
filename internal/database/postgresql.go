@@ -363,42 +363,7 @@ func (db *PostgreSQLDBRepository) DescribeForeignKeysBySchema(ctx context.Contex
 		log.Fatal(err)
 	}
 	defer func() { _ = rows.Close() }()
-	var retVal []*ForeignKey
-	var prevFk string
-	var cur *ForeignKey
-	for rows.Next() {
-		var fkItem fkItemDesc
-		err := rows.Scan(
-			&fkItem.fkId,
-			&fkItem.table,
-			&fkItem.column,
-			&fkItem.refTable,
-			&fkItem.refColumn,
-		)
-		if err != nil {
-			return nil, err
-		}
-		var l, r ColumnBase
-		l.Schema = schemaName
-		l.Table = fkItem.table
-		l.Name = fkItem.column
-		r.Schema = l.Schema
-		r.Table = fkItem.refTable
-		r.Name = fkItem.refColumn
-		if fkItem.fkId != prevFk {
-			if cur != nil {
-				retVal = append(retVal, cur)
-			}
-			cur = new(ForeignKey)
-		}
-		*cur = append(*cur, [2]*ColumnBase{&l, &r})
-		prevFk = fkItem.fkId
-	}
-
-	if cur != nil {
-		retVal = append(retVal, cur)
-	}
-	return retVal, nil
+	return parseForeignKeys(rows, schemaName)
 }
 
 func (db *PostgreSQLDBRepository) Exec(ctx context.Context, query string) (sql.Result, error) {
