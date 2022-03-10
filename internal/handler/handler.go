@@ -129,6 +129,8 @@ func (s *Server) handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.
 		return s.handleDefinition(ctx, conn, req)
 	case "textDocument/typeDefinition":
 		return s.handleDefinition(ctx, conn, req)
+	case "$/setTraceNotification":
+		return nil, nil
 	}
 	return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeMethodNotFound, Message: fmt.Sprintf("method not supported: %s", req.Method)}
 }
