@@ -67,6 +67,7 @@ go get github.com/lighttiger2505/sqls
 - [sqls.vim](https://github.com/lighttiger2505/sqls.vim)
 - [vscode-sqls](https://github.com/lighttiger2505/vscode-sqls)
 - [sqls.nvim](https://github.com/nanotee/sqls.nvim)
+- [eglot](https://github.com/joaotavora/eglot)
 
 ## DB Configuration
 
@@ -189,9 +190,9 @@ require'lspconfig'.sqls.setup{
 ```
 
 - Setting example for Sublime Text 4
-  
+
   Install the LSP Client by Opening the command palette and run ```Package Control: Install Package```, then select ```LSP```.
-  
+
   Open ```Preferences > Package Settings > LSP > Settings``` and add the ```"sqls"``` client configuration to the ```"clients"```:
 ```
 {
@@ -204,6 +205,14 @@ require'lspconfig'.sqls.setup{
         }
     }
 }
+```
+
+- Setting example with [eglot](https://github.com/joaotavora/eglot) for Emacs
+
+``` emacs-lisp
+(with-eval-after-load 'eglot
+    (add-to-list 'eglot-server-programs
+                 '(sql-mode . ("sqls" "-config" "~/.config/sqls/config.yaml"))))
 ```
 
 **I'm sorry. Please wait a little longer for other editor settings.**
