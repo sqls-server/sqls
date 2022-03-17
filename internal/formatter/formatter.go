@@ -249,6 +249,7 @@ func formatMultiKeyword(node *ast.MultiKeyword, env *formatEnvironment) ast.Node
 		}
 	}
 
+	insertKeyword := "INSERT INTO"
 	joinKeywords := []string{
 		"INNER JOIN",
 		"CROSS JOIN",
@@ -264,7 +265,7 @@ func formatMultiKeyword(node *ast.MultiKeyword, env *formatEnvironment) ast.Node
 	}
 
 	whitespaceAfterMatcher := astutil.NodeMatcher{
-		ExpectKeyword: joinKeywords,
+		ExpectKeyword: append(joinKeywords, insertKeyword),
 	}
 	if whitespaceAfterMatcher.IsMatch(node) {
 		results = append(results, whitespaceNode)

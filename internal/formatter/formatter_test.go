@@ -4,8 +4,39 @@ import (
 	"testing"
 
 	"github.com/lighttiger2505/sqls/ast"
+	"github.com/lighttiger2505/sqls/internal/config"
+	"github.com/lighttiger2505/sqls/internal/lsp"
 	"github.com/lighttiger2505/sqls/parser"
 )
+
+func TestEval(t *testing.T) {
+	testcases := []struct {
+		name     string
+		input    string
+		params   lsp.DocumentFormattingParams
+		config   *config.Config
+		expected string
+	}{
+		{
+			name:     "InsertIntoFormat",
+			input:    "INSERT INTO users (NAME, email) VALUES ('john doe', 'example@host.com')",
+			expected: "INSERT INTO users(\n\tNAME,\n\temail\n)\nVALUES(\n'john doe',\n'example@host.com'\n)",
+			params:   lsp.DocumentFormattingParams{},
+			config: &config.Config{
+				LowercaseKeywords: false,
+			},
+		},
+	}
+
+	for _, tt := range testcases {
+		t.Run(tt.name, func(t *testing.T) {
+			actual, _ := Format(tt.input, tt.params, tt.config)
+			if actual[0].NewText != tt.expected {
+				t.Errorf("expected: %s, got %s", tt.expected, actual[0].NewText)
+			}
+		})
+	}
+}
 
 func TestRenderIdentifier(t *testing.T) {
 	testcases := []struct {
