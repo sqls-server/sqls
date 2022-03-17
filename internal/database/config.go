@@ -43,7 +43,8 @@ func (c *DBConfig) Validate() error {
 		dialect.DatabaseDriverMySQL8,
 		dialect.DatabaseDriverMySQL57,
 		dialect.DatabaseDriverMySQL56,
-		dialect.DatabaseDriverPostgreSQL:
+		dialect.DatabaseDriverPostgreSQL,
+		dialect.DatabaseDriverVertica:
 		if c.DataSourceName == "" && c.Proto == "" {
 			return errors.New("required: connections[].dataSourceName or connections[].proto")
 		}
