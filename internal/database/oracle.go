@@ -231,6 +231,33 @@ func (db *OracleDBRepository) DescribeDatabaseTableBySchema(ctx context.Context,
 	return tableInfos, nil
 }
 
+func (db *OracleDBRepository) DescribeForeignKeysBySchema(ctx context.Context, schemaName string) ([]*ForeignKey, error) {
+	rows, err := db.Conn.QueryContext(
+		ctx,
+		`
+		SELECT a.CONSTRAINT_NAME,
+		   a.TABLE_NAME,
+		   a.COLUMN_NAME,
+		   b.TABLE_NAME,
+		   b.COLUMN_NAME
+	FROM ALL_CONS_COLUMNS a
+			 JOIN ALL_CONSTRAINTS c ON a.OWNER = c.OWNER
+		AND a.CONSTRAINT_NAME = c.CONSTRAINT_NAME
+			 JOIN ALL_CONSTRAINTS c_pk ON c.R_OWNER = c_pk.OWNER
+		AND c.R_CONSTRAINT_NAME = c_pk.CONSTRAINT_NAME
+			 JOIN ALL_CONS_COLUMNS b ON b.CONSTRAINT_NAME = c_pk.CONSTRAINT_NAME
+		AND b.POSITION = a.POSITION
+	WHERE c.constraint_type = 'R'
+	  AND a.OWNER = :1
+	ORDER BY a.CONSTRAINT_NAME, a.POSITION
+		`, schemaName)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() { _ = rows.Close() }()
+	return parseForeignKeys(rows, schemaName)
+}
+
 func (db *OracleDBRepository) Exec(ctx context.Context, query string) (sql.Result, error) {
 	return db.Conn.ExecContext(ctx, query)
 }

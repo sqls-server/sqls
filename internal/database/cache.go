@@ -28,7 +28,7 @@ func (u *DBCacheGenerator) GenerateDBCachePrimary(ctx context.Context) (*DBCache
 		return nil, err
 	}
 	dbCache.Schemas = make(map[string]string)
-	for index,element := range schemas{		
+	for index, element := range schemas {
 		dbCache.Schemas[strings.ToUpper(index)] = element
 	}
 
@@ -45,11 +45,15 @@ func (u *DBCacheGenerator) GenerateDBCachePrimary(ctx context.Context) (*DBCache
 		return nil, err
 	}
 	dbCache.SchemaTables = make(map[string][]string)
-	for index,element := range schemaTables{		
+	for index, element := range schemaTables {
 		dbCache.SchemaTables[strings.ToUpper(index)] = element
 	}
 
 	dbCache.ColumnsWithParent, err = u.genColumnCacheCurrent(ctx, dbCache.defaultSchema)
+	if err != nil {
+		return nil, err
+	}
+	dbCache.ForeignKeys, err = u.genForeignKeysCache(ctx, dbCache.defaultSchema)
 	if err != nil {
 		return nil, err
 	}
@@ -88,6 +92,32 @@ func (u *DBCacheGenerator) genColumnCacheAll(ctx context.Context) (map[string][]
 	return genColumnMap(columnDescs), nil
 }
 
+func (u *DBCacheGenerator) genForeignKeysCache(ctx context.Context, schemaName string) (map[string]map[string][]*ForeignKey, error) {
+	retVal := make(map[string]map[string][]*ForeignKey)
+	fk, err := u.repo.DescribeForeignKeysBySchema(ctx, schemaName)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, cur := range fk {
+		elem := (*cur)[0]
+		refs, ok := retVal[elem[0].Table]
+		if !ok {
+			refs = make(map[string][]*ForeignKey)
+		}
+		refs[elem[1].Table] = append(refs[elem[1].Table], cur)
+		retVal[elem[0].Table] = refs
+
+		refs, ok = retVal[elem[1].Table]
+		if !ok {
+			refs = make(map[string][]*ForeignKey)
+		}
+		refs[elem[0].Table] = append(refs[elem[0].Table], cur)
+		retVal[elem[1].Table] = refs
+	}
+	return retVal, nil
+}
+
 func genColumnMap(columnDescs []*ColumnDesc) map[string][]*ColumnDesc {
 	columnMap := map[string][]*ColumnDesc{}
 	for _, desc := range columnDescs {
@@ -107,6 +137,7 @@ type DBCache struct {
 	Schemas           map[string]string
 	SchemaTables      map[string][]string
 	ColumnsWithParent map[string][]*ColumnDesc
+	ForeignKeys       map[string]map[string][]*ForeignKey
 }
 
 func (dc *DBCache) Database(dbName string) (db string, ok bool) {
