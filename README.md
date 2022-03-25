@@ -64,7 +64,7 @@ If the tables are connected with a foreign key sqls can complete ```JOIN``` stat
 ## Installation
 
 ```shell
-go get github.com/lighttiger2505/sqls
+go install github.com/lighttiger2505/sqls@latest
 ```
 
 ## Editor Plugins
