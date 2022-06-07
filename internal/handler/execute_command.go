@@ -28,6 +28,7 @@ const (
 	CommandShowConnections  = "showConnections"
 	CommandSwitchDatabase   = "switchDatabase"
 	CommandSwitchConnection = "switchConnections"
+	CommandShowTables       = "showTables"
 )
 
 func (h *Server) handleTextDocumentCodeAction(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
@@ -71,6 +72,11 @@ func (h *Server) handleTextDocumentCodeAction(ctx context.Context, conn *jsonrpc
 			Command:   CommandSwitchConnection,
 			Arguments: []interface{}{},
 		},
+		{
+			Title:     "Show Tables",
+			Command:   CommandShowTables,
+			Arguments: []interface{}{},
+		},
 	}
 	return commands, nil
 }
@@ -98,6 +104,8 @@ func (s *Server) handleWorkspaceExecuteCommand(ctx context.Context, conn *jsonrp
 		return s.switchDatabase(ctx, params)
 	case CommandSwitchConnection:
 		return s.switchConnections(ctx, params)
+	case CommandShowTables:
+		return s.showTables(ctx, params)
 	}
 	return nil, fmt.Errorf("unsupported command: %v", params.Command)
 }
@@ -346,6 +354,35 @@ func (s *Server) switchConnections(ctx context.Context, params lsp.ExecuteComman
 	}
 
 	return nil, nil
+}
+
+func (s *Server) showTables(ctx context.Context, params lsp.ExecuteCommandParams) (result interface{}, err error) {
+	repo, err := s.newDBRepository(ctx)
+	if err != nil {
+		return "", err
+	}
+	m, err := repo.SchemaTables(ctx)
+	if err != nil {
+		return nil, err
+	}
+	schema, err := repo.CurrentSchema(ctx)
+	if err != nil {
+		return nil, err
+	}
+	results := []string{}
+	for k, vv := range m {
+		for _, v := range vv {
+			if k != "" {
+				if schema != k {
+					continue
+				}
+				results = append(results, k+"."+v)
+			} else {
+				results = append(results, v)
+			}
+		}
+	}
+	return strings.Join(results, "\n"), nil
 }
 
 func getStatements(text string) ([]*ast.Statement, error) {
