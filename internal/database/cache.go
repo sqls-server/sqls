@@ -34,7 +34,7 @@ func (u *DBCacheGenerator) GenerateDBCachePrimary(ctx context.Context) (*DBCache
 
 	if dbCache.defaultSchema == "" {
 		var topKey string
-		for k, _ := range dbCache.Schemas {
+		for k := range dbCache.Schemas {
 			topKey = k
 			continue
 		}
@@ -122,12 +122,7 @@ func genColumnMap(columnDescs []*ColumnDesc) map[string][]*ColumnDesc {
 	columnMap := map[string][]*ColumnDesc{}
 	for _, desc := range columnDescs {
 		key := columnDatabaseKey(desc.Schema, desc.Table)
-		if _, ok := columnMap[key]; ok {
-			columnMap[key] = append(columnMap[key], desc)
-		} else {
-			arr := []*ColumnDesc{desc}
-			columnMap[key] = arr
-		}
+		columnMap[key] = append(columnMap[key], desc)
 	}
 	return columnMap
 }
