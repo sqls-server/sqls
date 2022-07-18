@@ -230,7 +230,7 @@ func (db *PostgreSQLDBRepository) DescribeDatabaseTable(ctx context.Context) ([]
 		c.column_name,
 		c.data_type,
 		c.is_nullable,
-		CASE tc.constraint_type
+		CASE t.constraint_type
 			WHEN 'PRIMARY KEY' THEN 'YES'
 			ELSE 'NO'
 		END,
@@ -238,15 +238,23 @@ func (db *PostgreSQLDBRepository) DescribeDatabaseTable(ctx context.Context) ([]
 		''
 	FROM
 		information_schema.columns c
-	LEFT JOIN
-		information_schema.constraint_column_usage ccu
-		ON c.table_name = ccu.table_name
-		AND c.column_name = ccu.column_name
-	LEFT JOIN information_schema.table_constraints tc ON
-		tc.table_catalog = c.table_catalog
-		AND tc.table_schema = c.table_schema
-		AND tc.table_name = c.table_name
-		AND tc.constraint_name = ccu.constraint_name
+	LEFT JOIN (
+		SELECT
+			ccu.table_schema as table_schema,
+			ccu.table_name as table_name,
+			ccu.column_name as column_name,
+			tc.constraint_type as constraint_type
+		FROM information_schema.constraint_column_usage ccu
+		LEFT JOIN information_schema.table_constraints tc ON
+			tc.table_schema = ccu.table_schema
+			AND tc.table_name = ccu.table_name
+			AND tc.constraint_name = ccu.constraint_name
+		WHERE
+			tc.constraint_type = 'PRIMARY KEY'
+	) as t
+		ON c.table_schema = t.table_schema
+		AND c.table_name = t.table_name
+		AND c.column_name = t.column_name
 	ORDER BY
 		c.table_name,
 		c.ordinal_position
@@ -286,7 +294,7 @@ func (db *PostgreSQLDBRepository) DescribeDatabaseTableBySchema(ctx context.Cont
 		c.column_name,
 		c.data_type,
 		c.is_nullable,
-		CASE tc.constraint_type
+		CASE t.constraint_type
 			WHEN 'PRIMARY KEY' THEN 'YES'
 			ELSE 'NO'
 		END,
@@ -294,21 +302,30 @@ func (db *PostgreSQLDBRepository) DescribeDatabaseTableBySchema(ctx context.Cont
 		''
 	FROM
 		information_schema.columns c
-	LEFT JOIN
-		information_schema.constraint_column_usage ccu
-		ON c.table_name = ccu.table_name
-		AND c.column_name = ccu.column_name
-	LEFT JOIN information_schema.table_constraints tc ON
-		tc.table_catalog = c.table_catalog
-		AND tc.table_schema = c.table_schema
-		AND tc.table_name = c.table_name
-		AND tc.constraint_name = ccu.constraint_name
+	LEFT JOIN (
+		SELECT
+			ccu.table_schema as table_schema,
+			ccu.table_name as table_name,
+			ccu.column_name as column_name,
+			tc.constraint_type as constraint_type
+		FROM information_schema.constraint_column_usage ccu
+		LEFT JOIN information_schema.table_constraints tc ON
+			tc.table_schema = ccu.table_schema
+			AND tc.table_name = ccu.table_name
+			AND tc.constraint_name = ccu.constraint_name
+		WHERE
+			ccu.table_schema = $1
+			AND tc.constraint_type = 'PRIMARY KEY'
+	) as t
+		ON c.table_schema = t.table_schema
+		AND c.table_name = t.table_name
+		AND c.column_name = t.column_name
 	WHERE
-		c.table_schema = $1
+		c.table_schema = $2
 	ORDER BY
 		c.table_name,
 		c.ordinal_position
-	`, schemaName)
+	`, schemaName, schemaName)
 	if err != nil {
 		log.Fatal(err)
 	}
