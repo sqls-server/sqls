@@ -339,8 +339,22 @@ func (s *Server) switchConnections(ctx context.Context, params lsp.ExecuteComman
 	if !ok {
 		return nil, fmt.Errorf("specify the connection index as a number")
 	}
-	index, err := strconv.Atoi(indexStr)
-	if err != nil {
+
+	var index int
+
+	cfg := s.getConfig()
+	if cfg != nil {
+		for i, conn := range cfg.Connections {
+			if conn.Alias == indexStr {
+				index = i + 1
+				break
+			}
+		}
+	} else {
+		index, _ = strconv.Atoi(indexStr)
+	}
+
+	if index <= 0 {
 		return nil, fmt.Errorf("specify the connection index as a number, %w", err)
 	}
 	index = index - 1
