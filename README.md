@@ -72,6 +72,7 @@ go install github.com/lighttiger2505/sqls@latest
 - [sqls.vim](https://github.com/lighttiger2505/sqls.vim)
 - [vscode-sqls](https://github.com/lighttiger2505/vscode-sqls)
 - [sqls.nvim](https://github.com/nanotee/sqls.nvim)
+- [Emacs LSP mode](https://emacs-lsp.github.io/lsp-mode/page/lsp-sqls/)
 
 ## DB Configuration
 
