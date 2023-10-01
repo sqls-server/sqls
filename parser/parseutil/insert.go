@@ -1,8 +1,8 @@
 package parseutil
 
 import (
-	"github.com/lighttiger2505/sqls/ast"
-	"github.com/lighttiger2505/sqls/token"
+	"github.com/hsanson/sqls/ast"
+	"github.com/hsanson/sqls/token"
 )
 
 type Insert struct {

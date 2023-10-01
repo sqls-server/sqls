@@ -10,9 +10,9 @@ import (
 
 	"github.com/sourcegraph/jsonrpc2"
 
-	"github.com/lighttiger2505/sqls/internal/config"
-	"github.com/lighttiger2505/sqls/internal/database"
-	"github.com/lighttiger2505/sqls/internal/lsp"
+	"github.com/hsanson/sqls/internal/config"
+	"github.com/hsanson/sqls/internal/database"
+	"github.com/hsanson/sqls/internal/lsp"
 )
 
 var (

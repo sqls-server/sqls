@@ -36,16 +36,16 @@ stringer:
 .PHONY: snapshot
 snapshot: $(SRCS)
 	docker run --rm --privileged \
-		-v ${PWD}:/go/src/github.com/lighttiger2505/sqls \
+		-v ${PWD}:/go/src/github.com/hsanson/sqls \
 		-v /var/run/docker.sock:/var/run/docker.sock \
-		-w /go/src/github.com/lighttiger2505/sqls \
+		-w /go/src/github.com/hsanson/sqls \
 		mailchain/goreleaser-xcgo --snapshot --rm-dist
 
 .PHONY: publish
 publish: $(SRCS)
 	docker run --rm --privileged \
 		-e GITHUB_TOKEN=$(GITHUB_TOKEN) \
-		-v ${PWD}:/go/src/github.com/lighttiger2505/sqls \
+		-v ${PWD}:/go/src/github.com/hsanson/sqls \
 		-v /var/run/docker.sock:/var/run/docker.sock \
-		-w /go/src/github.com/lighttiger2505/sqls \
+		-w /go/src/github.com/hsanson/sqls \
 		mailchain/goreleaser-xcgo --rm-dist

@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/lighttiger2505/sqls/internal/formatter"
-	"github.com/lighttiger2505/sqls/internal/lsp"
+	"github.com/hsanson/sqls/internal/formatter"
+	"github.com/hsanson/sqls/internal/lsp"
 	"github.com/sourcegraph/jsonrpc2"
 )
 

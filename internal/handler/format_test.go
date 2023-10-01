@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/lighttiger2505/sqls/internal/config"
-	"github.com/lighttiger2505/sqls/internal/lsp"
+	"github.com/hsanson/sqls/internal/config"
+	"github.com/hsanson/sqls/internal/lsp"
 )
 
 var formattingOptionTab = lsp.FormattingOptions{

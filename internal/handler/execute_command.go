@@ -11,10 +11,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/lighttiger2505/sqls/ast"
-	"github.com/lighttiger2505/sqls/internal/database"
-	"github.com/lighttiger2505/sqls/internal/lsp"
-	"github.com/lighttiger2505/sqls/parser"
+	"github.com/hsanson/sqls/ast"
+	"github.com/hsanson/sqls/internal/database"
+	"github.com/hsanson/sqls/internal/lsp"
+	"github.com/hsanson/sqls/parser"
 	"github.com/olekukonko/tablewriter"
 	"github.com/sourcegraph/jsonrpc2"
 )
