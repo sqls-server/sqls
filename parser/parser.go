@@ -630,9 +630,8 @@ func parseCase(reader *astutil.NodeReader) ast.Node {
 			reader.Index = tmpReader.Index
 			reader.CurNode = tmpReader.CurNode
 			return &ast.SwitchCase{Toks: append(nodes, tmpReader.CurNode)}
-		} else {
-			nodes = append(nodes, tmpReader.CurNode)
 		}
+		nodes = append(nodes, tmpReader.CurNode)
 	}
 	return reader.Node
 }
