@@ -19,9 +19,8 @@ func astPaths(reader *astutil.NodeReader, pos token.Pos) []*astutil.NodeReader {
 			if list, ok := reader.CurNode.(ast.TokenList); ok {
 				newReader := astutil.NewNodeReader(list)
 				return append(paths, astPaths(newReader, pos)...)
-			} else {
-				return paths
 			}
+			return paths
 		}
 	}
 	return paths
