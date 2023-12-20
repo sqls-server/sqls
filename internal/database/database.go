@@ -58,7 +58,7 @@ type ColumnDesc struct {
 type ForeignKey [][2]*ColumnBase
 
 type fkItemDesc struct {
-	fkId      string
+	fkID      string
 	schema    string
 	table     string
 	column    string
@@ -187,7 +187,7 @@ func parseForeignKeys(rows *sql.Rows, schemaName string) ([]*ForeignKey, error) 
 	for rows.Next() {
 		var fkItem fkItemDesc
 		err := rows.Scan(
-			&fkItem.fkId,
+			&fkItem.fkID,
 			&fkItem.table,
 			&fkItem.column,
 			&fkItem.refTable,
@@ -203,14 +203,14 @@ func parseForeignKeys(rows *sql.Rows, schemaName string) ([]*ForeignKey, error) 
 		r.Schema = l.Schema
 		r.Table = fkItem.refTable
 		r.Name = fkItem.refColumn
-		if fkItem.fkId != prevFk {
+		if fkItem.fkID != prevFk {
 			if cur != nil {
 				retVal = append(retVal, cur)
 			}
 			cur = new(ForeignKey)
 		}
 		*cur = append(*cur, [2]*ColumnBase{&l, &r})
-		prevFk = fkItem.fkId
+		prevFk = fkItem.fkID
 	}
 
 	if cur != nil {
