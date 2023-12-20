@@ -553,13 +553,12 @@ func renderSQLWord(v *token.SQLWord, opts *RenderOptions) string {
 			return v.String()
 		}
 		return v.String()
-	} else {
-		// is keyword
-		if opts.LowerCase {
-			return strings.ToLower(v.String())
-		}
-		return strings.ToUpper(v.String())
 	}
+	// is keyword
+	if opts.LowerCase {
+		return strings.ToLower(v.String())
+	}
+	return strings.ToUpper(v.String())
 }
 
 func findFrom(node Node) token.Pos {
