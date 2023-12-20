@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/sourcegraph/jsonrpc2"
 	"github.com/sqls-server/sqls/ast"
 	"github.com/sqls-server/sqls/ast/astutil"
 	"github.com/sqls-server/sqls/internal/database"
@@ -13,7 +14,6 @@ import (
 	"github.com/sqls-server/sqls/parser"
 	"github.com/sqls-server/sqls/parser/parseutil"
 	"github.com/sqls-server/sqls/token"
-	"github.com/sourcegraph/jsonrpc2"
 )
 
 var ErrNoHover = errors.New("no hover infomation found")

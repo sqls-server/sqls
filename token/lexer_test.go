@@ -75,7 +75,7 @@ func TestTokenizer_Tokenize(t *testing.T) {
 		},
 		{
 			name: "whitespace and tab",
-			in: "\r\n	",
+			in:   "\r\n	",
 			out: []*Token{
 				{
 					Kind:  Whitespace,

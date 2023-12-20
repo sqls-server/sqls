@@ -11,12 +11,12 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/olekukonko/tablewriter"
+	"github.com/sourcegraph/jsonrpc2"
 	"github.com/sqls-server/sqls/ast"
 	"github.com/sqls-server/sqls/internal/database"
 	"github.com/sqls-server/sqls/internal/lsp"
 	"github.com/sqls-server/sqls/parser"
-	"github.com/olekukonko/tablewriter"
-	"github.com/sourcegraph/jsonrpc2"
 )
 
 const (
