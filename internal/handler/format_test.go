@@ -128,7 +128,7 @@ func TestFormattingMinimal(t *testing.T) {
 			want:  "foo as f",
 		},
 		{
-			name:  "member identifer",
+			name:  "member identifier",
 			input: "foo.id",
 			want:  "foo.id",
 		},

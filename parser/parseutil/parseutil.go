@@ -72,7 +72,7 @@ func encloseIsSubQuery(stmt ast.TokenList, pos token.Pos) bool {
 	if !nodeWalker.CurNodeIs(matcher) {
 		return false
 	}
-	parenthesis := nodeWalker.CurNodeButtomMatched(matcher)
+	parenthesis := nodeWalker.CurNodeBottomMatched(matcher)
 	tokenList, ok := parenthesis.(ast.TokenList)
 	if !ok {
 		return false
@@ -112,7 +112,7 @@ func extractFocusedSubQuery(stmt ast.TokenList, pos token.Pos) ast.TokenList {
 	if !nodeWalker.CurNodeIs(matcher) {
 		return nil
 	}
-	parenthesis := nodeWalker.CurNodeButtomMatched(matcher)
+	parenthesis := nodeWalker.CurNodeBottomMatched(matcher)
 	return parenthesis.(ast.TokenList)
 }
 
@@ -280,9 +280,9 @@ func isFollowedByOn(parsed ast.TokenList, pos token.Pos) bool {
 
 var identifierMatcher = astutil.NodeMatcher{
 	NodeTypes: []ast.NodeType{
-		ast.TypeIdentifer,
-		ast.TypeIdentiferList,
-		ast.TypeMemberIdentifer,
+		ast.TypeIdentifier,
+		ast.TypeIdentifierList,
+		ast.TypeMemberIdentifier,
 		ast.TypeAliased,
 	},
 }
@@ -381,16 +381,16 @@ func filterTokenList(reader *astutil.NodeReader, matcher astutil.NodeMatcher) as
 func parseTableInfo(idents ast.Node) ([]*TableInfo, error) {
 	res := []*TableInfo{}
 	switch v := idents.(type) {
-	case *ast.Identifer:
+	case *ast.Identifier:
 		ti := &TableInfo{Name: v.NoQuateString()}
 		res = append(res, ti)
-	case *ast.IdentiferList:
+	case *ast.IdentifierList:
 		tis, err := identifierListToTableInfo(v)
 		if err != nil {
 			return nil, err
 		}
 		res = append(res, tis...)
-	case *ast.MemberIdentifer:
+	case *ast.MemberIdentifier:
 		if v.Parent != nil {
 			ti := &TableInfo{
 				DatabaseSchema: v.Parent.String(),
@@ -410,16 +410,16 @@ func parseTableInfo(idents ast.Node) ([]*TableInfo, error) {
 	return res, nil
 }
 
-func identifierListToTableInfo(il *ast.IdentiferList) ([]*TableInfo, error) {
+func identifierListToTableInfo(il *ast.IdentifierList) ([]*TableInfo, error) {
 	tis := []*TableInfo{}
-	for _, ident := range il.GetIdentifers() {
+	for _, ident := range il.GetIdentifiers() {
 		switch v := ident.(type) {
-		case *ast.Identifer:
+		case *ast.Identifier:
 			ti := &TableInfo{
 				Name: v.NoQuateString(),
 			}
 			tis = append(tis, ti)
-		case *ast.MemberIdentifer:
+		case *ast.MemberIdentifier:
 			ti := &TableInfo{
 				DatabaseSchema: v.Parent.String(),
 				Name:           v.GetChild().String(),
@@ -438,9 +438,9 @@ func aliasedToTableInfo(aliased *ast.Aliased) (*TableInfo, error) {
 	ti := &TableInfo{}
 	// fetch table schema and name
 	switch v := aliased.RealName.(type) {
-	case *ast.Identifer:
+	case *ast.Identifier:
 		ti.Name = v.NoQuateString()
-	case *ast.MemberIdentifer:
+	case *ast.MemberIdentifier:
 		ti.DatabaseSchema = v.Parent.String()
 		ti.Name = v.GetChild().String()
 	case *ast.Parenthesis:
@@ -460,7 +460,7 @@ func aliasedToTableInfo(aliased *ast.Aliased) (*TableInfo, error) {
 
 	// fetch table aliased name
 	switch v := aliased.AliasedName.(type) {
-	case *ast.Identifer:
+	case *ast.Identifier:
 		ti.Alias = v.NoQuateString()
 	default:
 		return nil, fmt.Errorf(
@@ -475,7 +475,7 @@ func aliasedToTableInfo(aliased *ast.Aliased) (*TableInfo, error) {
 func parseSubQueryColumns(idents ast.Node, tables []*TableInfo) ([]*SubQueryColumn, error) {
 	subqueryCols := []*SubQueryColumn{}
 	switch v := idents.(type) {
-	case *ast.Identifer:
+	case *ast.Identifier:
 		ident := v.NoQuateString()
 		if ident == "*" {
 			for _, table := range tables {
@@ -492,15 +492,15 @@ func parseSubQueryColumns(idents ast.Node, tables []*TableInfo) ([]*SubQueryColu
 			}
 			subqueryCols = append(subqueryCols, subqueryCol)
 		}
-	case *ast.IdentiferList:
-		for _, ident := range v.GetIdentifers() {
+	case *ast.IdentifierList:
+		for _, ident := range v.GetIdentifiers() {
 			resSubqueryCols, err := parseSubQueryColumns(ident, tables)
 			if err != nil {
 				return nil, err
 			}
 			subqueryCols = append(subqueryCols, resSubqueryCols...)
 		}
-	case *ast.MemberIdentifer:
+	case *ast.MemberIdentifier:
 		subqueryCols = append(
 			subqueryCols,
 			&SubQueryColumn{
@@ -534,13 +534,13 @@ func aliasedToSubQueryColumn(aliased *ast.Aliased) (*SubQueryColumn, error) {
 	// fetch table schema and name
 	aliasedName := aliased.GetAliasedNameIdent().NoQuateString()
 	switch v := aliased.RealName.(type) {
-	case *ast.Identifer:
+	case *ast.Identifier:
 		subqueryCol := &SubQueryColumn{
 			ColumnName: v.NoQuateString(),
 			AliasName:  aliasedName,
 		}
 		return subqueryCol, nil
-	case *ast.MemberIdentifer:
+	case *ast.MemberIdentifier:
 		subqueryCol := &SubQueryColumn{
 			ParentName: v.GetParentIdent().NoQuateString(),
 			ColumnName: v.GetChildIdent().NoQuateString(),

@@ -61,7 +61,7 @@ func (tx *TestContext) initServer(t *testing.T) {
 	tx.connServer = jsonrpc2.NewConn(tx.ctx, jsonrpc2.NewBufferedStream(server, jsonrpc2.VSCodeObjectCodec{}), tx.h)
 	tx.conn = jsonrpc2.NewConn(tx.ctx, jsonrpc2.NewBufferedStream(client, jsonrpc2.VSCodeObjectCodec{}), tx.h)
 
-	// Initialize Langage Server
+	// Initialize Language Server
 	params := lsp.InitializeParams{
 		InitializationOptions: lsp.InitializeOptions{},
 	}

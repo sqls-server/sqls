@@ -12,14 +12,14 @@ func ExtractIdenfiers(parsed ast.TokenList, pos token.Pos) ([]ast.Node, error) {
 		return nil, err
 	}
 
-	identiferMatcher := astutil.NodeMatcher{
+	identifierMatcher := astutil.NodeMatcher{
 		NodeTypes: []ast.NodeType{
-			ast.TypeIdentifer,
+			ast.TypeIdentifier,
 		},
 	}
-	return parsePrefix(astutil.NewNodeReader(stmt), identiferMatcher, parseIdentifer), nil
+	return parsePrefix(astutil.NewNodeReader(stmt), identifierMatcher, parseIdentifier), nil
 }
 
-func parseIdentifer(reader *astutil.NodeReader) []ast.Node {
+func parseIdentifier(reader *astutil.NodeReader) []ast.Node {
 	return []ast.Node{reader.CurNode}
 }

@@ -45,9 +45,9 @@ func definition(url, text string, params lsp.DefinitionParams, dbCache *database
 
 	nodeWalker := parseutil.NewNodeWalker(parsed, pos)
 	m := astutil.NodeMatcher{
-		NodeTypes: []ast.NodeType{ast.TypeIdentifer},
+		NodeTypes: []ast.NodeType{ast.TypeIdentifier},
 	}
-	currentVariable := nodeWalker.CurNodeButtomMatched(m)
+	currentVariable := nodeWalker.CurNodeBottomMatched(m)
 	if currentVariable == nil {
 		return nil, nil
 	}

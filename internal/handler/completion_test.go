@@ -115,7 +115,7 @@ var selectExprCase = []completionTestCase{
 		},
 	},
 	{
-		name:  "quoted table quoted alias specificed table columns",
+		name:  "quoted table quoted alias specified table columns",
 		input: "select `c`. from `city` as `c`",
 		line:  0,
 		col:   11,
@@ -137,7 +137,7 @@ var selectExprCase = []completionTestCase{
 		},
 	},
 	{
-		name:  "filterd table columns",
+		name:  "filtered table columns",
 		input: "select Cou from city",
 		line:  0,
 		col:   10,
@@ -148,7 +148,7 @@ var selectExprCase = []completionTestCase{
 		},
 	},
 	{
-		name:  "filterd signle quate table columns",
+		name:  "filtered single quate table columns",
 		input: "select `Cou from city",
 		line:  0,
 		col:   10,
@@ -236,7 +236,7 @@ var selectExprCase = []completionTestCase{
 		},
 	},
 	{
-		name:  "filterd columns of before period table",
+		name:  "filtered columns of before period table",
 		input: "select c.C from city as c",
 		line:  0,
 		col:   10,
@@ -274,7 +274,7 @@ var selectExprCase = []completionTestCase{
 		},
 	},
 	{
-		name:  "filterd identifier list",
+		name:  "filtered identifier list",
 		input: "select id, cou from city",
 		line:  0,
 		col:   14,
@@ -342,7 +342,7 @@ var tableReferenceCase = []completionTestCase{
 		},
 	},
 	{
-		name:  "from filterd tables",
+		name:  "from filtered tables",
 		input: "select CountryCode from co",
 		line:  0,
 		col:   26,
@@ -352,7 +352,7 @@ var tableReferenceCase = []completionTestCase{
 		},
 	},
 	{
-		name:  "from quoted filterd tables",
+		name:  "from quoted filtered tables",
 		input: "select CountryCode from `co",
 		line:  0,
 		col:   26,
@@ -373,7 +373,7 @@ var tableReferenceCase = []completionTestCase{
 		},
 	},
 	{
-		name:  "join filterd tables",
+		name:  "join filtered tables",
 		input: "select CountryCode from city join co",
 		line:  0,
 		col:   36,
@@ -427,7 +427,7 @@ var tableReferenceCase = []completionTestCase{
 		},
 	},
 	{
-		name:  "insert filterd tables",
+		name:  "insert filtered tables",
 		input: "INSERT INTO co",
 		line:  0,
 		col:   12,
@@ -455,7 +455,7 @@ var tableReferenceCase = []completionTestCase{
 		},
 	},
 	{
-		name:  "insert filterd columns",
+		name:  "insert filtered columns",
 		input: "INSERT INTO city (cou",
 		line:  0,
 		col:   21,
@@ -484,7 +484,7 @@ var tableReferenceCase = []completionTestCase{
 		},
 	},
 	{
-		name:  "update filterd tables",
+		name:  "update filtered tables",
 		input: "UPDATE co",
 		line:  0,
 		col:   9,
@@ -507,7 +507,7 @@ var tableReferenceCase = []completionTestCase{
 		},
 	},
 	{
-		name:  "update filterd columns",
+		name:  "update filtered columns",
 		input: "UPDATE city SET cou",
 		line:  0,
 		col:   19,
@@ -536,7 +536,7 @@ var tableReferenceCase = []completionTestCase{
 		},
 	},
 	{
-		name:  "delete filterd tables",
+		name:  "delete filtered tables",
 		input: "DELETE FROM co",
 		line:  0,
 		col:   14,
@@ -650,7 +650,7 @@ var whereCondition = []completionTestCase{
 		},
 	},
 	{
-		name:  "join on filterd columns",
+		name:  "join on filtered columns",
 		input: "select * from city left join country on co",
 		line:  0,
 		col:   52,
@@ -760,7 +760,7 @@ var subQueryCase = []completionTestCase{
 		},
 	},
 	{
-		name:  "in subquery filterd table references",
+		name:  "in subquery filtered table references",
 		input: "SELECT * FROM (SELECT * FROM co",
 		line:  0,
 		col:   29,
@@ -1102,7 +1102,7 @@ func TestCompleteMain(t *testing.T) {
 			t.Run(k+" "+tt.name, func(t *testing.T) {
 				tx.textDocumentDidOpen(t, testFileURI, tt.input)
 
-				commpletionParams := lsp.CompletionParams{
+				completionParams := lsp.CompletionParams{
 					TextDocumentPositionParams: lsp.TextDocumentPositionParams{
 						TextDocument: lsp.TextDocumentIdentifier{
 							URI: testFileURI,
@@ -1119,7 +1119,7 @@ func TestCompleteMain(t *testing.T) {
 				}
 
 				var got []lsp.CompletionItem
-				if err := tx.conn.Call(tx.ctx, "textDocument/completion", commpletionParams, &got); err != nil {
+				if err := tx.conn.Call(tx.ctx, "textDocument/completion", completionParams, &got); err != nil {
 					t.Fatal("conn.Call textDocument/completion:", err)
 				}
 				testCompletionItem(t, tt.want, tt.bad, got)
@@ -1152,7 +1152,7 @@ func TestCompleteJoin(t *testing.T) {
 			t.Run(k+" "+tt.name, func(t *testing.T) {
 				tx.textDocumentDidOpen(t, testFileURI, tt.input)
 
-				commpletionParams := lsp.CompletionParams{
+				completionParams := lsp.CompletionParams{
 					TextDocumentPositionParams: lsp.TextDocumentPositionParams{
 						TextDocument: lsp.TextDocumentIdentifier{
 							URI: testFileURI,
@@ -1169,7 +1169,7 @@ func TestCompleteJoin(t *testing.T) {
 				}
 
 				var got []lsp.CompletionItem
-				if err := tx.conn.Call(tx.ctx, "textDocument/completion", commpletionParams, &got); err != nil {
+				if err := tx.conn.Call(tx.ctx, "textDocument/completion", completionParams, &got); err != nil {
 					t.Fatal("conn.Call textDocument/completion:", err)
 				}
 				testCompletionItem(t, tt.want, tt.bad, got)
@@ -1202,7 +1202,7 @@ func TestCompleteNoneDBConnection(t *testing.T) {
 			t.Run(k+" "+tt.name, func(t *testing.T) {
 				tx.textDocumentDidOpen(t, testFileURI, tt.input)
 
-				commpletionParams := lsp.CompletionParams{
+				completionParams := lsp.CompletionParams{
 					TextDocumentPositionParams: lsp.TextDocumentPositionParams{
 						TextDocument: lsp.TextDocumentIdentifier{
 							URI: testFileURI,
@@ -1220,7 +1220,7 @@ func TestCompleteNoneDBConnection(t *testing.T) {
 
 				// Without a DB connection, it is not possible to provide functions using the DB connection, so just make sure that no errors occur.
 				var got []lsp.CompletionItem
-				if err := tx.conn.Call(tx.ctx, "textDocument/completion", commpletionParams, &got); err != nil {
+				if err := tx.conn.Call(tx.ctx, "textDocument/completion", completionParams, &got); err != nil {
 					t.Fatal("conn.Call textDocument/completion:", err)
 				}
 			})
