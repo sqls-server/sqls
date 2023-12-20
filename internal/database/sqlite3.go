@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/lighttiger2505/sqls/dialect"
+	"github.com/sqls-server/sqls/dialect"
 	_ "github.com/mattn/go-sqlite3"
 )
 

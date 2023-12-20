@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/lighttiger2505/sqls/internal/database"
+	"github.com/sqls-server/sqls/internal/database"
 	"gopkg.in/yaml.v2"
 )
 

@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/lighttiger2505/sqls/token"
+	"github.com/sqls-server/sqls/token"
 )
 
 func TestExtractInsert(t *testing.T) {

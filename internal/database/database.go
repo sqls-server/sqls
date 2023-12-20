@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/lighttiger2505/sqls/dialect"
-	"github.com/lighttiger2505/sqls/parser/parseutil"
+	"github.com/sqls-server/sqls/dialect"
+	"github.com/sqls-server/sqls/parser/parseutil"
 )
 
 var (

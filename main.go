@@ -14,8 +14,8 @@ import (
 	"github.com/sourcegraph/jsonrpc2"
 	"github.com/urfave/cli/v2"
 
-	"github.com/lighttiger2505/sqls/internal/config"
-	"github.com/lighttiger2505/sqls/internal/handler"
+	"github.com/sqls-server/sqls/internal/config"
+	"github.com/sqls-server/sqls/internal/handler"
 )
 
 // builtin variables. see Makefile
