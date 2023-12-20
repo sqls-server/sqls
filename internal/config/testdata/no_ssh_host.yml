@@ -13,4 +13,4 @@ connections:
       port: 22
       user: vagrant
       passPhrase: passphrase1234
-      privateKey: /home/lighttiger2505/.ssh/id_rsa
+      privateKey: /home/sqls-server/.ssh/id_rsa

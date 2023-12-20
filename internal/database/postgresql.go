@@ -14,7 +14,7 @@ import (
 
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/stdlib"
-	"github.com/lighttiger2505/sqls/dialect"
+	"github.com/sqls-server/sqls/dialect"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -430,7 +430,8 @@ func genPostgresConfig(connCfg *DBConfig) (string, error) {
 // ignoring any values with keys in ignore.
 //
 // For example, to build a "ODBC" style connection string, use like the following:
-//     genOptions(u.Query(), "", "=", ";", ",")
+//
+//	genOptions(u.Query(), "", "=", ";", ",")
 func genOptions(q url.Values, joiner, assign, sep, valSep string, skipWhenEmpty bool, ignore ...string) string {
 	qlen := len(q)
 	if qlen == 0 {

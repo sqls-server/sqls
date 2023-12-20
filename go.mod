@@ -1,4 +1,4 @@
-module github.com/lighttiger2505/sqls
+module github.com/sqls-server/sqls
 
 go 1.16
 

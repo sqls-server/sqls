@@ -9,8 +9,8 @@ import (
 
 	"github.com/sourcegraph/jsonrpc2"
 
-	"github.com/lighttiger2505/sqls/internal/config"
-	"github.com/lighttiger2505/sqls/internal/lsp"
+	"github.com/sqls-server/sqls/internal/config"
+	"github.com/sqls-server/sqls/internal/lsp"
 )
 
 const testFileURI = "file:///Users/octref/Code/css-test/test.sql"

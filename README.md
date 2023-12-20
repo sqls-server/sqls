@@ -1,6 +1,6 @@
 # sqls
 
-![test](https://github.com/lighttiger2505/sqls/workflows/test/badge.svg)
+![test](https://github.com/sqls-server/sqls/workflows/test/badge.svg)
 
 An implementation of the Language Server Protocol for SQL.
 
@@ -42,7 +42,7 @@ If the tables are connected with a foreign key sqls can complete ```JOIN``` stat
 
 #### CodeAction
 
-![code_actions](https://github.com/lighttiger2505/sqls.vim/blob/master/imgs/sqls_vim_demo.gif)
+![code_actions](https://github.com/sqls-server/sqls.vim/blob/master/imgs/sqls_vim_demo.gif)
 
 - [x] Execute SQL
 - [ ] Explain SQL
@@ -64,12 +64,12 @@ If the tables are connected with a foreign key sqls can complete ```JOIN``` stat
 ## Installation
 
 ```shell
-go install github.com/lighttiger2505/sqls@latest
+go install github.com/sqls-server/sqls@latest
 ```
 
 ## Editor Plugins
 
-- [sqls.vim](https://github.com/lighttiger2505/sqls.vim)
+- [sqls.vim](https://github.com/sqls-server/sqls.vim)
 - [vscode-sqls](https://github.com/lighttiger2505/vscode-sqls)
 - [sqls.nvim](https://github.com/nanotee/sqls.nvim)
 - [Emacs LSP mode](https://emacs-lsp.github.io/lsp-mode/page/lsp-sqls/)
@@ -122,7 +122,7 @@ connections:
       port: 22
       user: sshuser
       passPhrase: ssspass
-      privateKey: /home/lighttiger2505/.ssh/id_rsa
+      privateKey: /home/sqls-server/.ssh/id_rsa
 ```
 
 ### Workspace configuration Sample
@@ -262,8 +262,8 @@ See also.
 ## Contributors
 
 This project exists thanks to all the people who contribute.
-<a href="https://github.com/lighttiger2505/sqls/graphs/contributors">
-    <img src="https://contrib.rocks/image?repo=lighttiger2505/sqls" />
+<a href="https://github.com/sqls-server/sqls/graphs/contributors">
+    <img src="https://contrib.rocks/image?repo=sqls-server/sqls" />
 </a>
 
 ## Inspired
