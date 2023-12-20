@@ -64,7 +64,7 @@ func realMain() error {
 					if editorEnv == "" {
 						editorEnv = "vim"
 					}
-					return OpenEditor(editorEnv, config.YamlConfigPath)
+					return openEditor(editorEnv, config.YamlConfigPath)
 				},
 			},
 		},
@@ -171,7 +171,7 @@ func (stdrwc) Close() error {
 	return os.Stdout.Close()
 }
 
-func OpenEditor(program string, args ...string) error {
+func openEditor(program string, args ...string) error {
 	cmdargs := strings.Join(args, " ")
 	command := program + " " + cmdargs
 
