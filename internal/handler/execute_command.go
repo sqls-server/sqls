@@ -350,7 +350,8 @@ func (s *Server) switchConnections(ctx context.Context, params lsp.ExecuteComman
 				break
 			}
 		}
-	} else {
+	}
+	if index <= 0 {
 		index, _ = strconv.Atoi(indexStr)
 	}
 
