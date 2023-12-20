@@ -125,14 +125,14 @@ type SSHConfig struct {
 	PrivateKey string `json:"privateKey" yaml:"privateKey"`
 }
 
-func (c *SSHConfig) Validate() error {
-	if c.Host == "" {
+func (s *SSHConfig) Validate() error {
+	if s.Host == "" {
 		return errors.New("required: connections[]sshConfig.host")
 	}
-	if c.User == "" {
+	if s.User == "" {
 		return errors.New("required: connections[].sshConfig.user")
 	}
-	if c.PrivateKey == "" {
+	if s.PrivateKey == "" {
 		return errors.New("required: connections[].sshConfig.privateKey")
 	}
 	return nil
