@@ -437,7 +437,7 @@ func (il *IdentifierList) GetIndex(pos token.Pos) int {
 	var idx int
 	for _, comma := range il.Commas {
 		if 0 > token.ComparePos(comma.Pos(), pos) {
-			idx += 1
+			idx++
 		}
 	}
 	return idx
