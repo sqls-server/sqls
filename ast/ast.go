@@ -3,8 +3,8 @@ package ast
 import (
 	"strings"
 
-	"github.com/lighttiger2505/sqls/dialect"
-	"github.com/lighttiger2505/sqls/token"
+	"github.com/sqls-server/sqls/dialect"
+	"github.com/sqls-server/sqls/token"
 )
 
 type NodeType int
@@ -605,17 +605,13 @@ func (t *SQLToken) Render(opts *RenderOptions) string {
 }
 
 func renderSQLWord(v *token.SQLWord, opts *RenderOptions) string {
-	isIdentifer := false
-	if v.Kind == dialect.Unmatched {
-		isIdentifer = true
-	}
-
+	isIdentifer := v.Kind == dialect.Unmatched
 	if isIdentifer {
 		if opts.IdentiferQuated {
 			v.QuoteStyle = '`'
 			return v.String()
 		}
-		return v.NoQuateString()
+		return v.String()
 	} else {
 		// is keyword
 		if opts.LowerCase {

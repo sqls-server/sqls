@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	"github.com/lighttiger2505/sqls/dialect"
+	"github.com/sqls-server/sqls/dialect"
 	"golang.org/x/crypto/ssh"
-	"golang.org/x/xerrors"
 )
 
 type Proto string
@@ -73,6 +72,45 @@ func (c *DBConfig) Validate() error {
 		if c.DataSourceName == "" {
 			return errors.New("required: connections[].dataSourceName")
 		}
+	case dialect.DatabaseDriverMssql:
+		if c.DataSourceName == "" && c.Proto == "" {
+			return errors.New("required: connections[].dataSourceName or connections[].proto")
+		}
+		if c.DataSourceName == "" && c.Proto != "" {
+			if c.User == "" {
+				return errors.New("required: connections[].user")
+			}
+			switch c.Proto {
+			case ProtoTCP:
+				if c.Host == "" {
+					return errors.New("required: connections[].host")
+				}
+			case ProtoUDP, ProtoUnix:
+			default:
+				return errors.New("invalid: connections[].proto")
+			}
+		}
+	case dialect.DatabaseDriverOracle:
+		if c.DataSourceName == "" && c.Proto == "" {
+			return errors.New("required: connections[].dataSourceName or connections[].proto")
+		}
+		if c.DataSourceName == "" {
+			if c.User == "" {
+				return errors.New("required: connections[].user")
+			}
+			if c.Passwd == "" {
+				return errors.New("required: connections[].Passwd")
+			}
+			if c.Host == "" {
+				return errors.New("required: connections[].Host")
+			}
+			if c.Port <= 0 {
+				return errors.New("required: connections[].Port")
+			}
+			if c.DBName == "" {
+				return errors.New("required: connections[].DBName")
+			}
+		}
 	default:
 		return errors.New("invalid: connections[].driver")
 	}
@@ -107,19 +145,19 @@ func (s *SSHConfig) Endpoint() string {
 func (s *SSHConfig) ClientConfig() (*ssh.ClientConfig, error) {
 	buffer, err := ioutil.ReadFile(s.PrivateKey)
 	if err != nil {
-		return nil, xerrors.Errorf("cannot read SSH private key file, PrivateKey=%s, %+v", s.PrivateKey, err)
+		return nil, fmt.Errorf("cannot read SSH private key file, PrivateKey=%s, %w", s.PrivateKey, err)
 	}
 
 	var key ssh.Signer
 	if s.PassPhrase != "" {
 		key, err = ssh.ParsePrivateKeyWithPassphrase(buffer, []byte(s.PassPhrase))
 		if err != nil {
-			return nil, xerrors.Errorf("cannot parse SSH private key file with passphrase, PrivateKey=%s, %+v", s.PrivateKey, err)
+			return nil, fmt.Errorf("cannot parse SSH private key file with passphrase, PrivateKey=%s, %w", s.PrivateKey, err)
 		}
 	} else {
 		key, err = ssh.ParsePrivateKey(buffer)
 		if err != nil {
-			return nil, xerrors.Errorf("cannot parse SSH private key file, PrivateKey=%s, %+v", s.PrivateKey, err)
+			return nil, fmt.Errorf("cannot parse SSH private key file, PrivateKey=%s, %w", s.PrivateKey, err)
 		}
 	}
 

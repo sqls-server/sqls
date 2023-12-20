@@ -5,12 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/lighttiger2505/sqls/internal/database"
-	"github.com/lighttiger2505/sqls/internal/lsp"
-	"github.com/lighttiger2505/sqls/parser"
-	"github.com/lighttiger2505/sqls/parser/parseutil"
-	"github.com/lighttiger2505/sqls/token"
 	"github.com/sourcegraph/jsonrpc2"
+	"github.com/sqls-server/sqls/internal/database"
+	"github.com/sqls-server/sqls/internal/lsp"
+	"github.com/sqls-server/sqls/parser"
+	"github.com/sqls-server/sqls/parser/parseutil"
+	"github.com/sqls-server/sqls/token"
 )
 
 func (s *Server) handleTextDocumentSignatureHelp(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {

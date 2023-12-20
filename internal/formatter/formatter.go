@@ -4,12 +4,12 @@ import (
 	"errors"
 	"log"
 
-	"github.com/lighttiger2505/sqls/ast"
-	"github.com/lighttiger2505/sqls/ast/astutil"
-	"github.com/lighttiger2505/sqls/internal/config"
-	"github.com/lighttiger2505/sqls/internal/lsp"
-	"github.com/lighttiger2505/sqls/parser"
-	"github.com/lighttiger2505/sqls/token"
+	"github.com/sqls-server/sqls/ast"
+	"github.com/sqls-server/sqls/ast/astutil"
+	"github.com/sqls-server/sqls/internal/config"
+	"github.com/sqls-server/sqls/internal/lsp"
+	"github.com/sqls-server/sqls/parser"
+	"github.com/sqls-server/sqls/token"
 )
 
 func Format(text string, params lsp.DocumentFormattingParams, cfg *config.Config) ([]lsp.TextEdit, error) {
@@ -224,6 +224,7 @@ func formatMultiKeyword(node *ast.MultiKeyword, env *formatEnvironment) ast.Node
 		}
 	}
 
+	insertKeyword := "INSERT INTO"
 	joinKeywords := []string{
 		"INNER JOIN",
 		"CROSS JOIN",
@@ -236,6 +237,13 @@ func formatMultiKeyword(node *ast.MultiKeyword, env *formatEnvironment) ast.Node
 	byKeywords := []string{
 		"GROUP BY",
 		"ORDER BY",
+	}
+
+	whitespaceAfterMatcher := astutil.NodeMatcher{
+		ExpectKeyword: append(joinKeywords, insertKeyword),
+	}
+	if whitespaceAfterMatcher.IsMatch(node) {
+		results = append(results, whitespaceNode)
 	}
 
 	// Add an adjustment indent before the cursor

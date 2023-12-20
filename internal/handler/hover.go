@@ -6,14 +6,14 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/lighttiger2505/sqls/ast"
-	"github.com/lighttiger2505/sqls/ast/astutil"
-	"github.com/lighttiger2505/sqls/internal/database"
-	"github.com/lighttiger2505/sqls/internal/lsp"
-	"github.com/lighttiger2505/sqls/parser"
-	"github.com/lighttiger2505/sqls/parser/parseutil"
-	"github.com/lighttiger2505/sqls/token"
 	"github.com/sourcegraph/jsonrpc2"
+	"github.com/sqls-server/sqls/ast"
+	"github.com/sqls-server/sqls/ast/astutil"
+	"github.com/sqls-server/sqls/internal/database"
+	"github.com/sqls-server/sqls/internal/lsp"
+	"github.com/sqls-server/sqls/parser"
+	"github.com/sqls-server/sqls/parser/parseutil"
+	"github.com/sqls-server/sqls/token"
 )
 
 var ErrNoHover = errors.New("no hover infomation found")
@@ -35,7 +35,7 @@ func (s *Server) handleTextDocumentHover(ctx context.Context, conn *jsonrpc2.Con
 
 	res, err := hover(f.Text, params, s.worker.Cache())
 	if err != nil {
-		if err == ErrNoHover {
+		if errors.Is(ErrNoHover, err) {
 			return nil, nil
 		}
 		return nil, err

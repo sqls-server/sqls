@@ -1,6 +1,6 @@
 # sqls
 
-![test](https://github.com/lighttiger2505/sqls/workflows/test/badge.svg)
+![test](https://github.com/sqls-server/sqls/workflows/test/badge.svg)
 
 An implementation of the Language Server Protocol for SQL.
 
@@ -15,8 +15,9 @@ sqls aims to provide advanced intelligence for you to edit sql in your own edito
 ### Support RDBMS
 
 - MySQL([Go-MySQL-Driver](https://github.com/go-sql-driver/mysql))
-- PostgreSQL([pq](https://github.com/lib/pq))
+- PostgreSQL([pgx](https://github.com/jackc/pgx))
 - SQLite3([go-sqlite3](https://github.com/mattn/go-sqlite3))
+- MSSQL([go-mssqldb](https://github.com/denisenkom/go-mssqldb))
 
 ### Language Server Features
 
@@ -33,10 +34,15 @@ sqls aims to provide advanced intelligence for you to edit sql in your own edito
 - DDL(Data Definition Language)
     - [ ] CREATE TABLE
     - [ ] ALTER TABLE
+  
+#### Join completion
+If the tables are connected with a foreign key sqls can complete ```JOIN``` statements
+
+![join_completion](imgs/sqls-fk_joins.gif)
 
 #### CodeAction
 
-![code_actions](https://github.com/lighttiger2505/sqls.vim/blob/master/imgs/sqls_vim_demo.gif)
+![code_actions](https://github.com/sqls-server/sqls.vim/blob/master/imgs/sqls_vim_demo.gif)
 
 - [x] Execute SQL
 - [ ] Explain SQL
@@ -57,15 +63,16 @@ sqls aims to provide advanced intelligence for you to edit sql in your own edito
 
 ## Installation
 
-```
-go get github.com/lighttiger2505/sqls
+```shell
+go install github.com/sqls-server/sqls@latest
 ```
 
 ## Editor Plugins
 
-- [sqls.vim](https://github.com/lighttiger2505/sqls.vim)
+- [sqls.vim](https://github.com/sqls-server/sqls.vim)
 - [vscode-sqls](https://github.com/lighttiger2505/vscode-sqls)
 - [sqls.nvim](https://github.com/nanotee/sqls.nvim)
+- [Emacs LSP mode](https://emacs-lsp.github.io/lsp-mode/page/lsp-sqls/)
 
 ## DB Configuration
 
@@ -115,12 +122,12 @@ connections:
       port: 22
       user: sshuser
       passPhrase: ssspass
-      privateKey: /home/lighttiger2505/.ssh/id_rsa
+      privateKey: /home/sqls-server/.ssh/id_rsa
 ```
 
 ### Workspace configuration Sample
 
-* setting example with vim-lsp.
+- setting example with vim-lsp.
 
 ```vim
 if executable('sqls')
@@ -149,7 +156,7 @@ if executable('sqls')
 endif
 ```
 
-* setting example with coc.nvim.
+- setting example with coc.nvim.
 
 In `coc-settings.json` opened by `:CocConfig`
 
@@ -166,7 +173,7 @@ In `coc-settings.json` opened by `:CocConfig`
 }
 ```
 
-* setting example with [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig/blob/master/CONFIG.md#sqls).
+- setting example with [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#sqls).
 
 ```lua
 require'lspconfig'.sqls.setup{
@@ -187,6 +194,24 @@ require'lspconfig'.sqls.setup{
 }
 ```
 
+- Setting example for Sublime Text 4
+  
+  Install the LSP Client by Opening the command palette and run ```Package Control: Install Package```, then select ```LSP```.
+  
+  Open ```Preferences > Package Settings > LSP > Settings``` and add the ```"sqls"``` client configuration to the ```"clients"```:
+```
+{
+    "show_diagnostics_count_in_view_status": true,
+    "clients": {
+        "sqls": {
+            "enabled": true,
+            "command": ["/path/to/sqls binary"],
+            "selector": "source.sql"
+        }
+    }
+}
+```
+
 **I'm sorry. Please wait a little longer for other editor settings.**
 
 ### Configuration Params
@@ -194,7 +219,7 @@ require'lspconfig'.sqls.setup{
 The first setting in `connections` is the default connection.
 
 | Key         | Description          |
-|-------------|----------------------|
+| ----------- | -------------------- |
 | connections | Database connections |
 
 ### connections
@@ -202,7 +227,7 @@ The first setting in `connections` is the default connection.
 `dataSourceName` takes precedence over the value set in `proto`, `user`, `passwd`, `host`, `port`, `dbName`, `params`.
 
 | Key            | Description                                 |
-|----------------|---------------------------------------------|
+| -------------- | ------------------------------------------- |
 | alias          | Connection alias name. Optional.            |
 | driver         | `mysql`, `postgresql`, `sqlite3`. Required. |
 | dataSourceName | Data source name.                           |
@@ -219,7 +244,7 @@ The first setting in `connections` is the default connection.
 #### sshConfig
 
 | Key        | Description                 |
-|------------|-----------------------------|
+| ---------- | --------------------------- |
 | host       | ssh host. Required.         |
 | port       | ssh port. Required.         |
 | user       | ssh user. Optional.         |
@@ -230,15 +255,15 @@ The first setting in `connections` is the default connection.
 
 See also.
 
-- https://github.com/go-sql-driver/mysql#dsn-data-source-name
-- https://godoc.org/github.com/lib/pq
-- https://github.com/mattn/go-sqlite3#connection-string
+- <https://github.com/go-sql-driver/mysql#dsn-data-source-name>
+- <https://pkg.go.dev/github.com/jackc/pgx/v4>
+- <https://github.com/mattn/go-sqlite3#connection-string>
 
 ## Contributors
 
 This project exists thanks to all the people who contribute.
-<a href="https://github.com/lighttiger2505/sqls/graphs/contributors">
-    <img src="https://contrib.rocks/image?repo=lighttiger2505/sqls" />
+<a href="https://github.com/sqls-server/sqls/graphs/contributors">
+    <img src="https://contrib.rocks/image?repo=sqls-server/sqls" />
 </a>
 
 ## Inspired

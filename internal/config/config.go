@@ -2,12 +2,12 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 
-	"github.com/lighttiger2505/sqls/internal/database"
-	"golang.org/x/xerrors"
+	"github.com/sqls-server/sqls/internal/database"
 	"gopkg.in/yaml.v2"
 )
 
@@ -16,7 +16,7 @@ var (
 )
 
 var (
-	ymlConfigPath = configFilePath("config.yml")
+	YamlConfigPath = configFilePath("config.yml")
 )
 
 type Config struct {
@@ -39,7 +39,7 @@ func NewConfig() *Config {
 
 func GetDefaultConfig() (*Config, error) {
 	cfg := NewConfig()
-	if err := cfg.Load(ymlConfigPath); err != nil {
+	if err := cfg.Load(YamlConfigPath); err != nil {
 		return nil, err
 	}
 	return cfg, nil
@@ -64,21 +64,21 @@ func (c *Config) Load(fp string) error {
 
 	file, err := os.OpenFile(fp, os.O_RDONLY, 0666)
 	if err != nil {
-		return xerrors.Errorf("cannot open config, %+v", err)
+		return fmt.Errorf("cannot open config, %w", err)
 	}
 	defer file.Close()
 
 	b, err := ioutil.ReadAll(file)
 	if err != nil {
-		return xerrors.Errorf("cannot read config, %+v", err)
+		return fmt.Errorf("cannot read config, %w", err)
 	}
 
 	if err = yaml.Unmarshal(b, c); err != nil {
-		return xerrors.Errorf("failed unmarshal yaml, %+v", err, string(b))
+		return fmt.Errorf("failed unmarshal yaml, %w, %s", err, string(b))
 	}
 
 	if err := c.Validate(); err != nil {
-		return xerrors.Errorf("failed validation, %+v", err)
+		return fmt.Errorf("failed validation, %w", err)
 	}
 	return nil
 }

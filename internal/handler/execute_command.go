@@ -11,13 +11,12 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/lighttiger2505/sqls/ast"
-	"github.com/lighttiger2505/sqls/internal/database"
-	"github.com/lighttiger2505/sqls/internal/lsp"
-	"github.com/lighttiger2505/sqls/parser"
 	"github.com/olekukonko/tablewriter"
 	"github.com/sourcegraph/jsonrpc2"
-	"golang.org/x/xerrors"
+	"github.com/sqls-server/sqls/ast"
+	"github.com/sqls-server/sqls/internal/database"
+	"github.com/sqls-server/sqls/internal/lsp"
+	"github.com/sqls-server/sqls/parser"
 )
 
 const (
@@ -27,6 +26,7 @@ const (
 	CommandShowConnections  = "showConnections"
 	CommandSwitchDatabase   = "switchDatabase"
 	CommandSwitchConnection = "switchConnections"
+	CommandShowTables       = "showTables"
 )
 
 func (h *Server) handleTextDocumentCodeAction(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
@@ -70,6 +70,11 @@ func (h *Server) handleTextDocumentCodeAction(ctx context.Context, conn *jsonrpc
 			Command:   CommandSwitchConnection,
 			Arguments: []interface{}{},
 		},
+		{
+			Title:     "Show Tables",
+			Command:   CommandShowTables,
+			Arguments: []interface{}{},
+		},
 	}
 	return commands, nil
 }
@@ -97,6 +102,8 @@ func (s *Server) handleWorkspaceExecuteCommand(ctx context.Context, conn *jsonrp
 		return s.switchDatabase(ctx, params)
 	case CommandSwitchConnection:
 		return s.switchConnections(ctx, params)
+	case CommandShowTables:
+		return s.showTables(ctx, params)
 	}
 	return nil, fmt.Errorf("unsupported command: %v", params.Command)
 }
@@ -201,9 +208,9 @@ func (s *Server) query(ctx context.Context, query string, vertical bool) (string
 	if err != nil {
 		return "", err
 	}
-	rows, err := repo.Query(context.Background(), query)
+	rows, err := repo.Query(ctx, query)
 	if err != nil {
-		return err.Error(), nil
+		return "", err
 	}
 	columns, err := database.Columns(rows)
 	if err != nil {
@@ -241,9 +248,9 @@ func (s *Server) exec(ctx context.Context, query string, vertical bool) (string,
 	if err != nil {
 		return "", err
 	}
-	result, err := repo.Exec(context.Background(), query)
+	result, err := repo.Exec(ctx, query)
 	if err != nil {
-		return err.Error(), nil
+		return "", err
 	}
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
@@ -312,6 +319,8 @@ func (s *Server) showConnections(ctx context.Context, params lsp.ExecuteCommandP
 			switch conn.Proto {
 			case database.ProtoTCP:
 				desc = fmt.Sprintf("tcp(%s:%d)/%s", conn.Host, conn.Port, conn.DBName)
+			case database.ProtoUDP:
+				desc = fmt.Sprintf("udp(%s:%d)/%s", conn.Host, conn.Port, conn.DBName)
 			case database.ProtoUnix:
 				desc = fmt.Sprintf("unix(%s)/%s", conn.Path, conn.DBName)
 			}
@@ -330,9 +339,24 @@ func (s *Server) switchConnections(ctx context.Context, params lsp.ExecuteComman
 	if !ok {
 		return nil, fmt.Errorf("specify the connection index as a number")
 	}
-	index, err := strconv.Atoi(indexStr)
-	if err != nil {
-		return nil, fmt.Errorf("specify the connection index as a number, %s", err)
+
+	var index int
+
+	cfg := s.getConfig()
+	if cfg != nil {
+		for i, conn := range cfg.Connections {
+			if conn.Alias == indexStr {
+				index = i + 1
+				break
+			}
+		}
+	}
+	if index <= 0 {
+		index, _ = strconv.Atoi(indexStr)
+	}
+
+	if index <= 0 {
+		return nil, fmt.Errorf("specify the connection index as a number, %w", err)
 	}
 	index = index - 1
 
@@ -347,6 +371,35 @@ func (s *Server) switchConnections(ctx context.Context, params lsp.ExecuteComman
 	return nil, nil
 }
 
+func (s *Server) showTables(ctx context.Context, params lsp.ExecuteCommandParams) (result interface{}, err error) {
+	repo, err := s.newDBRepository(ctx)
+	if err != nil {
+		return "", err
+	}
+	m, err := repo.SchemaTables(ctx)
+	if err != nil {
+		return nil, err
+	}
+	schema, err := repo.CurrentSchema(ctx)
+	if err != nil {
+		return nil, err
+	}
+	results := []string{}
+	for k, vv := range m {
+		for _, v := range vv {
+			if k != "" {
+				if schema != k {
+					continue
+				}
+				results = append(results, k+"."+v)
+			} else {
+				results = append(results, v)
+			}
+		}
+	}
+	return strings.Join(results, "\n"), nil
+}
+
 func getStatements(text string) ([]*ast.Statement, error) {
 	parsed, err := parser.Parse(text)
 	if err != nil {
@@ -357,7 +410,7 @@ func getStatements(text string) ([]*ast.Statement, error) {
 	for _, node := range parsed.GetTokens() {
 		stmt, ok := node.(*ast.Statement)
 		if !ok {
-			return nil, xerrors.Errorf("invalid type want Statement parsed %T", stmt)
+			return nil, fmt.Errorf("invalid type want Statement parsed %T", stmt)
 		}
 		stmts = append(stmts, stmt)
 	}

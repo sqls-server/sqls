@@ -3,9 +3,9 @@ package handler
 import (
 	"testing"
 
-	"github.com/lighttiger2505/sqls/internal/config"
-	"github.com/lighttiger2505/sqls/internal/database"
-	"github.com/lighttiger2505/sqls/internal/lsp"
+	"github.com/sqls-server/sqls/internal/config"
+	"github.com/sqls-server/sqls/internal/database"
+	"github.com/sqls-server/sqls/internal/lsp"
 )
 
 type completionTestCase struct {
@@ -848,6 +848,233 @@ var subQueryCase = []completionTestCase{
 		},
 	},
 }
+var joinClauseCase = []completionTestCase{
+	{
+		name:  "join tables",
+		input: "select CountryCode from city join ",
+		line:  0,
+		col:   34,
+		want: []string{
+			"country c1 ON c1.Code = city.CountryCode",
+			"city",
+			"country",
+			"countrylanguage",
+		},
+	},
+	{
+		name:  "join tables with reference",
+		input: "select c.CountryCode from city c join ",
+		line:  0,
+		col:   38,
+		want: []string{
+			"country c1 ON c1.Code = c.CountryCode",
+			"city",
+			"country",
+			"countrylanguage",
+		},
+	},
+	{
+		name:  "join filtered tables",
+		input: "select CountryCode from city join co",
+		line:  0,
+		col:   36,
+		want: []string{
+			"country c1 ON c1.Code = city.CountryCode",
+			"country",
+			"countrylanguage",
+		},
+	},
+	{
+		name:  "join filtered tables with reference",
+		input: "select c.CountryCode from city c join co",
+		line:  0,
+		col:   40,
+		want: []string{
+			"country c1 ON c1.Code = c.CountryCode",
+			"country",
+			"countrylanguage",
+		},
+	},
+	{
+		name:  "left join tables",
+		input: "select CountryCode from city left join ",
+		line:  0,
+		col:   39,
+		want: []string{
+			"country c1 ON c1.Code = city.CountryCode",
+			"city",
+			"country",
+			"countrylanguage",
+		},
+	},
+	{
+		name:  "left join tables with reference",
+		input: "select c.CountryCode from city c left join ",
+		line:  0,
+		col:   43,
+		want: []string{
+			"country c1 ON c1.Code = c.CountryCode",
+			"city",
+			"country",
+			"countrylanguage",
+		},
+	},
+	{
+		name:  "left outer join tables",
+		input: "select CountryCode from city left outer join ",
+		line:  0,
+		col:   45,
+		want: []string{
+			"country c1 ON c1.Code = city.CountryCode",
+			"city",
+			"country",
+			"countrylanguage",
+		},
+	},
+	{
+		name:  "left outer join tables with reference",
+		input: "select c.CountryCode from city c left outer join ",
+		line:  0,
+		col:   49,
+		want: []string{
+			"country c1 ON c1.Code = c.CountryCode",
+			"city",
+			"country",
+			"countrylanguage",
+		},
+	},
+}
+
+var joinConditionCase = []completionTestCase{
+	{
+		name:  "join on columns",
+		input: "select * from city left join country on ",
+		line:  0,
+		col:   40,
+		want: []string{
+			"country.Code = city.CountryCode",
+			"Code",
+			"Name",
+			"CountryCode",
+			"Continent",
+			"Region",
+			"SurfaceArea",
+			"IndepYear",
+			"LifeExpectancy",
+			"GNP",
+			"GNPOld",
+			"LocalName",
+			"GovernmentForm",
+			"HeadOfState",
+			"Capital",
+			"Code2",
+		},
+	},
+	{
+		name:  "join on columns with reference",
+		input: "select * from city c left join country co on ",
+		line:  0,
+		col:   45,
+		want: []string{
+			"co.Code = c.CountryCode",
+			"Code",
+			"Name",
+			"CountryCode",
+			"Continent",
+			"Region",
+			"SurfaceArea",
+			"IndepYear",
+			"LifeExpectancy",
+			"GNP",
+			"GNPOld",
+			"LocalName",
+			"GovernmentForm",
+			"HeadOfState",
+			"Capital",
+			"Code2",
+		},
+	},
+}
+
+var multiJoin = []completionTestCase{
+	{
+		name: "join tables",
+		input: `select * from city c
+                      join country c1 on c1.Code = c.CountryCode
+                      join `,
+		line: 2,
+		col:  27,
+		want: []string{
+			"countrylanguage c2 ON c2.CountryCode = c1.Code",
+			"city",
+			"country",
+			"countrylanguage",
+		},
+	},
+	{
+		name: "join tables start",
+		input: `select * from city c
+                     join country c1 on c1.Code = c.CountryCode
+                     join co`,
+		line: 2,
+		col:  28,
+		want: []string{
+			"countrylanguage c2 ON c2.CountryCode = c1.Code",
+			"country",
+			"countrylanguage",
+		},
+	},
+	{
+		name: "join tables on",
+		input: `select * from city c
+                     join country c1 on c1.Code = c.CountryCode
+                     join countrylanguage c2 ON `,
+		line: 2,
+		col:  48,
+		want: []string{
+			"c2.CountryCode = c1.Code",
+		},
+	},
+	{
+		name: "join tables prev line",
+		input: `select * from city c
+                      join 
+                      join countrylanguage c2 ON c2.CountryCode = c1.Code`,
+		line: 1,
+		col:  27,
+		want: []string{
+			"country c1 ON c1.Code = c.CountryCode",
+		},
+		bad: []string{
+			"country c1 ON c1.Code = c2.CountryCode",
+		},
+	},
+}
+
+var joinSnippetCompletionCase = []completionTestCase{
+	{
+		name:  "join snippet alias",
+		input: "select CountryCode from city c join country c1 on c1.Code = c.CountryCode",
+		line:  0,
+		col:   44,
+		bad: []string{
+			"country c1 ON c1.Code = city.CountryCode",
+			"country",
+		},
+	},
+	{
+		name: "join snippet alias multi",
+		input: `select CountryCode from city c join country c1 on c1.Code = c.CountryCode
+				join countrylanguage c2 on c2.CountryCode = c1.Code`,
+		line: 1,
+		col:  25,
+		bad: []string{
+			"country c1 ON c1.Code = city.CountryCode",
+			"country",
+			"countrylanguage",
+		},
+	},
+}
 
 func TestCompleteMain(t *testing.T) {
 	tx := newTestContext()
@@ -868,6 +1095,56 @@ func TestCompleteMain(t *testing.T) {
 		"col name":        colNameCase,
 		"case value":      caseValueCase,
 		"subquery":        subQueryCase,
+	}
+
+	for k, v := range testcaseMap {
+		for _, tt := range v {
+			t.Run(k+" "+tt.name, func(t *testing.T) {
+				tx.textDocumentDidOpen(t, testFileURI, tt.input)
+
+				commpletionParams := lsp.CompletionParams{
+					TextDocumentPositionParams: lsp.TextDocumentPositionParams{
+						TextDocument: lsp.TextDocumentIdentifier{
+							URI: testFileURI,
+						},
+						Position: lsp.Position{
+							Line:      tt.line,
+							Character: tt.col,
+						},
+					},
+					CompletionContext: lsp.CompletionContext{
+						TriggerKind:      0,
+						TriggerCharacter: nil,
+					},
+				}
+
+				var got []lsp.CompletionItem
+				if err := tx.conn.Call(tx.ctx, "textDocument/completion", commpletionParams, &got); err != nil {
+					t.Fatal("conn.Call textDocument/completion:", err)
+				}
+				testCompletionItem(t, tt.want, tt.bad, got)
+			})
+		}
+	}
+}
+
+func TestCompleteJoin(t *testing.T) {
+	tx := newTestContext()
+	tx.initServer(t)
+	defer tx.tearDown()
+
+	cfg := &config.Config{
+		Connections: []*database.DBConfig{
+			{Driver: "mock"},
+		},
+	}
+	tx.addWorkspaceConfig(t, cfg)
+
+	testcaseMap := map[string][]completionTestCase{
+		"join clause":    joinClauseCase,
+		"join condition": joinConditionCase,
+		"multi-join":     multiJoin,
+		"snippet":        joinSnippetCompletionCase,
 	}
 
 	for k, v := range testcaseMap {

@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/lighttiger2505/sqls/dialect"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/sqls-server/sqls/dialect"
 )
 
 func init() {
@@ -77,6 +77,7 @@ func (db *SQLite3DBRepository) Tables(ctx context.Context) ([]string, error) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer rows.Close()
 	tables := []string{}
 	for rows.Next() {
 		var table string
@@ -93,6 +94,7 @@ func (db *SQLite3DBRepository) describeTable(ctx context.Context, tableName stri
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer rows.Close()
 	tableInfos := []*ColumnDesc{}
 	for rows.Next() {
 		var id int
@@ -136,8 +138,29 @@ func (db *SQLite3DBRepository) DescribeDatabaseTable(ctx context.Context) ([]*Co
 	return all, nil
 }
 
-func (db *SQLite3DBRepository) DescribeDatabaseTableBySchema(ctx context.Context, schemaName string) ([]*ColumnDesc, error) {
+func (db *SQLite3DBRepository) DescribeDatabaseTableBySchema(ctx context.Context, _ string) ([]*ColumnDesc, error) {
 	return db.DescribeDatabaseTable(ctx)
+}
+
+func (db *SQLite3DBRepository) DescribeForeignKeysBySchema(ctx context.Context, schemaName string) ([]*ForeignKey, error) {
+	rows, err := db.Conn.QueryContext(
+		ctx,
+		`
+	SELECT m.name || p."id",
+       m.name,
+       p."from",
+       p."table",
+       p."to"
+	FROM sqlite_master m
+			 JOIN pragma_foreign_key_list(m.name) p ON m.name != p."table"
+	WHERE m.type = 'table'
+	ORDER BY 1, p."seq"
+		`)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() { _ = rows.Close() }()
+	return parseForeignKeys(rows, schemaName)
 }
 
 func (db *SQLite3DBRepository) Exec(ctx context.Context, query string) (sql.Result, error) {

@@ -1,0 +1,109 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema",
+  "additionalProperties": false,
+  "definitions": {
+    "connection-definition": {
+      "description": "Database connections",
+      "type": "array",
+      "items": {
+        "additionalProperties": false,
+        "type": "object",
+        "properties": {
+          "alias": {
+            "description": "Connection alias name. Optional",
+            "type": "string"
+          },
+          "driver": {
+            "description": "mysql, postgresql, sqlite3, mssql. Required",
+            "type": "string",
+            "enum": [
+              "mysql",
+              "postgresql",
+              "sqlite3",
+              "mssql"
+            ]
+          },
+          "dataSourceName": {
+            "description": "Data source name",
+            "type": "string"
+          },
+          "proto": {
+            "description": "tcp, udp, unix",
+            "type": "string",
+            "enum": [
+              "tcp",
+              "udp",
+              "unix"
+            ]
+          },
+          "user": {
+            "description": "User name",
+            "type": "string"
+          },
+          "passwd": {
+            "description": "Password",
+            "type": "string"
+          },
+          "host": {
+            "description": "Host",
+            "type": "string"
+          },
+          "port": {
+            "description": "Port",
+            "type": "number"
+          },
+          "path": {
+            "description": "unix socket path",
+            "type": "string"
+          },
+          "dbName": {
+            "description": "Database name",
+            "type": "string"
+          },
+          "params": {
+            "description": "Option params. Optional",
+            "type": "object",
+            "properties": {}
+          },
+          "sshConfig": {
+            "description": "ssh config. Optional",
+            "type": "object",
+            "properties": {
+              "host": {
+                "description": "ssh host. Required",
+                "type": "string"
+              },
+              "port": {
+                "description": "ssh port. Required",
+                "type": "number"
+              },
+              "user": {
+                "description": "ssh user. Optional",
+                "type": "string"
+              },
+              "privateKey": {
+                "description": "private key path. Required",
+                "type": "string"
+              },
+              "passPhrase": {
+                "description": "passPhrase. Optional",
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "properties": {
+    "lowercaseKeywords": {
+      "description": "Set to true to use lowercase keywords instead of uppercase.",
+      "type": "boolean"
+    },
+    "connections": {
+      "$ref": "#/definitions/connection-definition"
+    }
+  },
+  "title": "sqls",
+  "type": "object"
+}

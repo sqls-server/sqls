@@ -4,13 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 	"net"
 	"strconv"
 
 	"github.com/go-sql-driver/mysql"
-	"github.com/lighttiger2505/sqls/dialect"
+	"github.com/sqls-server/sqls/dialect"
 	"golang.org/x/crypto/ssh"
-	"golang.org/x/xerrors"
 )
 
 func init() {
@@ -49,7 +49,7 @@ func mysqlOpen(dbConnCfg *DBConfig) (*DBConnection, error) {
 		conn = dbConn
 	}
 	if err := conn.Ping(); err != nil {
-		return nil, xerrors.Errorf("cannot ping to database, %+v", err)
+		return nil, fmt.Errorf("cannot ping to database, %w", err)
 	}
 
 	conn.SetMaxIdleConns(DefaultMaxIdleConns)
@@ -77,12 +77,12 @@ func openMySQLViaSSH(dsn string, sshCfg *SSHConfig) (*sql.DB, *ssh.Client, error
 	}
 	sshConn, err := ssh.Dial("tcp", sshCfg.Endpoint(), sshConfig)
 	if err != nil {
-		return nil, nil, xerrors.Errorf("cannot ssh dial, %+v", err)
+		return nil, nil, fmt.Errorf("cannot ssh dial, %w", err)
 	}
 	mysql.RegisterDialContext("mysql+tcp", (&MySQLViaSSHDialer{sshConn}).Dial)
 	conn, err := sql.Open("mysql", dsn)
 	if err != nil {
-		return nil, nil, xerrors.Errorf("cannot connect database, %+v", err)
+		return nil, nil, fmt.Errorf("cannot connect database, %w", err)
 	}
 	return conn, sshConn, nil
 }
@@ -152,6 +152,7 @@ func (db *MySQLDBRepository) Databases(ctx context.Context) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 	databases := []string{}
 	for rows.Next() {
 		var database string
@@ -187,6 +188,7 @@ func (db *MySQLDBRepository) SchemaTables(ctx context.Context) (map[string][]str
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 	databaseTables := map[string][]string{}
 	for rows.Next() {
 		var schema, table string
@@ -208,6 +210,7 @@ func (db *MySQLDBRepository) Tables(ctx context.Context) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 	tables := []string{}
 	for rows.Next() {
 		var table string
@@ -237,6 +240,7 @@ FROM information_schema.COLUMNS
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 	tableInfos := []*ColumnDesc{}
 	for rows.Next() {
 		var tableInfo ColumnDesc
@@ -277,6 +281,7 @@ WHERE information_schema.COLUMNS.TABLE_SCHEMA = ?
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 	tableInfos := []*ColumnDesc{}
 	for rows.Next() {
 		var tableInfo ColumnDesc
@@ -296,6 +301,31 @@ WHERE information_schema.COLUMNS.TABLE_SCHEMA = ?
 		tableInfos = append(tableInfos, &tableInfo)
 	}
 	return tableInfos, nil
+}
+
+func (db *MySQLDBRepository) DescribeForeignKeysBySchema(ctx context.Context, schemaName string) ([]*ForeignKey, error) {
+	rows, err := db.Conn.QueryContext(
+		ctx,
+		`
+		select fks.CONSTRAINT_NAME,
+		   fks.TABLE_NAME,
+		   kcu.COLUMN_NAME,
+		   fks.REFERENCED_TABLE_NAME,
+		   kcu.REFERENCED_COLUMN_NAME
+	from INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS fks
+			 join INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
+				  on fks.CONSTRAINT_SCHEMA = kcu.TABLE_SCHEMA
+					  and fks.TABLE_NAME = kcu.TABLE_NAME
+					  and fks.CONSTRAINT_NAME = kcu.CONSTRAINT_NAME
+	where fks.CONSTRAINT_SCHEMA = ?
+	order by fks.CONSTRAINT_NAME,
+			 kcu.ORDINAL_POSITION
+		`, schemaName)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() { _ = rows.Close() }()
+	return parseForeignKeys(rows, schemaName)
 }
 
 func (db *MySQLDBRepository) Exec(ctx context.Context, query string) (sql.Result, error) {

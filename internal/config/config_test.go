@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/lighttiger2505/sqls/internal/database"
+	"github.com/sqls-server/sqls/internal/database"
 )
 
 func TestGetConfig(t *testing.T) {
@@ -42,7 +42,7 @@ func TestGetConfig(t *testing.T) {
 					{
 						Alias:          "sqls_sqlite3",
 						Driver:         "sqlite3",
-						DataSourceName: "file:/home/lighttiger2505/chinook.db",
+						DataSourceName: "file:/home/sqls-server/chinook.db",
 					},
 					{
 						Alias:  "sqls_postgresql",
@@ -69,7 +69,7 @@ func TestGetConfig(t *testing.T) {
 							Port:       22,
 							User:       "vagrant",
 							PassPhrase: "passphrase1234",
-							PrivateKey: "/home/lighttiger2505/.ssh/id_rsa",
+							PrivateKey: "/home/sqls-server/.ssh/id_rsa",
 						},
 					},
 				},
@@ -154,6 +154,23 @@ func TestGetConfig(t *testing.T) {
 				fp: "no_ssh_private_key.yml",
 			},
 			want:    nil,
+			wantErr: true,
+			errMsg:  "failed validation, required: connections[].sshConfig.privateKey",
+		},
+		{
+			name: "oracle config",
+			args: args{
+				fp: "oracle.yaml",
+			},
+			want: &Config{
+				Connections: []*database.DBConfig{
+					{
+						Alias:          "TestDB",
+						Driver:         "oracle",
+						DataSourceName: "SYSTEM/P1ssword@localhost:1521/XE",
+					},
+				},
+			},
 			wantErr: true,
 			errMsg:  "failed validation, required: connections[].sshConfig.privateKey",
 		},

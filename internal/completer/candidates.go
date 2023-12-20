@@ -1,11 +1,12 @@
 package completer
 
 import (
+	"fmt"
 	"strings"
 
-	"github.com/lighttiger2505/sqls/internal/database"
-	"github.com/lighttiger2505/sqls/internal/lsp"
-	"github.com/lighttiger2505/sqls/parser/parseutil"
+	"github.com/sqls-server/sqls/internal/database"
+	"github.com/sqls-server/sqls/internal/lsp"
+	"github.com/sqls-server/sqls/parser/parseutil"
 )
 
 func (c *Completer) keywordCandidates(lower bool, keywords []string) []lsp.CompletionItem {
@@ -61,6 +62,7 @@ func (c *Completer) columnCandidates(targetTables []*parseutil.TableInfo, parent
 			}
 		}
 	case ParentTypeSchema:
+		// pass
 	case ParentTypeTable:
 		for _, table := range targetTables {
 			if table.Name != parent.Name && table.Alias != parent.Name {
@@ -72,6 +74,8 @@ func (c *Completer) columnCandidates(targetTables []*parseutil.TableInfo, parent
 			}
 			candidates = append(candidates, generateColumnCandidates(table.Name, columns)...)
 		}
+	case ParentTypeSubQuery:
+		// pass
 	}
 	return candidates
 }
@@ -143,13 +147,176 @@ func (c *Completer) TableCandidates(parent *completionParent, targetTables []*pa
 		tables, ok := c.DBCache.SortedTablesByDBName(parent.Name)
 		if ok {
 			candidates = append(candidates, generateTableCandidates(tables, c.DBCache)...)
-		} else {
-			tables := c.DBCache.SortedTables()
-			candidates = append(candidates, generateTableCandidates(tables, c.DBCache)...)
 		}
 	case ParentTypeTable:
+		// pass
+	case ParentTypeSubQuery:
+		// pass
 	}
 	return candidates
+}
+
+func (c *Completer) joinCandidates(lastTable *parseutil.TableInfo,
+	targetTables, allTables []*parseutil.TableInfo,
+	joinOn, lowercaseKeywords bool) []lsp.CompletionItem {
+	var candidates []lsp.CompletionItem
+	if len(c.DBCache.ForeignKeys) == 0 {
+		return candidates
+	}
+
+	tMap := make(map[string]*parseutil.TableInfo)
+	for _, t := range targetTables {
+		tMap[t.Name] = t
+	}
+	fkMap := make(map[string][][]*database.ForeignKey)
+	if lastTable == nil {
+		for t := range tMap {
+			for k, v := range c.DBCache.ForeignKeys[t] {
+				fkMap[k] = append(fkMap[k], v)
+			}
+		}
+	} else {
+		delete(tMap, lastTable.Name)
+		rTab := []*parseutil.TableInfo{lastTable}
+		if !joinOn {
+			rTab = resolveTables(lastTable, c.DBCache)
+		}
+		for _, lt := range rTab {
+			for k, v := range c.DBCache.ForeignKeys[lt.Name] {
+				if _, ok := tMap[k]; ok {
+					fkMap[lt.Name] = append(fkMap[lt.Name], v)
+				}
+			}
+		}
+
+		for _, t := range rTab {
+			if _, ok := tMap[t.Name]; !ok {
+				tMap[t.Name] = t
+			}
+		}
+	}
+
+	aliases := make(map[string]interface{})
+	for _, t := range allTables {
+		if t.Alias != "" {
+			aliases[t.Alias] = true
+		}
+	}
+
+	for k, v := range fkMap {
+		for _, fks := range v {
+			for _, fk := range fks {
+				candidates = append(candidates, generateForeignKeyCandidate(k, tMap, aliases,
+					fk, joinOn, lowercaseKeywords))
+			}
+		}
+	}
+	return candidates
+}
+
+func resolveTables(t *parseutil.TableInfo, cache *database.DBCache) []*parseutil.TableInfo {
+	if _, ok := cache.ColumnDescs(t.Name); ok {
+		return []*parseutil.TableInfo{t}
+	}
+	var rv []*parseutil.TableInfo
+	targetName := strings.ToLower(t.Name)
+	for _, cond := range cache.SortedTables() {
+		if strings.Contains(strings.ToLower(cond), targetName) {
+			rv = append(rv, &parseutil.TableInfo{
+				Name: cond,
+			})
+		}
+	}
+	return rv
+}
+
+func generateTableAlias(target string,
+	aliases map[string]interface{}) string {
+	ch := []rune(target)[0]
+	i := 1
+	var rv string
+	for {
+		rv = fmt.Sprintf("%c%d", ch, i)
+		if _, ok := aliases[rv]; ok {
+			i++
+			continue
+		}
+		break
+	}
+	return rv
+}
+
+func generateForeignKeyCandidate(target string,
+	tMap map[string]*parseutil.TableInfo,
+	aliases map[string]interface{},
+	fk *database.ForeignKey,
+	joinOn, lowercaseKeywords bool) lsp.CompletionItem {
+	var tAlias string
+	if joinOn {
+		tAlias = tMap[target].Alias
+		if tAlias == "" {
+			tAlias = tMap[target].Name
+		}
+	} else {
+		tAlias = generateTableAlias(target, aliases)
+	}
+	builder := []struct {
+		sb    *strings.Builder
+		alias string
+	}{
+		{
+			sb:    &strings.Builder{},
+			alias: tAlias,
+		},
+		{
+			sb:    &strings.Builder{},
+			alias: tAlias,
+		},
+	}
+	if !joinOn {
+		builder[1].alias = fmt.Sprintf("${1:%s}", tAlias)
+		onKw := "ON"
+		if lowercaseKeywords {
+			onKw = "on"
+		}
+		for _, b := range builder {
+			b.sb.WriteString(fmt.Sprintf("%s %s %s ", target, b.alias, onKw))
+		}
+	}
+	andKw := " AND "
+	if lowercaseKeywords {
+		andKw = " and "
+	}
+	prefix := ""
+	for _, cur := range *fk {
+		tIdx, rIdx := 0, 1
+		if cur[rIdx].Table == target {
+			tIdx, rIdx = rIdx, tIdx
+		}
+		for _, b := range builder {
+			b.sb.WriteString(prefix)
+		}
+		prefix = andKw
+		for _, b := range builder {
+			b.sb.WriteString(strings.Join([]string{b.alias, cur[tIdx].Name}, "."))
+			b.sb.WriteString(" = ")
+		}
+		rAlias := tMap[cur[rIdx].Table].Alias
+		if rAlias == "" {
+			rAlias = cur[rIdx].Table
+		}
+		for _, b := range builder {
+			b.sb.WriteString(strings.Join([]string{rAlias, cur[rIdx].Name}, "."))
+		}
+	}
+	builder[1].sb.WriteString("$0")
+	return lsp.CompletionItem{
+		Label:            builder[0].sb.String(),
+		Kind:             lsp.SnippetCompletion,
+		Detail:           "Join generator for foreign key",
+		InsertText:       builder[1].sb.String(),
+		InsertTextFormat: lsp.SnippetTextFormat,
+	}
 }
 
 func generateTableCandidates(tables []string, dbCache *database.DBCache) []lsp.CompletionItem {
@@ -157,7 +324,7 @@ func generateTableCandidates(tables []string, dbCache *database.DBCache) []lsp.C
 	for _, tableName := range tables {
 		candidate := lsp.CompletionItem{
 			Label:  tableName,
-			Kind:   lsp.FieldCompletion,
+			Kind:   lsp.ClassCompletion,
 			Detail: "table",
 		}
 		cols, ok := dbCache.ColumnDescs(tableName)
@@ -183,7 +350,7 @@ func generateTableCandidatesByInfos(tables []*parseutil.TableInfo, dbCache *data
 		}
 		candidate := lsp.CompletionItem{
 			Label:  name,
-			Kind:   lsp.FieldCompletion,
+			Kind:   lsp.ClassCompletion,
 			Detail: detail,
 		}
 		cols, ok := dbCache.ColumnDescs(table.Name)
@@ -272,7 +439,7 @@ func (c *Completer) SchemaCandidates() []lsp.CompletionItem {
 	for _, db := range dbs {
 		candidate := lsp.CompletionItem{
 			Label:  db,
-			Kind:   lsp.FieldCompletion,
+			Kind:   lsp.ModuleCompletion,
 			Detail: "schema",
 		}
 		candidates = append(candidates, candidate)
