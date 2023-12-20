@@ -124,9 +124,8 @@ func Eval(node ast.Node, env *formatEnvironment) ast.Node {
 	default:
 		if list, ok := node.(ast.TokenList); ok {
 			return formatTokenList(list, env)
-		} else {
-			return formatNode(node, env)
 		}
+		return formatNode(node, env)
 	}
 }
 
