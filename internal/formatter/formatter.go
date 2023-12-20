@@ -104,10 +104,10 @@ func Eval(node ast.Node, env *formatEnvironment) ast.Node {
 		return formatMultiKeyword(node, env)
 	case *ast.Aliased:
 		return formatAliased(node, env)
-	case *ast.Identifer:
-		return formatIdentifer(node, env)
-	case *ast.MemberIdentifer:
-		return formatMemberIdentifer(node, env)
+	case *ast.Identifier:
+		return formatIdentifier(node, env)
+	case *ast.MemberIdentifier:
+		return formatMemberIdentifier(node, env)
 	case *ast.Operator:
 		return formatOperator(node, env)
 	case *ast.Comparison:
@@ -117,8 +117,8 @@ func Eval(node ast.Node, env *formatEnvironment) ast.Node {
 	// case *ast.ParenthesisInner:
 	case *ast.FunctionLiteral:
 		return formatFunctionLiteral(node, env)
-	case *ast.IdentiferList:
-		return formatIdentiferList(node, env)
+	case *ast.IdentifierList:
+		return formatIdentifierList(node, env)
 	// case *ast.SwitchCase:
 	// case *ast.Null:
 	default:
@@ -314,7 +314,7 @@ func formatAliased(node *ast.Aliased, env *formatEnvironment) ast.Node {
 	return &ast.ItemWith{Toks: results}
 }
 
-func formatIdentifer(node ast.Node, env *formatEnvironment) ast.Node {
+func formatIdentifier(node ast.Node, env *formatEnvironment) ast.Node {
 	results := []ast.Node{node}
 	// results := []ast.Node{node, whitespaceNode}
 
@@ -330,7 +330,7 @@ func formatIdentifer(node ast.Node, env *formatEnvironment) ast.Node {
 	return &ast.ItemWith{Toks: results}
 }
 
-func formatMemberIdentifer(node *ast.MemberIdentifer, env *formatEnvironment) ast.Node {
+func formatMemberIdentifier(node *ast.MemberIdentifier, env *formatEnvironment) ast.Node {
 	results := []ast.Node{
 		Eval(node.Parent, env),
 		periodNode,
@@ -383,8 +383,8 @@ func formatFunctionLiteral(node *ast.FunctionLiteral, env *formatEnvironment) as
 	return &ast.ItemWith{Toks: results}
 }
 
-func formatIdentiferList(identiferList *ast.IdentiferList, env *formatEnvironment) ast.Node {
-	idents := identiferList.GetIdentifers()
+func formatIdentifierList(identifierList *ast.IdentifierList, env *formatEnvironment) ast.Node {
+	idents := identifierList.GetIdentifiers()
 	results := []ast.Node{}
 	for i, ident := range idents {
 		results = append(results, Eval(ident, env))

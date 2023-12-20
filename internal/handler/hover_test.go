@@ -164,14 +164,14 @@ var hoverTestCases = []struct {
 		col:    11,
 	},
 	{
-		name:   "select aliased select identifer",
+		name:   "select aliased select identifier",
 		input:  "SELECT ID AS city_id, Name AS city_name FROM city",
 		output: "`city`.`ID` column\n\n`int(11)` PRI auto_increment\n",
 		line:   0,
 		col:    14,
 	},
 	{
-		name:   "select aliased select member identifer",
+		name:   "select aliased select member identifier",
 		input:  "SELECT city.ID AS city_id, city.Name AS city_name FROM city",
 		output: "`city`.`ID` column\n\n`int(11)` PRI auto_increment\n",
 		line:   0,

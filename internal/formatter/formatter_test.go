@@ -49,8 +49,8 @@ func TestRenderIdentifier(t *testing.T) {
 			name:  "snake case",
 			input: "SELECT * FROM snake_case_table_name",
 			opts: &ast.RenderOptions{
-				LowerCase:       false,
-				IdentiferQuated: false,
+				LowerCase:        false,
+				IdentifierQuated: false,
 			},
 			expected: []string{
 				"*",
@@ -61,8 +61,8 @@ func TestRenderIdentifier(t *testing.T) {
 			name:  "pascal case",
 			input: "SELECT p.PascalCaseColumnName FROM \"PascalCaseTableName\" p",
 			opts: &ast.RenderOptions{
-				LowerCase:       false,
-				IdentiferQuated: false,
+				LowerCase:        false,
+				IdentifierQuated: false,
 			},
 			expected: []string{
 				"p.PascalCaseColumnName",
@@ -73,8 +73,8 @@ func TestRenderIdentifier(t *testing.T) {
 			name:  "quoted pascal case",
 			input: "SELECT p.\"PascalCaseColumnName\" FROM \"PascalCaseTableName\" p",
 			opts: &ast.RenderOptions{
-				LowerCase:       false,
-				IdentiferQuated: false,
+				LowerCase:        false,
+				IdentifierQuated: false,
 			},
 			expected: []string{
 				"p.\"PascalCaseColumnName\"",
@@ -89,7 +89,7 @@ func TestRenderIdentifier(t *testing.T) {
 			list := stmts[0].GetTokens()
 			j := 0
 			for _, n := range list {
-				if i, ok := n.(*ast.Identifer); ok {
+				if i, ok := n.(*ast.Identifier); ok {
 					if actual := i.Render(tt.opts); actual != tt.expected[j] {
 						t.Errorf("expected: %s, got %s", tt.expected[j], actual)
 					}

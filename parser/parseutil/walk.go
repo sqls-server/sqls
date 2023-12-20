@@ -69,7 +69,7 @@ func (nw *NodeWalker) CurNodeTopMatched(matcher astutil.NodeMatcher) ast.Node {
 	return matches[0]
 }
 
-func (nw *NodeWalker) CurNodeButtomMatched(matcher astutil.NodeMatcher) ast.Node {
+func (nw *NodeWalker) CurNodeBottomMatched(matcher astutil.NodeMatcher) ast.Node {
 	matches := nw.CurNodeMatches(matcher)
 	if len(matches) == 0 {
 		return nil

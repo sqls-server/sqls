@@ -301,7 +301,7 @@ func (s *Server) saveFile(uri string) error {
 }
 
 func (s *Server) handleWorkspaceDidChangeConfiguration(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
-	// Update changed configration
+	// Update changed configuration
 	var params lsp.DidChangeConfigurationParams
 	if err := json.Unmarshal(*req.Params, &params); err != nil {
 		return nil, err

@@ -123,7 +123,7 @@ func serve(c *cli.Context) error {
 	if configFile != "" {
 		cfg, err := config.GetConfig(configFile)
 		if err != nil {
-			return fmt.Errorf("cannot read specificed config, %w", err)
+			return fmt.Errorf("cannot read specified config, %w", err)
 		}
 		server.SpecificFileCfg = cfg
 	} else {

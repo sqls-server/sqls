@@ -47,12 +47,12 @@ func rename(text string, params lsp.RenameParams) (*lsp.WorkspaceEdit, error) {
 		Col:  params.Position.Character,
 	}
 
-	// Get the identifer on focus
+	// Get the identifier on focus
 	nodeWalker := parseutil.NewNodeWalker(parsed, pos)
 	m := astutil.NodeMatcher{
-		NodeTypes: []ast.NodeType{ast.TypeIdentifer},
+		NodeTypes: []ast.NodeType{ast.TypeIdentifier},
 	}
-	currentVariable := nodeWalker.CurNodeButtomMatched(m)
+	currentVariable := nodeWalker.CurNodeBottomMatched(m)
 	if currentVariable == nil {
 		return nil, nil
 	}

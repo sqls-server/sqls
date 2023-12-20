@@ -12,7 +12,7 @@ const (
 	ColName        SyntaxPosition = "col_name"
 	SelectExpr     SyntaxPosition = "select_expr"
 	AliasName      SyntaxPosition = "alias_name"
-	WhereCondition SyntaxPosition = "where_conditon"
+	WhereCondition SyntaxPosition = "where_condition"
 	CaseValue      SyntaxPosition = "case_value"
 	TableReference SyntaxPosition = "table_reference"
 	InsertColumn   SyntaxPosition = "insert_column"

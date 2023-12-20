@@ -68,7 +68,7 @@ func SignatureHelp(text string, params lsp.SignatureHelpParams, dbCache *databas
 		tableName := table.Name
 
 		params := []lsp.ParameterInformation{}
-		for _, col := range cols.GetIdentifers() {
+		for _, col := range cols.GetIdentifiers() {
 			colName := col.String()
 			colDoc := ""
 			colDesc, ok := dbCache.Column(tableName, colName)
