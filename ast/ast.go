@@ -528,6 +528,9 @@ func (t *SQLToken) NoQuateString() string {
 	case *token.SQLWord:
 		return v.NoQuateString()
 	case string:
+		if t.Kind == token.Comment {
+			return "--" + v + "\n"
+		}
 		return v
 	default:
 		return " "
@@ -539,6 +542,9 @@ func (t *SQLToken) Render(opts *RenderOptions) string {
 	case *token.SQLWord:
 		return renderSQLWord(v, opts)
 	case string:
+		if t.Kind == token.Comment {
+			return "--" + v + "\n"
+		}
 		return v
 	default:
 		return " "

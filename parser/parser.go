@@ -79,9 +79,6 @@ func NewParser(src io.Reader, d dialect.Dialect) (*Parser, error) {
 
 	parsed := []ast.Node{}
 	for _, tok := range tokens {
-		if tok.Kind == token.Comment {
-			continue
-		}
 		parsed = append(parsed, ast.NewItem(tok))
 	}
 
