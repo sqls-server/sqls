@@ -2,7 +2,6 @@ package handler
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
