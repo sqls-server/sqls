@@ -20,6 +20,8 @@ const (
 	Whitespace
 	// comment node
 	Comment
+	// multiline comment node
+	MultilineComment
 	// = operator
 	Eq
 	// != or <> operator

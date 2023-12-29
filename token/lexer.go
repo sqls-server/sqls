@@ -274,7 +274,7 @@ func (t *Tokenizer) next() (Kind, interface{}, error) {
 			if err != nil {
 				return ILLEGAL, str, err
 			}
-			return Comment, str, nil
+			return MultilineComment, str, nil
 		}
 		t.Col++
 		return Div, "/", nil

@@ -526,6 +526,12 @@ func parseAliased(reader *astutil.NodeReader) ast.Node {
 	}
 }
 
+var commentInfixMatcher = astutil.NodeMatcher{
+	ExpectTokens: []token.Kind{
+		token.Comment,
+		token.MultilineComment,
+	},
+}
 var identifierListInfixMatcher = astutil.NodeMatcher{
 	ExpectTokens: []token.Kind{
 		token.Comma,
@@ -567,7 +573,7 @@ func parseIdentifierList(reader *astutil.NodeReader) ast.Node {
 		peekNode            ast.Node
 	)
 	for {
-		if !tmpReader.PeekNodeIs(true, identifierListTargetMatcher) {
+		if !tmpReader.PeekNodeIs(true, identifierListTargetMatcher) && !tmpReader.PeekNodeIs(true, commentInfixMatcher) {
 			// Include white space after the comma
 			peekIndex, peekNode := tmpReader.PeekNode(true)
 			if peekNode != nil {
@@ -581,12 +587,18 @@ func parseIdentifierList(reader *astutil.NodeReader) ast.Node {
 			}
 			break
 		}
+		for tmpReader.PeekNodeIs(true, commentInfixMatcher) {
+			tmpReader.NextNode(true)
+		}
 
 		peekIndex, peekNode = tmpReader.PeekNode(true)
 		idents = append(idents, peekNode)
 		endIndex = peekIndex
 
 		tmpReader.NextNode(true)
+		//for tmpReader.PeekNodeIs(true, commentInfixMatcher) {
+		//tmpReader.NextNode(true)
+		//}
 		if !tmpReader.PeekNodeIs(true, identifierListInfixMatcher) {
 			break
 		}
