@@ -2,7 +2,6 @@ package handler
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -186,7 +185,7 @@ func loadFormatTestCaseByTestdata(targetDir string) ([]formattingTestCase, error
 		return nil, err
 	}
 	testDir := filepath.Join(packageDir, "testdata", targetDir)
-	testFileInfos, err := ioutil.ReadDir(testDir)
+	testFileInfos, err := os.ReadDir(testDir)
 	if err != nil {
 		return nil, err
 	}
@@ -207,11 +206,11 @@ func loadFormatTestCaseByTestdata(targetDir string) ([]formattingTestCase, error
 		inputPath := filepath.Join(testDir, inputFileName)
 		goldenPath := filepath.Join(testDir, testName+goldenFileSuffix)
 
-		input, err := ioutil.ReadFile(inputPath)
+		input, err := os.ReadFile(inputPath)
 		if err != nil {
 			return nil, fmt.Errorf("Cannot read input file, Path=%s, Err=%+v", inputPath, err)
 		}
-		golden, err := ioutil.ReadFile(goldenPath)
+		golden, err := os.ReadFile(goldenPath)
 		if err != nil {
 			return nil, fmt.Errorf("Cannot read input file, Path=%s, Err=%+v", goldenPath, err)
 		}

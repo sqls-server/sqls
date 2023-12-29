@@ -3,7 +3,7 @@ package database
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"os"
 
 	"github.com/sqls-server/sqls/dialect"
 	"golang.org/x/crypto/ssh"
@@ -143,7 +143,7 @@ func (s *SSHConfig) Endpoint() string {
 }
 
 func (s *SSHConfig) ClientConfig() (*ssh.ClientConfig, error) {
-	buffer, err := ioutil.ReadFile(s.PrivateKey)
+	buffer, err := os.ReadFile(s.PrivateKey)
 	if err != nil {
 		return nil, fmt.Errorf("cannot read SSH private key file, PrivateKey=%s, %w", s.PrivateKey, err)
 	}
