@@ -3,7 +3,7 @@ package database
 import (
 	"context"
 	"database/sql"
-	"github.com/lighttiger2505/sqls/dialect"
+	"github.com/sqls-server/sqls/dialect"
 	_ "github.com/vertica/vertica-sql-go"
 	"log"
 	"strconv"
