@@ -596,9 +596,6 @@ func parseIdentifierList(reader *astutil.NodeReader) ast.Node {
 		endIndex = peekIndex
 
 		tmpReader.NextNode(true)
-		//for tmpReader.PeekNodeIs(true, commentInfixMatcher) {
-		//tmpReader.NextNode(true)
-		//}
 		if !tmpReader.PeekNodeIs(true, identifierListInfixMatcher) {
 			break
 		}
