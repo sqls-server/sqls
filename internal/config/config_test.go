@@ -126,7 +126,15 @@ func TestGetConfig(t *testing.T) {
 			args: args{
 				fp: "no_dsn.yml",
 			},
-			want:    nil,
+			want: &Config{
+				Connections: []*database.DBConfig{
+					{
+						Alias:          "sqls_sqlite3",
+						Driver:         "sqlite3",
+						DataSourceName: "",
+					},
+				},
+			},
 			wantErr: true,
 			errMsg:  "failed validation, required: connections[].dataSourceName",
 		},
