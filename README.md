@@ -18,6 +18,8 @@ sqls aims to provide advanced intelligence for you to edit sql in your own edito
 - PostgreSQL([pgx](https://github.com/jackc/pgx))
 - SQLite3([go-sqlite3](https://github.com/mattn/go-sqlite3))
 - MSSQL([go-mssqldb](https://github.com/denisenkom/go-mssqldb))
+- H2([pgx](https://github.com/CodinGame/h2go))
+- Vertica([vertica-sql-go](https://github.com/vertica/vertica-sql-go))
 
 ### Language Server Features
 
@@ -34,7 +36,7 @@ sqls aims to provide advanced intelligence for you to edit sql in your own edito
 - DDL(Data Definition Language)
     - [ ] CREATE TABLE
     - [ ] ALTER TABLE
-  
+
 #### Join completion
 If the tables are connected with a foreign key sqls can complete ```JOIN``` statements
 
@@ -123,6 +125,9 @@ connections:
       user: sshuser
       passPhrase: ssspass
       privateKey: /home/sqls-server/.ssh/id_rsa
+  - alias: dsn_vertica
+    driver: vertica
+    dataSourceName: vertica://user:pass@host:5433/dbname
 ```
 
 ### Workspace configuration Sample
@@ -195,9 +200,9 @@ require'lspconfig'.sqls.setup{
 ```
 
 - Setting example for Sublime Text 4
-  
+
   Install the LSP Client by Opening the command palette and run ```Package Control: Install Package```, then select ```LSP```.
-  
+
   Open ```Preferences > Package Settings > LSP > Settings``` and add the ```"sqls"``` client configuration to the ```"clients"```:
 ```
 {
@@ -229,7 +234,7 @@ The first setting in `connections` is the default connection.
 | Key            | Description                                 |
 | -------------- | ------------------------------------------- |
 | alias          | Connection alias name. Optional.            |
-| driver         | `mysql`, `postgresql`, `sqlite3`. Required. |
+| driver         | `mysql`, `postgresql`, `sqlite3`, `mssql`, `h2`. Required. |
 | dataSourceName | Data source name.                           |
 | proto          | `tcp`, `udp`, `unix`.                       |
 | user           | User name                                   |

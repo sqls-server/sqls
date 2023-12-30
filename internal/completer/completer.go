@@ -317,7 +317,7 @@ func getCompletionTypes(nw *parseutil.NodeWalker) *CompletionContext {
 			}
 			p = &completionParent{
 				Type: ParentTypeTable,
-				Name: mi.ParentTok.NoQuateString(),
+				Name: mi.ParentTok.NoQuoteString(),
 			}
 		} else {
 			t = []completionType{
@@ -341,7 +341,7 @@ func getCompletionTypes(nw *parseutil.NodeWalker) *CompletionContext {
 			}
 			p = &completionParent{
 				Type: ParentTypeSchema,
-				Name: mi.ParentTok.NoQuateString(),
+				Name: mi.ParentTok.NoQuoteString(),
 			}
 		} else {
 			t = []completionType{
@@ -363,7 +363,7 @@ func getCompletionTypes(nw *parseutil.NodeWalker) *CompletionContext {
 			}
 			p = &completionParent{
 				Type: ParentTypeTable,
-				Name: mi.ParentTok.NoQuateString(),
+				Name: mi.ParentTok.NoQuoteString(),
 			}
 		} else {
 			t = []completionType{

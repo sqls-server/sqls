@@ -52,14 +52,14 @@ var hoverTestCases = []struct {
 		col:    15,
 	},
 	{
-		name:   "select quated ident head",
+		name:   "select quoted ident head",
 		input:  "SELECT `ID`, Name FROM city",
 		output: "`city`.`ID` column\n\n`int(11)` PRI auto_increment\n",
 		line:   0,
 		col:    8,
 	},
 	{
-		name:   "select quated ident head",
+		name:   "select quoted ident head",
 		input:  "SELECT `ID`, Name FROM city",
 		output: "`city`.`ID` column\n\n`int(11)` PRI auto_increment\n",
 		line:   0,

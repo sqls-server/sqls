@@ -50,7 +50,7 @@ func TestRenderIdentifier(t *testing.T) {
 			input: "SELECT * FROM snake_case_table_name",
 			opts: &ast.RenderOptions{
 				LowerCase:        false,
-				IdentifierQuated: false,
+				IdentifierQuoted: false,
 			},
 			expected: []string{
 				"*",
@@ -62,7 +62,7 @@ func TestRenderIdentifier(t *testing.T) {
 			input: "SELECT p.PascalCaseColumnName FROM \"PascalCaseTableName\" p",
 			opts: &ast.RenderOptions{
 				LowerCase:        false,
-				IdentifierQuated: false,
+				IdentifierQuoted: false,
 			},
 			expected: []string{
 				"p.PascalCaseColumnName",
@@ -74,7 +74,7 @@ func TestRenderIdentifier(t *testing.T) {
 			input: "SELECT p.\"PascalCaseColumnName\" FROM \"PascalCaseTableName\" p",
 			opts: &ast.RenderOptions{
 				LowerCase:        false,
-				IdentifierQuated: false,
+				IdentifierQuoted: false,
 			},
 			expected: []string{
 				"p.\"PascalCaseColumnName\"",

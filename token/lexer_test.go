@@ -327,7 +327,7 @@ select`,
 			},
 		},
 		{
-			name: "non closed single quate identifier",
+			name: "non closed single quote identifier",
 			in:   "'foo",
 			out: []*Token{
 				{
@@ -339,7 +339,7 @@ select`,
 			},
 		},
 		{
-			name: "non closed double quate identifier",
+			name: "non closed double quote identifier",
 			in:   `"foo`,
 			out: []*Token{
 				{
@@ -356,7 +356,7 @@ select`,
 			},
 		},
 		{
-			name: "non closed back quate identifier",
+			name: "non closed back quote identifier",
 			in:   "`foo bar",
 			out: []*Token{
 				{
