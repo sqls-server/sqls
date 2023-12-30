@@ -148,7 +148,7 @@ var selectExprCase = []completionTestCase{
 		},
 	},
 	{
-		name:  "filtered single quate table columns",
+		name:  "filtered single quote table columns",
 		input: "select `Cou from city",
 		line:  0,
 		col:   10,

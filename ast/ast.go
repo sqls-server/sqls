@@ -29,7 +29,7 @@ const (
 
 type RenderOptions struct {
 	LowerCase        bool
-	IdentifierQuated bool
+	IdentifierQuoted bool
 }
 
 type Node interface {
@@ -67,7 +67,7 @@ func NewItem(tok *token.Token) Node {
 	return &Item{NewSQLToken(tok)}
 }
 func (i *Item) String() string                    { return i.Tok.String() }
-func (i *Item) NoQuateString() string             { return i.Tok.NoQuateString() }
+func (i *Item) NoQuoteString() string             { return i.Tok.NoQuoteString() }
 func (i *Item) Render(opts *RenderOptions) string { return i.Tok.Render(opts) }
 func (i *Item) Type() NodeType                    { return TypeItem }
 func (i *Item) GetToken() *SQLToken               { return i.Tok }
@@ -241,11 +241,11 @@ func (i *Identifier) String() string { return i.Tok.String() }
 func (i *Identifier) Render(opts *RenderOptions) string {
 	tmpOpts := &RenderOptions{
 		LowerCase:        false,
-		IdentifierQuated: opts.IdentifierQuated,
+		IdentifierQuoted: opts.IdentifierQuoted,
 	}
 	return i.Tok.Render(tmpOpts)
 }
-func (i *Identifier) NoQuateString() string { return i.Tok.NoQuateString() }
+func (i *Identifier) NoQuoteString() string { return i.Tok.NoQuoteString() }
 func (i *Identifier) GetToken() *SQLToken   { return i.Tok }
 func (i *Identifier) Pos() token.Pos        { return i.Tok.From }
 func (i *Identifier) End() token.Pos        { return i.Tok.To }
@@ -523,10 +523,10 @@ func (t *SQLToken) String() string {
 	}
 }
 
-func (t *SQLToken) NoQuateString() string {
+func (t *SQLToken) NoQuoteString() string {
 	switch v := t.Value.(type) {
 	case *token.SQLWord:
-		return v.NoQuateString()
+		return v.NoQuoteString()
 	case string:
 		return v
 	default:
@@ -548,7 +548,7 @@ func (t *SQLToken) Render(opts *RenderOptions) string {
 func renderSQLWord(v *token.SQLWord, opts *RenderOptions) string {
 	isIdentifier := v.Kind == dialect.Unmatched
 	if isIdentifier {
-		if opts.IdentifierQuated {
+		if opts.IdentifierQuoted {
 			v.QuoteStyle = '`'
 			return v.String()
 		}

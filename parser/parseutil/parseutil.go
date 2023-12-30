@@ -382,7 +382,7 @@ func parseTableInfo(idents ast.Node) ([]*TableInfo, error) {
 	res := []*TableInfo{}
 	switch v := idents.(type) {
 	case *ast.Identifier:
-		ti := &TableInfo{Name: v.NoQuateString()}
+		ti := &TableInfo{Name: v.NoQuoteString()}
 		res = append(res, ti)
 	case *ast.IdentifierList:
 		tis, err := identifierListToTableInfo(v)
@@ -416,7 +416,7 @@ func identifierListToTableInfo(il *ast.IdentifierList) ([]*TableInfo, error) {
 		switch v := ident.(type) {
 		case *ast.Identifier:
 			ti := &TableInfo{
-				Name: v.NoQuateString(),
+				Name: v.NoQuoteString(),
 			}
 			tis = append(tis, ti)
 		case *ast.MemberIdentifier:
@@ -439,7 +439,7 @@ func aliasedToTableInfo(aliased *ast.Aliased) (*TableInfo, error) {
 	// fetch table schema and name
 	switch v := aliased.RealName.(type) {
 	case *ast.Identifier:
-		ti.Name = v.NoQuateString()
+		ti.Name = v.NoQuoteString()
 	case *ast.MemberIdentifier:
 		ti.DatabaseSchema = v.Parent.String()
 		ti.Name = v.GetChild().String()
@@ -461,7 +461,7 @@ func aliasedToTableInfo(aliased *ast.Aliased) (*TableInfo, error) {
 	// fetch table aliased name
 	switch v := aliased.AliasedName.(type) {
 	case *ast.Identifier:
-		ti.Alias = v.NoQuateString()
+		ti.Alias = v.NoQuoteString()
 	default:
 		return nil, fmt.Errorf(
 			"failed parse aliased name of alias, unknown node type %T, value %q",
@@ -476,7 +476,7 @@ func parseSubQueryColumns(idents ast.Node, tables []*TableInfo) ([]*SubQueryColu
 	subqueryCols := []*SubQueryColumn{}
 	switch v := idents.(type) {
 	case *ast.Identifier:
-		ident := v.NoQuateString()
+		ident := v.NoQuoteString()
 		if ident == "*" {
 			for _, table := range tables {
 				subqueryCol := &SubQueryColumn{
@@ -504,8 +504,8 @@ func parseSubQueryColumns(idents ast.Node, tables []*TableInfo) ([]*SubQueryColu
 		subqueryCols = append(
 			subqueryCols,
 			&SubQueryColumn{
-				ParentName: v.GetParentIdent().NoQuateString(),
-				ColumnName: v.GetChildIdent().NoQuateString(),
+				ParentName: v.GetParentIdent().NoQuoteString(),
+				ColumnName: v.GetChildIdent().NoQuoteString(),
 			},
 		)
 	case *ast.Aliased:
@@ -532,18 +532,18 @@ func parseSubQueryColumns(idents ast.Node, tables []*TableInfo) ([]*SubQueryColu
 
 func aliasedToSubQueryColumn(aliased *ast.Aliased) (*SubQueryColumn, error) {
 	// fetch table schema and name
-	aliasedName := aliased.GetAliasedNameIdent().NoQuateString()
+	aliasedName := aliased.GetAliasedNameIdent().NoQuoteString()
 	switch v := aliased.RealName.(type) {
 	case *ast.Identifier:
 		subqueryCol := &SubQueryColumn{
-			ColumnName: v.NoQuateString(),
+			ColumnName: v.NoQuoteString(),
 			AliasName:  aliasedName,
 		}
 		return subqueryCol, nil
 	case *ast.MemberIdentifier:
 		subqueryCol := &SubQueryColumn{
-			ParentName: v.GetParentIdent().NoQuateString(),
-			ColumnName: v.GetChildIdent().NoQuateString(),
+			ParentName: v.GetParentIdent().NoQuoteString(),
+			ColumnName: v.GetChildIdent().NoQuoteString(),
 			AliasName:  aliasedName,
 		}
 		return subqueryCol, nil
