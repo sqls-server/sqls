@@ -1,6 +1,11 @@
 package formatter
 
 import (
+	"os"
+	"path/filepath"
+	"runtime"
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/sqls-server/sqls/ast"
@@ -20,7 +25,7 @@ func TestEval(t *testing.T) {
 		{
 			name:     "InsertIntoFormat",
 			input:    "INSERT INTO users (NAME, email) VALUES ('john doe', 'example@host.com')",
-			expected: "INSERT INTO users(\n\tNAME,\n\temail\n)\nVALUES(\n'john doe',\n'example@host.com'\n)",
+			expected: "INSERT INTO users(\n\tNAME,\n\temail\n)\nVALUES(\n\t'john doe',\n\t'example@host.com'\n)",
 			params:   lsp.DocumentFormattingParams{},
 			config: &config.Config{
 				LowercaseKeywords: false,
@@ -116,4 +121,52 @@ func parseInit(t *testing.T, input string) []*ast.Statement {
 		stmts = append(stmts, stmt)
 	}
 	return stmts
+}
+
+func TestFormat(t *testing.T) {
+	_, filename, _, _ := runtime.Caller(0)
+	dir := filepath.Dir(filename)
+
+	files, err := filepath.Glob(filepath.Join(dir, "testdata", "*.sql"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	slices.Sort(files)
+
+	opts := &ast.RenderOptions{
+		LowerCase:        false,
+		IdentifierQuoted: false,
+	}
+	env := &formatEnvironment{}
+	for _, fname := range files {
+		b, err := os.ReadFile(fname)
+		if err != nil {
+			t.Fatal(err)
+		}
+		parsed, err := parser.Parse(string(b))
+		if err != nil {
+			t.Fatal(err)
+		}
+		formatted := Eval(parsed, env)
+		got := strings.TrimRight(formatted.Render(opts), "\n") + "\n"
+
+		b, err = os.ReadFile(fname[:len(fname)-4] + ".golden")
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := string(b)
+		if got != want {
+			if _, err := os.Stat(fname[:len(fname)-4] + ".ignore"); err != nil {
+				t.Logf("%s:\n"+
+					"    want: %q\n"+
+					"     got: %q\n",
+					fname, want, got)
+			} else {
+				t.Errorf("%s:\n"+
+					"    want: %q\n"+
+					"     got: %q\n",
+					fname, want, got)
+			}
+		}
+	}
 }
