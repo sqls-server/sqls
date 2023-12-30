@@ -1,9 +1,9 @@
 package parseutil
 
 import (
-	"github.com/lighttiger2505/sqls/ast"
-	"github.com/lighttiger2505/sqls/ast/astutil"
-	"github.com/lighttiger2505/sqls/token"
+	"github.com/sqls-server/sqls/ast"
+	"github.com/sqls-server/sqls/ast/astutil"
+	"github.com/sqls-server/sqls/token"
 )
 
 type (
@@ -34,9 +34,9 @@ func ExtractSelectExpr(parsed ast.TokenList) []ast.Node {
 	}
 	peekMatcher := astutil.NodeMatcher{
 		NodeTypes: []ast.NodeType{
-			ast.TypeIdentiferList,
-			ast.TypeIdentifer,
-			ast.TypeMemberIdentifer,
+			ast.TypeIdentifierList,
+			ast.TypeIdentifier,
+			ast.TypeMemberIdentifier,
 			ast.TypeOperator,
 			ast.TypeAliased,
 			ast.TypeParenthesis,
@@ -55,9 +55,9 @@ func ExtractTableReferences(parsed ast.TokenList) []ast.Node {
 	}
 	peekMatcher := astutil.NodeMatcher{
 		NodeTypes: []ast.NodeType{
-			ast.TypeIdentiferList,
-			ast.TypeIdentifer,
-			ast.TypeMemberIdentifer,
+			ast.TypeIdentifierList,
+			ast.TypeIdentifier,
+			ast.TypeMemberIdentifier,
 			ast.TypeAliased,
 		},
 	}
@@ -73,8 +73,8 @@ func ExtractTableReference(parsed ast.TokenList) []ast.Node {
 	}
 	peekMatcher := astutil.NodeMatcher{
 		NodeTypes: []ast.NodeType{
-			ast.TypeIdentifer,
-			ast.TypeMemberIdentifer,
+			ast.TypeIdentifier,
+			ast.TypeMemberIdentifier,
 			ast.TypeAliased,
 		},
 	}
@@ -96,8 +96,8 @@ func ExtractTableFactor(parsed ast.TokenList) []ast.Node {
 	}
 	peekMatcher := astutil.NodeMatcher{
 		NodeTypes: []ast.NodeType{
-			ast.TypeIdentifer,
-			ast.TypeMemberIdentifer,
+			ast.TypeIdentifier,
+			ast.TypeMemberIdentifier,
 			ast.TypeAliased,
 		},
 	}
@@ -113,7 +113,7 @@ func ExtractWhereCondition(parsed ast.TokenList) []ast.Node {
 	peekMatcher := astutil.NodeMatcher{
 		NodeTypes: []ast.NodeType{
 			ast.TypeComparison,
-			ast.TypeIdentiferList,
+			ast.TypeIdentifierList,
 		},
 	}
 	return filterPrefixGroup(astutil.NewNodeReader(parsed), prefixMatcher, peekMatcher)
@@ -126,7 +126,7 @@ func ExtractAliased(parsed ast.TokenList) []ast.Node {
 	return aliases
 }
 
-func ExtractAliasedIdentifer(parsed ast.TokenList) []ast.Node {
+func ExtractAliasedIdentifier(parsed ast.TokenList) []ast.Node {
 	reader := astutil.NewNodeReader(parsed)
 	matcher := astutil.NodeMatcher{NodeTypes: []ast.NodeType{ast.TypeAliased}}
 	aliases := reader.FindRecursive(matcher)
@@ -151,14 +151,14 @@ func ExtractAliasedIdentifer(parsed ast.TokenList) []ast.Node {
 }
 
 func ExtractInsertColumns(parsed ast.TokenList) []ast.Node {
-	insertTableIdentifer := astutil.NodeMatcher{
+	insertTableIdentifier := astutil.NodeMatcher{
 		NodeTypes: []ast.NodeType{
-			ast.TypeIdentifer,
-			ast.TypeMemberIdentifer,
+			ast.TypeIdentifier,
+			ast.TypeMemberIdentifier,
 			ast.TypeAliased,
 		},
 	}
-	return parsePrefix(astutil.NewNodeReader(parsed), insertTableIdentifer, parseInsertColumns)
+	return parsePrefix(astutil.NewNodeReader(parsed), insertTableIdentifier, parseInsertColumns)
 }
 
 func parseInsertColumns(reader *astutil.NodeReader) []ast.Node {
@@ -178,13 +178,13 @@ func parseInsertColumns(reader *astutil.NodeReader) []ast.Node {
 		return []ast.Node{}
 	}
 
-	inner, ok := parenthesis.Inner().(*ast.IdentiferList)
+	inner, ok := parenthesis.Inner().(*ast.IdentifierList)
 	if ok {
 		return []ast.Node{inner}
 	}
 	list := parenthesis.Inner().GetTokens()
 	if len(list) > 0 {
-		firstToken, ok := list[0].(*ast.IdentiferList)
+		firstToken, ok := list[0].(*ast.IdentifierList)
 		if ok {
 			return []ast.Node{firstToken}
 		}
@@ -193,7 +193,7 @@ func parseInsertColumns(reader *astutil.NodeReader) []ast.Node {
 }
 
 func ExtractInsertValues(parsed ast.TokenList, pos token.Pos) []ast.Node {
-	insertTableIdentifer := astutil.NodeMatcher{
+	insertTableIdentifier := astutil.NodeMatcher{
 		ExpectTokens: []token.Kind{
 			token.Comma,
 		},
@@ -201,7 +201,7 @@ func ExtractInsertValues(parsed ast.TokenList, pos token.Pos) []ast.Node {
 			"VALUES",
 		},
 	}
-	values := parsePrefix(astutil.NewNodeReader(parsed), insertTableIdentifer, parseInsertValues)
+	values := parsePrefix(astutil.NewNodeReader(parsed), insertTableIdentifier, parseInsertValues)
 	for _, v := range values {
 		if astutil.IsEnclose(v, pos) {
 			return []ast.Node{v}
@@ -225,7 +225,7 @@ func parseInsertValues(reader *astutil.NodeReader) []ast.Node {
 	if !ok {
 		return []ast.Node{}
 	}
-	identList, ok := parenthesis.Inner().GetTokens()[0].(*ast.IdentiferList)
+	identList, ok := parenthesis.Inner().GetTokens()[0].(*ast.IdentifierList)
 	if !ok {
 		return []ast.Node{}
 	}

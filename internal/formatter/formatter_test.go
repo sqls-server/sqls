@@ -3,9 +3,40 @@ package formatter
 import (
 	"testing"
 
-	"github.com/lighttiger2505/sqls/ast"
-	"github.com/lighttiger2505/sqls/parser"
+	"github.com/sqls-server/sqls/ast"
+	"github.com/sqls-server/sqls/internal/config"
+	"github.com/sqls-server/sqls/internal/lsp"
+	"github.com/sqls-server/sqls/parser"
 )
+
+func TestEval(t *testing.T) {
+	testcases := []struct {
+		name     string
+		input    string
+		params   lsp.DocumentFormattingParams
+		config   *config.Config
+		expected string
+	}{
+		{
+			name:     "InsertIntoFormat",
+			input:    "INSERT INTO users (NAME, email) VALUES ('john doe', 'example@host.com')",
+			expected: "INSERT INTO users(\n\tNAME,\n\temail\n)\nVALUES(\n'john doe',\n'example@host.com'\n)",
+			params:   lsp.DocumentFormattingParams{},
+			config: &config.Config{
+				LowercaseKeywords: false,
+			},
+		},
+	}
+
+	for _, tt := range testcases {
+		t.Run(tt.name, func(t *testing.T) {
+			actual, _ := Format(tt.input, tt.params, tt.config)
+			if actual[0].NewText != tt.expected {
+				t.Errorf("expected: %s, got %s", tt.expected, actual[0].NewText)
+			}
+		})
+	}
+}
 
 func TestRenderIdentifier(t *testing.T) {
 	testcases := []struct {
@@ -18,8 +49,8 @@ func TestRenderIdentifier(t *testing.T) {
 			name:  "snake case",
 			input: "SELECT * FROM snake_case_table_name",
 			opts: &ast.RenderOptions{
-				LowerCase:       false,
-				IdentiferQuated: false,
+				LowerCase:        false,
+				IdentifierQuated: false,
 			},
 			expected: []string{
 				"*",
@@ -30,8 +61,8 @@ func TestRenderIdentifier(t *testing.T) {
 			name:  "pascal case",
 			input: "SELECT p.PascalCaseColumnName FROM \"PascalCaseTableName\" p",
 			opts: &ast.RenderOptions{
-				LowerCase:       false,
-				IdentiferQuated: false,
+				LowerCase:        false,
+				IdentifierQuated: false,
 			},
 			expected: []string{
 				"p.PascalCaseColumnName",
@@ -42,8 +73,8 @@ func TestRenderIdentifier(t *testing.T) {
 			name:  "quoted pascal case",
 			input: "SELECT p.\"PascalCaseColumnName\" FROM \"PascalCaseTableName\" p",
 			opts: &ast.RenderOptions{
-				LowerCase:       false,
-				IdentiferQuated: false,
+				LowerCase:        false,
+				IdentifierQuated: false,
 			},
 			expected: []string{
 				"p.\"PascalCaseColumnName\"",
@@ -58,7 +89,7 @@ func TestRenderIdentifier(t *testing.T) {
 			list := stmts[0].GetTokens()
 			j := 0
 			for _, n := range list {
-				if i, ok := n.(*ast.Identifer); ok {
+				if i, ok := n.(*ast.Identifier); ok {
 					if actual := i.Render(tt.opts); actual != tt.expected[j] {
 						t.Errorf("expected: %s, got %s", tt.expected[j], actual)
 					}

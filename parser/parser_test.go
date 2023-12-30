@@ -4,8 +4,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/lighttiger2505/sqls/ast"
-	"github.com/lighttiger2505/sqls/token"
+	"github.com/sqls-server/sqls/ast"
+	"github.com/sqls-server/sqls/token"
 )
 
 func TestParseStatement(t *testing.T) {
@@ -92,7 +92,7 @@ func TestParseComments(t *testing.T) {
 			},
 		},
 		{
-			name:  "range commnet with identiger",
+			name:  "range comment with identiger",
 			input: "/* foo */bar",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, "bar")
@@ -102,7 +102,7 @@ func TestParseComments(t *testing.T) {
 			},
 		},
 		{
-			name:  "range commnet with identiger list",
+			name:  "range comment with identiger list",
 			input: "foo, /* foo */bar",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, "foo, bar")
@@ -112,7 +112,7 @@ func TestParseComments(t *testing.T) {
 			},
 		},
 		{
-			name:  "multi line range commnet with identiger",
+			name:  "multi line range comment with identiger",
 			input: "/*\n * foo\n */\nbar",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 2, "\nbar")
@@ -849,7 +849,7 @@ func TestParseAliased(t *testing.T) {
 		checkFn func(t *testing.T, stmts []*ast.Statement, input string)
 	}{
 		{
-			name:  "aliase",
+			name:  "alias",
 			input: "foo AS bar",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, input)
@@ -858,7 +858,7 @@ func TestParseAliased(t *testing.T) {
 			},
 		},
 		{
-			name:  "aliase without AS",
+			name:  "alias without AS",
 			input: "foo bar",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, input)
@@ -867,7 +867,7 @@ func TestParseAliased(t *testing.T) {
 			},
 		},
 		{
-			name:  "aliase select identifier",
+			name:  "alias select identifier",
 			input: "select foo as bar from mytable",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 7, input)
@@ -882,7 +882,7 @@ func TestParseAliased(t *testing.T) {
 			},
 		},
 		{
-			name:  "aliase from identifier",
+			name:  "alias from identifier",
 			input: "select foo from mytable as mt",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 7, input)
@@ -897,7 +897,7 @@ func TestParseAliased(t *testing.T) {
 			},
 		},
 		{
-			name:  "aliase join identifier",
+			name:  "alias join identifier",
 			input: "select foo from abc inner join def as d",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 11, input)
@@ -916,7 +916,7 @@ func TestParseAliased(t *testing.T) {
 			},
 		},
 		{
-			name:  "aliase sub query",
+			name:  "alias sub query",
 			input: "select * from (select ci.ID, ci.Name from city as ci) as t",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 7, input)
@@ -939,7 +939,7 @@ func TestParseAliased(t *testing.T) {
 			},
 		},
 		{
-			name:  "aliase in parenthesis",
+			name:  "alias in parenthesis",
 			input: "(SELECT ci.ID AS city_id, ci.Name AS city_name FROM world.city AS ci)",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, input)
@@ -993,7 +993,7 @@ func TestParseIdentifierList(t *testing.T) {
 			},
 		},
 		{
-			name:  "invalid single identifer without whitespace",
+			name:  "invalid single identifier without whitespace",
 			input: "foo,",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, input)
@@ -1002,7 +1002,7 @@ func TestParseIdentifierList(t *testing.T) {
 			},
 		},
 		{
-			name:  "invalid single identifer include whitespace",
+			name:  "invalid single identifier include whitespace",
 			input: "foo,  ",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, input)
@@ -1029,7 +1029,7 @@ func TestParseIdentifierList(t *testing.T) {
 			},
 		},
 		{
-			name:  "aliased menber identiger",
+			name:  "aliased member identiger",
 			input: "`c`.`Name` as `country_name`, `cl`.`Language` as `country_language`",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, input)
@@ -1048,25 +1048,25 @@ func TestParseIdentifierList(t *testing.T) {
 				tokens := parenthesis.Inner().GetTokens()
 				il := testIdentifierList(t, tokens[0], "foo, bar, foobar")
 
-				testIdentifierList_GetIndex(t, il, genPosOneline(0), -1)
-				testIdentifierList_GetIndex(t, il, genPosOneline(1), 0)
-				testIdentifierList_GetIndex(t, il, genPosOneline(2), 0)
-				testIdentifierList_GetIndex(t, il, genPosOneline(3), 0)
-				testIdentifierList_GetIndex(t, il, genPosOneline(4), 0)
-				testIdentifierList_GetIndex(t, il, genPosOneline(5), 1)
-				testIdentifierList_GetIndex(t, il, genPosOneline(6), 1)
-				testIdentifierList_GetIndex(t, il, genPosOneline(7), 1)
-				testIdentifierList_GetIndex(t, il, genPosOneline(8), 1)
-				testIdentifierList_GetIndex(t, il, genPosOneline(9), 1)
-				testIdentifierList_GetIndex(t, il, genPosOneline(10), 2)
-				testIdentifierList_GetIndex(t, il, genPosOneline(11), 2)
-				testIdentifierList_GetIndex(t, il, genPosOneline(12), 2)
-				testIdentifierList_GetIndex(t, il, genPosOneline(13), 2)
-				testIdentifierList_GetIndex(t, il, genPosOneline(14), 2)
-				testIdentifierList_GetIndex(t, il, genPosOneline(15), 2)
-				testIdentifierList_GetIndex(t, il, genPosOneline(16), 2)
-				testIdentifierList_GetIndex(t, il, genPosOneline(17), 2)
-				testIdentifierList_GetIndex(t, il, genPosOneline(18), -1)
+				testIdentifierListGetIndex(t, il, genPosOneline(0), -1)
+				testIdentifierListGetIndex(t, il, genPosOneline(1), 0)
+				testIdentifierListGetIndex(t, il, genPosOneline(2), 0)
+				testIdentifierListGetIndex(t, il, genPosOneline(3), 0)
+				testIdentifierListGetIndex(t, il, genPosOneline(4), 0)
+				testIdentifierListGetIndex(t, il, genPosOneline(5), 1)
+				testIdentifierListGetIndex(t, il, genPosOneline(6), 1)
+				testIdentifierListGetIndex(t, il, genPosOneline(7), 1)
+				testIdentifierListGetIndex(t, il, genPosOneline(8), 1)
+				testIdentifierListGetIndex(t, il, genPosOneline(9), 1)
+				testIdentifierListGetIndex(t, il, genPosOneline(10), 2)
+				testIdentifierListGetIndex(t, il, genPosOneline(11), 2)
+				testIdentifierListGetIndex(t, il, genPosOneline(12), 2)
+				testIdentifierListGetIndex(t, il, genPosOneline(13), 2)
+				testIdentifierListGetIndex(t, il, genPosOneline(14), 2)
+				testIdentifierListGetIndex(t, il, genPosOneline(15), 2)
+				testIdentifierListGetIndex(t, il, genPosOneline(16), 2)
+				testIdentifierListGetIndex(t, il, genPosOneline(17), 2)
+				testIdentifierListGetIndex(t, il, genPosOneline(18), -1)
 			},
 		},
 		{
@@ -1098,7 +1098,7 @@ func TestParseIdentifierList(t *testing.T) {
 			},
 		},
 		{
-			name:  "invalid single IndentifierList in select statement",
+			name:  "invalid single IdentifierList in select statement",
 			input: "select foo,  from abc",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 6, input)
@@ -1112,7 +1112,7 @@ func TestParseIdentifierList(t *testing.T) {
 			},
 		},
 		{
-			name:  "invalid multiplue IndentifierList in select statement",
+			name:  "invalid multiplue IdentifierList in select statement",
 			input: "select foo, bar, from abc",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 6, input)
@@ -1126,7 +1126,7 @@ func TestParseIdentifierList(t *testing.T) {
 			},
 		},
 		{
-			name:  "IndentifierList function",
+			name:  "IdentifierList function",
 			input: "sum(a), sum(b)",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, input)
@@ -1135,7 +1135,7 @@ func TestParseIdentifierList(t *testing.T) {
 			},
 		},
 		{
-			name:  "IndentifierList Aliased",
+			name:  "IdentifierList Aliased",
 			input: "sum(a) as x, b as y",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, input)
@@ -1144,7 +1144,7 @@ func TestParseIdentifierList(t *testing.T) {
 			},
 		},
 		{
-			name:  "IndentifierList comparison",
+			name:  "IdentifierList comparison",
 			input: "1 > 2, 3 < 4, 5 = 6",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, input)
@@ -1153,7 +1153,7 @@ func TestParseIdentifierList(t *testing.T) {
 			},
 		},
 		{
-			name:  "IndentifierList operator",
+			name:  "IdentifierList operator",
 			input: "1 + 2, 3 - 4, 5 * 6",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, input)
@@ -1162,7 +1162,7 @@ func TestParseIdentifierList(t *testing.T) {
 			},
 		},
 		{
-			name:  "IndentifierList tokens",
+			name:  "IdentifierList tokens",
 			input: "1, 'aaa', 'N'",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, input)
@@ -1213,7 +1213,7 @@ func TestParseCase(t *testing.T) {
 			},
 		},
 		{
-			name:  "case identifer list",
+			name:  "case identifier list",
 			input: "foo, CASE WHEN 1 THEN 2 ELSE 3 END as onetwothree, bar",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, input)
@@ -1287,9 +1287,9 @@ func testItem(t *testing.T, node ast.Node, expect string) {
 
 func testMemberIdentifier(t *testing.T, node ast.Node, expect, parent, child string) {
 	t.Helper()
-	mi, ok := node.(*ast.MemberIdentifer)
+	mi, ok := node.(*ast.MemberIdentifier)
 	if !ok {
-		t.Fatalf("invalid type want MemberIdentifer got %T", node)
+		t.Fatalf("invalid type want MemberIdentifier got %T", node)
 	}
 	if expect != node.String() {
 		t.Errorf("expected %q, got %q", expect, node.String())
@@ -1310,7 +1310,7 @@ func testMemberIdentifier(t *testing.T, node ast.Node, expect, parent, child str
 
 func testIdentifier(t *testing.T, node ast.Node, expect string) {
 	t.Helper()
-	_, ok := node.(*ast.Identifer)
+	_, ok := node.(*ast.Identifier)
 	if !ok {
 		t.Fatalf("invalid type want Identifier got %T", node)
 	}
@@ -1421,19 +1421,19 @@ func testAliased(t *testing.T, node ast.Node, expect string, realName, aliasedNa
 	}
 }
 
-func testIdentifierList(t *testing.T, node ast.Node, expect string) *ast.IdentiferList {
+func testIdentifierList(t *testing.T, node ast.Node, expect string) *ast.IdentifierList {
 	t.Helper()
 	if expect != node.String() {
 		t.Errorf("expected %q, got %q", expect, node.String())
 	}
-	il, ok := node.(*ast.IdentiferList)
+	il, ok := node.(*ast.IdentifierList)
 	if !ok {
-		t.Fatalf("invalid type want IdentiferList got %T", node)
+		t.Fatalf("invalid type want IdentifierList got %T", node)
 	}
 	return il
 }
 
-func testIdentifierList_GetIndex(t *testing.T, il *ast.IdentiferList, pos token.Pos, expect int) {
+func testIdentifierListGetIndex(t *testing.T, il *ast.IdentifierList, pos token.Pos, expect int) {
 	t.Helper()
 	got := il.GetIndex(pos)
 	if expect != got {

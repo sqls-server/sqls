@@ -5,14 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/lighttiger2505/sqls/ast"
-	"github.com/lighttiger2505/sqls/ast/astutil"
-	"github.com/lighttiger2505/sqls/internal/database"
-	"github.com/lighttiger2505/sqls/internal/lsp"
-	"github.com/lighttiger2505/sqls/parser"
-	"github.com/lighttiger2505/sqls/parser/parseutil"
-	"github.com/lighttiger2505/sqls/token"
 	"github.com/sourcegraph/jsonrpc2"
+	"github.com/sqls-server/sqls/ast"
+	"github.com/sqls-server/sqls/ast/astutil"
+	"github.com/sqls-server/sqls/internal/database"
+	"github.com/sqls-server/sqls/internal/lsp"
+	"github.com/sqls-server/sqls/parser"
+	"github.com/sqls-server/sqls/parser/parseutil"
+	"github.com/sqls-server/sqls/token"
 )
 
 func (s *Server) handleDefinition(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
@@ -45,9 +45,9 @@ func definition(url, text string, params lsp.DefinitionParams, dbCache *database
 
 	nodeWalker := parseutil.NewNodeWalker(parsed, pos)
 	m := astutil.NodeMatcher{
-		NodeTypes: []ast.NodeType{ast.TypeIdentifer},
+		NodeTypes: []ast.NodeType{ast.TypeIdentifier},
 	}
-	currentVariable := nodeWalker.CurNodeButtomMatched(m)
+	currentVariable := nodeWalker.CurNodeBottomMatched(m)
 	if currentVariable == nil {
 		return nil, nil
 	}

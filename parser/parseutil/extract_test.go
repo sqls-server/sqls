@@ -3,7 +3,7 @@ package parseutil
 import (
 	"testing"
 
-	"github.com/lighttiger2505/sqls/token"
+	"github.com/sqls-server/sqls/token"
 )
 
 func TestExtractSelectExpr(t *testing.T) {
@@ -38,7 +38,7 @@ func TestExtractSelectExpr(t *testing.T) {
 			query := initExtractTable(t, tt.input)
 			got := ExtractSelectExpr(query)
 			if len(got) == 0 {
-				t.Fatalf("not found filterd node")
+				t.Fatalf("not found filtered node")
 			}
 			if tt.want != got[0].String() {
 				t.Errorf("expected %q, got %q", tt.want, got[0].String())
@@ -79,7 +79,7 @@ func TestExtractTableReferences(t *testing.T) {
 			query := initExtractTable(t, tt.input)
 			got := ExtractTableReferences(query)
 			if len(got) == 0 {
-				t.Fatalf("not found filterd node")
+				t.Fatalf("not found filtered node")
 			}
 			if tt.want != got[0].String() {
 				t.Errorf("expected %q, got %q", tt.want, got[0].String())
@@ -111,7 +111,7 @@ func TestExtractTableReference(t *testing.T) {
 			query := initExtractTable(t, tt.input)
 			got := ExtractTableReference(query)
 			if len(got) == 0 {
-				t.Fatalf("not found filterd node")
+				t.Fatalf("not found filtered node")
 			}
 			if tt.want != got[0].String() {
 				t.Errorf("expected %q, got %q", tt.want, got[0].String())
@@ -137,7 +137,7 @@ func TestExtractTableFactor(t *testing.T) {
 			query := initExtractTable(t, tt.input)
 			got := ExtractTableFactor(query)
 			if len(got) == 0 {
-				t.Fatalf("not found filterd node")
+				t.Fatalf("not found filtered node")
 			}
 			if tt.want != got[0].String() {
 				t.Errorf("expected %q, got %q", tt.want, got[0].String())
@@ -145,7 +145,7 @@ func TestExtractTableFactor(t *testing.T) {
 		})
 	}
 }
-func TestExtractWhereConditon(t *testing.T) {
+func TestExtractWhereCondition(t *testing.T) {
 	testcases := []struct {
 		name  string
 		input string
@@ -177,7 +177,7 @@ func TestExtractWhereConditon(t *testing.T) {
 			query := initExtractTable(t, tt.input)
 			got := ExtractWhereCondition(query)
 			if len(got) == 0 {
-				t.Fatalf("not found filterd node")
+				t.Fatalf("not found filtered node")
 			}
 			if tt.want != got[0].String() {
 				t.Errorf("expected %q, got %q", tt.want, got[0].String())
@@ -186,7 +186,7 @@ func TestExtractWhereConditon(t *testing.T) {
 	}
 }
 
-func TestExtractAliasedIdentifer(t *testing.T) {
+func TestExtractAliasedIdentifier(t *testing.T) {
 	testcases := []struct {
 		name  string
 		input string
@@ -216,7 +216,7 @@ func TestExtractAliasedIdentifer(t *testing.T) {
 	for _, tt := range testcases {
 		t.Run(tt.name, func(t *testing.T) {
 			query := initExtractTable(t, tt.input)
-			gots := ExtractAliasedIdentifer(query)
+			gots := ExtractAliasedIdentifier(query)
 
 			if len(gots) != len(tt.want) {
 				t.Errorf("contain nodes %d, got %d", len(tt.want), len(gots))

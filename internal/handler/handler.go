@@ -10,9 +10,9 @@ import (
 
 	"github.com/sourcegraph/jsonrpc2"
 
-	"github.com/lighttiger2505/sqls/internal/config"
-	"github.com/lighttiger2505/sqls/internal/database"
-	"github.com/lighttiger2505/sqls/internal/lsp"
+	"github.com/sqls-server/sqls/internal/config"
+	"github.com/sqls-server/sqls/internal/database"
+	"github.com/sqls-server/sqls/internal/lsp"
 )
 
 var (
@@ -129,6 +129,8 @@ func (s *Server) handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.
 		return s.handleDefinition(ctx, conn, req)
 	case "textDocument/typeDefinition":
 		return s.handleDefinition(ctx, conn, req)
+	case "window/showMessage":
+		return
 	}
 	return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeMethodNotFound, Message: fmt.Sprintf("method not supported: %s", req.Method)}
 }
@@ -169,7 +171,7 @@ func (s *Server) handleInitialize(ctx context.Context, conn *jsonrpc2.Conn, req 
 
 	// Initialize database database connection
 	// NOTE: If no connection is found at this point, it is possible that the connection settings are sent to workspace config, so don't make an error
-	messenger := lsp.NewLspMessenger(conn)
+	messenger := lsp.NewMessenger(conn)
 	if err := s.reconnectionDB(ctx); err != nil {
 		if !errors.Is(ErrNoConnection, err) {
 			if err := messenger.ShowInfo(ctx, err.Error()); err != nil {
@@ -301,7 +303,7 @@ func (s *Server) saveFile(uri string) error {
 }
 
 func (s *Server) handleWorkspaceDidChangeConfiguration(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
-	// Update changed configration
+	// Update changed configuration
 	var params lsp.DidChangeConfigurationParams
 	if err := json.Unmarshal(*req.Params, &params); err != nil {
 		return nil, err
@@ -314,7 +316,7 @@ func (s *Server) handleWorkspaceDidChangeConfiguration(ctx context.Context, conn
 	}
 
 	// Initialize database database connection
-	messenger := lsp.NewLspMessenger(conn)
+	messenger := lsp.NewMessenger(conn)
 	if err := s.reconnectionDB(ctx); err != nil {
 		if !errors.Is(ErrNoConnection, err) {
 			if err := messenger.ShowInfo(ctx, err.Error()); err != nil {

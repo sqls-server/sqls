@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/lighttiger2505/sqls/internal/formatter"
-	"github.com/lighttiger2505/sqls/internal/lsp"
 	"github.com/sourcegraph/jsonrpc2"
+	"github.com/sqls-server/sqls/internal/formatter"
+	"github.com/sqls-server/sqls/internal/lsp"
 )
 
 func (s *Server) handleTextDocumentFormatting(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {

@@ -7,7 +7,7 @@ import (
 	"log"
 
 	_ "github.com/CodinGame/h2go"
-	"github.com/lighttiger2505/sqls/dialect"
+	"github.com/sqls-server/sqls/dialect"
 )
 
 func init() {
@@ -17,13 +17,13 @@ func init() {
 
 func h2Open(dbConnCfg *DBConfig) (*DBConnection, error) {
 	var (
-		conn    *sql.DB
+		conn *sql.DB
 	)
 	cfg, err := genH2Config(dbConnCfg)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if dbConnCfg.SSHCfg != nil {
 		return nil, fmt.Errorf("connect via SSH is not supported")
 	}
@@ -34,8 +34,8 @@ func h2Open(dbConnCfg *DBConfig) (*DBConnection, error) {
 	conn = dbConn
 
 	return &DBConnection{
-		Conn:    conn,
-		Driver:  dbConnCfg.Driver,
+		Conn:   conn,
+		Driver: dbConnCfg.Driver,
 	}, nil
 }
 
@@ -127,7 +127,7 @@ func (db *H2DBRepository) SchemaTables(ctx context.Context) (map[string][]string
 }
 
 func (db *H2DBRepository) Tables(ctx context.Context) ([]string, error) {
-	
+
 	rows, err := db.Conn.QueryContext(
 		ctx,
 		`
@@ -268,4 +268,8 @@ func (db *H2DBRepository) Exec(ctx context.Context, query string) (sql.Result, e
 
 func (db *H2DBRepository) Query(ctx context.Context, query string) (*sql.Rows, error) {
 	return db.Conn.QueryContext(ctx, query)
+}
+
+func (db *H2DBRepository) DescribeForeignKeysBySchema(ctx context.Context, schemaName string) ([]*ForeignKey, error) {
+	return nil, fmt.Errorf("describe foreign keys is not supported")
 }

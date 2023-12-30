@@ -1,8 +1,8 @@
 package formatter
 
 import (
-	"github.com/lighttiger2505/sqls/ast"
-	"github.com/lighttiger2505/sqls/token"
+	"github.com/sqls-server/sqls/ast"
+	"github.com/sqls-server/sqls/token"
 )
 
 func unshift(slice []ast.Node, node ...ast.Node) []ast.Node {

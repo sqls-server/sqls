@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net"
 	"reflect"
@@ -9,8 +10,8 @@ import (
 
 	"github.com/sourcegraph/jsonrpc2"
 
-	"github.com/lighttiger2505/sqls/internal/config"
-	"github.com/lighttiger2505/sqls/internal/lsp"
+	"github.com/sqls-server/sqls/internal/config"
+	"github.com/sqls-server/sqls/internal/lsp"
 )
 
 const testFileURI = "file:///Users/octref/Code/css-test/test.sql"
@@ -48,7 +49,9 @@ func (tx *TestContext) tearDown() {
 
 	if tx.connServer != nil {
 		if err := tx.connServer.Close(); err != nil {
-			log.Fatal("connServer.Close:", err)
+			if !errors.Is(err, jsonrpc2.ErrClosed) {
+				log.Fatal("connServer.Close:", err)
+			}
 		}
 	}
 }
@@ -61,7 +64,7 @@ func (tx *TestContext) initServer(t *testing.T) {
 	tx.connServer = jsonrpc2.NewConn(tx.ctx, jsonrpc2.NewBufferedStream(server, jsonrpc2.VSCodeObjectCodec{}), tx.h)
 	tx.conn = jsonrpc2.NewConn(tx.ctx, jsonrpc2.NewBufferedStream(client, jsonrpc2.VSCodeObjectCodec{}), tx.h)
 
-	// Initialize Langage Server
+	// Initialize Language Server
 	params := lsp.InitializeParams{
 		InitializationOptions: lsp.InitializeOptions{},
 	}

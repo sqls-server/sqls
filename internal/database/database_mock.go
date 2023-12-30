@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/lighttiger2505/sqls/dialect"
+	"github.com/sqls-server/sqls/dialect"
 )
 
 type MockDBRepository struct {
@@ -17,9 +17,10 @@ type MockDBRepository struct {
 	MockDescribeDatabaseTableBySchema func(context.Context, string) ([]*ColumnDesc, error)
 	MockExec                          func(context.Context, string) (sql.Result, error)
 	MockQuery                         func(context.Context, string) (*sql.Rows, error)
+	MockDescribeForeignKeysBySchema   func(context.Context, string) ([]*ForeignKey, error)
 }
 
-func NewMockDBRepository(conn *sql.DB) DBRepository {
+func NewMockDBRepository(_ *sql.DB) DBRepository {
 	return &MockDBRepository{
 		MockDatabase:       func(ctx context.Context) (string, error) { return "world", nil },
 		MockDatabases:      func(ctx context.Context) ([]string, error) { return dummyDatabases, nil },
@@ -37,7 +38,7 @@ func NewMockDBRepository(conn *sql.DB) DBRepository {
 			return nil, nil
 		},
 		MockDescribeDatabaseTable: func(ctx context.Context) ([]*ColumnDesc, error) {
-			res := []*ColumnDesc{}
+			var res []*ColumnDesc
 			res = append(res, dummyCityColumns...)
 			res = append(res, dummyCountryColumns...)
 			res = append(res, dummyCountryLanguageColumns...)
@@ -45,7 +46,7 @@ func NewMockDBRepository(conn *sql.DB) DBRepository {
 
 		},
 		MockDescribeDatabaseTableBySchema: func(ctx context.Context, schemaName string) ([]*ColumnDesc, error) {
-			res := []*ColumnDesc{}
+			var res []*ColumnDesc
 			res = append(res, dummyCityColumns...)
 			res = append(res, dummyCountryColumns...)
 			res = append(res, dummyCountryLanguageColumns...)
@@ -60,6 +61,9 @@ func NewMockDBRepository(conn *sql.DB) DBRepository {
 		},
 		MockQuery: func(ctx context.Context, query string) (*sql.Rows, error) {
 			return &sql.Rows{}, nil
+		},
+		MockDescribeForeignKeysBySchema: func(ctx context.Context, schemaName string) ([]*ForeignKey, error) {
+			return foreignKeys, nil
 		},
 	}
 }
@@ -108,6 +112,10 @@ func (m *MockDBRepository) Query(ctx context.Context, query string) (*sql.Rows, 
 	return m.MockQuery(ctx, query)
 }
 
+func (m *MockDBRepository) DescribeForeignKeysBySchema(ctx context.Context, schemaName string) ([]*ForeignKey, error) {
+	return m.MockDescribeForeignKeysBySchema(ctx, schemaName)
+}
+
 var dummyDatabases = []string{
 	"information_schema",
 	"mysql",
@@ -129,12 +137,14 @@ var dummyTables = []string{
 }
 var dummyCityColumns = []*ColumnDesc{
 	{
-		Schema: "world",
-		Table:  "city",
-		Name:   "ID",
-		Type:   "int(11)",
-		Null:   "NO",
-		Key:    "PRI",
+		ColumnBase: ColumnBase{
+			Schema: "world",
+			Table:  "city",
+			Name:   "ID",
+		},
+		Type: "int(11)",
+		Null: "NO",
+		Key:  "PRI",
 		Default: sql.NullString{
 			String: "<null>",
 			Valid:  false,
@@ -142,12 +152,14 @@ var dummyCityColumns = []*ColumnDesc{
 		Extra: "auto_increment",
 	},
 	{
-		Schema: "world",
-		Table:  "city",
-		Name:   "Name",
-		Type:   "char(35)",
-		Null:   "NO",
-		Key:    "",
+		ColumnBase: ColumnBase{
+			Schema: "world",
+			Table:  "city",
+			Name:   "Name",
+		},
+		Type: "char(35)",
+		Null: "NO",
+		Key:  "",
 		Default: sql.NullString{
 			String: "",
 			Valid:  false,
@@ -155,12 +167,14 @@ var dummyCityColumns = []*ColumnDesc{
 		Extra: "",
 	},
 	{
-		Schema: "world",
-		Table:  "city",
-		Name:   "CountryCode",
-		Type:   "char(3)",
-		Null:   "NO",
-		Key:    "MUL",
+		ColumnBase: ColumnBase{
+			Schema: "world",
+			Table:  "city",
+			Name:   "CountryCode",
+		},
+		Type: "char(3)",
+		Null: "NO",
+		Key:  "MUL",
 		Default: sql.NullString{
 			String: "",
 			Valid:  false,
@@ -168,12 +182,14 @@ var dummyCityColumns = []*ColumnDesc{
 		Extra: "",
 	},
 	{
-		Schema: "world",
-		Table:  "city",
-		Name:   "District",
-		Type:   "char(20)",
-		Null:   "NO",
-		Key:    "",
+		ColumnBase: ColumnBase{
+			Schema: "world",
+			Table:  "city",
+			Name:   "District",
+		},
+		Type: "char(20)",
+		Null: "NO",
+		Key:  "",
 		Default: sql.NullString{
 			String: "",
 			Valid:  false,
@@ -181,12 +197,14 @@ var dummyCityColumns = []*ColumnDesc{
 		Extra: "",
 	},
 	{
-		Schema: "world",
-		Table:  "city",
-		Name:   "Population",
-		Type:   "int(11)",
-		Null:   "NO",
-		Key:    "",
+		ColumnBase: ColumnBase{
+			Schema: "world",
+			Table:  "city",
+			Name:   "Population",
+		},
+		Type: "int(11)",
+		Null: "NO",
+		Key:  "",
 		Default: sql.NullString{
 			String: "",
 			Valid:  false,
@@ -196,12 +214,14 @@ var dummyCityColumns = []*ColumnDesc{
 }
 var dummyCountryColumns = []*ColumnDesc{
 	{
-		Schema: "world",
-		Table:  "country",
-		Name:   "Code",
-		Type:   "char(3)",
-		Null:   "NO",
-		Key:    "PRI",
+		ColumnBase: ColumnBase{
+			Schema: "world",
+			Table:  "country",
+			Name:   "Code",
+		},
+		Type: "char(3)",
+		Null: "NO",
+		Key:  "PRI",
 		Default: sql.NullString{
 			String: "<null>",
 			Valid:  false,
@@ -209,12 +229,14 @@ var dummyCountryColumns = []*ColumnDesc{
 		Extra: "auto_increment",
 	},
 	{
-		Schema: "world",
-		Table:  "country",
-		Name:   "Name",
-		Type:   "char(52)",
-		Null:   "NO",
-		Key:    "",
+		ColumnBase: ColumnBase{
+			Schema: "world",
+			Table:  "country",
+			Name:   "Name",
+		},
+		Type: "char(52)",
+		Null: "NO",
+		Key:  "",
 		Default: sql.NullString{
 			String: "",
 			Valid:  false,
@@ -222,12 +244,14 @@ var dummyCountryColumns = []*ColumnDesc{
 		Extra: "",
 	},
 	{
-		Schema: "world",
-		Table:  "country",
-		Name:   "CountryCode",
-		Type:   "char(3)",
-		Null:   "NO",
-		Key:    "",
+		ColumnBase: ColumnBase{
+			Schema: "world",
+			Table:  "country",
+			Name:   "CountryCode",
+		},
+		Type: "char(3)",
+		Null: "NO",
+		Key:  "",
 		Default: sql.NullString{
 			String: "",
 			Valid:  false,
@@ -235,12 +259,14 @@ var dummyCountryColumns = []*ColumnDesc{
 		Extra: "",
 	},
 	{
-		Schema: "world",
-		Table:  "country",
-		Name:   "Continent",
-		Type:   "enum('Asia','Europe','North America','Africa','Oceania','Antarctica','South America')",
-		Null:   "NO",
-		Key:    "",
+		ColumnBase: ColumnBase{
+			Schema: "world",
+			Table:  "country",
+			Name:   "Continent",
+		},
+		Type: "enum('Asia','Europe','North America','Africa','Oceania','Antarctica','South America')",
+		Null: "NO",
+		Key:  "",
 		Default: sql.NullString{
 			String: "Asia",
 			Valid:  false,
@@ -248,12 +274,14 @@ var dummyCountryColumns = []*ColumnDesc{
 		Extra: "",
 	},
 	{
-		Schema: "world",
-		Table:  "country",
-		Name:   "Region",
-		Type:   "char(26)",
-		Null:   "NO",
-		Key:    "",
+		ColumnBase: ColumnBase{
+			Schema: "world",
+			Table:  "country",
+			Name:   "Region",
+		},
+		Type: "char(26)",
+		Null: "NO",
+		Key:  "",
 		Default: sql.NullString{
 			String: "",
 			Valid:  false,
@@ -261,12 +289,14 @@ var dummyCountryColumns = []*ColumnDesc{
 		Extra: "",
 	},
 	{
-		Schema: "world",
-		Table:  "country",
-		Name:   "SurfaceArea",
-		Type:   "decimal(10,2)",
-		Null:   "NO",
-		Key:    "",
+		ColumnBase: ColumnBase{
+			Schema: "world",
+			Table:  "country",
+			Name:   "SurfaceArea",
+		},
+		Type: "decimal(10,2)",
+		Null: "NO",
+		Key:  "",
 		Default: sql.NullString{
 			String: "0.00",
 			Valid:  false,
@@ -274,12 +304,14 @@ var dummyCountryColumns = []*ColumnDesc{
 		Extra: "auto_increment",
 	},
 	{
-		Schema: "world",
-		Table:  "country",
-		Name:   "IndepYear",
-		Type:   "smallint(6)",
-		Null:   "YES",
-		Key:    "",
+		ColumnBase: ColumnBase{
+			Schema: "world",
+			Table:  "country",
+			Name:   "IndepYear",
+		},
+		Type: "smallint(6)",
+		Null: "YES",
+		Key:  "",
 		Default: sql.NullString{
 			String: "0",
 			Valid:  false,
@@ -287,12 +319,14 @@ var dummyCountryColumns = []*ColumnDesc{
 		Extra: "",
 	},
 	{
-		Schema: "world",
-		Table:  "country",
-		Name:   "LifeExpectancy",
-		Type:   "decimal(3,1)",
-		Null:   "YES",
-		Key:    "",
+		ColumnBase: ColumnBase{
+			Schema: "world",
+			Table:  "country",
+			Name:   "LifeExpectancy",
+		},
+		Type: "decimal(3,1)",
+		Null: "YES",
+		Key:  "",
 		Default: sql.NullString{
 			String: "<null>",
 			Valid:  false,
@@ -300,12 +334,14 @@ var dummyCountryColumns = []*ColumnDesc{
 		Extra: "",
 	},
 	{
-		Schema: "world",
-		Table:  "country",
-		Name:   "GNP",
-		Type:   "decimal(10,2)",
-		Null:   "YES",
-		Key:    "",
+		ColumnBase: ColumnBase{
+			Schema: "world",
+			Table:  "country",
+			Name:   "GNP",
+		},
+		Type: "decimal(10,2)",
+		Null: "YES",
+		Key:  "",
 		Default: sql.NullString{
 			String: "<null>",
 			Valid:  false,
@@ -313,12 +349,14 @@ var dummyCountryColumns = []*ColumnDesc{
 		Extra: "",
 	},
 	{
-		Schema: "world",
-		Table:  "country",
-		Name:   "GNPOld",
-		Type:   "decimal(10,2)",
-		Null:   "YES",
-		Key:    "",
+		ColumnBase: ColumnBase{
+			Schema: "world",
+			Table:  "country",
+			Name:   "GNPOld",
+		},
+		Type: "decimal(10,2)",
+		Null: "YES",
+		Key:  "",
 		Default: sql.NullString{
 			String: "<null>",
 			Valid:  false,
@@ -326,12 +364,14 @@ var dummyCountryColumns = []*ColumnDesc{
 		Extra: "",
 	},
 	{
-		Schema: "world",
-		Table:  "country",
-		Name:   "LocalName",
-		Type:   "char(45)",
-		Null:   "NO",
-		Key:    "",
+		ColumnBase: ColumnBase{
+			Schema: "world",
+			Table:  "country",
+			Name:   "LocalName",
+		},
+		Type: "char(45)",
+		Null: "NO",
+		Key:  "",
 		Default: sql.NullString{
 			String: "",
 			Valid:  false,
@@ -339,12 +379,14 @@ var dummyCountryColumns = []*ColumnDesc{
 		Extra: "",
 	},
 	{
-		Schema: "world",
-		Table:  "country",
-		Name:   "GovernmentForm",
-		Type:   "char(45)",
-		Null:   "NO",
-		Key:    "",
+		ColumnBase: ColumnBase{
+			Schema: "world",
+			Table:  "country",
+			Name:   "GovernmentForm",
+		},
+		Type: "char(45)",
+		Null: "NO",
+		Key:  "",
 		Default: sql.NullString{
 			String: "",
 			Valid:  false,
@@ -352,12 +394,14 @@ var dummyCountryColumns = []*ColumnDesc{
 		Extra: "",
 	},
 	{
-		Schema: "world",
-		Table:  "country",
-		Name:   "HeadOfState",
-		Type:   "char(60)",
-		Null:   "YES",
-		Key:    "",
+		ColumnBase: ColumnBase{
+			Schema: "world",
+			Table:  "country",
+			Name:   "HeadOfState",
+		},
+		Type: "char(60)",
+		Null: "YES",
+		Key:  "",
 		Default: sql.NullString{
 			String: "<null>",
 			Valid:  false,
@@ -365,12 +409,14 @@ var dummyCountryColumns = []*ColumnDesc{
 		Extra: "",
 	},
 	{
-		Schema: "world",
-		Table:  "country",
-		Name:   "Capital",
-		Type:   "int(11)",
-		Null:   "YES",
-		Key:    "",
+		ColumnBase: ColumnBase{
+			Schema: "world",
+			Table:  "country",
+			Name:   "Capital",
+		},
+		Type: "int(11)",
+		Null: "YES",
+		Key:  "",
 		Default: sql.NullString{
 			String: "<null>",
 			Valid:  false,
@@ -378,12 +424,14 @@ var dummyCountryColumns = []*ColumnDesc{
 		Extra: "",
 	},
 	{
-		Schema: "world",
-		Table:  "country",
-		Name:   "Code2",
-		Type:   "char(2)",
-		Null:   "NO",
-		Key:    "",
+		ColumnBase: ColumnBase{
+			Schema: "world",
+			Table:  "country",
+			Name:   "Code2",
+		},
+		Type: "char(2)",
+		Null: "NO",
+		Key:  "",
 		Default: sql.NullString{
 			String: "",
 			Valid:  false,
@@ -393,12 +441,14 @@ var dummyCountryColumns = []*ColumnDesc{
 }
 var dummyCountryLanguageColumns = []*ColumnDesc{
 	{
-		Schema: "world",
-		Table:  "countrylanguage",
-		Name:   "CountryCode",
-		Type:   "char(3)",
-		Null:   "NO",
-		Key:    "PRI",
+		ColumnBase: ColumnBase{
+			Schema: "world",
+			Table:  "countrylanguage",
+			Name:   "CountryCode",
+		},
+		Type: "char(3)",
+		Null: "NO",
+		Key:  "PRI",
 		Default: sql.NullString{
 			String: "",
 			Valid:  false,
@@ -406,12 +456,14 @@ var dummyCountryLanguageColumns = []*ColumnDesc{
 		Extra: "",
 	},
 	{
-		Schema: "world",
-		Table:  "countrylanguage",
-		Name:   "Language",
-		Type:   "char(30)",
-		Null:   "NO",
-		Key:    "PRI",
+		ColumnBase: ColumnBase{
+			Schema: "world",
+			Table:  "countrylanguage",
+			Name:   "Language",
+		},
+		Type: "char(30)",
+		Null: "NO",
+		Key:  "PRI",
 		Default: sql.NullString{
 			String: "",
 			Valid:  false,
@@ -419,12 +471,14 @@ var dummyCountryLanguageColumns = []*ColumnDesc{
 		Extra: "",
 	},
 	{
-		Schema: "world",
-		Table:  "countrylanguage",
-		Name:   "IsOfficial",
-		Type:   "enum('T','F')",
-		Null:   "NO",
-		Key:    "F",
+		ColumnBase: ColumnBase{
+			Schema: "world",
+			Table:  "countrylanguage",
+			Name:   "IsOfficial",
+		},
+		Type: "enum('T','F')",
+		Null: "NO",
+		Key:  "F",
 		Default: sql.NullString{
 			String: "",
 			Valid:  false,
@@ -432,17 +486,50 @@ var dummyCountryLanguageColumns = []*ColumnDesc{
 		Extra: "",
 	},
 	{
-		Schema: "world",
-		Table:  "countrylanguage",
-		Name:   "Percentage",
-		Type:   "decimal(4,1)",
-		Null:   "NO",
-		Key:    "",
+		ColumnBase: ColumnBase{
+			Schema: "world",
+			Table:  "countrylanguage",
+			Name:   "Percentage",
+		},
+		Type: "decimal(4,1)",
+		Null: "NO",
+		Key:  "",
 		Default: sql.NullString{
 			String: "0.0",
 			Valid:  false,
 		},
 		Extra: "",
+	},
+}
+
+var foreignKeys = []*ForeignKey{
+	{
+		[2]*ColumnBase{
+			{
+				Schema: "world",
+				Table:  "city",
+				Name:   "CountryCode",
+			},
+			{
+				Schema: "world",
+				Table:  "country",
+				Name:   "Code",
+			},
+		},
+	},
+	{
+		[2]*ColumnBase{
+			{
+				Schema: "world",
+				Table:  "countrylanguage",
+				Name:   "CountryCode",
+			},
+			{
+				Schema: "world",
+				Table:  "country",
+				Name:   "Code",
+			},
+		},
 	},
 }
 

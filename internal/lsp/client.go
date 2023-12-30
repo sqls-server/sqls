@@ -7,24 +7,24 @@ import (
 	"github.com/sourcegraph/jsonrpc2"
 )
 
-type Messenger interface {
+type MessageDisplayer interface {
 	ShowLog(context.Context, string) error
 	ShowInfo(context.Context, string) error
 	ShowWarning(context.Context, string) error
 	ShowError(context.Context, string) error
 }
 
-type LspMessenger struct {
+type Messenger struct {
 	conn *jsonrpc2.Conn
 }
 
-func NewLspMessenger(conn *jsonrpc2.Conn) Messenger {
-	return &LspMessenger{
+func NewMessenger(conn *jsonrpc2.Conn) MessageDisplayer {
+	return &Messenger{
 		conn: conn,
 	}
 }
 
-func (m *LspMessenger) ShowLog(ctx context.Context, message string) error {
+func (m *Messenger) ShowLog(ctx context.Context, message string) error {
 	log.Println("Send Message:", message)
 	params := &ShowMessageParams{
 		Type:    Log,
@@ -33,7 +33,7 @@ func (m *LspMessenger) ShowLog(ctx context.Context, message string) error {
 	return m.conn.Notify(ctx, "window/showMessage", params)
 }
 
-func (m *LspMessenger) ShowInfo(ctx context.Context, message string) error {
+func (m *Messenger) ShowInfo(ctx context.Context, message string) error {
 	log.Println("Send Message:", message)
 	params := &ShowMessageParams{
 		Type:    Info,
@@ -42,7 +42,7 @@ func (m *LspMessenger) ShowInfo(ctx context.Context, message string) error {
 	return m.conn.Notify(ctx, "window/showMessage", params)
 }
 
-func (m *LspMessenger) ShowWarning(ctx context.Context, message string) error {
+func (m *Messenger) ShowWarning(ctx context.Context, message string) error {
 	log.Println("Send Message:", message)
 	params := &ShowMessageParams{
 		Type:    Warning,
@@ -51,7 +51,7 @@ func (m *LspMessenger) ShowWarning(ctx context.Context, message string) error {
 	return m.conn.Notify(ctx, "window/showMessage", params)
 }
 
-func (m *LspMessenger) ShowError(ctx context.Context, message string) error {
+func (m *Messenger) ShowError(ctx context.Context, message string) error {
 	log.Println("Send Message:", message)
 	params := &ShowMessageParams{
 		Type:    Error,

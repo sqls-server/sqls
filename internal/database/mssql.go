@@ -9,7 +9,7 @@ import (
 	"strconv"
 
 	_ "github.com/denisenkom/go-mssqldb"
-	"github.com/lighttiger2505/sqls/dialect"
+	"github.com/sqls-server/sqls/dialect"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -270,7 +270,7 @@ func (db *MssqlDBRepository) DescribeDatabaseTableBySchema(ctx context.Context, 
 		AND tc.TABLE_NAME = c.TABLE_NAME
 		AND tc.CONSTRAINT_NAME = ccu.CONSTRAINT_NAME
 	WHERE
-		c.TABLE_SCHEMA = $1
+		c.TABLE_SCHEMA = @p1
 	ORDER BY
 		c.TABLE_NAME,
 		c.ORDINAL_POSITION
@@ -298,6 +298,37 @@ func (db *MssqlDBRepository) DescribeDatabaseTableBySchema(ctx context.Context, 
 		tableInfos = append(tableInfos, &tableInfo)
 	}
 	return tableInfos, nil
+}
+
+func (db *MssqlDBRepository) DescribeForeignKeysBySchema(ctx context.Context, schemaName string) ([]*ForeignKey, error) {
+	rows, err := db.Conn.QueryContext(
+		ctx,
+		`
+		SELECT fk.name,		   
+		   src_tbl.name,
+		   src_col.name,
+		   dst_tbl.name,
+		   dst_col.name
+	FROM sys.foreign_key_columns fkc
+			 JOIN sys.objects fk on fk.object_id = fkc.constraint_object_id
+			 JOIN sys.tables src_tbl
+				  ON src_tbl.object_id = fkc.parent_object_id
+			 JOIN sys.schemas sch
+				  ON src_tbl.schema_id = sch.schema_id
+			 JOIN sys.columns src_col
+				  ON src_col.column_id = parent_column_id AND src_col.object_id = src_tbl.object_id
+			 JOIN sys.tables dst_tbl
+				  ON dst_tbl.object_id = fkc.referenced_object_id
+			 JOIN sys.columns dst_col
+				  ON dst_col.column_id = referenced_column_id AND dst_col.object_id = dst_tbl.object_id
+	where sch.name = @p1
+	order by fk.name, fkc.constraint_object_id
+		`, schemaName)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() { _ = rows.Close() }()
+	return parseForeignKeys(rows, schemaName)
 }
 
 func (db *MssqlDBRepository) Exec(ctx context.Context, query string) (sql.Result, error) {

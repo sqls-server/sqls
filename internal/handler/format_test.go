@@ -2,15 +2,14 @@ package handler
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/lighttiger2505/sqls/internal/config"
-	"github.com/lighttiger2505/sqls/internal/lsp"
+	"github.com/sqls-server/sqls/internal/config"
+	"github.com/sqls-server/sqls/internal/lsp"
 )
 
 var formattingOptionTab = lsp.FormattingOptions{
@@ -128,7 +127,7 @@ func TestFormattingMinimal(t *testing.T) {
 			want:  "foo as f",
 		},
 		{
-			name:  "member identifer",
+			name:  "member identifier",
 			input: "foo.id",
 			want:  "foo.id",
 		},
@@ -186,7 +185,7 @@ func loadFormatTestCaseByTestdata(targetDir string) ([]formattingTestCase, error
 		return nil, err
 	}
 	testDir := filepath.Join(packageDir, "testdata", targetDir)
-	testFileInfos, err := ioutil.ReadDir(testDir)
+	testFileInfos, err := os.ReadDir(testDir)
 	if err != nil {
 		return nil, err
 	}
@@ -207,11 +206,11 @@ func loadFormatTestCaseByTestdata(targetDir string) ([]formattingTestCase, error
 		inputPath := filepath.Join(testDir, inputFileName)
 		goldenPath := filepath.Join(testDir, testName+goldenFileSuffix)
 
-		input, err := ioutil.ReadFile(inputPath)
+		input, err := os.ReadFile(inputPath)
 		if err != nil {
 			return nil, fmt.Errorf("Cannot read input file, Path=%s, Err=%+v", inputPath, err)
 		}
-		golden, err := ioutil.ReadFile(goldenPath)
+		golden, err := os.ReadFile(goldenPath)
 		if err != nil {
 			return nil, fmt.Errorf("Cannot read input file, Path=%s, Err=%+v", goldenPath, err)
 		}

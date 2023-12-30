@@ -1,9 +1,9 @@
 package parseutil
 
 import (
-	"github.com/lighttiger2505/sqls/ast"
-	"github.com/lighttiger2505/sqls/ast/astutil"
-	"github.com/lighttiger2505/sqls/token"
+	"github.com/sqls-server/sqls/ast"
+	"github.com/sqls-server/sqls/ast/astutil"
+	"github.com/sqls-server/sqls/token"
 )
 
 type SyntaxPosition string
@@ -12,11 +12,13 @@ const (
 	ColName        SyntaxPosition = "col_name"
 	SelectExpr     SyntaxPosition = "select_expr"
 	AliasName      SyntaxPosition = "alias_name"
-	WhereCondition SyntaxPosition = "where_conditon"
+	WhereCondition SyntaxPosition = "where_condition"
 	CaseValue      SyntaxPosition = "case_value"
 	TableReference SyntaxPosition = "table_reference"
 	InsertColumn   SyntaxPosition = "insert_column"
 	InsertValue    SyntaxPosition = "insert_value"
+	JoinClause     SyntaxPosition = "join_clause"
+	JoinOn         SyntaxPosition = "join_on"
 	Unknown        SyntaxPosition = "unknown"
 )
 
@@ -48,8 +50,6 @@ func CheckSyntaxPosition(nw *NodeWalker) SyntaxPosition {
 		// WHERE Clause
 		"WHERE",
 		"HAVING",
-		// JOIN Clause
-		"ON",
 		// Operator
 		"AND",
 		"OR",
@@ -74,14 +74,7 @@ func CheckSyntaxPosition(nw *NodeWalker) SyntaxPosition {
 		// INSERT Statement
 		"INSERT INTO",
 		// JOIN Clause
-		"JOIN",
-		"INNER JOIN",
 		"CROSS JOIN",
-		"OUTER JOIN",
-		"LEFT JOIN",
-		"RIGHT JOIN",
-		"LEFT OUTER JOIN",
-		"RIGHT OUTER JOIN",
 		// DESCRIBE Statement
 		"DESCRIBE",
 		"DESC",
@@ -89,6 +82,20 @@ func CheckSyntaxPosition(nw *NodeWalker) SyntaxPosition {
 		"TRUNCATE",
 	})):
 		res = TableReference
+	case nw.PrevNodesIs(true, genKeywordMatcher([]string{
+		"ON",
+	})):
+		res = getJoinOnCondition(nw)
+	case nw.PrevNodesIs(true, genKeywordMatcher([]string{
+		"JOIN",
+		"INNER JOIN",
+		"OUTER JOIN",
+		"LEFT JOIN",
+		"RIGHT JOIN",
+		"LEFT OUTER JOIN",
+		"RIGHT OUTER JOIN",
+	})):
+		res = getJoinCondition(nw)
 	case isInsertColumns(nw):
 		if isInsertValues(nw) {
 			res = InsertValue
@@ -99,6 +106,27 @@ func CheckSyntaxPosition(nw *NodeWalker) SyntaxPosition {
 		res = Unknown
 	}
 	return res
+}
+
+func getJoinCondition(nw *NodeWalker) SyntaxPosition {
+	for _, n := range nw.Paths {
+		if n.PeekNodeIs(true, genKeywordMatcher([]string{"ON"})) {
+			return TableReference
+		}
+	}
+	return JoinClause
+}
+func getJoinOnCondition(nw *NodeWalker) SyntaxPosition {
+	switch {
+	case nw.CurNodeIs(genTokenMatcher([]token.Kind{token.Period})):
+		return ColName
+	case nw.CurNodeIs(genTokenMatcher([]token.Kind{token.Whitespace})):
+		if !nw.PrevNodesIs(true, astutil.NodeMatcher{
+			ExpectTokens: []token.Kind{token.Eq}}) {
+			return JoinOn
+		}
+	}
+	return WhereCondition
 }
 
 func genKeywordMatcher(keywords []string) astutil.NodeMatcher {

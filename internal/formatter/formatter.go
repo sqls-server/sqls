@@ -3,12 +3,12 @@ package formatter
 import (
 	"errors"
 
-	"github.com/lighttiger2505/sqls/ast"
-	"github.com/lighttiger2505/sqls/ast/astutil"
-	"github.com/lighttiger2505/sqls/internal/config"
-	"github.com/lighttiger2505/sqls/internal/lsp"
-	"github.com/lighttiger2505/sqls/parser"
-	"github.com/lighttiger2505/sqls/token"
+	"github.com/sqls-server/sqls/ast"
+	"github.com/sqls-server/sqls/ast/astutil"
+	"github.com/sqls-server/sqls/internal/config"
+	"github.com/sqls-server/sqls/internal/lsp"
+	"github.com/sqls-server/sqls/parser"
+	"github.com/sqls-server/sqls/token"
 )
 
 func Format(text string, params lsp.DocumentFormattingParams, cfg *config.Config) ([]lsp.TextEdit, error) {
@@ -104,10 +104,10 @@ func Eval(node ast.Node, env *formatEnvironment) ast.Node {
 		return formatMultiKeyword(node, env)
 	case *ast.Aliased:
 		return formatAliased(node, env)
-	case *ast.Identifer:
-		return formatIdentifer(node, env)
-	case *ast.MemberIdentifer:
-		return formatMemberIdentifer(node, env)
+	case *ast.Identifier:
+		return formatIdentifier(node, env)
+	case *ast.MemberIdentifier:
+		return formatMemberIdentifier(node, env)
 	case *ast.Operator:
 		return formatOperator(node, env)
 	case *ast.Comparison:
@@ -117,16 +117,15 @@ func Eval(node ast.Node, env *formatEnvironment) ast.Node {
 	// case *ast.ParenthesisInner:
 	case *ast.FunctionLiteral:
 		return formatFunctionLiteral(node, env)
-	case *ast.IdentiferList:
-		return formatIdentiferList(node, env)
+	case *ast.IdentifierList:
+		return formatIdentifierList(node, env)
 	// case *ast.SwitchCase:
 	// case *ast.Null:
 	default:
 		if list, ok := node.(ast.TokenList); ok {
 			return formatTokenList(list, env)
-		} else {
-			return formatNode(node, env)
 		}
+		return formatNode(node, env)
 	}
 }
 
@@ -249,6 +248,7 @@ func formatMultiKeyword(node *ast.MultiKeyword, env *formatEnvironment) ast.Node
 		}
 	}
 
+	insertKeyword := "INSERT INTO"
 	joinKeywords := []string{
 		"INNER JOIN",
 		"CROSS JOIN",
@@ -264,7 +264,7 @@ func formatMultiKeyword(node *ast.MultiKeyword, env *formatEnvironment) ast.Node
 	}
 
 	whitespaceAfterMatcher := astutil.NodeMatcher{
-		ExpectKeyword: joinKeywords,
+		ExpectKeyword: append(joinKeywords, insertKeyword),
 	}
 	if whitespaceAfterMatcher.IsMatch(node) {
 		results = append(results, whitespaceNode)
@@ -313,7 +313,7 @@ func formatAliased(node *ast.Aliased, env *formatEnvironment) ast.Node {
 	return &ast.ItemWith{Toks: results}
 }
 
-func formatIdentifer(node ast.Node, env *formatEnvironment) ast.Node {
+func formatIdentifier(node ast.Node, env *formatEnvironment) ast.Node {
 	results := []ast.Node{node}
 	// results := []ast.Node{node, whitespaceNode}
 
@@ -329,7 +329,7 @@ func formatIdentifer(node ast.Node, env *formatEnvironment) ast.Node {
 	return &ast.ItemWith{Toks: results}
 }
 
-func formatMemberIdentifer(node *ast.MemberIdentifer, env *formatEnvironment) ast.Node {
+func formatMemberIdentifier(node *ast.MemberIdentifier, env *formatEnvironment) ast.Node {
 	results := []ast.Node{
 		Eval(node.Parent, env),
 		periodNode,
@@ -382,8 +382,8 @@ func formatFunctionLiteral(node *ast.FunctionLiteral, env *formatEnvironment) as
 	return &ast.ItemWith{Toks: results}
 }
 
-func formatIdentiferList(identiferList *ast.IdentiferList, env *formatEnvironment) ast.Node {
-	idents := identiferList.GetIdentifers()
+func formatIdentifierList(identifierList *ast.IdentifierList, env *formatEnvironment) ast.Node {
+	idents := identifierList.GetIdentifiers()
 	results := []ast.Node{}
 	for i, ident := range idents {
 		results = append(results, Eval(ident, env))

@@ -11,12 +11,12 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/lighttiger2505/sqls/ast"
-	"github.com/lighttiger2505/sqls/internal/database"
-	"github.com/lighttiger2505/sqls/internal/lsp"
-	"github.com/lighttiger2505/sqls/parser"
 	"github.com/olekukonko/tablewriter"
 	"github.com/sourcegraph/jsonrpc2"
+	"github.com/sqls-server/sqls/ast"
+	"github.com/sqls-server/sqls/internal/database"
+	"github.com/sqls-server/sqls/internal/lsp"
+	"github.com/sqls-server/sqls/parser"
 )
 
 const (
@@ -26,9 +26,10 @@ const (
 	CommandShowConnections  = "showConnections"
 	CommandSwitchDatabase   = "switchDatabase"
 	CommandSwitchConnection = "switchConnections"
+	CommandShowTables       = "showTables"
 )
 
-func (h *Server) handleTextDocumentCodeAction(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
+func (s *Server) handleTextDocumentCodeAction(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
 	if req.Params == nil {
 		return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeInvalidParams}
 	}
@@ -69,6 +70,11 @@ func (h *Server) handleTextDocumentCodeAction(ctx context.Context, conn *jsonrpc
 			Command:   CommandSwitchConnection,
 			Arguments: []interface{}{},
 		},
+		{
+			Title:     "Show Tables",
+			Command:   CommandShowTables,
+			Arguments: []interface{}{},
+		},
 	}
 	return commands, nil
 }
@@ -96,6 +102,8 @@ func (s *Server) handleWorkspaceExecuteCommand(ctx context.Context, conn *jsonrp
 		return s.switchDatabase(ctx, params)
 	case CommandSwitchConnection:
 		return s.switchConnections(ctx, params)
+	case CommandShowTables:
+		return s.showTables(ctx, params)
 	}
 	return nil, fmt.Errorf("unsupported command: %v", params.Command)
 }
@@ -331,8 +339,23 @@ func (s *Server) switchConnections(ctx context.Context, params lsp.ExecuteComman
 	if !ok {
 		return nil, fmt.Errorf("specify the connection index as a number")
 	}
-	index, err := strconv.Atoi(indexStr)
-	if err != nil {
+
+	var index int
+
+	cfg := s.getConfig()
+	if cfg != nil {
+		for i, conn := range cfg.Connections {
+			if conn.Alias == indexStr {
+				index = i + 1
+				break
+			}
+		}
+	}
+	if index <= 0 {
+		index, _ = strconv.Atoi(indexStr)
+	}
+
+	if index <= 0 {
 		return nil, fmt.Errorf("specify the connection index as a number, %w", err)
 	}
 	index = index - 1
@@ -346,6 +369,35 @@ func (s *Server) switchConnections(ctx context.Context, params lsp.ExecuteComman
 	}
 
 	return nil, nil
+}
+
+func (s *Server) showTables(ctx context.Context, params lsp.ExecuteCommandParams) (result interface{}, err error) {
+	repo, err := s.newDBRepository(ctx)
+	if err != nil {
+		return "", err
+	}
+	m, err := repo.SchemaTables(ctx)
+	if err != nil {
+		return nil, err
+	}
+	schema, err := repo.CurrentSchema(ctx)
+	if err != nil {
+		return nil, err
+	}
+	results := []string{}
+	for k, vv := range m {
+		for _, v := range vv {
+			if k != "" {
+				if schema != k {
+					continue
+				}
+				results = append(results, k+"."+v)
+			} else {
+				results = append(results, v)
+			}
+		}
+	}
+	return strings.Join(results, "\n"), nil
 }
 
 func getStatements(text string) ([]*ast.Statement, error) {

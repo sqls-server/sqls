@@ -14,7 +14,7 @@ import (
 
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/stdlib"
-	"github.com/lighttiger2505/sqls/dialect"
+	"github.com/sqls-server/sqls/dialect"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -230,7 +230,7 @@ func (db *PostgreSQLDBRepository) DescribeDatabaseTable(ctx context.Context) ([]
 		c.column_name,
 		c.data_type,
 		c.is_nullable,
-		CASE tc.constraint_type
+		CASE t.constraint_type
 			WHEN 'PRIMARY KEY' THEN 'YES'
 			ELSE 'NO'
 		END,
@@ -238,15 +238,23 @@ func (db *PostgreSQLDBRepository) DescribeDatabaseTable(ctx context.Context) ([]
 		''
 	FROM
 		information_schema.columns c
-	LEFT JOIN
-		information_schema.constraint_column_usage ccu
-		ON c.table_name = ccu.table_name
-		AND c.column_name = ccu.column_name
-	LEFT JOIN information_schema.table_constraints tc ON
-		tc.table_catalog = c.table_catalog
-		AND tc.table_schema = c.table_schema
-		AND tc.table_name = c.table_name
-		AND tc.constraint_name = ccu.constraint_name
+	LEFT JOIN (
+		SELECT
+			ccu.table_schema as table_schema,
+			ccu.table_name as table_name,
+			ccu.column_name as column_name,
+			tc.constraint_type as constraint_type
+		FROM information_schema.constraint_column_usage ccu
+		LEFT JOIN information_schema.table_constraints tc ON
+			tc.table_schema = ccu.table_schema
+			AND tc.table_name = ccu.table_name
+			AND tc.constraint_name = ccu.constraint_name
+		WHERE
+			tc.constraint_type = 'PRIMARY KEY'
+	) as t
+		ON c.table_schema = t.table_schema
+		AND c.table_name = t.table_name
+		AND c.column_name = t.column_name
 	ORDER BY
 		c.table_name,
 		c.ordinal_position
@@ -286,7 +294,7 @@ func (db *PostgreSQLDBRepository) DescribeDatabaseTableBySchema(ctx context.Cont
 		c.column_name,
 		c.data_type,
 		c.is_nullable,
-		CASE tc.constraint_type
+		CASE t.constraint_type
 			WHEN 'PRIMARY KEY' THEN 'YES'
 			ELSE 'NO'
 		END,
@@ -294,21 +302,30 @@ func (db *PostgreSQLDBRepository) DescribeDatabaseTableBySchema(ctx context.Cont
 		''
 	FROM
 		information_schema.columns c
-	LEFT JOIN
-		information_schema.constraint_column_usage ccu
-		ON c.table_name = ccu.table_name
-		AND c.column_name = ccu.column_name
-	LEFT JOIN information_schema.table_constraints tc ON
-		tc.table_catalog = c.table_catalog
-		AND tc.table_schema = c.table_schema
-		AND tc.table_name = c.table_name
-		AND tc.constraint_name = ccu.constraint_name
+	LEFT JOIN (
+		SELECT
+			ccu.table_schema as table_schema,
+			ccu.table_name as table_name,
+			ccu.column_name as column_name,
+			tc.constraint_type as constraint_type
+		FROM information_schema.constraint_column_usage ccu
+		LEFT JOIN information_schema.table_constraints tc ON
+			tc.table_schema = ccu.table_schema
+			AND tc.table_name = ccu.table_name
+			AND tc.constraint_name = ccu.constraint_name
+		WHERE
+			ccu.table_schema = $1
+			AND tc.constraint_type = 'PRIMARY KEY'
+	) as t
+		ON c.table_schema = t.table_schema
+		AND c.table_name = t.table_name
+		AND c.column_name = t.column_name
 	WHERE
-		c.table_schema = $1
+		c.table_schema = $2
 	ORDER BY
 		c.table_name,
 		c.ordinal_position
-	`, schemaName)
+	`, schemaName, schemaName)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -332,6 +349,38 @@ func (db *PostgreSQLDBRepository) DescribeDatabaseTableBySchema(ctx context.Cont
 		tableInfos = append(tableInfos, &tableInfo)
 	}
 	return tableInfos, nil
+}
+
+func (db *PostgreSQLDBRepository) DescribeForeignKeysBySchema(ctx context.Context, schemaName string) ([]*ForeignKey, error) {
+	rows, err := db.Conn.QueryContext(
+		ctx,
+		`
+	select kcu.CONSTRAINT_NAME,
+       kcu.TABLE_NAME,
+       kcu.COLUMN_NAME,
+       rel_kcu.TABLE_NAME,
+       rel_kcu.COLUMN_NAME
+	from INFORMATION_SCHEMA.TABLE_CONSTRAINTS tco
+			 join INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
+				  on tco.CONSTRAINT_SCHEMA = kcu.CONSTRAINT_SCHEMA
+					  and tco.CONSTRAINT_NAME = kcu.CONSTRAINT_NAME
+			 join INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS rco
+				  on tco.CONSTRAINT_SCHEMA = rco.CONSTRAINT_SCHEMA
+					  and tco.CONSTRAINT_NAME = rco.CONSTRAINT_NAME
+			 join INFORMATION_SCHEMA.KEY_COLUMN_USAGE rel_kcu
+				  on rco.UNIQUE_CONSTRAINT_SCHEMA = rel_kcu.CONSTRAINT_SCHEMA
+					  and rco.UNIQUE_CONSTRAINT_NAME = rel_kcu.CONSTRAINT_NAME
+					  and kcu.ORDINAL_POSITION = rel_kcu.ORDINAL_POSITION
+	where tco.CONSTRAINT_TYPE = 'FOREIGN KEY'
+	  and tco.CONSTRAINT_SCHEMA = $1
+	order by kcu.CONSTRAINT_NAME,
+			 kcu.ORDINAL_POSITION
+		`, schemaName)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() { _ = rows.Close() }()
+	return parseForeignKeys(rows, schemaName)
 }
 
 func (db *PostgreSQLDBRepository) Exec(ctx context.Context, query string) (sql.Result, error) {
@@ -381,7 +430,8 @@ func genPostgresConfig(connCfg *DBConfig) (string, error) {
 // ignoring any values with keys in ignore.
 //
 // For example, to build a "ODBC" style connection string, use like the following:
-//     genOptions(u.Query(), "", "=", ";", ",")
+//
+//	genOptions(u.Query(), "", "=", ";", ",")
 func genOptions(q url.Values, joiner, assign, sep, valSep string, skipWhenEmpty bool, ignore ...string) string {
 	qlen := len(q)
 	if qlen == 0 {

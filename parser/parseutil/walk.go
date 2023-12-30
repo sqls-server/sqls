@@ -1,9 +1,9 @@
 package parseutil
 
 import (
-	"github.com/lighttiger2505/sqls/ast"
-	"github.com/lighttiger2505/sqls/ast/astutil"
-	"github.com/lighttiger2505/sqls/token"
+	"github.com/sqls-server/sqls/ast"
+	"github.com/sqls-server/sqls/ast/astutil"
+	"github.com/sqls-server/sqls/token"
 )
 
 type NodeWalker struct {
@@ -19,9 +19,8 @@ func astPaths(reader *astutil.NodeReader, pos token.Pos) []*astutil.NodeReader {
 			if list, ok := reader.CurNode.(ast.TokenList); ok {
 				newReader := astutil.NewNodeReader(list)
 				return append(paths, astPaths(newReader, pos)...)
-			} else {
-				return paths
 			}
+			return paths
 		}
 	}
 	return paths
@@ -69,7 +68,7 @@ func (nw *NodeWalker) CurNodeTopMatched(matcher astutil.NodeMatcher) ast.Node {
 	return matches[0]
 }
 
-func (nw *NodeWalker) CurNodeButtomMatched(matcher astutil.NodeMatcher) ast.Node {
+func (nw *NodeWalker) CurNodeBottomMatched(matcher astutil.NodeMatcher) ast.Node {
 	matches := nw.CurNodeMatches(matcher)
 	if len(matches) == 0 {
 		return nil

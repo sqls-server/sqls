@@ -1,51 +1,55 @@
-NAME := sqls
-VERSION := $(shell git describe --tags `git rev-list --tags --max-count=1`)
-REVISION := $(shell git rev-parse --short HEAD)
-GOVERSION := $(go version)
-GITHUB_TOKEN := $(GITHUB_TOKEN)
+BIN := sqls
+ifeq ($(OS),Windows_NT)
+BIN := $(BIN).exe
+endif
+VERSION := $$(make -s show-version)
+CURRENT_REVISION := $(shell git rev-parse --short HEAD)
+BUILD_LDFLAGS := "-s -w -X main.revision=$(CURRENT_REVISION)"
+GOOS := $(shell go env GOOS)
+GOBIN ?= $(shell go env GOPATH)/bin
+export GO111MODULE=on
 
-SRCS := $(shell find . -type f -name '*.go')
-LDFLAGS := -ldflags="-s -w -X \"main.version=$(VERSION)\" -X \"main.revision=$(REVISION)\""
-DIST_DIRS := find * -type d -exec
-
-.PHONY: test
-test:
-	go test ./...
+.PHONY: all
+all: clean build
 
 .PHONY: build
-build: $(SRCS)
-	go build $(LDFLAGS) ./...
+build:
+	go build -ldflags=$(BUILD_LDFLAGS) -o $(BIN) .
+
+.PHONY: release
+release:
+	go build -ldflags=$(BUILD_LDFLAGS) -o $(BIN) .
+	zip -r sqls-$(GOOS)-$(VERSION).zip $(BIN)
 
 .PHONY: install
-install: $(SRCS)
-	go install $(LDFLAGS) ./...
+install:
+	go install -ldflags=$(BUILD_LDFLAGS) .
 
-.PHONY: lint
-lint: $(SRCS)
-	golangci-lint run
+.PHONY: show-version
+show-version: $(GOBIN)/gobump
+	gobump show -r .
 
-.PHONY: coverage
-coverage:
-	go test -v -coverprofile=coverage.out ./...
-	go tool cover -html=coverage.out
+$(GOBIN)/gobump:
+	go install github.com/x-motemen/gobump/cmd/gobump@latest
 
-.PHONY: stringer
-stringer:
-	stringer -type Kind ./token/kind.go
+.PHONY: test
+test: build
+	go test -v ./...
 
-.PHONY: snapshot
-snapshot: $(SRCS)
-	docker run --rm --privileged \
-		-v ${PWD}:/go/src/github.com/lighttiger2505/sqls \
-		-v /var/run/docker.sock:/var/run/docker.sock \
-		-w /go/src/github.com/lighttiger2505/sqls \
-		mailchain/goreleaser-xcgo --snapshot --rm-dist
+.PHONY: clean
+clean:
+	go clean
 
-.PHONY: publish
-publish: $(SRCS)
-	docker run --rm --privileged \
-		-e GITHUB_TOKEN=$(GITHUB_TOKEN) \
-		-v ${PWD}:/go/src/github.com/lighttiger2505/sqls \
-		-v /var/run/docker.sock:/var/run/docker.sock \
-		-w /go/src/github.com/lighttiger2505/sqls \
-		mailchain/goreleaser-xcgo --rm-dist
+.PHONY: bump
+bump: $(GOBIN)/gobump
+ifneq ($(shell git status --porcelain),)
+	$(error git workspace is dirty)
+endif
+ifneq ($(shell git rev-parse --abbrev-ref HEAD),master)
+	$(error current branch is not master)
+endif
+	@gobump up -w .
+	git commit -am "bump up version to $(VERSION)"
+	git tag "v$(VERSION)"
+	git push origin master
+	git push origin "refs/tags/v$(VERSION)"

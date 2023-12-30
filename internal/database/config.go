@@ -3,9 +3,9 @@ package database
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"os"
 
-	"github.com/lighttiger2505/sqls/dialect"
+	"github.com/sqls-server/sqls/dialect"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -126,14 +126,14 @@ type SSHConfig struct {
 	PrivateKey string `json:"privateKey" yaml:"privateKey"`
 }
 
-func (c *SSHConfig) Validate() error {
-	if c.Host == "" {
+func (s *SSHConfig) Validate() error {
+	if s.Host == "" {
 		return errors.New("required: connections[]sshConfig.host")
 	}
-	if c.User == "" {
+	if s.User == "" {
 		return errors.New("required: connections[].sshConfig.user")
 	}
-	if c.PrivateKey == "" {
+	if s.PrivateKey == "" {
 		return errors.New("required: connections[].sshConfig.privateKey")
 	}
 	return nil
@@ -144,7 +144,7 @@ func (s *SSHConfig) Endpoint() string {
 }
 
 func (s *SSHConfig) ClientConfig() (*ssh.ClientConfig, error) {
-	buffer, err := ioutil.ReadFile(s.PrivateKey)
+	buffer, err := os.ReadFile(s.PrivateKey)
 	if err != nil {
 		return nil, fmt.Errorf("cannot read SSH private key file, PrivateKey=%s, %w", s.PrivateKey, err)
 	}

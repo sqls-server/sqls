@@ -1,14 +1,14 @@
 package parseutil
 
 import (
-	"github.com/lighttiger2505/sqls/ast"
-	"github.com/lighttiger2505/sqls/token"
+	"github.com/sqls-server/sqls/ast"
+	"github.com/sqls-server/sqls/token"
 )
 
 type Insert struct {
 	Tables  []*TableInfo
-	Columns []*ast.IdentiferList
-	Values  []*ast.IdentiferList
+	Columns []*ast.IdentifierList
+	Values  []*ast.IdentifierList
 }
 
 func (i *Insert) Enable() bool {
@@ -31,14 +31,14 @@ func (i *Insert) GetTable() *TableInfo {
 	return i.Tables[0]
 }
 
-func (i *Insert) GetColumns() *ast.IdentiferList {
+func (i *Insert) GetColumns() *ast.IdentifierList {
 	if len(i.Columns) == 0 {
 		return nil
 	}
 	return i.Columns[0]
 }
 
-func (i *Insert) GetValues() *ast.IdentiferList {
+func (i *Insert) GetValues() *ast.IdentifierList {
 	if len(i.Values) == 0 {
 		return nil
 	}
@@ -56,19 +56,19 @@ func ExtractInsert(parsed ast.TokenList, pos token.Pos) (*Insert, error) {
 		return nil, err
 	}
 
-	columns := []*ast.IdentiferList{}
+	columns := []*ast.IdentifierList{}
 	columnsNodes := ExtractInsertColumns(stmt)
 	for _, n := range columnsNodes {
-		c, ok := n.(*ast.IdentiferList)
+		c, ok := n.(*ast.IdentifierList)
 		if ok {
 			columns = append(columns, c)
 		}
 	}
 
-	values := []*ast.IdentiferList{}
+	values := []*ast.IdentifierList{}
 	valuesNodes := ExtractInsertValues(stmt, pos)
 	for _, n := range valuesNodes {
-		n, ok := n.(*ast.IdentiferList)
+		n, ok := n.(*ast.IdentifierList)
 		if ok {
 			values = append(values, n)
 		}

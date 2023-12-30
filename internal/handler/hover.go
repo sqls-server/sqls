@@ -6,17 +6,17 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/lighttiger2505/sqls/ast"
-	"github.com/lighttiger2505/sqls/ast/astutil"
-	"github.com/lighttiger2505/sqls/internal/database"
-	"github.com/lighttiger2505/sqls/internal/lsp"
-	"github.com/lighttiger2505/sqls/parser"
-	"github.com/lighttiger2505/sqls/parser/parseutil"
-	"github.com/lighttiger2505/sqls/token"
 	"github.com/sourcegraph/jsonrpc2"
+	"github.com/sqls-server/sqls/ast"
+	"github.com/sqls-server/sqls/ast/astutil"
+	"github.com/sqls-server/sqls/internal/database"
+	"github.com/sqls-server/sqls/internal/lsp"
+	"github.com/sqls-server/sqls/parser"
+	"github.com/sqls-server/sqls/parser/parseutil"
+	"github.com/sqls-server/sqls/token"
 )
 
-var ErrNoHover = errors.New("no hover infomation found")
+var ErrNoHover = errors.New("no hover information found")
 
 func (s *Server) handleTextDocumentHover(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
 	if req.Params == nil {
@@ -61,8 +61,8 @@ func hover(text string, params lsp.HoverParams, dbCache *database.DBCache) (*lsp
 	nodeWalker := parseutil.NewNodeWalker(parsed, pos)
 	hoverTargetMatcher := astutil.NodeMatcher{
 		NodeTypes: []ast.NodeType{
-			ast.TypeMemberIdentifer,
-			ast.TypeIdentifer,
+			ast.TypeMemberIdentifier,
+			ast.TypeIdentifier,
 		},
 	}
 	focusedIdentNodes := nodeWalker.CurNodeMatches(hoverTargetMatcher)
@@ -72,7 +72,7 @@ func hover(text string, params lsp.HoverParams, dbCache *database.DBCache) (*lsp
 	ident, memIdent := findIdent(focusedIdentNodes)
 
 	// Collect environment
-	hoverEnv, err := collectEnvirontment(parsed, pos)
+	hoverEnv, err := collectEnvironment(parsed, pos)
 	if err != nil {
 		return nil, err
 	}
@@ -153,9 +153,9 @@ func (e *hoverEnvironment) getColumnRealName(aliasedName string) (string, bool) 
 
 		if alias.AliasedName.String() == aliasedName {
 			switch v := alias.RealName.(type) {
-			case *ast.Identifer:
+			case *ast.Identifier:
 				return v.String(), true
-			case *ast.MemberIdentifer:
+			case *ast.MemberIdentifier:
 				return v.Child.String(), true
 			}
 		}
@@ -184,9 +184,9 @@ func (e *hoverEnvironment) isSubQuery(name string) bool {
 	return ok
 }
 
-func collectEnvirontment(parsed ast.TokenList, pos token.Pos) (*hoverEnvironment, error) {
-	// Collect environment infomation
-	aliases := parseutil.ExtractAliasedIdentifer(parsed)
+func collectEnvironment(parsed ast.TokenList, pos token.Pos) (*hoverEnvironment, error) {
+	// Collect environment information
+	aliases := parseutil.ExtractAliasedIdentifier(parsed)
 	definedTables, err := parseutil.ExtractTable(parsed, pos)
 	if err != nil {
 		return nil, err
@@ -203,16 +203,16 @@ func collectEnvirontment(parsed ast.TokenList, pos token.Pos) (*hoverEnvironment
 	return environment, nil
 }
 
-func findIdent(nodes []ast.Node) (*ast.Identifer, *ast.MemberIdentifer) {
+func findIdent(nodes []ast.Node) (*ast.Identifier, *ast.MemberIdentifier) {
 	var (
-		ident    *ast.Identifer
-		memIdent *ast.MemberIdentifer
+		ident    *ast.Identifier
+		memIdent *ast.MemberIdentifier
 	)
 	for _, node := range nodes {
 		switch v := node.(type) {
-		case *ast.Identifer:
+		case *ast.Identifier:
 			ident = v
-		case *ast.MemberIdentifer:
+		case *ast.MemberIdentifier:
 			memIdent = v
 		}
 	}
@@ -399,7 +399,7 @@ type hoverContext struct {
 
 func getHoverTypes(nw *parseutil.NodeWalker, hoverEnv *hoverEnvironment) *hoverContext {
 	memberIdentifierMatcher := astutil.NodeMatcher{
-		NodeTypes: []ast.NodeType{ast.TypeMemberIdentifer},
+		NodeTypes: []ast.NodeType{ast.TypeMemberIdentifier},
 	}
 	syntaxPos := parseutil.CheckSyntaxPosition(nw)
 
@@ -409,7 +409,7 @@ func getHoverTypes(nw *parseutil.NodeWalker, hoverEnv *hoverEnvironment) *hoverC
 	case syntaxPos == parseutil.ColName:
 		if nw.CurNodeIs(memberIdentifierMatcher) {
 			// has parent
-			mi := nw.CurNodeTopMatched(memberIdentifierMatcher).(*ast.MemberIdentifer)
+			mi := nw.CurNodeTopMatched(memberIdentifierMatcher).(*ast.MemberIdentifier)
 			t = []hoverType{
 				hoverTypeColumn,
 				hoverTypeSubQueryColumn,
@@ -444,7 +444,7 @@ func getHoverTypes(nw *parseutil.NodeWalker, hoverEnv *hoverEnvironment) *hoverC
 	case syntaxPos == parseutil.SelectExpr || syntaxPos == parseutil.CaseValue:
 		if nw.CurNodeIs(memberIdentifierMatcher) {
 			// has parent
-			mi := nw.CurNodeTopMatched(memberIdentifierMatcher).(*ast.MemberIdentifer)
+			mi := nw.CurNodeTopMatched(memberIdentifierMatcher).(*ast.MemberIdentifier)
 			t = []hoverType{
 				hoverTypeColumn,
 				hoverTypeView,
@@ -477,7 +477,7 @@ func getHoverTypes(nw *parseutil.NodeWalker, hoverEnv *hoverEnvironment) *hoverC
 	case syntaxPos == parseutil.TableReference:
 		if nw.CurNodeIs(memberIdentifierMatcher) {
 			// has parent
-			mi := nw.CurNodeTopMatched(memberIdentifierMatcher).(*ast.MemberIdentifer)
+			mi := nw.CurNodeTopMatched(memberIdentifierMatcher).(*ast.MemberIdentifier)
 			t = []hoverType{
 				hoverTypeTable,
 				hoverTypeView,
@@ -503,7 +503,7 @@ func getHoverTypes(nw *parseutil.NodeWalker, hoverEnv *hoverEnvironment) *hoverC
 	case syntaxPos == parseutil.WhereCondition:
 		if nw.CurNodeIs(memberIdentifierMatcher) {
 			// has parent
-			mi := nw.CurNodeTopMatched(memberIdentifierMatcher).(*ast.MemberIdentifer)
+			mi := nw.CurNodeTopMatched(memberIdentifierMatcher).(*ast.MemberIdentifier)
 			t = []hoverType{
 				hoverTypeTable,
 				hoverTypeView,
