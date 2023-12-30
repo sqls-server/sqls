@@ -18,11 +18,11 @@ import (
 	"github.com/sqls-server/sqls/internal/handler"
 )
 
-// builtin variables. see Makefile
-var (
-	version  string
-	revision string
-)
+const name = "sqls"
+
+const version = "0.2.23"
+
+var revision = "HEAD"
 
 func main() {
 	if err := realMain(); err != nil {
