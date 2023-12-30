@@ -28,7 +28,7 @@ func (s *SQLWord) String() string {
 	}
 }
 
-func (s *SQLWord) NoQuateString() string {
+func (s *SQLWord) NoQuoteString() string {
 	return s.Value
 }
 

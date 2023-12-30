@@ -321,7 +321,7 @@ func TestParseIdentifier(t *testing.T) {
 			},
 		},
 		{
-			name:  "double quate identifier",
+			name:  "double quote identifier",
 			input: `"abc"`,
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, input)
@@ -330,7 +330,7 @@ func TestParseIdentifier(t *testing.T) {
 			},
 		},
 		{
-			name:  "back quate identifier",
+			name:  "back quote identifier",
 			input: "`abc`",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, input)
@@ -339,7 +339,7 @@ func TestParseIdentifier(t *testing.T) {
 			},
 		},
 		{
-			name:  "non close back quate identifier",
+			name:  "non close back quote identifier",
 			input: "`abc",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, input)
@@ -407,7 +407,7 @@ func TestMemberIdentifier(t *testing.T) {
 			},
 		},
 		{
-			name:  "double quate member identifier",
+			name:  "double quote member identifier",
 			input: `"abc"."def"`,
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, input)
@@ -416,7 +416,7 @@ func TestMemberIdentifier(t *testing.T) {
 			},
 		},
 		{
-			name:  "back quate member identifier",
+			name:  "back quote member identifier",
 			input: "`abc`.`def`",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
 				testStatement(t, stmts[0], 1, input)
