@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"github.com/sqls-server/sqls/dialect"
 	_ "github.com/vertica/vertica-sql-go"
 	"log"
@@ -234,4 +235,8 @@ func (db *VerticaDBRepository) Exec(ctx context.Context, query string) (sql.Resu
 
 func (db *VerticaDBRepository) Query(ctx context.Context, query string) (*sql.Rows, error) {
 	return db.Conn.QueryContext(ctx, query)
+}
+
+func (db *VerticaDBRepository) DescribeForeignKeysBySchema(ctx context.Context, schemaName string) ([]*ForeignKey, error) {
+	return nil, fmt.Errorf("describe foreign keys is not supported")
 }
