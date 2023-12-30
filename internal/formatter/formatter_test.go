@@ -150,7 +150,7 @@ func TestFormat(t *testing.T) {
 		formatted := Eval(parsed, env)
 		got := strings.TrimRight(formatted.Render(opts), "\n") + "\n"
 
-		b, err = os.ReadFile(fname[:len(fname)-4] + ".out")
+		b, err = os.ReadFile(fname[:len(fname)-4] + ".golden")
 		if err != nil {
 			t.Fatal(err)
 		}
