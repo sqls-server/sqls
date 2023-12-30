@@ -3,6 +3,7 @@ package formatter
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -123,7 +124,10 @@ func parseInit(t *testing.T, input string) []*ast.Statement {
 }
 
 func TestFormat(t *testing.T) {
-	files, err := filepath.Glob("testdata/*.sql")
+	_, filename, _, _ := runtime.Caller(0)
+	dir := filepath.Dir(filename)
+
+	files, err := filepath.Glob(filepath.Join(dir, "testdata", "*.sql"))
 	if err != nil {
 		t.Fatal(err)
 	}
