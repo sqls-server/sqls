@@ -64,6 +64,9 @@ func (e *formatEnvironment) indentLevelUp() {
 
 func (e *formatEnvironment) indentLevelDown() {
 	e.indentLevel--
+	if e.indentLevel < 0 {
+		e.indentLevel = 0
+	}
 }
 
 func (e *formatEnvironment) genIndent() []ast.Node {
@@ -242,6 +245,7 @@ func formatItem(node ast.Node, env *formatEnvironment) ast.Node {
 	}
 	if commentAfterMatcher.IsMatch(node) {
 		results = append(results, linebreakNode)
+		env.indentLevelDown()
 	}
 
 	breakStatementAfterMatcher := astutil.NodeMatcher{
@@ -251,7 +255,7 @@ func formatItem(node ast.Node, env *formatEnvironment) ast.Node {
 	}
 	if breakStatementAfterMatcher.IsMatch(node) {
 		results = append(results, linebreakNode)
-		env.indentLevelDown()
+		env.indentLevelReset()
 	}
 
 	return &ast.ItemWith{Toks: results}
