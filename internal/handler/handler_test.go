@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net"
 	"reflect"
@@ -48,7 +49,9 @@ func (tx *TestContext) tearDown() {
 
 	if tx.connServer != nil {
 		if err := tx.connServer.Close(); err != nil {
-			log.Fatal("connServer.Close:", err)
+			if !errors.Is(err, jsonrpc2.ErrClosed) {
+				log.Fatal("connServer.Close:", err)
+			}
 		}
 	}
 }
