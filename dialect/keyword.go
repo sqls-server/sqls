@@ -436,6 +436,8 @@ func DataBaseFunctions(driver DatabaseDriver) []string {
 		return []string{}
 	case DatabaseDriverOracle:
 		return oracleReservedWords
+	case DatabaseDriverH2:
+		return []string{}
 	case DatabaseDriverVertica:
 		return verticaReservedWords
 	default:
