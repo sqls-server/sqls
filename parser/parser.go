@@ -79,9 +79,6 @@ func NewParser(src io.Reader, d dialect.Dialect) (*Parser, error) {
 
 	parsed := []ast.Node{}
 	for _, tok := range tokens {
-		if tok.Kind == token.Comment {
-			continue
-		}
 		parsed = append(parsed, ast.NewItem(tok))
 	}
 
@@ -529,6 +526,12 @@ func parseAliased(reader *astutil.NodeReader) ast.Node {
 	}
 }
 
+var commentInfixMatcher = astutil.NodeMatcher{
+	ExpectTokens: []token.Kind{
+		token.Comment,
+		token.MultilineComment,
+	},
+}
 var identifierListInfixMatcher = astutil.NodeMatcher{
 	ExpectTokens: []token.Kind{
 		token.Comma,
@@ -570,7 +573,7 @@ func parseIdentifierList(reader *astutil.NodeReader) ast.Node {
 		peekNode            ast.Node
 	)
 	for {
-		if !tmpReader.PeekNodeIs(true, identifierListTargetMatcher) {
+		if !tmpReader.PeekNodeIs(true, identifierListTargetMatcher) && !tmpReader.PeekNodeIs(true, commentInfixMatcher) {
 			// Include white space after the comma
 			peekIndex, peekNode := tmpReader.PeekNode(true)
 			if peekNode != nil {
@@ -583,6 +586,9 @@ func parseIdentifierList(reader *astutil.NodeReader) ast.Node {
 				tmpReader.CurNode = tailNode
 			}
 			break
+		}
+		for tmpReader.PeekNodeIs(true, commentInfixMatcher) {
+			tmpReader.NextNode(true)
 		}
 
 		peekIndex, peekNode = tmpReader.PeekNode(true)

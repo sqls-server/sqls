@@ -235,6 +235,24 @@ func formatItem(node ast.Node, env *formatEnvironment) ast.Node {
 		results = append(results, linebreakNode)
 		results = append(results, env.genIndent()...)
 	}
+	commentAfterMatcher := astutil.NodeMatcher{
+		ExpectTokens: []token.Kind{
+			token.Comment,
+		},
+	}
+	if commentAfterMatcher.IsMatch(node) {
+		results = append(results, linebreakNode)
+	}
+
+	breakStatementAfterMatcher := astutil.NodeMatcher{
+		ExpectTokens: []token.Kind{
+			token.Semicolon,
+		},
+	}
+	if breakStatementAfterMatcher.IsMatch(node) {
+		results = append(results, linebreakNode)
+		env.indentLevelDown()
+	}
 
 	return &ast.ItemWith{Toks: results}
 }

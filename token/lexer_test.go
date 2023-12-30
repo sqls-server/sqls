@@ -462,7 +462,7 @@ multiline
 comment */`,
 			out: []*Token{
 				{
-					Kind:  Comment,
+					Kind:  MultilineComment,
 					Value: " test\nmultiline\ncomment ",
 					From:  Pos{Line: 0, Col: 0},
 					To:    Pos{Line: 2, Col: 10},

@@ -517,6 +517,12 @@ func (t *SQLToken) String() string {
 	case *token.SQLWord:
 		return v.String()
 	case string:
+		if t.Kind == token.Comment {
+			return "--" + v
+		}
+		if t.Kind == token.MultilineComment {
+			return "/*" + v + "*/"
+		}
 		return v
 	default:
 		return " "
@@ -528,6 +534,12 @@ func (t *SQLToken) NoQuoteString() string {
 	case *token.SQLWord:
 		return v.NoQuoteString()
 	case string:
+		if t.Kind == token.Comment {
+			return "--" + v
+		}
+		if t.Kind == token.MultilineComment {
+			return "/*" + v + "*/"
+		}
 		return v
 	default:
 		return " "
@@ -539,6 +551,12 @@ func (t *SQLToken) Render(opts *RenderOptions) string {
 	case *token.SQLWord:
 		return renderSQLWord(v, opts)
 	case string:
+		if t.Kind == token.Comment {
+			return "--" + v
+		}
+		if t.Kind == token.MultilineComment {
+			return "/*" + v + "*/"
+		}
 		return v
 	default:
 		return " "

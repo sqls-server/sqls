@@ -84,42 +84,43 @@ func TestParseComments(t *testing.T) {
 			name:  "line comment with identiger",
 			input: "-- foo\nbar",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
-				testStatement(t, stmts[0], 2, "\nbar")
+				testStatement(t, stmts[0], 3, "-- foo\nbar")
 
 				list := stmts[0].GetTokens()
-				testItem(t, list[0], "\n")
-				testIdentifier(t, list[1], "bar")
+				testItem(t, list[0], "-- foo")
+				testIdentifier(t, list[2], "bar")
 			},
 		},
 		{
 			name:  "range comment with identiger",
 			input: "/* foo */bar",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
-				testStatement(t, stmts[0], 1, "bar")
+				testStatement(t, stmts[0], 2, "/* foo */bar")
 
 				list := stmts[0].GetTokens()
-				testIdentifier(t, list[0], "bar")
+				testIdentifier(t, list[1], "bar")
 			},
 		},
 		{
 			name:  "range comment with identiger list",
 			input: "foo, /* foo */bar",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
-				testStatement(t, stmts[0], 1, "foo, bar")
+				testStatement(t, stmts[0], 1, "foo, /* foo */bar")
 
 				list := stmts[0].GetTokens()
-				testIdentifierList(t, list[0], "foo, bar")
+				testIdentifierList(t, list[0], "foo, /* foo */bar")
 			},
 		},
 		{
 			name:  "multi line range comment with identiger",
 			input: "/*\n * foo\n */\nbar",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
-				testStatement(t, stmts[0], 2, "\nbar")
+				testStatement(t, stmts[0], 3, "/*\n   foo\n */\nbar")
 
 				list := stmts[0].GetTokens()
-				testItem(t, list[0], "\n")
-				testIdentifier(t, list[1], "bar")
+				testItem(t, list[0], "/*\n   foo\n */")
+				testItem(t, list[1], "\n")
+				testIdentifier(t, list[2], "bar")
 			},
 		},
 	}
