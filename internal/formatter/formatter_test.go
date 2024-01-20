@@ -137,7 +137,6 @@ func TestFormat(t *testing.T) {
 		LowerCase:        false,
 		IdentifierQuoted: false,
 	}
-	env := &formatEnvironment{}
 	for _, fname := range files {
 		b, err := os.ReadFile(fname)
 		if err != nil {
@@ -147,6 +146,7 @@ func TestFormat(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		env := &formatEnvironment{}
 		formatted := Eval(parsed, env)
 		got := strings.TrimRight(formatted.Render(opts), "\n") + "\n"
 
