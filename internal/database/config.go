@@ -15,6 +15,7 @@ const (
 	ProtoTCP  Proto = "tcp"
 	ProtoUDP  Proto = "udp"
 	ProtoUnix Proto = "unix"
+	ProtoHTTP Proto = "http"
 )
 
 type DBConfig struct {
@@ -54,7 +55,7 @@ func (c *DBConfig) Validate() error {
 				return errors.New("required: connections[].user")
 			}
 			switch c.Proto {
-			case ProtoTCP, ProtoUDP:
+			case ProtoTCP, ProtoUDP, ProtoHTTP:
 				if c.Host == "" {
 					return errors.New("required: connections[].host")
 				}
@@ -87,7 +88,7 @@ func (c *DBConfig) Validate() error {
 				if c.Host == "" {
 					return errors.New("required: connections[].host")
 				}
-			case ProtoUDP, ProtoUnix:
+			case ProtoUDP, ProtoUnix, ProtoHTTP:
 			default:
 				return errors.New("invalid: connections[].proto")
 			}
@@ -113,6 +114,29 @@ func (c *DBConfig) Validate() error {
 				return errors.New("required: connections[].DBName")
 			}
 		}
+	case dialect.DatabaseDriverClickhouse:
+		if c.DataSourceName == "" && c.Proto == "" {
+			return errors.New("required: connections[].dataSourceName or connections[].proto")
+		}
+
+		if c.DataSourceName == "" && c.Proto != "" {
+			if c.User == "" {
+				return errors.New("required: connections[].user")
+			}
+			switch c.Proto {
+			case ProtoTCP, ProtoHTTP:
+				if c.Host == "" {
+					return errors.New("required: connections[].host")
+				}
+			case ProtoUDP, ProtoUnix:
+      default:
+				return errors.New("invalid: connections[].proto")
+			}
+			if c.SSHCfg != nil {
+				return c.SSHCfg.Validate()
+			}
+		}
+
 	default:
 		return errors.New("invalid: connections[].driver")
 	}

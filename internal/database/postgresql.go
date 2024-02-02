@@ -196,12 +196,12 @@ func (db *PostgreSQLDBRepository) Tables(ctx context.Context) ([]string, error) 
 		ctx,
 		`
 	SELECT
-	  table_name 
+	  table_name
 	FROM
-	  information_schema.tables 
+	  information_schema.tables
 	WHERE
-	  table_type = 'BASE TABLE' 
-	  AND table_schema NOT IN ('pg_catalog', 'information_schema') 
+	  table_type = 'BASE TABLE'
+	  AND table_schema NOT IN ('pg_catalog', 'information_schema')
 	ORDER BY
 	  table_name
 	`)
@@ -414,6 +414,7 @@ func genPostgresConfig(connCfg *DBConfig) (string, error) {
 		q.Set("port", strconv.Itoa(port))
 	case ProtoUnix:
 		q.Set("host", connCfg.Path)
+	case ProtoHTTP:
 	default:
 		return "", fmt.Errorf("default addr for network %s unknown", connCfg.Proto)
 	}
