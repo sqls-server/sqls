@@ -323,6 +323,8 @@ func (s *Server) showConnections(ctx context.Context, params lsp.ExecuteCommandP
 				desc = fmt.Sprintf("udp(%s:%d)/%s", conn.Host, conn.Port, conn.DBName)
 			case database.ProtoUnix:
 				desc = fmt.Sprintf("unix(%s)/%s", conn.Path, conn.DBName)
+			case database.ProtoHTTP:
+				desc = fmt.Sprintf("http(%s:%d)/%s", conn.Host, conn.Port, conn.DBName)
 			}
 		}
 		res := fmt.Sprintf("%d %s %s %s", i+1, conn.Driver, conn.Alias, desc)
