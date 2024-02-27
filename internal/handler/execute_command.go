@@ -11,12 +11,12 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/hsanson/sqls/ast"
-	"github.com/hsanson/sqls/internal/database"
-	"github.com/hsanson/sqls/internal/lsp"
-	"github.com/hsanson/sqls/parser"
 	"github.com/olekukonko/tablewriter"
 	"github.com/sourcegraph/jsonrpc2"
+	"github.com/sqls-server/sqls/ast"
+	"github.com/sqls-server/sqls/internal/database"
+	"github.com/sqls-server/sqls/internal/lsp"
+	"github.com/sqls-server/sqls/parser"
 )
 
 const (
@@ -29,7 +29,7 @@ const (
 	CommandShowTables       = "showTables"
 )
 
-func (h *Server) handleTextDocumentCodeAction(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
+func (s *Server) handleTextDocumentCodeAction(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
 	if req.Params == nil {
 		return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeInvalidParams}
 	}
@@ -323,6 +323,8 @@ func (s *Server) showConnections(ctx context.Context, params lsp.ExecuteCommandP
 				desc = fmt.Sprintf("udp(%s:%d)/%s", conn.Host, conn.Port, conn.DBName)
 			case database.ProtoUnix:
 				desc = fmt.Sprintf("unix(%s)/%s", conn.Path, conn.DBName)
+			case database.ProtoHTTP:
+				desc = fmt.Sprintf("http(%s:%d)/%s", conn.Host, conn.Port, conn.DBName)
 			}
 		}
 		res := fmt.Sprintf("%d %s %s %s", i+1, conn.Driver, conn.Alias, desc)
@@ -350,7 +352,8 @@ func (s *Server) switchConnections(ctx context.Context, params lsp.ExecuteComman
 				break
 			}
 		}
-	} else {
+	}
+	if index <= 0 {
 		index, _ = strconv.Atoi(indexStr)
 	}
 

@@ -1,9 +1,9 @@
 package parseutil
 
 import (
-	"github.com/hsanson/sqls/ast"
-	"github.com/hsanson/sqls/ast/astutil"
-	"github.com/hsanson/sqls/token"
+	"github.com/sqls-server/sqls/ast"
+	"github.com/sqls-server/sqls/ast/astutil"
+	"github.com/sqls-server/sqls/token"
 )
 
 type SyntaxPosition string
@@ -12,7 +12,7 @@ const (
 	ColName        SyntaxPosition = "col_name"
 	SelectExpr     SyntaxPosition = "select_expr"
 	AliasName      SyntaxPosition = "alias_name"
-	WhereCondition SyntaxPosition = "where_conditon"
+	WhereCondition SyntaxPosition = "where_condition"
 	CaseValue      SyntaxPosition = "case_value"
 	TableReference SyntaxPosition = "table_reference"
 	InsertColumn   SyntaxPosition = "insert_column"

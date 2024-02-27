@@ -3,8 +3,8 @@ package ast
 import (
 	"strings"
 
-	"github.com/hsanson/sqls/dialect"
-	"github.com/hsanson/sqls/token"
+	"github.com/sqls-server/sqls/dialect"
+	"github.com/sqls-server/sqls/token"
 )
 
 type NodeType int
@@ -12,9 +12,9 @@ type NodeType int
 const (
 	TypeItem NodeType = iota
 	TypeMultiKeyword
-	TypeMemberIdentifer
+	TypeMemberIdentifier
 	TypeAliased
-	TypeIdentifer
+	TypeIdentifier
 	TypeOperator
 	TypeComparison
 	TypeParenthesis
@@ -22,14 +22,14 @@ const (
 	TypeFunctionLiteral
 	TypeQuery
 	TypeStatement
-	TypeIdentiferList
+	TypeIdentifierList
 	TypeSwitchCase
 	TypeNull
 )
 
 type RenderOptions struct {
-	LowerCase       bool
-	IdentiferQuated bool
+	LowerCase        bool
+	IdentifierQuoted bool
 }
 
 type Node interface {
@@ -67,7 +67,7 @@ func NewItem(tok *token.Token) Node {
 	return &Item{NewSQLToken(tok)}
 }
 func (i *Item) String() string                    { return i.Tok.String() }
-func (i *Item) NoQuateString() string             { return i.Tok.NoQuateString() }
+func (i *Item) NoQuoteString() string             { return i.Tok.NoQuoteString() }
 func (i *Item) Render(opts *RenderOptions) string { return i.Tok.Render(opts) }
 func (i *Item) Type() NodeType                    { return TypeItem }
 func (i *Item) GetToken() *SQLToken               { return i.Tok }
@@ -108,92 +108,92 @@ func (mk *MultiKeyword) Pos() token.Pos        { return findFrom(mk) }
 func (mk *MultiKeyword) End() token.Pos        { return findTo(mk) }
 func (mk *MultiKeyword) GetKeywords() []Node   { return mk.Keywords }
 
-type MemberIdentifer struct {
+type MemberIdentifier struct {
 	Toks        []Node
 	Parent      Node
 	ParentTok   *SQLToken
-	ParentIdent *Identifer
+	ParentIdent *Identifier
 	Child       Node
 	ChildTok    *SQLToken
-	ChildIdent  *Identifer
+	ChildIdent  *Identifier
 }
 
-func NewMemberIdentiferParent(nodes []Node, parent Node) *MemberIdentifer {
-	memberIdentifier := &MemberIdentifer{Toks: nodes}
+func NewMemberIdentifierParent(nodes []Node, parent Node) *MemberIdentifier {
+	memberIdentifier := &MemberIdentifier{Toks: nodes}
 	memberIdentifier.setParent(parent)
-	if v, ok := parent.(*Identifer); ok {
+	if v, ok := parent.(*Identifier); ok {
 		memberIdentifier.ParentIdent = v
 	}
 	return memberIdentifier
 }
 
-func NewMemberIdentifer(nodes []Node, parent Node, child Node) *MemberIdentifer {
-	memberIdentifier := &MemberIdentifer{Toks: nodes}
+func NewMemberIdentifier(nodes []Node, parent Node, child Node) *MemberIdentifier {
+	memberIdentifier := &MemberIdentifier{Toks: nodes}
 	memberIdentifier.setParent(parent)
-	if v, ok := parent.(*Identifer); ok {
+	if v, ok := parent.(*Identifier); ok {
 		memberIdentifier.ParentIdent = v
 	}
 	memberIdentifier.setChild(child)
-	if v, ok := child.(*Identifer); ok {
+	if v, ok := child.(*Identifier); ok {
 		memberIdentifier.ChildIdent = v
 	}
 	return memberIdentifier
 }
 
-func (mi *MemberIdentifer) String() string {
+func (mi *MemberIdentifier) String() string {
 	var strs []string
 	for _, t := range mi.Toks {
 		strs = append(strs, t.String())
 	}
 	return strings.Join(strs, "")
 }
-func (mi *MemberIdentifer) Render(opts *RenderOptions) string {
+func (mi *MemberIdentifier) Render(opts *RenderOptions) string {
 	var strs []string
 	for _, t := range mi.Toks {
 		strs = append(strs, t.Render(opts))
 	}
 	return strings.Join(strs, "")
 }
-func (mi *MemberIdentifer) Type() NodeType        { return TypeMemberIdentifer }
-func (mi *MemberIdentifer) GetTokens() []Node     { return mi.Toks }
-func (mi *MemberIdentifer) SetTokens(toks []Node) { mi.Toks = toks }
-func (mi *MemberIdentifer) Pos() token.Pos        { return findFrom(mi) }
-func (mi *MemberIdentifer) End() token.Pos        { return findTo(mi) }
-func (mi *MemberIdentifer) setParent(node Node) {
+func (mi *MemberIdentifier) Type() NodeType        { return TypeMemberIdentifier }
+func (mi *MemberIdentifier) GetTokens() []Node     { return mi.Toks }
+func (mi *MemberIdentifier) SetTokens(toks []Node) { mi.Toks = toks }
+func (mi *MemberIdentifier) Pos() token.Pos        { return findFrom(mi) }
+func (mi *MemberIdentifier) End() token.Pos        { return findTo(mi) }
+func (mi *MemberIdentifier) setParent(node Node) {
 	mi.Parent = node
 	tok, ok := node.(Token)
 	if ok {
 		mi.ParentTok = tok.GetToken()
 	}
 }
-func (mi *MemberIdentifer) setChild(node Node) {
+func (mi *MemberIdentifier) setChild(node Node) {
 	mi.Child = node
 	tok, ok := node.(Token)
 	if ok {
 		mi.ChildTok = tok.GetToken()
 	}
 }
-func (mi *MemberIdentifer) GetParent() Node {
+func (mi *MemberIdentifier) GetParent() Node {
 	if mi.Parent == nil {
 		return &Null{}
 	}
 	return mi.Parent
 }
-func (mi *MemberIdentifer) GetParentIdent() *Identifer {
+func (mi *MemberIdentifier) GetParentIdent() *Identifier {
 	if mi.ParentIdent == nil {
-		return &Identifer{}
+		return &Identifier{}
 	}
 	return mi.ParentIdent
 }
-func (mi *MemberIdentifer) GetChild() Node {
+func (mi *MemberIdentifier) GetChild() Node {
 	if mi.Child == nil {
 		return &Null{}
 	}
 	return mi.Child
 }
-func (mi *MemberIdentifer) GetChildIdent() *Identifer {
+func (mi *MemberIdentifier) GetChildIdent() *Identifier {
 	if mi.ChildIdent == nil {
-		return &Identifer{}
+		return &Identifier{}
 	}
 	return mi.ChildIdent
 }
@@ -225,31 +225,31 @@ func (a *Aliased) GetTokens() []Node     { return a.Toks }
 func (a *Aliased) SetTokens(toks []Node) { a.Toks = toks }
 func (a *Aliased) Pos() token.Pos        { return findFrom(a) }
 func (a *Aliased) End() token.Pos        { return findTo(a) }
-func (a *Aliased) GetAliasedNameIdent() *Identifer {
-	if v, ok := a.AliasedName.(*Identifer); ok {
+func (a *Aliased) GetAliasedNameIdent() *Identifier {
+	if v, ok := a.AliasedName.(*Identifier); ok {
 		return v
 	}
-	return &Identifer{}
+	return &Identifier{}
 }
 
-type Identifer struct {
+type Identifier struct {
 	Tok *SQLToken
 }
 
-func (i *Identifer) Type() NodeType { return TypeIdentifer }
-func (i *Identifer) String() string { return i.Tok.String() }
-func (i *Identifer) Render(opts *RenderOptions) string {
+func (i *Identifier) Type() NodeType { return TypeIdentifier }
+func (i *Identifier) String() string { return i.Tok.String() }
+func (i *Identifier) Render(opts *RenderOptions) string {
 	tmpOpts := &RenderOptions{
-		LowerCase:       false,
-		IdentiferQuated: opts.IdentiferQuated,
+		LowerCase:        false,
+		IdentifierQuoted: opts.IdentifierQuoted,
 	}
 	return i.Tok.Render(tmpOpts)
 }
-func (i *Identifer) NoQuateString() string { return i.Tok.NoQuateString() }
-func (i *Identifer) GetToken() *SQLToken   { return i.Tok }
-func (i *Identifer) Pos() token.Pos        { return i.Tok.From }
-func (i *Identifer) End() token.Pos        { return i.Tok.To }
-func (i *Identifer) IsWildcard() bool      { return i.Tok.MatchKind(token.Mult) }
+func (i *Identifier) NoQuoteString() string { return i.Tok.NoQuoteString() }
+func (i *Identifier) GetToken() *SQLToken   { return i.Tok }
+func (i *Identifier) Pos() token.Pos        { return i.Tok.From }
+func (i *Identifier) End() token.Pos        { return i.Tok.To }
+func (i *Identifier) IsWildcard() bool      { return i.Tok.MatchKind(token.Mult) }
 
 type Operator struct {
 	Toks     []Node
@@ -412,32 +412,32 @@ func (s *Statement) SetTokens(toks []Node) { s.Toks = toks }
 func (s *Statement) Pos() token.Pos        { return findFrom(s) }
 func (s *Statement) End() token.Pos        { return findTo(s) }
 
-type IdentiferList struct {
-	Toks       []Node
-	Identifers []Node
-	Commas     []Node
+type IdentifierList struct {
+	Toks        []Node
+	Identifiers []Node
+	Commas      []Node
 }
 
-func (il *IdentiferList) String() string {
+func (il *IdentifierList) String() string {
 	return joinString(il.Toks)
 }
-func (il *IdentiferList) Render(opts *RenderOptions) string {
+func (il *IdentifierList) Render(opts *RenderOptions) string {
 	return joinRender(il.Toks, opts)
 }
-func (il *IdentiferList) Type() NodeType        { return TypeIdentiferList }
-func (il *IdentiferList) GetTokens() []Node     { return il.Toks }
-func (il *IdentiferList) SetTokens(toks []Node) { il.Toks = toks }
-func (il *IdentiferList) Pos() token.Pos        { return findFrom(il) }
-func (il *IdentiferList) End() token.Pos        { return findTo(il) }
-func (il *IdentiferList) GetIdentifers() []Node { return il.Identifers }
-func (il *IdentiferList) GetIndex(pos token.Pos) int {
+func (il *IdentifierList) Type() NodeType         { return TypeIdentifierList }
+func (il *IdentifierList) GetTokens() []Node      { return il.Toks }
+func (il *IdentifierList) SetTokens(toks []Node)  { il.Toks = toks }
+func (il *IdentifierList) Pos() token.Pos         { return findFrom(il) }
+func (il *IdentifierList) End() token.Pos         { return findTo(il) }
+func (il *IdentifierList) GetIdentifiers() []Node { return il.Identifiers }
+func (il *IdentifierList) GetIndex(pos token.Pos) int {
 	if !isEnclose(il, pos) {
 		return -1
 	}
 	var idx int
 	for _, comma := range il.Commas {
 		if 0 > token.ComparePos(comma.Pos(), pos) {
-			idx += 1
+			idx++
 		}
 	}
 	return idx
@@ -517,17 +517,29 @@ func (t *SQLToken) String() string {
 	case *token.SQLWord:
 		return v.String()
 	case string:
+		if t.Kind == token.Comment {
+			return "--" + v
+		}
+		if t.Kind == token.MultilineComment {
+			return "/*" + v + "*/"
+		}
 		return v
 	default:
 		return " "
 	}
 }
 
-func (t *SQLToken) NoQuateString() string {
+func (t *SQLToken) NoQuoteString() string {
 	switch v := t.Value.(type) {
 	case *token.SQLWord:
-		return v.NoQuateString()
+		return v.NoQuoteString()
 	case string:
+		if t.Kind == token.Comment {
+			return "--" + v
+		}
+		if t.Kind == token.MultilineComment {
+			return "/*" + v + "*/"
+		}
 		return v
 	default:
 		return " "
@@ -539,6 +551,12 @@ func (t *SQLToken) Render(opts *RenderOptions) string {
 	case *token.SQLWord:
 		return renderSQLWord(v, opts)
 	case string:
+		if t.Kind == token.Comment {
+			return "--" + v
+		}
+		if t.Kind == token.MultilineComment {
+			return "/*" + v + "*/"
+		}
 		return v
 	default:
 		return " "
@@ -546,20 +564,19 @@ func (t *SQLToken) Render(opts *RenderOptions) string {
 }
 
 func renderSQLWord(v *token.SQLWord, opts *RenderOptions) string {
-	isIdentifer := v.Kind == dialect.Unmatched
-	if isIdentifer {
-		if opts.IdentiferQuated {
+	isIdentifier := v.Kind == dialect.Unmatched
+	if isIdentifier {
+		if opts.IdentifierQuoted {
 			v.QuoteStyle = '`'
 			return v.String()
 		}
 		return v.String()
-	} else {
-		// is keyword
-		if opts.LowerCase {
-			return strings.ToLower(v.String())
-		}
-		return strings.ToUpper(v.String())
 	}
+	// is keyword
+	if opts.LowerCase {
+		return strings.ToLower(v.String())
+	}
+	return strings.ToUpper(v.String())
 }
 
 func findFrom(node Node) token.Pos {

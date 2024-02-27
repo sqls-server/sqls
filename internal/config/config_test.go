@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/hsanson/sqls/internal/database"
+	"github.com/sqls-server/sqls/internal/database"
 )
 
 func TestGetConfig(t *testing.T) {
@@ -42,7 +42,7 @@ func TestGetConfig(t *testing.T) {
 					{
 						Alias:          "sqls_sqlite3",
 						Driver:         "sqlite3",
-						DataSourceName: "file:/home/hsanson/chinook.db",
+						DataSourceName: "file:/home/sqls-server/chinook.db",
 					},
 					{
 						Alias:  "sqls_postgresql",
@@ -69,7 +69,7 @@ func TestGetConfig(t *testing.T) {
 							Port:       22,
 							User:       "vagrant",
 							PassPhrase: "passphrase1234",
-							PrivateKey: "/home/hsanson/.ssh/id_rsa",
+							PrivateKey: "/home/sqls-server/.ssh/id_rsa",
 						},
 					},
 				},
@@ -126,7 +126,15 @@ func TestGetConfig(t *testing.T) {
 			args: args{
 				fp: "no_dsn.yml",
 			},
-			want:    nil,
+			want: &Config{
+				Connections: []*database.DBConfig{
+					{
+						Alias:          "sqls_sqlite3",
+						Driver:         "sqlite3",
+						DataSourceName: "",
+					},
+				},
+			},
 			wantErr: true,
 			errMsg:  "failed validation, required: connections[].dataSourceName",
 		},

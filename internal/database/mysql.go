@@ -9,7 +9,7 @@ import (
 	"strconv"
 
 	"github.com/go-sql-driver/mysql"
-	"github.com/hsanson/sqls/dialect"
+	"github.com/sqls-server/sqls/dialect"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -116,6 +116,7 @@ func genMysqlConfig(connCfg *DBConfig) (*mysql.Config, error) {
 		}
 		cfg.Addr = connCfg.Path
 		cfg.Net = string(connCfg.Proto)
+  case ProtoHTTP:
 	default:
 		return nil, fmt.Errorf("default addr for network %s unknown", connCfg.Proto)
 	}
@@ -176,7 +177,7 @@ func (db *MySQLDBRepository) SchemaTables(ctx context.Context) (map[string][]str
 	rows, err := db.Conn.QueryContext(
 		ctx,
 		`
-	SELECT 
+	SELECT
 		TABLE_SCHEMA,
 		TABLE_NAME
 	FROM

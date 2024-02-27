@@ -251,9 +251,9 @@ func QueryExecType(prefix, sqlstr string) (string, bool) {
 		return pref, false
 	}
 	for _, s := range sp {
-		trimed := strings.TrimSpace(s)
-		if trimed != "" {
-			pref = strings.ToUpper(trimed)
+		trimmed := strings.TrimSpace(s)
+		if trimmed != "" {
+			pref = strings.ToUpper(trimmed)
 			break
 		}
 	}

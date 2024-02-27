@@ -9,7 +9,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/k0kubun/pp"
 
-	"github.com/hsanson/sqls/dialect"
+	"github.com/sqls-server/sqls/dialect"
 )
 
 func TestTokenizer_Tokenize(t *testing.T) {
@@ -75,7 +75,7 @@ func TestTokenizer_Tokenize(t *testing.T) {
 		},
 		{
 			name: "whitespace and tab",
-			in: "\r\n	",
+			in:   "\r\n	",
 			out: []*Token{
 				{
 					Kind:  Whitespace,
@@ -327,7 +327,7 @@ select`,
 			},
 		},
 		{
-			name: "non closed single quate identifier",
+			name: "non closed single quote identifier",
 			in:   "'foo",
 			out: []*Token{
 				{
@@ -339,7 +339,7 @@ select`,
 			},
 		},
 		{
-			name: "non closed double quate identifier",
+			name: "non closed double quote identifier",
 			in:   `"foo`,
 			out: []*Token{
 				{
@@ -356,7 +356,7 @@ select`,
 			},
 		},
 		{
-			name: "non closed back quate identifier",
+			name: "non closed back quote identifier",
 			in:   "`foo bar",
 			out: []*Token{
 				{
@@ -462,7 +462,7 @@ multiline
 comment */`,
 			out: []*Token{
 				{
-					Kind:  Comment,
+					Kind:  MultilineComment,
 					Value: " test\nmultiline\ncomment ",
 					From:  Pos{Line: 0, Col: 0},
 					To:    Pos{Line: 2, Col: 10},

@@ -1,6 +1,6 @@
 # SQL Language Server
 
-![test](https://github.com/hsanson/sqls/workflows/test/badge.svg)
+![test](https://github.com/sqls-server/sqls/workflows/test/badge.svg)
 
 An implementation of the Language Server Protocol for SQL.
 
@@ -18,6 +18,8 @@ sqls aims to provide advanced intelligence for you to edit sql in your own edito
 - PostgreSQL([pgx](https://github.com/jackc/pgx))
 - SQLite3([go-sqlite3](https://github.com/mattn/go-sqlite3))
 - MSSQL([go-mssqldb](https://github.com/denisenkom/go-mssqldb))
+- H2([pgx](https://github.com/CodinGame/h2go))
+- Vertica([vertica-sql-go](https://github.com/vertica/vertica-sql-go))
 
 ### Language Server Features
 
@@ -34,7 +36,7 @@ sqls aims to provide advanced intelligence for you to edit sql in your own edito
 - DDL(Data Definition Language)
     - [ ] CREATE TABLE
     - [ ] ALTER TABLE
-  
+
 #### Join completion
 If the tables are connected with a foreign key sqls can complete ```JOIN``` statements
 
@@ -42,7 +44,7 @@ If the tables are connected with a foreign key sqls can complete ```JOIN``` stat
 
 #### CodeAction
 
-![code_actions](https://github.com/hsanson/sqls.vim/blob/master/imgs/sqls_vim_demo.gif)
+![code_actions](https://github.com/sqls-server/sqls.vim/blob/master/imgs/sqls_vim_demo.gif)
 
 - [x] Execute SQL
 - [ ] Explain SQL
@@ -64,11 +66,13 @@ If the tables are connected with a foreign key sqls can complete ```JOIN``` stat
 ## Installation
 
 ```shell
-go install github.com/hsanson/sqls@latest
+go install github.com/sqls-server/sqls@latest
 ```
 
 ## Editor Plugins
 
+- [sqls.vim](https://github.com/sqls-server/sqls.vim)
+- [vscode-sqls](https://github.com/lighttiger2505/vscode-sqls)
 - [sqls.nvim](https://github.com/nanotee/sqls.nvim)
 - [Emacs LSP mode](https://emacs-lsp.github.io/lsp-mode/page/lsp-sqls/)
 
@@ -120,7 +124,10 @@ connections:
       port: 22
       user: sshuser
       passPhrase: ssspass
-      privateKey: /home/hsanson/.ssh/id_rsa
+      privateKey: /home/sqls-server/.ssh/id_rsa
+  - alias: dsn_vertica
+    driver: vertica
+    dataSourceName: vertica://user:pass@host:5433/dbname
 ```
 
 ### Workspace configuration Sample
@@ -175,6 +182,9 @@ In `coc-settings.json` opened by `:CocConfig`
 
 ```lua
 require'lspconfig'.sqls.setup{
+  on_attach = function(client, bufnr)
+    require('sqls').on_attach(client, bufnr) -- require sqls.nvim
+  end
   settings = {
     sqls = {
       connections = {
@@ -193,9 +203,9 @@ require'lspconfig'.sqls.setup{
 ```
 
 - Setting example for Sublime Text 4
-  
+
   Install the LSP Client by Opening the command palette and run ```Package Control: Install Package```, then select ```LSP```.
-  
+
   Open ```Preferences > Package Settings > LSP > Settings``` and add the ```"sqls"``` client configuration to the ```"clients"```:
 ```
 {
@@ -227,7 +237,7 @@ The first setting in `connections` is the default connection.
 | Key            | Description                                 |
 | -------------- | ------------------------------------------- |
 | alias          | Connection alias name. Optional.            |
-| driver         | `mysql`, `postgresql`, `sqlite3`. Required. |
+| driver         | `mysql`, `postgresql`, `sqlite3`, `mssql`, `h2`. Required. |
 | dataSourceName | Data source name.                           |
 | proto          | `tcp`, `udp`, `unix`.                       |
 | user           | User name                                   |
@@ -260,8 +270,8 @@ See also.
 ## Contributors
 
 This project exists thanks to all the people who contribute.
-<a href="https://github.com/hsanson/sqls/graphs/contributors">
-    <img src="https://contrib.rocks/image?repo=hsanson/sqls" />
+<a href="https://github.com/sqls-server/sqls/graphs/contributors">
+    <img src="https://contrib.rocks/image?repo=sqls-server/sqls" />
 </a>
 
 ## Inspired

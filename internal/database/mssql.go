@@ -9,7 +9,7 @@ import (
 	"strconv"
 
 	_ "github.com/denisenkom/go-mssqldb"
-	"github.com/hsanson/sqls/dialect"
+	"github.com/sqls-server/sqls/dialect"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -304,7 +304,7 @@ func (db *MssqlDBRepository) DescribeForeignKeysBySchema(ctx context.Context, sc
 	rows, err := db.Conn.QueryContext(
 		ctx,
 		`
-		SELECT fk.name,		   
+		SELECT fk.name,
 		   src_tbl.name,
 		   src_col.name,
 		   dst_tbl.name,
@@ -360,7 +360,7 @@ func genMssqlConfig(connCfg *DBConfig) (string, error) {
 		}
 		q.Set("server", host)
 		q.Set("port", strconv.Itoa(port))
-	case ProtoUDP, ProtoUnix:
+	case ProtoUDP, ProtoUnix, ProtoHTTP:
 	default:
 		return "", fmt.Errorf("default addr for network %s unknown", connCfg.Proto)
 	}

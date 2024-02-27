@@ -5,10 +5,10 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/hsanson/sqls/ast"
-	"github.com/hsanson/sqls/ast/astutil"
-	"github.com/hsanson/sqls/parser"
-	"github.com/hsanson/sqls/token"
+	"github.com/sqls-server/sqls/ast"
+	"github.com/sqls-server/sqls/ast/astutil"
+	"github.com/sqls-server/sqls/parser"
+	"github.com/sqls-server/sqls/token"
 )
 
 func Test_extractFocusedStatement(t *testing.T) {

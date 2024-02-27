@@ -1,12 +1,17 @@
 package formatter
 
 import (
+	"os"
+	"path/filepath"
+	"runtime"
+	"slices"
+	"strings"
 	"testing"
 
-	"github.com/hsanson/sqls/ast"
-	"github.com/hsanson/sqls/internal/config"
-	"github.com/hsanson/sqls/internal/lsp"
-	"github.com/hsanson/sqls/parser"
+	"github.com/sqls-server/sqls/ast"
+	"github.com/sqls-server/sqls/internal/config"
+	"github.com/sqls-server/sqls/internal/lsp"
+	"github.com/sqls-server/sqls/parser"
 )
 
 func TestEval(t *testing.T) {
@@ -20,7 +25,7 @@ func TestEval(t *testing.T) {
 		{
 			name:     "InsertIntoFormat",
 			input:    "INSERT INTO users (NAME, email) VALUES ('john doe', 'example@host.com')",
-			expected: "INSERT INTO users(\n\tNAME,\n\temail\n)\nVALUES(\n'john doe',\n'example@host.com'\n)",
+			expected: "INSERT INTO users(\n\tNAME,\n\temail\n)\nVALUES(\n\t'john doe',\n\t'example@host.com'\n)",
 			params:   lsp.DocumentFormattingParams{},
 			config: &config.Config{
 				LowercaseKeywords: false,
@@ -49,8 +54,8 @@ func TestRenderIdentifier(t *testing.T) {
 			name:  "snake case",
 			input: "SELECT * FROM snake_case_table_name",
 			opts: &ast.RenderOptions{
-				LowerCase:       false,
-				IdentiferQuated: false,
+				LowerCase:        false,
+				IdentifierQuoted: false,
 			},
 			expected: []string{
 				"*",
@@ -61,8 +66,8 @@ func TestRenderIdentifier(t *testing.T) {
 			name:  "pascal case",
 			input: "SELECT p.PascalCaseColumnName FROM \"PascalCaseTableName\" p",
 			opts: &ast.RenderOptions{
-				LowerCase:       false,
-				IdentiferQuated: false,
+				LowerCase:        false,
+				IdentifierQuoted: false,
 			},
 			expected: []string{
 				"p.PascalCaseColumnName",
@@ -73,8 +78,8 @@ func TestRenderIdentifier(t *testing.T) {
 			name:  "quoted pascal case",
 			input: "SELECT p.\"PascalCaseColumnName\" FROM \"PascalCaseTableName\" p",
 			opts: &ast.RenderOptions{
-				LowerCase:       false,
-				IdentiferQuated: false,
+				LowerCase:        false,
+				IdentifierQuoted: false,
 			},
 			expected: []string{
 				"p.\"PascalCaseColumnName\"",
@@ -89,7 +94,7 @@ func TestRenderIdentifier(t *testing.T) {
 			list := stmts[0].GetTokens()
 			j := 0
 			for _, n := range list {
-				if i, ok := n.(*ast.Identifer); ok {
+				if i, ok := n.(*ast.Identifier); ok {
 					if actual := i.Render(tt.opts); actual != tt.expected[j] {
 						t.Errorf("expected: %s, got %s", tt.expected[j], actual)
 					}
@@ -116,4 +121,52 @@ func parseInit(t *testing.T, input string) []*ast.Statement {
 		stmts = append(stmts, stmt)
 	}
 	return stmts
+}
+
+func TestFormat(t *testing.T) {
+	_, filename, _, _ := runtime.Caller(0)
+	dir := filepath.Dir(filename)
+
+	files, err := filepath.Glob(filepath.Join(dir, "testdata", "*.sql"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	slices.Sort(files)
+
+	opts := &ast.RenderOptions{
+		LowerCase:        false,
+		IdentifierQuoted: false,
+	}
+	for _, fname := range files {
+		b, err := os.ReadFile(fname)
+		if err != nil {
+			t.Fatal(err)
+		}
+		parsed, err := parser.Parse(string(b))
+		if err != nil {
+			t.Fatal(err)
+		}
+		env := &formatEnvironment{}
+		formatted := Eval(parsed, env)
+		got := strings.TrimRight(formatted.Render(opts), "\n") + "\n"
+
+		b, err = os.ReadFile(fname[:len(fname)-4] + ".golden")
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := string(b)
+		if got != want {
+			if _, err := os.Stat(fname[:len(fname)-4] + ".ignore"); err == nil {
+				t.Logf("%s:\n"+
+					"    want: %q\n"+
+					"     got: %q\n",
+					fname, want, got)
+			} else {
+				t.Errorf("%s:\n"+
+					"    want: %q\n"+
+					"     got: %q\n",
+					fname, want, got)
+			}
+		}
+	}
 }

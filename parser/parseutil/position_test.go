@@ -3,8 +3,8 @@ package parseutil
 import (
 	"testing"
 
-	"github.com/hsanson/sqls/parser"
-	"github.com/hsanson/sqls/token"
+	"github.com/sqls-server/sqls/parser"
+	"github.com/sqls-server/sqls/token"
 )
 
 func TestCheckSyntaxPosition(t *testing.T) {
@@ -87,7 +87,7 @@ func TestCheckSyntaxPosition(t *testing.T) {
 			want: JoinClause,
 		},
 		{
-			name: "join filterd tables",
+			name: "join filtered tables",
 			text: "select CountryCode from city join co",
 			pos: token.Pos{
 				Line: 0,
@@ -123,7 +123,7 @@ func TestCheckSyntaxPosition(t *testing.T) {
 			want: JoinOn,
 		},
 		{
-			name: "join on filterd columns",
+			name: "join on filtered columns",
 			text: "select * from city left join country on co",
 			pos: token.Pos{
 				Line: 0,

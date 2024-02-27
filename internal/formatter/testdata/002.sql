@@ -1,0 +1,4 @@
+ -- hoge --
+SELECT x/*x*/, /*x*/y FROM zzz; -- zzzz
+SELECT * FROM yyy; -- yyyy
+            -- hage --

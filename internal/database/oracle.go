@@ -7,7 +7,7 @@ import (
 	"strconv"
 
 	_ "github.com/godror/godror"
-	"github.com/hsanson/sqls/dialect"
+	"github.com/sqls-server/sqls/dialect"
 )
 
 func init() {

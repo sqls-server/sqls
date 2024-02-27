@@ -3,9 +3,9 @@ package database
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"os"
 
-	"github.com/hsanson/sqls/dialect"
+	"github.com/sqls-server/sqls/dialect"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -15,6 +15,7 @@ const (
 	ProtoTCP  Proto = "tcp"
 	ProtoUDP  Proto = "udp"
 	ProtoUnix Proto = "unix"
+	ProtoHTTP Proto = "http"
 )
 
 type DBConfig struct {
@@ -43,7 +44,8 @@ func (c *DBConfig) Validate() error {
 		dialect.DatabaseDriverMySQL8,
 		dialect.DatabaseDriverMySQL57,
 		dialect.DatabaseDriverMySQL56,
-		dialect.DatabaseDriverPostgreSQL:
+		dialect.DatabaseDriverPostgreSQL,
+		dialect.DatabaseDriverVertica:
 		if c.DataSourceName == "" && c.Proto == "" {
 			return errors.New("required: connections[].dataSourceName or connections[].proto")
 		}
@@ -53,7 +55,7 @@ func (c *DBConfig) Validate() error {
 				return errors.New("required: connections[].user")
 			}
 			switch c.Proto {
-			case ProtoTCP, ProtoUDP:
+			case ProtoTCP, ProtoUDP, ProtoHTTP:
 				if c.Host == "" {
 					return errors.New("required: connections[].host")
 				}
@@ -69,6 +71,7 @@ func (c *DBConfig) Validate() error {
 			}
 		}
 	case dialect.DatabaseDriverSQLite3:
+	case dialect.DatabaseDriverH2:
 		if c.DataSourceName == "" {
 			return errors.New("required: connections[].dataSourceName")
 		}
@@ -85,7 +88,7 @@ func (c *DBConfig) Validate() error {
 				if c.Host == "" {
 					return errors.New("required: connections[].host")
 				}
-			case ProtoUDP, ProtoUnix:
+			case ProtoUDP, ProtoUnix, ProtoHTTP:
 			default:
 				return errors.New("invalid: connections[].proto")
 			}
@@ -111,6 +114,29 @@ func (c *DBConfig) Validate() error {
 				return errors.New("required: connections[].DBName")
 			}
 		}
+	case dialect.DatabaseDriverClickhouse:
+		if c.DataSourceName == "" && c.Proto == "" {
+			return errors.New("required: connections[].dataSourceName or connections[].proto")
+		}
+
+		if c.DataSourceName == "" && c.Proto != "" {
+			if c.User == "" {
+				return errors.New("required: connections[].user")
+			}
+			switch c.Proto {
+			case ProtoTCP, ProtoHTTP:
+				if c.Host == "" {
+					return errors.New("required: connections[].host")
+				}
+			case ProtoUDP, ProtoUnix:
+      default:
+				return errors.New("invalid: connections[].proto")
+			}
+			if c.SSHCfg != nil {
+				return c.SSHCfg.Validate()
+			}
+		}
+
 	default:
 		return errors.New("invalid: connections[].driver")
 	}
@@ -125,14 +151,14 @@ type SSHConfig struct {
 	PrivateKey string `json:"privateKey" yaml:"privateKey"`
 }
 
-func (c *SSHConfig) Validate() error {
-	if c.Host == "" {
+func (s *SSHConfig) Validate() error {
+	if s.Host == "" {
 		return errors.New("required: connections[]sshConfig.host")
 	}
-	if c.User == "" {
+	if s.User == "" {
 		return errors.New("required: connections[].sshConfig.user")
 	}
-	if c.PrivateKey == "" {
+	if s.PrivateKey == "" {
 		return errors.New("required: connections[].sshConfig.privateKey")
 	}
 	return nil
@@ -143,7 +169,7 @@ func (s *SSHConfig) Endpoint() string {
 }
 
 func (s *SSHConfig) ClientConfig() (*ssh.ClientConfig, error) {
-	buffer, err := ioutil.ReadFile(s.PrivateKey)
+	buffer, err := os.ReadFile(s.PrivateKey)
 	if err != nil {
 		return nil, fmt.Errorf("cannot read SSH private key file, PrivateKey=%s, %w", s.PrivateKey, err)
 	}

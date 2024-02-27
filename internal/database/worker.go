@@ -55,7 +55,7 @@ func (w *Worker) Start() {
 					log.Println(err)
 				}
 				w.setColumnCache(col)
-				log.Println("db worker: Update db chache secondary complete")
+				log.Println("db worker: Update db cache secondary complete")
 			}
 		}
 	}()
@@ -81,7 +81,7 @@ func (w *Worker) updateAllCache(ctx context.Context) error {
 		return err
 	}
 	w.setCache(cache)
-	log.Println("db worker: Update db chache primary complete")
+	log.Println("db worker: Update db cache primary complete")
 	return nil
 }
 

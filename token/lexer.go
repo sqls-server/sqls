@@ -7,7 +7,7 @@ import (
 	"strings"
 	"text/scanner"
 
-	"github.com/hsanson/sqls/dialect"
+	"github.com/sqls-server/sqls/dialect"
 )
 
 type SQLWord struct {
@@ -28,7 +28,7 @@ func (s *SQLWord) String() string {
 	}
 }
 
-func (s *SQLWord) NoQuateString() string {
+func (s *SQLWord) NoQuoteString() string {
 	return s.Value
 }
 
@@ -166,7 +166,7 @@ func (t *Tokenizer) next() (Kind, interface{}, error) {
 	switch {
 	case r == ' ':
 		t.Scanner.Next()
-		t.Col += 1
+		t.Col++
 		return Whitespace, " ", nil
 
 	case r == '\t':
@@ -176,7 +176,7 @@ func (t *Tokenizer) next() (Kind, interface{}, error) {
 
 	case r == '\n':
 		t.Scanner.Next()
-		t.Line += 1
+		t.Line++
 		t.Col = 0
 		return Whitespace, "\n", nil
 
@@ -186,7 +186,7 @@ func (t *Tokenizer) next() (Kind, interface{}, error) {
 		if n == '\n' {
 			t.Scanner.Next()
 		}
-		t.Line += 1
+		t.Line++
 		t.Col = 0
 		return Whitespace, "\n", nil
 
@@ -194,7 +194,7 @@ func (t *Tokenizer) next() (Kind, interface{}, error) {
 		t.Scanner.Next()
 		n := t.Scanner.Peek()
 		if n == '\'' {
-			t.Col += 1
+			t.Col++
 			str := t.tokenizeSingleQuotedString()
 			return NationalStringLiteral, str, nil
 		}
@@ -231,17 +231,17 @@ func (t *Tokenizer) next() (Kind, interface{}, error) {
 
 	case r == '(':
 		t.Scanner.Next()
-		t.Col += 1
+		t.Col++
 		return LParen, "(", nil
 
 	case r == ')':
 		t.Scanner.Next()
-		t.Col += 1
+		t.Col++
 		return RParen, ")", nil
 
 	case r == ',':
 		t.Scanner.Next()
-		t.Col += 1
+		t.Col++
 		return Comma, ",", nil
 
 	case r == '-':
@@ -262,7 +262,7 @@ func (t *Tokenizer) next() (Kind, interface{}, error) {
 				}
 			}
 		}
-		t.Col += 1
+		t.Col++
 		return Minus, "-", nil
 
 	case r == '/':
@@ -274,34 +274,34 @@ func (t *Tokenizer) next() (Kind, interface{}, error) {
 			if err != nil {
 				return ILLEGAL, str, err
 			}
-			return Comment, str, nil
+			return MultilineComment, str, nil
 		}
-		t.Col += 1
+		t.Col++
 		return Div, "/", nil
 
 	case r == '+':
 		t.Scanner.Next()
-		t.Col += 1
+		t.Col++
 		return Plus, "+", nil
 	case r == '*':
 		t.Scanner.Next()
-		t.Col += 1
+		t.Col++
 		return Mult, "*", nil
 	case r == '%':
 		t.Scanner.Next()
-		t.Col += 1
+		t.Col++
 		return Mod, "%", nil
 	case r == '^':
 		t.Scanner.Next()
-		t.Col += 1
+		t.Col++
 		return Caret, "^", nil
 	case r == '=':
 		t.Scanner.Next()
-		t.Col += 1
+		t.Col++
 		return Eq, "=", nil
 	case r == '.':
 		t.Scanner.Next()
-		t.Col += 1
+		t.Col++
 		return Period, ".", nil
 
 	case r == '!':
@@ -326,7 +326,7 @@ func (t *Tokenizer) next() (Kind, interface{}, error) {
 			t.Col += 2
 			return Neq, "<>", nil
 		default:
-			t.Col += 1
+			t.Col++
 			return Lt, "<", nil
 		}
 	case r == '>':
@@ -337,7 +337,7 @@ func (t *Tokenizer) next() (Kind, interface{}, error) {
 			t.Col += 2
 			return GtEq, ">=", nil
 		default:
-			t.Col += 1
+			t.Col++
 			return Gt, ">", nil
 		}
 	case r == ':':
@@ -348,41 +348,41 @@ func (t *Tokenizer) next() (Kind, interface{}, error) {
 			t.Col += 2
 			return DoubleColon, "::", nil
 		}
-		t.Col += 1
+		t.Col++
 		return Colon, ":", nil
 	case r == ';':
 		t.Scanner.Next()
-		t.Col += 1
+		t.Col++
 		return Semicolon, ";", nil
 	case r == '\\':
 		t.Scanner.Next()
-		t.Col += 1
+		t.Col++
 		return Backslash, "\\", nil
 	case r == '[':
 		t.Scanner.Next()
-		t.Col += 1
+		t.Col++
 		return LBracket, "[", nil
 	case r == ']':
 		t.Scanner.Next()
-		t.Col += 1
+		t.Col++
 		return RBracket, "]", nil
 	case r == '&':
 		t.Scanner.Next()
-		t.Col += 1
+		t.Col++
 		return Ampersand, "&", nil
 	case r == '{':
 		t.Scanner.Next()
-		t.Col += 1
+		t.Col++
 		return LBrace, "{", nil
 	case r == '}':
 		t.Scanner.Next()
-		t.Col += 1
+		t.Col++
 		return RBrace, "}", nil
 	case scanner.EOF == r:
 		return ILLEGAL, "", io.EOF
 	default:
 		t.Scanner.Next()
-		t.Col += 1
+		t.Col++
 		return Char, string(r), nil
 	}
 }
@@ -479,14 +479,14 @@ func (t *Tokenizer) tokenizeMultilineComment() (string, error) {
 				t.Scanner.Next()
 			}
 			t.Col = 0
-			t.Line += 1
+			t.Line++
 		} else if n == '\n' {
 			t.Col = 0
-			t.Line += 1
+			t.Line++
 		} else if n == scanner.EOF {
 			return "", fmt.Errorf("unclosed multiline comment: %s at %+v", string(str), t.Pos())
 		} else {
-			t.Col += 1
+			t.Col++
 		}
 
 		if mayBeClosingComment {

@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/hsanson/sqls/dialect"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/sqls-server/sqls/dialect"
 )
 
 func init() {

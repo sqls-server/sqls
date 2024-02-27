@@ -9,7 +9,7 @@ package database
 // 	_ "github.com/godror/godror"
 // )
 //
-// // 	Generic Testing template for multple DB driver
+// // 	Generic Testing template for multiple DB driver
 // //  Test_genDriver: Test if driver config correctly
 // //  Test_ConnectByConfig: Test if Connection setup by config successful
 // //  Test_BasicOperation: Test all function except DescribeDatabaseTableBySchema

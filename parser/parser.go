@@ -6,10 +6,10 @@ import (
 	"io"
 	"strings"
 
-	"github.com/hsanson/sqls/ast"
-	"github.com/hsanson/sqls/ast/astutil"
-	"github.com/hsanson/sqls/dialect"
-	"github.com/hsanson/sqls/token"
+	"github.com/sqls-server/sqls/ast"
+	"github.com/sqls-server/sqls/ast/astutil"
+	"github.com/sqls-server/sqls/dialect"
+	"github.com/sqls-server/sqls/token"
 )
 
 type (
@@ -79,9 +79,6 @@ func NewParser(src io.Reader, d dialect.Dialect) (*Parser, error) {
 
 	parsed := []ast.Node{}
 	for _, tok := range tokens {
-		if tok.Kind == token.Comment {
-			continue
-		}
 		parsed = append(parsed, ast.NewItem(tok))
 	}
 
@@ -224,18 +221,18 @@ var memberIdentifierTargetMatcher = astutil.NodeMatcher{
 		token.Mult,
 	},
 	NodeTypes: []ast.NodeType{
-		ast.TypeIdentifer,
+		ast.TypeIdentifier,
 	},
 }
 
 func parseMemberIdentifier(reader *astutil.NodeReader) ast.Node {
-	var memberIdentifier *ast.MemberIdentifer
+	var memberIdentifier *ast.MemberIdentifier
 	if !reader.CurNodeIs(memberIdentifierTargetMatcher) {
 		return reader.CurNode
 	}
 	parent := reader.CurNode
 	startIndex := reader.Index - 1
-	memberIdentifier = ast.NewMemberIdentiferParent(
+	memberIdentifier = ast.NewMemberIdentifierParent(
 		reader.NodesWithRange(startIndex, reader.Index+1),
 		parent,
 	)
@@ -245,7 +242,7 @@ func parseMemberIdentifier(reader *astutil.NodeReader) ast.Node {
 		return memberIdentifier
 	}
 	endIndex, child := reader.PeekNode(true)
-	memberIdentifier = ast.NewMemberIdentifer(
+	memberIdentifier = ast.NewMemberIdentifier(
 		reader.NodesWithRange(startIndex, endIndex+1),
 		parent,
 		child,
@@ -308,7 +305,7 @@ var identifierPrefixMatcher = astutil.NodeMatcher{
 
 func parseIdentifier(reader *astutil.NodeReader) ast.Node {
 	token, _ := reader.CurNode.(ast.Token)
-	return &ast.Identifer{Tok: token.GetToken()}
+	return &ast.Identifier{Tok: token.GetToken()}
 }
 
 var operatorInfixMatcher = astutil.NodeMatcher{
@@ -323,8 +320,8 @@ var operatorInfixMatcher = astutil.NodeMatcher{
 }
 var operatorTargetMatcher = astutil.NodeMatcher{
 	NodeTypes: []ast.NodeType{
-		ast.TypeIdentifer,
-		ast.TypeMemberIdentifer,
+		ast.TypeIdentifier,
+		ast.TypeMemberIdentifier,
 		ast.TypeOperator,
 		ast.TypeParenthesis,
 		ast.TypeFunctionLiteral,
@@ -400,8 +397,8 @@ var comparisonInfixMatcher = astutil.NodeMatcher{
 var comparisonTargetMatcher = astutil.NodeMatcher{
 	NodeTypes: []ast.NodeType{
 		ast.TypeParenthesis,
-		ast.TypeIdentifer,
-		ast.TypeMemberIdentifer,
+		ast.TypeIdentifier,
+		ast.TypeMemberIdentifier,
 		ast.TypeOperator,
 		ast.TypeFunctionLiteral,
 	},
@@ -464,8 +461,8 @@ var aliasLeftMatcher = astutil.NodeMatcher{
 	NodeTypes: []ast.NodeType{
 		ast.TypeParenthesis,
 		ast.TypeFunctionLiteral,
-		ast.TypeIdentifer,
-		ast.TypeMemberIdentifer,
+		ast.TypeIdentifier,
+		ast.TypeMemberIdentifier,
 		ast.TypeSwitchCase,
 		ast.TypeOperator,
 	},
@@ -473,7 +470,7 @@ var aliasLeftMatcher = astutil.NodeMatcher{
 
 var aliasRightMatcher = astutil.NodeMatcher{
 	NodeTypes: []ast.NodeType{
-		ast.TypeIdentifer,
+		ast.TypeIdentifier,
 	},
 }
 
@@ -529,6 +526,12 @@ func parseAliased(reader *astutil.NodeReader) ast.Node {
 	}
 }
 
+var commentInfixMatcher = astutil.NodeMatcher{
+	ExpectTokens: []token.Kind{
+		token.Comment,
+		token.MultilineComment,
+	},
+}
 var identifierListInfixMatcher = astutil.NodeMatcher{
 	ExpectTokens: []token.Kind{
 		token.Comma,
@@ -543,8 +546,8 @@ var identifierListTargetMatcher = astutil.NodeMatcher{
 	},
 	NodeTypes: []ast.NodeType{
 		ast.TypeFunctionLiteral,
-		ast.TypeIdentifer,
-		ast.TypeMemberIdentifer,
+		ast.TypeIdentifier,
+		ast.TypeMemberIdentifier,
 		ast.TypeAliased,
 		ast.TypeComparison,
 		ast.TypeOperator,
@@ -570,7 +573,7 @@ func parseIdentifierList(reader *astutil.NodeReader) ast.Node {
 		peekNode            ast.Node
 	)
 	for {
-		if !tmpReader.PeekNodeIs(true, identifierListTargetMatcher) {
+		if !tmpReader.PeekNodeIs(true, identifierListTargetMatcher) && !tmpReader.PeekNodeIs(true, commentInfixMatcher) {
 			// Include white space after the comma
 			peekIndex, peekNode := tmpReader.PeekNode(true)
 			if peekNode != nil {
@@ -583,6 +586,9 @@ func parseIdentifierList(reader *astutil.NodeReader) ast.Node {
 				tmpReader.CurNode = tailNode
 			}
 			break
+		}
+		for tmpReader.PeekNodeIs(true, commentInfixMatcher) {
+			tmpReader.NextNode(true)
 		}
 
 		peekIndex, peekNode = tmpReader.PeekNode(true)
@@ -599,10 +605,10 @@ func parseIdentifierList(reader *astutil.NodeReader) ast.Node {
 
 	reader.Index = tmpReader.Index
 	reader.CurNode = tmpReader.CurNode
-	return &ast.IdentiferList{
-		Toks:       reader.NodesWithRange(startIndex, endIndex+1),
-		Identifers: idents,
-		Commas:     commas,
+	return &ast.IdentifierList{
+		Toks:        reader.NodesWithRange(startIndex, endIndex+1),
+		Identifiers: idents,
+		Commas:      commas,
 	}
 }
 
@@ -630,9 +636,8 @@ func parseCase(reader *astutil.NodeReader) ast.Node {
 			reader.Index = tmpReader.Index
 			reader.CurNode = tmpReader.CurNode
 			return &ast.SwitchCase{Toks: append(nodes, tmpReader.CurNode)}
-		} else {
-			nodes = append(nodes, tmpReader.CurNode)
 		}
+		nodes = append(nodes, tmpReader.CurNode)
 	}
 	return reader.Node
 }

@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hsanson/sqls/internal/database"
-	"github.com/hsanson/sqls/internal/lsp"
-	"github.com/hsanson/sqls/parser/parseutil"
+	"github.com/sqls-server/sqls/internal/database"
+	"github.com/sqls-server/sqls/internal/lsp"
+	"github.com/sqls-server/sqls/parser/parseutil"
 )
 
 func (c *Completer) keywordCandidates(lower bool, keywords []string) []lsp.CompletionItem {

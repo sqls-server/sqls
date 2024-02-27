@@ -4,9 +4,9 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/hsanson/sqls/internal/config"
-	"github.com/hsanson/sqls/internal/database"
-	"github.com/hsanson/sqls/internal/lsp"
+	"github.com/sqls-server/sqls/internal/config"
+	"github.com/sqls-server/sqls/internal/database"
+	"github.com/sqls-server/sqls/internal/lsp"
 )
 
 var hoverTestCases = []struct {
@@ -52,14 +52,14 @@ var hoverTestCases = []struct {
 		col:    15,
 	},
 	{
-		name:   "select quated ident head",
+		name:   "select quoted ident head",
 		input:  "SELECT `ID`, Name FROM city",
 		output: "`city`.`ID` column\n\n`int(11)` PRI auto_increment\n",
 		line:   0,
 		col:    8,
 	},
 	{
-		name:   "select quated ident head",
+		name:   "select quoted ident head",
 		input:  "SELECT `ID`, Name FROM city",
 		output: "`city`.`ID` column\n\n`int(11)` PRI auto_increment\n",
 		line:   0,
@@ -164,14 +164,14 @@ var hoverTestCases = []struct {
 		col:    11,
 	},
 	{
-		name:   "select aliased select identifer",
+		name:   "select aliased select identifier",
 		input:  "SELECT ID AS city_id, Name AS city_name FROM city",
 		output: "`city`.`ID` column\n\n`int(11)` PRI auto_increment\n",
 		line:   0,
 		col:    14,
 	},
 	{
-		name:   "select aliased select member identifer",
+		name:   "select aliased select member identifier",
 		input:  "SELECT city.ID AS city_id, city.Name AS city_name FROM city",
 		output: "`city`.`ID` column\n\n`int(11)` PRI auto_increment\n",
 		line:   0,
