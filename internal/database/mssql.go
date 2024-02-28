@@ -53,7 +53,7 @@ func mssqlOpen(dbConnCfg *DBConfig) (*DBConnection, error) {
 
 		tunnel, err := sshdb.New(cfg, remoteAddr)
 		if err != nil {
-			return nil, fmt.Errorf("%v", err)
+			return nil, fmt.Errorf("%w", err)
 		}
 
 		connector, err := tunnel.OpenConnector(mssql.TunnelDriver, dsn)
