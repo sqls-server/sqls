@@ -1,4 +1,4 @@
-# SQL Language Server
+# sqls: SQL Language Server
 
 ![test](https://github.com/sqls-server/sqls/workflows/test/badge.svg)
 
