@@ -109,6 +109,7 @@ func serve(c *cli.Context) error {
 		logWriter = io.MultiWriter(os.Stderr)
 	}
 	log.SetOutput(logWriter)
+	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 
 	// Initialize language server
 	server := handler.NewServer()
