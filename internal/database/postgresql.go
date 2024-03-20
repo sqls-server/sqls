@@ -221,43 +221,60 @@ func (db *PostgreSQLDBRepository) Tables(ctx context.Context) ([]string, error) 
 }
 
 func (db *PostgreSQLDBRepository) DescribeDatabaseTable(ctx context.Context) ([]*ColumnDesc, error) {
+	log.Println("repository: describing all database tables")
 	rows, err := db.Conn.QueryContext(
 		ctx,
 		`
-	SELECT
-		c.table_schema,
-		c.table_name,
-		c.column_name,
-		c.data_type,
-		c.is_nullable,
-		CASE t.constraint_type
-			WHEN 'PRIMARY KEY' THEN 'YES'
-			ELSE 'NO'
-		END,
-		c.column_default,
-		''
-	FROM
-		information_schema.columns c
-	LEFT JOIN (
-		SELECT
-			ccu.table_schema as table_schema,
-			ccu.table_name as table_name,
-			ccu.column_name as column_name,
-			tc.constraint_type as constraint_type
-		FROM information_schema.constraint_column_usage ccu
-		LEFT JOIN information_schema.table_constraints tc ON
-			tc.table_schema = ccu.table_schema
-			AND tc.table_name = ccu.table_name
-			AND tc.constraint_name = ccu.constraint_name
-		WHERE
-			tc.constraint_type = 'PRIMARY KEY'
-	) as t
-		ON c.table_schema = t.table_schema
-		AND c.table_name = t.table_name
-		AND c.column_name = t.column_name
-	ORDER BY
-		c.table_name,
-		c.ordinal_position
+	SELECT DISTINCT ON (table_name, a.attnum)
+	    c1.relnamespace::regnamespace AS table_schema, c1.relname AS table_name, a.attname AS column_name, CASE WHEN
+		t.typtype = 'd'::"char" THEN
+		CASE WHEN bt.typelem <> 0::oid
+		    AND bt.typlen = '-1'::integer THEN
+		    'ARRAY'::text
+		WHEN nbt.nspname = 'pg_catalog'::name THEN
+		    format_type(t.typbasetype, NULL::integer)
+		ELSE
+		    'USER-DEFINED'::text
+		END
+	    ELSE
+		CASE WHEN t.typelem <> 0::oid
+		    AND t.typlen = '-1'::integer THEN
+		    'ARRAY'::text
+		WHEN nt.nspname = 'pg_catalog'::name THEN
+		    format_type(a.atttypid, NULL::integer)
+		ELSE
+		    'USER-DEFINED'::text
+		END
+	    END::information_schema.character_data AS data_type, CASE WHEN a.attnotnull
+		OR t.typtype = 'd'::"char"
+		AND t.typnotnull THEN
+		'NO'::text
+	    ELSE
+		'YES'::text
+	    END::information_schema.yes_or_no AS is_nullable, CASE WHEN conn.contype = 'p' THEN
+		'YES'
+	    ELSE
+		'NO'
+	    END AS is_primary_key, CASE WHEN a.attgenerated = ''::"char" THEN
+		pg_get_expr(ad.adbin, ad.adrelid)
+	    ELSE
+		NULL::text
+	    END::information_schema.character_data AS column_default,
+	    ''
+	FROM pg_catalog.pg_class c1
+	    JOIN pg_catalog.pg_attribute a ON a.attrelid = c1.oid
+	    LEFT JOIN (pg_type t
+		JOIN pg_namespace nt ON t.typnamespace = nt.oid) ON a.atttypid = t.oid
+	    LEFT JOIN (pg_type bt
+		JOIN pg_namespace nbt ON bt.typnamespace = nbt.oid) ON t.typtype = 'd'::char
+		AND t.typbasetype = bt.oid
+	    LEFT JOIN pg_catalog.pg_constraint conn ON conn.conrelid = c1.oid
+		AND a.attnum = ANY (conn.conkey)
+		AND conn.contype = 'p'
+	    LEFT JOIN pg_attrdef ad ON a.attrelid = ad.adrelid
+		AND a.attnum = ad.adnum
+	WHERE a.attnum > 0
+	ORDER BY table_name, a.attnum
 	`)
 	if err != nil {
 		log.Fatal(err)
@@ -285,47 +302,63 @@ func (db *PostgreSQLDBRepository) DescribeDatabaseTable(ctx context.Context) ([]
 }
 
 func (db *PostgreSQLDBRepository) DescribeDatabaseTableBySchema(ctx context.Context, schemaName string) ([]*ColumnDesc, error) {
+	log.Printf("repository: describing database tables in schema %s", schemaName)
+
 	rows, err := db.Conn.QueryContext(
 		ctx,
 		`
-	SELECT
-		c.table_schema,
-		c.table_name,
-		c.column_name,
-		c.data_type,
-		c.is_nullable,
-		CASE t.constraint_type
-			WHEN 'PRIMARY KEY' THEN 'YES'
-			ELSE 'NO'
-		END,
-		c.column_default,
-		''
-	FROM
-		information_schema.columns c
-	LEFT JOIN (
-		SELECT
-			ccu.table_schema as table_schema,
-			ccu.table_name as table_name,
-			ccu.column_name as column_name,
-			tc.constraint_type as constraint_type
-		FROM information_schema.constraint_column_usage ccu
-		LEFT JOIN information_schema.table_constraints tc ON
-			tc.table_schema = ccu.table_schema
-			AND tc.table_name = ccu.table_name
-			AND tc.constraint_name = ccu.constraint_name
-		WHERE
-			ccu.table_schema = $1
-			AND tc.constraint_type = 'PRIMARY KEY'
-	) as t
-		ON c.table_schema = t.table_schema
-		AND c.table_name = t.table_name
-		AND c.column_name = t.column_name
-	WHERE
-		c.table_schema = $2
-	ORDER BY
-		c.table_name,
-		c.ordinal_position
-	`, schemaName, schemaName)
+	SELECT DISTINCT ON (table_name, a.attnum)
+	    c1.relnamespace::regnamespace AS table_schema, c1.relname AS table_name, a.attname AS column_name, CASE WHEN
+		t.typtype = 'd'::"char" THEN
+		CASE WHEN bt.typelem <> 0::oid
+		    AND bt.typlen = '-1'::integer THEN
+		    'ARRAY'::text
+		WHEN nbt.nspname = 'pg_catalog'::name THEN
+		    format_type(t.typbasetype, NULL::integer)
+		ELSE
+		    'USER-DEFINED'::text
+		END
+	    ELSE
+		CASE WHEN t.typelem <> 0::oid
+		    AND t.typlen = '-1'::integer THEN
+		    'ARRAY'::text
+		WHEN nt.nspname = 'pg_catalog'::name THEN
+		    format_type(a.atttypid, NULL::integer)
+		ELSE
+		    'USER-DEFINED'::text
+		END
+	    END::information_schema.character_data AS data_type, CASE WHEN a.attnotnull
+		OR t.typtype = 'd'::"char"
+		AND t.typnotnull THEN
+		'NO'::text
+	    ELSE
+		'YES'::text
+	    END::information_schema.yes_or_no AS is_nullable, CASE WHEN conn.contype = 'p' THEN
+		'YES'
+	    ELSE
+		'NO'
+	    END AS is_primary_key, CASE WHEN a.attgenerated = ''::"char" THEN
+		pg_get_expr(ad.adbin, ad.adrelid)
+	    ELSE
+		NULL::text
+	    END::information_schema.character_data AS column_default,
+	    ''
+	FROM pg_catalog.pg_class c1
+	    JOIN pg_catalog.pg_attribute a ON a.attrelid = c1.oid
+	    LEFT JOIN (pg_type t
+		JOIN pg_namespace nt ON t.typnamespace = nt.oid) ON a.atttypid = t.oid
+	    LEFT JOIN (pg_type bt
+		JOIN pg_namespace nbt ON bt.typnamespace = nbt.oid) ON t.typtype = 'd'::char
+		AND t.typbasetype = bt.oid
+	    LEFT JOIN pg_catalog.pg_constraint conn ON conn.conrelid = c1.oid
+		AND a.attnum = ANY (conn.conkey)
+		AND conn.contype = 'p'
+	    LEFT JOIN pg_attrdef ad ON a.attrelid = ad.adrelid
+		AND a.attnum = ad.adnum
+	WHERE c1.relnamespace = $1::regnamespace::oid
+	    AND a.attnum > 0
+	ORDER BY table_name, a.attnum
+	`, schemaName)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -352,29 +385,23 @@ func (db *PostgreSQLDBRepository) DescribeDatabaseTableBySchema(ctx context.Cont
 }
 
 func (db *PostgreSQLDBRepository) DescribeForeignKeysBySchema(ctx context.Context, schemaName string) ([]*ForeignKey, error) {
+	log.Printf("repository: describing foreign keys in schema %s", schemaName)
+
 	rows, err := db.Conn.QueryContext(
 		ctx,
 		`
-	select kcu.CONSTRAINT_NAME,
-       kcu.TABLE_NAME,
-       kcu.COLUMN_NAME,
-       rel_kcu.TABLE_NAME,
-       rel_kcu.COLUMN_NAME
-	from INFORMATION_SCHEMA.TABLE_CONSTRAINTS tco
-			 join INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
-				  on tco.CONSTRAINT_SCHEMA = kcu.CONSTRAINT_SCHEMA
-					  and tco.CONSTRAINT_NAME = kcu.CONSTRAINT_NAME
-			 join INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS rco
-				  on tco.CONSTRAINT_SCHEMA = rco.CONSTRAINT_SCHEMA
-					  and tco.CONSTRAINT_NAME = rco.CONSTRAINT_NAME
-			 join INFORMATION_SCHEMA.KEY_COLUMN_USAGE rel_kcu
-				  on rco.UNIQUE_CONSTRAINT_SCHEMA = rel_kcu.CONSTRAINT_SCHEMA
-					  and rco.UNIQUE_CONSTRAINT_NAME = rel_kcu.CONSTRAINT_NAME
-					  and kcu.ORDINAL_POSITION = rel_kcu.ORDINAL_POSITION
-	where tco.CONSTRAINT_TYPE = 'FOREIGN KEY'
-	  and tco.CONSTRAINT_SCHEMA = $1
-	order by kcu.CONSTRAINT_NAME,
-			 kcu.ORDINAL_POSITION
+		SELECT fk.conname AS constraint_name, c1.relname AS table_name, a1.attname AS column_name, c2.relname AS
+		    foreign_table_name, a2.attname AS foreign_column_name
+		FROM pg_catalog.pg_constraint fk
+		    JOIN pg_catalog.pg_class c1 ON c1.oid = fk.conrelid
+		    JOIN pg_catalog.pg_attribute a1 ON a1.attrelid = c1.oid
+			AND a1.attnum = ANY (fk.conkey)
+		    JOIN pg_catalog.pg_class c2 ON c2.oid = fk.confrelid
+		    JOIN pg_catalog.pg_attribute a2 ON a2.attrelid = c2.oid
+			AND a2.attnum = ANY (fk.confkey)
+		WHERE fk.contype = 'f'
+		    AND fk.connamespace = $1::regnamespace::oid
+		ORDER BY constraint_name, a1.attnum;
 		`, schemaName)
 	if err != nil {
 		log.Fatal(err)
