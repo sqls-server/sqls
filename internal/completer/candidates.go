@@ -68,7 +68,17 @@ func (c *Completer) columnCandidates(targetTables []*parseutil.TableInfo, parent
 			if table.Name != parent.Name && table.Alias != parent.Name {
 				continue
 			}
-			columns, ok := c.DBCache.ColumnDescs(table.Name)
+
+			var columns []*database.ColumnDesc
+			var ok bool
+
+			if table.DatabaseSchema != "" {
+				columns, ok = c.DBCache.ColumnDatabase(table.DatabaseSchema, table.Name)
+
+			} else {
+				columns, ok = c.DBCache.ColumnDescs(table.Name)
+			}
+
 			if !ok {
 				continue
 			}
@@ -113,7 +123,13 @@ func (c *Completer) ReferencedTableCandidates(targetTables []*parseutil.TableInf
 
 	for _, targetTable := range targetTables {
 		includeTables := []*parseutil.TableInfo{}
-		for _, table := range c.DBCache.SortedTables() {
+		var schemaTables []string
+		if (targetTable.DatabaseSchema != "") {
+			schemaTables, _ = c.DBCache.SortedTablesByDBName(targetTable.DatabaseSchema)
+		} else {
+			schemaTables = c.DBCache.SortedTables()
+		}
+		for _, table := range schemaTables {
 			if table == targetTable.Name {
 				includeTables = append(includeTables, targetTable)
 			}
@@ -146,7 +162,7 @@ func (c *Completer) TableCandidates(parent *completionParent, targetTables []*pa
 	case ParentTypeSchema:
 		tables, ok := c.DBCache.SortedTablesByDBName(parent.Name)
 		if ok {
-			candidates = append(candidates, generateTableCandidates(tables, c.DBCache)...)
+			candidates = append(candidates, generateTableCandidatesBySchema(parent.Name, tables, c.DBCache)...)
 		}
 	case ParentTypeTable:
 		// pass
@@ -339,6 +355,26 @@ func generateTableCandidates(tables []string, dbCache *database.DBCache) []lsp.C
 	return candidates
 }
 
+func generateTableCandidatesBySchema(schemaName string, tables []string, dbCache *database.DBCache) []lsp.CompletionItem {
+	candidates := []lsp.CompletionItem{}
+	for _, tableName := range tables {
+		candidate := lsp.CompletionItem{
+			Label:  tableName,
+			Kind:   lsp.ClassCompletion,
+			Detail: "table",
+		}
+		cols, ok := dbCache.ColumnDatabase(schemaName, tableName)
+		if ok {
+			candidate.Documentation = lsp.MarkupContent{
+				Kind:  lsp.Markdown,
+				Value: database.TableDoc(tableName, cols),
+			}
+		}
+		candidates = append(candidates, candidate)
+	}
+	return candidates
+}
+
 func generateTableCandidatesByInfos(tables []*parseutil.TableInfo, dbCache *database.DBCache) []lsp.CompletionItem {
 	candidates := []lsp.CompletionItem{}
 	for _, table := range tables {
@@ -353,7 +389,14 @@ func generateTableCandidatesByInfos(tables []*parseutil.TableInfo, dbCache *data
 			Kind:   lsp.ClassCompletion,
 			Detail: detail,
 		}
-		cols, ok := dbCache.ColumnDescs(table.Name)
+		var cols []*database.ColumnDesc
+		var ok bool
+
+		if table.DatabaseSchema != "" {
+			cols, ok = dbCache.ColumnDatabase(table.DatabaseSchema, table.Name)
+		} else {
+			cols, ok = dbCache.ColumnDescs(table.Name)
+		}
 		if ok {
 			candidate.Documentation = lsp.MarkupContent{
 				Kind:  lsp.Markdown,
