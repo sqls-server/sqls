@@ -72,7 +72,7 @@ go install github.com/sqls-server/sqls@latest
 ## Editor Plugins
 
 - [sqls.vim](https://github.com/sqls-server/sqls.vim)
-- [vscode-sqls](https://github.com/lighttiger2505/vscode-sqls)
+- [VSCode sqlsurge](https://github.com/senkenn/sqlsurge)
 - [sqls.nvim](https://github.com/nanotee/sqls.nvim)
 - [Emacs LSP mode](https://emacs-lsp.github.io/lsp-mode/page/lsp-sqls/)
 
