@@ -1,6 +1,7 @@
 package database
 
 import (
+	"os"
 	"context"
 	"database/sql"
 	"fmt"
@@ -10,6 +11,8 @@ import (
 
 	_ "github.com/denisenkom/go-mssqldb"
 	"github.com/sqls-server/sqls/dialect"
+	"github.com/jfcote87/sshdb"
+	"github.com/jfcote87/sshdb/mssql"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -21,7 +24,6 @@ func init() {
 func mssqlOpen(dbConnCfg *DBConfig) (*DBConnection, error) {
 	var (
 		conn    *sql.DB
-		sshConn *ssh.Client
 	)
 	dsn, err := genMssqlConfig(dbConnCfg)
 	if err != nil {
@@ -29,13 +31,44 @@ func mssqlOpen(dbConnCfg *DBConfig) (*DBConnection, error) {
 	}
 
 	if dbConnCfg.SSHCfg != nil {
-		return nil, fmt.Errorf("connect via SSH is not supported")
+		key, err := os.ReadFile(dbConnCfg.SSHCfg.PrivateKey)
+		if err != nil {
+			return nil, fmt.Errorf("unable to open private key")
+		}
+
+		signer, err := ssh.ParsePrivateKeyWithPassphrase(key, []byte(dbConnCfg.SSHCfg.PassPhrase))
+		if err != nil {
+			return nil, fmt.Errorf("unable to decrypt private key")
+		}
+
+		cfg := &ssh.ClientConfig {
+			User: dbConnCfg.SSHCfg.User,
+			Auth: []ssh.AuthMethod {
+				ssh.PublicKeys(signer),
+			},
+			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		}
+
+		remoteAddr := fmt.Sprintf("%s:%d", dbConnCfg.SSHCfg.Host, dbConnCfg.SSHCfg.Port)
+
+		tunnel, err := sshdb.New(cfg, remoteAddr)
+		if err != nil {
+			return nil, fmt.Errorf("%w", err)
+		}
+
+		connector, err := tunnel.OpenConnector(mssql.TunnelDriver, dsn)
+		if err != nil {
+			return nil, err
+		}
+
+		conn = sql.OpenDB(connector)
+	} else {
+		conn, err = sql.Open("mssql", dsn)
+		if err != nil {
+			return nil, err
+		}
 	}
-	dbConn, err := sql.Open("sqlserver", dsn)
-	if err != nil {
-		return nil, err
-	}
-	conn = dbConn
+
 	if err = conn.Ping(); err != nil {
 		return nil, err
 	}
@@ -45,7 +78,6 @@ func mssqlOpen(dbConnCfg *DBConfig) (*DBConnection, error) {
 
 	return &DBConnection{
 		Conn:    conn,
-		SSHConn: sshConn,
 	}, nil
 }
 

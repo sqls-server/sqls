@@ -1,4 +1,4 @@
-# sqls
+# sqls: SQL Language Server
 
 ![test](https://github.com/sqls-server/sqls/workflows/test/badge.svg)
 
@@ -222,7 +222,7 @@ require'lspconfig'.sqls.setup{
 
 **I'm sorry. Please wait a little longer for other editor settings.**
 
-### Configuration Params
+### Configuration Parameters
 
 The first setting in `connections` is the default connection.
 

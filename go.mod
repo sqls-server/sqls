@@ -9,6 +9,7 @@ require (
 	github.com/godror/godror v0.41.0
 	github.com/google/go-cmp v0.5.9
 	github.com/jackc/pgx/v4 v4.18.1
+	github.com/jfcote87/sshdb v0.5.3
 	github.com/k0kubun/colorstring v0.0.0-20150214042306-9440f1994b88 // indirect
 	github.com/sourcegraph/jsonrpc2 v0.2.0
 	github.com/urfave/cli/v2 v2.27.0
