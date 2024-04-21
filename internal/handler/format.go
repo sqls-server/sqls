@@ -25,6 +25,10 @@ func (s *Server) handleTextDocumentFormatting(ctx context.Context, conn *jsonrpc
 		return nil, fmt.Errorf("document not found: %s", params.TextDocument.URI)
 	}
 
+	if f.LanguageID != `sql` {
+		return nil, nil
+	}
+
 	textEdits, err := formatter.Format(f.Text, params, s.getConfig())
 	if err != nil {
 		return nil, err
