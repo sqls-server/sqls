@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"strings"
 	"time"
 )
@@ -58,6 +59,18 @@ func sqlValToString(pointer interface{}) (string, error) {
 	}
 
 	val := *pointer.(*interface{})
+
+	reflectVal := reflect.ValueOf(val)
+
+	// extract pointer value
+	if reflectVal.Kind() == reflect.Pointer {
+		val = reflectVal.Elem().Interface()
+
+		if val == nil {
+			return "", nil
+		}
+	}
+
 	switch v := (val).(type) {
 	case []byte:
 		res = string(v)
