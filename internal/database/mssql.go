@@ -1,18 +1,18 @@
 package database
 
 import (
-	"os"
 	"context"
 	"database/sql"
 	"fmt"
 	"log"
 	"net/url"
+	"os"
 	"strconv"
 
 	_ "github.com/denisenkom/go-mssqldb"
-	"github.com/sqls-server/sqls/dialect"
 	"github.com/jfcote87/sshdb"
 	"github.com/jfcote87/sshdb/mssql"
+	"github.com/sqls-server/sqls/dialect"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -23,7 +23,7 @@ func init() {
 
 func mssqlOpen(dbConnCfg *DBConfig) (*DBConnection, error) {
 	var (
-		conn    *sql.DB
+		conn *sql.DB
 	)
 	dsn, err := genMssqlConfig(dbConnCfg)
 	if err != nil {
@@ -41,9 +41,9 @@ func mssqlOpen(dbConnCfg *DBConfig) (*DBConnection, error) {
 			return nil, fmt.Errorf("unable to decrypt private key")
 		}
 
-		cfg := &ssh.ClientConfig {
+		cfg := &ssh.ClientConfig{
 			User: dbConnCfg.SSHCfg.User,
-			Auth: []ssh.AuthMethod {
+			Auth: []ssh.AuthMethod{
 				ssh.PublicKeys(signer),
 			},
 			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
@@ -77,7 +77,7 @@ func mssqlOpen(dbConnCfg *DBConfig) (*DBConnection, error) {
 	conn.SetMaxOpenConns(DefaultMaxOpenConns)
 
 	return &DBConnection{
-		Conn:    conn,
+		Conn: conn,
 	}, nil
 }
 
@@ -376,9 +376,14 @@ func genMssqlConfig(connCfg *DBConfig) (string, error) {
 		return connCfg.DataSourceName, nil
 	}
 
+	passwd, err := connCfg.ResolvePassword()
+	if err != nil {
+		return "", err
+	}
+
 	q := url.Values{}
 	q.Set("user", connCfg.User)
-	q.Set("password", connCfg.Passwd)
+	q.Set("password", passwd)
 	q.Set("database", connCfg.DBName)
 
 	switch connCfg.Proto {
