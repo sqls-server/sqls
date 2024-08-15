@@ -29,6 +29,7 @@ func (nm *NodeMatcher) IsMatchNodeTypes(node ast.Node) bool {
 
 func (nm *NodeMatcher) IsMatchTokens(tok *ast.SQLToken) bool {
 	if nm.ExpectTokens != nil {
+		fmt.Printf("tok.Kind: %v\n", tok.Kind)
 		for _, expect := range nm.ExpectTokens {
 			if tok.MatchKind(expect) {
 				return true
@@ -40,6 +41,10 @@ func (nm *NodeMatcher) IsMatchTokens(tok *ast.SQLToken) bool {
 
 func (nm *NodeMatcher) IsMatchSQLType(tok *ast.SQLToken) bool {
 	if nm.ExpectSQLType != nil {
+		fmt.Printf("tok.Value: %v\n", tok.Value)
+		sqlWord, _ := tok.Value.(*token.SQLWord)
+		fmt.Printf("sqlWord: %v\n", sqlWord)
+		fmt.Printf("tok.String(): %v\n", tok.String())
 		for _, expect := range nm.ExpectSQLType {
 			if tok.MatchSQLKind(expect) {
 				return true
