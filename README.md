@@ -219,6 +219,22 @@ require'lspconfig'.sqls.setup{
     }
 }
 ```
+- Setting example for [Helix](https://helix-editor.com).
+
+Add the snippet below to your [language.toml](https://docs.helix-editor.com/languages.html):
+
+```toml
+[[language]]
+name = "sql"
+scope = "source.sql"
+file-types = ["sql"]
+indent = { tab-width = 4, unit = "    "}
+language-servers = ["sqls"]
+
+[language-server.sqls]
+command = "sqls"
+```
+
 
 **I'm sorry. Please wait a little longer for other editor settings.**
 
