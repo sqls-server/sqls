@@ -355,26 +355,24 @@ func (db *PostgreSQLDBRepository) DescribeForeignKeysBySchema(ctx context.Contex
 	rows, err := db.Conn.QueryContext(
 		ctx,
 		`
-	select kcu.CONSTRAINT_NAME,
-       kcu.TABLE_NAME,
-       kcu.COLUMN_NAME,
-       rel_kcu.TABLE_NAME,
-       rel_kcu.COLUMN_NAME
-	from INFORMATION_SCHEMA.TABLE_CONSTRAINTS tco
-			 join INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
-				  on tco.CONSTRAINT_SCHEMA = kcu.CONSTRAINT_SCHEMA
-					  and tco.CONSTRAINT_NAME = kcu.CONSTRAINT_NAME
-			 join INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS rco
-				  on tco.CONSTRAINT_SCHEMA = rco.CONSTRAINT_SCHEMA
-					  and tco.CONSTRAINT_NAME = rco.CONSTRAINT_NAME
-			 join INFORMATION_SCHEMA.KEY_COLUMN_USAGE rel_kcu
-				  on rco.UNIQUE_CONSTRAINT_SCHEMA = rel_kcu.CONSTRAINT_SCHEMA
-					  and rco.UNIQUE_CONSTRAINT_NAME = rel_kcu.CONSTRAINT_NAME
-					  and kcu.ORDINAL_POSITION = rel_kcu.ORDINAL_POSITION
-	where tco.CONSTRAINT_TYPE = 'FOREIGN KEY'
-	  and tco.CONSTRAINT_SCHEMA = $1
-	order by kcu.CONSTRAINT_NAME,
-			 kcu.ORDINAL_POSITION
+		SELECT fk.conname AS constraint_name, c1.relname AS table_name, a1.attname AS column_name, c2.relname AS
+		    foreign_table_name, a2.attname AS foreign_column_name
+		FROM pg_catalog.pg_constraint fk
+		    JOIN pg_catalog.pg_class c1 ON c1.oid = fk.conrelid
+		    JOIN pg_catalog.pg_attribute a1 ON a1.attrelid = c1.oid
+			AND a1.attnum = ANY (fk.conkey)
+		    JOIN pg_catalog.pg_class c2 ON c2.oid = fk.confrelid
+		    JOIN pg_catalog.pg_attribute a2 ON a2.attrelid = c2.oid
+			AND a2.attnum = ANY (fk.confkey)
+		WHERE fk.contype = 'f'
+		    AND fk.connamespace = $1::regnamespace::oid
+		    AND (pg_has_role(c1.relowner, 'USAGE')
+			OR has_table_privilege(c1.oid, 'INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER')
+			OR has_any_column_privilege(c1.oid, 'INSERT, UPDATE, REFERENCES'))
+		    AND (pg_has_role(c2.relowner, 'USAGE')
+			OR has_table_privilege(c2.oid, 'INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER')
+			OR has_any_column_privilege(c2.oid, 'INSERT, UPDATE, REFERENCES'))
+		ORDER BY constraint_name, a1.attnum;
 		`, schemaName)
 	if err != nil {
 		log.Fatal(err)
