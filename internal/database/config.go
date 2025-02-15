@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 
 	"github.com/sqls-server/sqls/dialect"
 	"golang.org/x/crypto/ssh"
@@ -25,12 +26,27 @@ type DBConfig struct {
 	Proto          Proto                  `json:"proto" yaml:"proto"`
 	User           string                 `json:"user" yaml:"user"`
 	Passwd         string                 `json:"passwd" yaml:"passwd"`
+	PasswdCmd      []string               `json:"passwdCmd" yaml:"passwdCmd"`
 	Host           string                 `json:"host" yaml:"host"`
 	Port           int                    `json:"port" yaml:"port"`
 	Path           string                 `json:"path" yaml:"path"`
 	DBName         string                 `json:"dbName" yaml:"dbName"`
 	Params         map[string]string      `json:"params" yaml:"params"`
 	SSHCfg         *SSHConfig             `json:"sshConfig" yaml:"sshConfig"`
+}
+
+func (c *DBConfig) ResolvePassword() (string, error) {
+	if len(c.PasswdCmd) == 0 {
+		return c.Passwd, nil
+	}
+
+	cmd := exec.Command(c.PasswdCmd[0], c.PasswdCmd[1:]...) // nolint:gosec // The whole feature is allowing the user to run a provided command.
+	data, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+
+	return string(data), nil
 }
 
 func (c *DBConfig) Validate() error {
@@ -101,8 +117,8 @@ func (c *DBConfig) Validate() error {
 			if c.User == "" {
 				return errors.New("required: connections[].user")
 			}
-			if c.Passwd == "" {
-				return errors.New("required: connections[].Passwd")
+			if len(c.PasswdCmd) == 0 && c.Passwd == "" {
+				return errors.New("required: connections[].PasswdCmd or connections[].Passwd")
 			}
 			if c.Host == "" {
 				return errors.New("required: connections[].Host")
@@ -129,7 +145,7 @@ func (c *DBConfig) Validate() error {
 					return errors.New("required: connections[].host")
 				}
 			case ProtoUDP, ProtoUnix:
-      default:
+			default:
 				return errors.New("invalid: connections[].proto")
 			}
 			if c.SSHCfg != nil {

@@ -396,9 +396,14 @@ func genPostgresConfig(connCfg *DBConfig) (string, error) {
 		return connCfg.DataSourceName, nil
 	}
 
+	passwd, err := connCfg.ResolvePassword()
+	if err != nil {
+		return "", err
+	}
+
 	q := url.Values{}
 	q.Set("user", connCfg.User)
-	q.Set("password", connCfg.Passwd)
+	q.Set("password", passwd)
 	q.Set("dbname", connCfg.DBName)
 
 	switch connCfg.Proto {

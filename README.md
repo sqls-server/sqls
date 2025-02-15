@@ -111,6 +111,14 @@ connections:
     params:
       autocommit: "true"
       tls: skip-verify
+  - alias: managed_mysql
+    driver: mysql
+    proto: tcp
+    user: root
+    passwdCmd: ["echo", "-n", "super_secure"]
+    host: 127.0.0.1
+    port: 13306
+    dbName: world
   - alias: mysql_via_ssh
     driver: mysql
     proto: tcp
@@ -232,7 +240,9 @@ The first setting in `connections` is the default connection.
 
 ### connections
 
-`dataSourceName` takes precedence over the value set in `proto`, `user`, `passwd`, `host`, `port`, `dbName`, `params`.
+`dataSourceName` takes precedence over the value set in `proto`, `user`, `passwd`, `passwdCmd`, `host`, `port`, `dbName`, `params`.
+
+`passwdCmd` takes precedence over the value set in `passwd`.
 
 | Key            | Description                                 |
 | -------------- | ------------------------------------------- |
@@ -242,6 +252,7 @@ The first setting in `connections` is the default connection.
 | proto          | `tcp`, `udp`, `unix`.                       |
 | user           | User name                                   |
 | passwd         | Password                                    |
+| passwdCmd      | Command to be executed to get password (Array)   |
 | host           | Host                                        |
 | port           | Port                                        |
 | path           | unix socket path                            |
