@@ -148,8 +148,8 @@ func TestFormattingMinimal(t *testing.T) {
 		// },
 		{
 			name:  "identifier list",
-			input: "1 ,  2   ,    3     ,      4",
-			want:  "1,\n2,\n3,\n4",
+			input: "insert into renovate( organisation)values( 'foo');",
+			want:  "insert into renovate( organisation)values( 'foo');",
 		},
 	}
 	testFormatting(t, minimalTestCase, formattingOptionTab, lowerCaseConfig)

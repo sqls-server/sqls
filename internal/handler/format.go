@@ -25,6 +25,7 @@ func (s *Server) handleTextDocumentFormatting(ctx context.Context, conn *jsonrpc
 		return nil, fmt.Errorf("document not found: %s", params.TextDocument.URI)
 	}
 
+	fmt.Println(f.Text, params, s.getConfig())
 	textEdits, err := formatter.Format(f.Text, params, s.getConfig())
 	if err != nil {
 		return nil, err

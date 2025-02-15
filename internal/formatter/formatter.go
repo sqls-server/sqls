@@ -2,6 +2,7 @@ package formatter
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/sqls-server/sqls/ast"
 	"github.com/sqls-server/sqls/ast/astutil"
@@ -135,6 +136,32 @@ func Eval(node ast.Node, env *formatEnvironment) ast.Node {
 func formatItem(node ast.Node, env *formatEnvironment) ast.Node {
 	results := []ast.Node{node}
 
+	fmt.Printf("node: %v\n", node)
+	fmt.Printf("node.String(): %v\n", node.String())
+	tok, ok := node.(ast.Token)
+	if ok {
+		fmt.Printf("tok: %v\n", tok)
+		fmt.Printf("tok.Type(): %v\n", tok.Type())
+		fmt.Printf("tok.GetToken().Value: %v\n", tok.GetToken().Value)
+		fmt.Printf("tok.GetToken().Kind: %v\n", tok.GetToken().Kind)
+	}
+	fmt.Println("________________________________________")
+
+	// TODO: maybe instead use ExpectTokens or ExpectSQLType
+
+	todoAfterMatcher := astutil.NodeMatcher{
+		// ExpectSQLType: []dialect.KeywordKind{
+		// 	dialect.Matched,
+		// },
+		ExpectTokens: []token.Kind{
+			token.SQLKeyword,
+		},
+	}
+	if todoAfterMatcher.IsMatch(node) {
+		// results = unshift(results, whitespaceNode)
+		results = append(results, whitespaceNode)
+	}
+
 	whitespaceAfterMatcher := astutil.NodeMatcher{
 		ExpectKeyword: []string{
 			"JOIN",
@@ -144,6 +171,8 @@ func formatItem(node ast.Node, env *formatEnvironment) ast.Node {
 			"LIMIT",
 			"WHEN",
 			"ELSE",
+			// "CREATE",
+			// "TABLE",
 		},
 	}
 	if whitespaceAfterMatcher.IsMatch(node) {
@@ -211,9 +240,16 @@ func formatItem(node ast.Node, env *formatEnvironment) ast.Node {
 			"FROM",
 			"WHERE",
 			"HAVING",
+			// "CREATE",
+			// "TABLE",
+			// "(",
 		},
 		ExpectTokens: []token.Kind{
+			// TODO: only if in a query
+			// TODO: only if in a query
 			token.LParen,
+			// TODO: only if in a query
+			// TODO: only if in a query
 		},
 	}
 	if linebreakWithIndentAfterMatcher.IsMatch(node) {
