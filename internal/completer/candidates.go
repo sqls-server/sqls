@@ -68,7 +68,17 @@ func (c *Completer) columnCandidates(targetTables []*parseutil.TableInfo, parent
 			if table.Name != parent.Name && table.Alias != parent.Name {
 				continue
 			}
-			columns, ok := c.DBCache.ColumnDescs(table.Name)
+
+			var columns []*database.ColumnDesc
+			var ok bool
+
+			if table.DatabaseSchema != "" {
+				columns, ok = c.DBCache.ColumnDatabase(table.DatabaseSchema, table.Name)
+
+			} else {
+				columns, ok = c.DBCache.ColumnDescs(table.Name)
+			}
+
 			if !ok {
 				continue
 			}
@@ -113,7 +123,13 @@ func (c *Completer) ReferencedTableCandidates(targetTables []*parseutil.TableInf
 
 	for _, targetTable := range targetTables {
 		includeTables := []*parseutil.TableInfo{}
-		for _, table := range c.DBCache.SortedTables() {
+		var schemaTables []string
+		if (targetTable.DatabaseSchema != "") {
+			schemaTables, _ = c.DBCache.SortedTablesByDBName(targetTable.DatabaseSchema)
+		} else {
+			schemaTables = c.DBCache.SortedTables()
+		}
+		for _, table := range schemaTables {
 			if table == targetTable.Name {
 				includeTables = append(includeTables, targetTable)
 			}
@@ -129,24 +145,29 @@ func (c *Completer) TableCandidates(parent *completionParent, targetTables []*pa
 
 	switch parent.Type {
 	case ParentTypeNone:
-		excludeTables := []string{}
-		for _, table := range c.DBCache.SortedTables() {
-			isExclude := false
-			for _, targetTable := range targetTables {
-				if table == targetTable.Name {
-					isExclude = true
-				}
-			}
-			if isExclude {
-				continue
-			}
-			excludeTables = append(excludeTables, table)
+		targetTablesMap := make(map[string]*parseutil.TableInfo)
+		for _, targetTable := range targetTables {
+			targetTablesMap[targetTable.Name] = targetTable
 		}
-		candidates = append(candidates, generateTableCandidates(excludeTables, c.DBCache)...)
+		for schemaKey, schema := range c.DBCache.Schemas {
+			excludeTables := []string{}
+
+			tables := c.DBCache.SchemaTables[schemaKey]
+			for _, table := range tables {
+				_, isExclude := targetTablesMap[table]
+				if isExclude {
+					continue
+				}
+				excludeTables = append(excludeTables, table)
+			}
+
+			schemaCandidates := generateTableCandidatesBySchema(schema, excludeTables, c.DBCache)
+			candidates = append(candidates, schemaCandidates...)
+		}
 	case ParentTypeSchema:
 		tables, ok := c.DBCache.SortedTablesByDBName(parent.Name)
 		if ok {
-			candidates = append(candidates, generateTableCandidates(tables, c.DBCache)...)
+			candidates = append(candidates, generateTableCandidatesBySchema(parent.Name, tables, c.DBCache)...)
 		}
 	case ParentTypeTable:
 		// pass
@@ -320,14 +341,24 @@ func generateForeignKeyCandidate(target string,
 }
 
 func generateTableCandidates(tables []string, dbCache *database.DBCache) []lsp.CompletionItem {
+	return generateTableCandidatesBySchema(dbCache.DefaultSchema, tables, dbCache)
+}
+
+func generateTableCandidatesBySchema(schemaName string, tables []string, dbCache *database.DBCache) []lsp.CompletionItem {
 	candidates := []lsp.CompletionItem{}
 	for _, tableName := range tables {
+		var label string
+		if schemaName != dbCache.DefaultSchema {
+			label = fmt.Sprintf("%s.%s", schemaName, tableName)
+		} else {
+			label = tableName
+		}
 		candidate := lsp.CompletionItem{
-			Label:  tableName,
+			Label:  label,
 			Kind:   lsp.ClassCompletion,
 			Detail: "table",
 		}
-		cols, ok := dbCache.ColumnDescs(tableName)
+		cols, ok := dbCache.ColumnDatabase(schemaName, tableName)
 		if ok {
 			candidate.Documentation = lsp.MarkupContent{
 				Kind:  lsp.Markdown,
@@ -353,7 +384,14 @@ func generateTableCandidatesByInfos(tables []*parseutil.TableInfo, dbCache *data
 			Kind:   lsp.ClassCompletion,
 			Detail: detail,
 		}
-		cols, ok := dbCache.ColumnDescs(table.Name)
+		var cols []*database.ColumnDesc
+		var ok bool
+
+		if table.DatabaseSchema != "" {
+			cols, ok = dbCache.ColumnDatabase(table.DatabaseSchema, table.Name)
+		} else {
+			cols, ok = dbCache.ColumnDescs(table.Name)
+		}
 		if ok {
 			candidate.Documentation = lsp.MarkupContent{
 				Kind:  lsp.Markdown,

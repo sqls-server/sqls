@@ -21,35 +21,44 @@ type MockDBRepository struct {
 }
 
 func NewMockDBRepository(_ *sql.DB) DBRepository {
+	defaultDatabase := "world"
+
 	return &MockDBRepository{
-		MockDatabase:       func(ctx context.Context) (string, error) { return "world", nil },
+		MockDatabase:       func(ctx context.Context) (string, error) { return defaultDatabase, nil },
 		MockDatabases:      func(ctx context.Context) ([]string, error) { return dummyDatabases, nil },
 		MockDatabaseTables: func(ctx context.Context) (map[string][]string, error) { return dummyDatabaseTables, nil },
-		MockTables:         func(ctx context.Context) ([]string, error) { return dummyTables, nil },
+		MockTables:         func(ctx context.Context) ([]string, error) { return dummyDatabaseTables[defaultDatabase], nil },
 		MockDescribeTable: func(ctx context.Context, tableName string) ([]*ColumnDesc, error) {
-			switch tableName {
-			case "city":
-				return dummyCityColumns, nil
-			case "country":
-				return dummyCountryColumns, nil
-			case "countrylanguage":
-				return dummyCountryLanguageColumns, nil
+			var res []*ColumnDesc
+			schemaTables, ok := dummyColumns[defaultDatabase]
+			if !ok {
+				return res, nil
 			}
-			return nil, nil
+
+			columnTables, ok := schemaTables[tableName]
+			if !ok {
+				return res, nil
+			}
+			return columnTables, nil
 		},
 		MockDescribeDatabaseTable: func(ctx context.Context) ([]*ColumnDesc, error) {
 			var res []*ColumnDesc
-			res = append(res, dummyCityColumns...)
-			res = append(res, dummyCountryColumns...)
-			res = append(res, dummyCountryLanguageColumns...)
+			for _, tc := range dummyColumns {
+				for _, columns := range tc {
+					res = append(res, columns...)
+				}
+			}
 			return res, nil
-
 		},
 		MockDescribeDatabaseTableBySchema: func(ctx context.Context, schemaName string) ([]*ColumnDesc, error) {
 			var res []*ColumnDesc
-			res = append(res, dummyCityColumns...)
-			res = append(res, dummyCountryColumns...)
-			res = append(res, dummyCountryLanguageColumns...)
+			schemaTables, ok := dummyColumns[schemaName]
+			if !ok {
+				return res, nil
+			}
+			for _, cd := range schemaTables {
+				res = append(res, cd...)
+			}
 			return res, nil
 
 		},
@@ -63,6 +72,10 @@ func NewMockDBRepository(_ *sql.DB) DBRepository {
 			return &sql.Rows{}, nil
 		},
 		MockDescribeForeignKeysBySchema: func(ctx context.Context, schemaName string) ([]*ForeignKey, error) {
+			foreignKeys, ok := foreignKeysBySchema[schemaName]
+			if !ok {
+				return nil, nil
+			}
 			return foreignKeys, nil
 		},
 	}
@@ -129,11 +142,9 @@ var dummyDatabaseTables = map[string][]string{
 		"country",
 		"countrylanguage",
 	},
-}
-var dummyTables = []string{
-	"city",
-	"country",
-	"countrylanguage",
+	"mysql": {
+		"city_population",
+	},
 }
 var dummyCityColumns = []*ColumnDesc{
 	{
@@ -502,32 +513,94 @@ var dummyCountryLanguageColumns = []*ColumnDesc{
 	},
 }
 
-var foreignKeys = []*ForeignKey{
+var dummyCityPopulationColumns = []*ColumnDesc{
 	{
-		[2]*ColumnBase{
-			{
-				Schema: "world",
-				Table:  "city",
-				Name:   "CountryCode",
+		ColumnBase: ColumnBase{
+			Schema: "mysql",
+			Table:  "city_population",
+			Name:   "population",
+		},
+		Type: "int(11)",
+		Null: "NO",
+		Key:  "",
+		Default: sql.NullString{
+			String: "0",
+			Valid:  false,
+		},
+		Extra: "",
+	},
+	{
+		ColumnBase: ColumnBase{
+			Schema: "mysql",
+			Table:  "city_population",
+			Name:   "city_id",
+		},
+		Type: "int(11)",
+		Null: "NO",
+		Key:  "PRI",
+		Default: sql.NullString{
+			String: "<null>",
+			Valid:  false,
+		},
+		Extra: "",
+	},
+}
+
+var dummyColumns = map[string]map[string][]*ColumnDesc{
+	"world": {
+		"city":            dummyCityColumns,
+		"county":          dummyCountryColumns,
+		"countrylanguage": dummyCountryLanguageColumns,
+	},
+	"mysql": {
+		"city_population": dummyCityPopulationColumns,
+	},
+}
+
+var foreignKeysBySchema = map[string][]*ForeignKey{
+	"world": {
+		{
+			[2]*ColumnBase{
+				{
+					Schema: "world",
+					Table:  "city",
+					Name:   "CountryCode",
+				},
+				{
+					Schema: "world",
+					Table:  "country",
+					Name:   "Code",
+				},
 			},
-			{
-				Schema: "world",
-				Table:  "country",
-				Name:   "Code",
+		},
+		{
+			[2]*ColumnBase{
+				{
+					Schema: "world",
+					Table:  "countrylanguage",
+					Name:   "CountryCode",
+				},
+				{
+					Schema: "world",
+					Table:  "country",
+					Name:   "Code",
+				},
 			},
 		},
 	},
-	{
-		[2]*ColumnBase{
-			{
-				Schema: "world",
-				Table:  "countrylanguage",
-				Name:   "CountryCode",
-			},
-			{
-				Schema: "world",
-				Table:  "country",
-				Name:   "Code",
+	"mysql": {
+		{
+			[2]*ColumnBase{
+				{
+					Schema: "mysql",
+					Table:  "city_population",
+					Name:   "city_id",
+				},
+				{
+					Schema: "world",
+					Table:  "city",
+					Name:   "ID",
+				},
 			},
 		},
 	},
