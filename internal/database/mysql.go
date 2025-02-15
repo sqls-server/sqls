@@ -318,7 +318,7 @@ func (db *MySQLDBRepository) DescribeForeignKeysBySchema(ctx context.Context, sc
 				  on fks.CONSTRAINT_SCHEMA = kcu.TABLE_SCHEMA
 					  and fks.TABLE_NAME = kcu.TABLE_NAME
 					  and fks.CONSTRAINT_NAME = kcu.CONSTRAINT_NAME
-	where fks.CONSTRAINT_SCHEMA = ?
+	where fks.CONSTRAINT_SCHEMA = ? and  kcu.REFERENCED_COLUMN_NAME is not null
 	order by fks.CONSTRAINT_NAME,
 			 kcu.ORDINAL_POSITION
 		`, schemaName)
