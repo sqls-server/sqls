@@ -87,7 +87,7 @@ func generateColumnCandidates(tableName string, columns []*database.ColumnDesc) 
 			Label:  column.Name,
 			Kind:   lsp.FieldCompletion,
 			Detail: columnDetail(tableName),
-			Documentation: lsp.MarkupContent{
+			Documentation: &lsp.MarkupContent{
 				Kind:  lsp.Markdown,
 				Value: database.ColumnDoc(tableName, column),
 			},
@@ -329,7 +329,7 @@ func generateTableCandidates(tables []string, dbCache *database.DBCache) []lsp.C
 		}
 		cols, ok := dbCache.ColumnDescs(tableName)
 		if ok {
-			candidate.Documentation = lsp.MarkupContent{
+			candidate.Documentation = &lsp.MarkupContent{
 				Kind:  lsp.Markdown,
 				Value: database.TableDoc(tableName, cols),
 			}
@@ -355,7 +355,7 @@ func generateTableCandidatesByInfos(tables []*parseutil.TableInfo, dbCache *data
 		}
 		cols, ok := dbCache.ColumnDescs(table.Name)
 		if ok {
-			candidate.Documentation = lsp.MarkupContent{
+			candidate.Documentation = &lsp.MarkupContent{
 				Kind:  lsp.Markdown,
 				Value: database.TableDoc(table.Name, cols),
 			}
@@ -372,7 +372,7 @@ func (c *Completer) SubQueryCandidates(infos []*parseutil.SubQueryInfo) []lsp.Co
 			Label:  info.Name,
 			Kind:   lsp.FieldCompletion,
 			Detail: "subquery",
-			Documentation: lsp.MarkupContent{
+			Documentation: &lsp.MarkupContent{
 				Kind:  lsp.Markdown,
 				Value: database.SubqueryDoc(info.Name, info.Views, c.DBCache),
 			},
@@ -397,7 +397,7 @@ func (c *Completer) SubQueryColumnCandidates(infos []*parseutil.SubQueryInfo) []
 							Label:  tableCol.Name,
 							Kind:   lsp.FieldCompletion,
 							Detail: subQueryColumnDetail(info.Name),
-							Documentation: lsp.MarkupContent{
+							Documentation: &lsp.MarkupContent{
 								Kind:  lsp.Markdown,
 								Value: database.SubqueryColumnDoc(tableCol.Name, info.Views, c.DBCache),
 							},
@@ -409,7 +409,7 @@ func (c *Completer) SubQueryColumnCandidates(infos []*parseutil.SubQueryInfo) []
 						Label:  col.DisplayName(),
 						Kind:   lsp.FieldCompletion,
 						Detail: subQueryColumnDetail(info.Name),
-						Documentation: lsp.MarkupContent{
+						Documentation: &lsp.MarkupContent{
 							Kind:  lsp.Markdown,
 							Value: database.SubqueryColumnDoc(col.DisplayName(), info.Views, c.DBCache),
 						},
