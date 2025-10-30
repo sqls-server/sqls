@@ -8,8 +8,6 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"runtime"
-	"strings"
 
 	"github.com/sourcegraph/jsonrpc2"
 	"github.com/urfave/cli/v2"
@@ -172,15 +170,7 @@ func (stdrwc) Close() error {
 }
 
 func openEditor(program string, args ...string) error {
-	cmdargs := strings.Join(args, " ")
-	command := program + " " + cmdargs
-
-	var cmd *exec.Cmd
-	if runtime.GOOS == "windows" {
-		cmd = exec.Command("cmd", "/c", command)
-	} else {
-		cmd = exec.Command("sh", "-c", command)
-	}
+	cmd := exec.Command(program, args...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
