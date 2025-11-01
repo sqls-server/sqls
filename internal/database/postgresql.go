@@ -221,111 +221,78 @@ func (db *PostgreSQLDBRepository) Tables(ctx context.Context) ([]string, error) 
 }
 
 func (db *PostgreSQLDBRepository) DescribeDatabaseTable(ctx context.Context) ([]*ColumnDesc, error) {
-	rows, err := db.Conn.QueryContext(
-		ctx,
-		`
-	SELECT
-		c.table_schema,
-		c.table_name,
-		c.column_name,
-		c.data_type,
-		c.is_nullable,
-		CASE t.constraint_type
-			WHEN 'PRIMARY KEY' THEN 'YES'
-			ELSE 'NO'
-		END,
-		c.column_default,
-		''
-	FROM
-		information_schema.columns c
-	LEFT JOIN (
-		SELECT
-			ccu.table_schema as table_schema,
-			ccu.table_name as table_name,
-			ccu.column_name as column_name,
-			tc.constraint_type as constraint_type
-		FROM information_schema.constraint_column_usage ccu
-		LEFT JOIN information_schema.table_constraints tc ON
-			tc.table_schema = ccu.table_schema
-			AND tc.table_name = ccu.table_name
-			AND tc.constraint_name = ccu.constraint_name
-		WHERE
-			tc.constraint_type = 'PRIMARY KEY'
-	) as t
-		ON c.table_schema = t.table_schema
-		AND c.table_name = t.table_name
-		AND c.column_name = t.column_name
-	ORDER BY
-		c.table_name,
-		c.ordinal_position
-	`)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer rows.Close()
-	tableInfos := []*ColumnDesc{}
-	for rows.Next() {
-		var tableInfo ColumnDesc
-		err := rows.Scan(
-			&tableInfo.Schema,
-			&tableInfo.Table,
-			&tableInfo.Name,
-			&tableInfo.Type,
-			&tableInfo.Null,
-			&tableInfo.Key,
-			&tableInfo.Default,
-			&tableInfo.Extra,
-		)
-		if err != nil {
-			return nil, err
-		}
-		tableInfos = append(tableInfos, &tableInfo)
-	}
-	return tableInfos, nil
+	return db.DescribeDatabaseTableBySchema(ctx, "")
 }
 
 func (db *PostgreSQLDBRepository) DescribeDatabaseTableBySchema(ctx context.Context, schemaName string) ([]*ColumnDesc, error) {
-	rows, err := db.Conn.QueryContext(
-		ctx,
+	var parameters []interface{}
+	var query strings.Builder
+
+	query.WriteString(
 		`
-	SELECT
-		c.table_schema,
-		c.table_name,
-		c.column_name,
-		c.data_type,
-		c.is_nullable,
-		CASE t.constraint_type
-			WHEN 'PRIMARY KEY' THEN 'YES'
-			ELSE 'NO'
-		END,
-		c.column_default,
-		''
-	FROM
-		information_schema.columns c
-	LEFT JOIN (
-		SELECT
-			ccu.table_schema as table_schema,
-			ccu.table_name as table_name,
-			ccu.column_name as column_name,
-			tc.constraint_type as constraint_type
-		FROM information_schema.constraint_column_usage ccu
-		LEFT JOIN information_schema.table_constraints tc ON
-			tc.table_schema = ccu.table_schema
-			AND tc.table_name = ccu.table_name
-			AND tc.constraint_name = ccu.constraint_name
-		WHERE
-			ccu.table_schema = $1
-			AND tc.constraint_type = 'PRIMARY KEY'
-	) as t
-		ON c.table_schema = t.table_schema
-		AND c.table_name = t.table_name
-		AND c.column_name = t.column_name
-	WHERE
-		c.table_schema = $2
-	ORDER BY
-		c.table_name,
-		c.ordinal_position
-	`, schemaName, schemaName)
+		SELECT DISTINCT ON (table_schema, table_name, a.attnum)
+		    c1.relnamespace::regnamespace AS table_schema, c1.relname AS table_name, a.attname AS column_name, CASE WHEN
+			t.typtype = 'd'::"char" THEN
+			CASE WHEN bt.typelem <> 0::oid
+			    AND bt.typlen = '-1'::integer THEN
+			    'ARRAY'::text
+			WHEN nbt.nspname = 'pg_catalog'::name THEN
+			    format_type(t.typbasetype, NULL::integer)
+			ELSE
+			    'USER-DEFINED'::text
+			END
+		    ELSE
+			CASE WHEN t.typelem <> 0::oid
+			    AND t.typlen = '-1'::integer THEN
+			    'ARRAY'::text
+			WHEN nt.nspname = 'pg_catalog'::name THEN
+			    format_type(a.atttypid, NULL::integer)
+			ELSE
+			    'USER-DEFINED'::text
+			END
+		    END::information_schema.character_data AS data_type, CASE WHEN a.attnotnull
+			OR t.typtype = 'd'::"char"
+			AND t.typnotnull THEN
+			'NO'::text
+		    ELSE
+			'YES'::text
+		    END::information_schema.yes_or_no AS is_nullable, CASE WHEN conn.contype = 'p' THEN
+			'YES'
+		    ELSE
+			'NO'
+		    END AS is_primary_key, CASE WHEN a.attgenerated = ''::"char" THEN
+			pg_get_expr(ad.adbin, ad.adrelid)
+		    ELSE
+			NULL::text
+		    END::information_schema.character_data AS column_default, ''
+		FROM pg_catalog.pg_class c1
+		    JOIN pg_catalog.pg_attribute a ON a.attrelid = c1.oid
+		    JOIN (pg_type t
+			JOIN pg_namespace nt ON t.typnamespace = nt.oid) ON a.atttypid = t.oid
+		    LEFT JOIN (pg_type bt
+			JOIN pg_namespace nbt ON bt.typnamespace = nbt.oid) ON t.typtype = 'd'::char
+			AND t.typbasetype = bt.oid
+		    LEFT JOIN pg_catalog.pg_constraint conn ON conn.conrelid = c1.oid
+			AND a.attnum = ANY (conn.conkey)
+			AND conn.contype = 'p'
+		    LEFT JOIN pg_attrdef ad ON a.attrelid = ad.adrelid
+			AND a.attnum = ad.adnum
+		WHERE c1.relkind = ANY (ARRAY['p', 'r', 'v'])
+		    AND a.attnum > 0
+		    AND (pg_has_role(c1.relowner, 'USAGE'::text)
+			OR has_column_privilege(c1.oid, a.attnum, 'SELECT, INSERT, UPDATE, REFERENCES'::text))
+		`,
+	)
+
+	if (schemaName != "") {
+		parameters = append(parameters, schemaName)
+		query.WriteString(`
+		    AND c1.relnamespace = $1::regnamespace::oid
+		`)
+	}
+
+	query.WriteString("ORDER BY table_name, a.attnum")
+	rows, err := db.Conn.QueryContext( ctx, query.String(), parameters...)
 	if err != nil {
 		log.Fatal(err)
 	}
