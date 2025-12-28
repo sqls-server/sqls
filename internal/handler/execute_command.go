@@ -231,11 +231,25 @@ func (s *Server) query(ctx context.Context, query string, vertical bool) (string
 		table.render()
 	} else {
 		table := tablewriter.NewWriter(buf)
-		table.SetHeader(columns)
-		for _, stringRow := range stringRows {
-			table.Append(stringRow)
+		// Convert []string to []any for Header
+		headers := make([]any, len(columns))
+		for i, v := range columns {
+			headers[i] = v
 		}
-		table.Render()
+		table.Header(headers...)
+		for _, stringRow := range stringRows {
+			// Convert []string to []any for Append
+			row := make([]any, len(stringRow))
+			for i, v := range stringRow {
+				row[i] = v
+			}
+			if err := table.Append(row...); err != nil {
+				return "", err
+			}
+		}
+		if err := table.Render(); err != nil {
+			return "", err
+		}
 	}
 	fmt.Fprintf(buf, "%d rows in set", len(stringRows))
 	fmt.Fprintln(buf, "")
