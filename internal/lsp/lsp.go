@@ -139,7 +139,7 @@ type CompletionItem struct {
 	Kind                CompletionItemKind  `json:"kind,omitempty"`
 	Tags                []CompletionItemTag `json:"tags,omitempty"`
 	Detail              string              `json:"detail,omitempty"`
-	Documentation       MarkupContent       `json:"documentation,omitempty"` // string | MarkupContent
+	Documentation       *MarkupContent      `json:"documentation,omitempty"` // string | MarkupContent
 	Deprecated          bool                `json:"deprecated,omitempty"`
 	Preselect           bool                `json:"preselect,omitempty"`
 	SortText            string              `json:"sortText,omitempty"`
