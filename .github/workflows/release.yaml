@@ -31,7 +31,7 @@ jobs:
         GOARCH: amd64
       run: make release
     - name: Archive artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v6
       with:
         name: dist-linux
         path: sqls-linux-*.zip
@@ -57,7 +57,7 @@ jobs:
         GOARCH: amd64
       run: make release
     - name: Archive artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v6
       with:
         name: dist-darwin
         path: sqls-darwin-*.zip
@@ -84,7 +84,7 @@ jobs:
         GOARCH: amd64
       run: make release
     - name: Archive artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v6
       with:
         name: dist-windows
         path: sqls-windows-*.zip
@@ -98,7 +98,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v6
       - name: Release
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
