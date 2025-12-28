@@ -252,10 +252,11 @@ WHERE  ( c.database = currentDatabase()
 	tableInfos := []*ColumnDesc{}
 	for rows.Next() {
 		var tableInfo ColumnDesc
+		var columnName *string
 		err := rows.Scan(
 			&tableInfo.Schema,
 			&tableInfo.Table,
-			&tableInfo.Name,
+			&columnName,
 			&tableInfo.Type,
 			&tableInfo.Null,
 			&tableInfo.Key,
@@ -264,6 +265,9 @@ WHERE  ( c.database = currentDatabase()
 		)
 		if err != nil {
 			return nil, err
+		}
+		if columnName != nil {
+			tableInfo.Name = *columnName
 		}
 		tableInfos = append(tableInfos, &tableInfo)
 	}
@@ -303,10 +307,11 @@ WHERE  ( c.database = ?
 	tableInfos := []*ColumnDesc{}
 	for rows.Next() {
 		var tableInfo ColumnDesc
+		var columnName *string
 		err := rows.Scan(
 			&tableInfo.Schema,
 			&tableInfo.Table,
-			&tableInfo.Name,
+			&columnName,
 			&tableInfo.Type,
 			&tableInfo.Null,
 			&tableInfo.Key,
@@ -315,6 +320,9 @@ WHERE  ( c.database = ?
 		)
 		if err != nil {
 			return nil, err
+		}
+		if columnName != nil {
+			tableInfo.Name = *columnName
 		}
 		tableInfos = append(tableInfos, &tableInfo)
 	}
