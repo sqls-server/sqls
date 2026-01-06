@@ -30,8 +30,8 @@ show-version: $(GOBIN)/gobump
 	@$(GOBIN)/gobump show -r .
 
 $(GOBIN)/gobump:
-	@echo "Installing gobump tool to $(GOBIN)..."
-	go install -v -x github.com/x-motemen/gobump/cmd/gobump@latest
+	echo "Installing gobump tool..."
+	env GOOS=$(shell go env GOHOSTOS) GOARCH=$(shell go env GOHOSTARCH) go install github.com/x-motemen/gobump/cmd/gobump@latest
 
 .PHONY: test
 test: build
