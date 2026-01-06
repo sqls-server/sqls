@@ -575,10 +575,11 @@ var identifierListTargetMatcher = astutil.NodeMatcher{
 		ast.TypeComparison,
 		ast.TypeOperator,
 		ast.TypeSwitchCase,
-		ast.TypeItem,
 	},
 	ExpectKeyword: []string{
 		"NULL",
+		"TRUE",
+		"FALSE",
 	},
 }
 
@@ -588,6 +589,16 @@ func parseIdentifierList(reader *astutil.NodeReader) ast.Node {
 		tok := item.GetToken()
 		if tok.Kind == token.Comment || tok.Kind == token.MultilineComment {
 			return reader.CurNode
+		}
+		// Don't start with SQL keywords (except literals like TRUE/FALSE/NULL)
+		if tok.Kind == token.SQLKeyword {
+			if sqlWord, ok := tok.Value.(*token.SQLWord); ok {
+				keyword := sqlWord.Keyword
+				// Only allow literal keywords
+				if keyword != "TRUE" && keyword != "FALSE" && keyword != "NULL" {
+					return reader.CurNode
+				}
+			}
 		}
 	}
 
@@ -624,6 +635,23 @@ func parseIdentifierList(reader *astutil.NodeReader) ast.Node {
 		}
 
 		peekIndex, peekNode = tmpReader.PeekNode(true)
+
+		// Don't include SQL keywords (except literals) in identifier list
+		if item, ok := peekNode.(*ast.Item); ok {
+			tok := item.GetToken()
+			if tok.Kind == token.SQLKeyword {
+				if sqlWord, ok := tok.Value.(*token.SQLWord); ok {
+					keyword := sqlWord.Keyword
+					// Only allow literal keywords
+					if keyword != "TRUE" && keyword != "FALSE" && keyword != "NULL" {
+						// Set endIndex to current position before breaking
+						endIndex = tmpReader.Index - 1
+						break
+					}
+				}
+			}
+		}
+
 		idents = append(idents, peekNode)
 		endIndex = peekIndex
 
