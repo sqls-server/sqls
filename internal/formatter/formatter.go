@@ -308,26 +308,19 @@ func formatAliased(node *ast.Aliased, env *formatEnvironment) ast.Node {
 	realNameTokens := Eval(node.RealName, env)
 	results = append(results, realNameTokens)
 
-	// Add whitespace before alias keyword or AS
-	if node.As != nil {
-		results = append(results, whitespaceNode)
-	} else if node.AliasedName != nil {
+	// Add whitespace before alias
+	if node.As != nil || node.AliasedName != nil {
 		results = append(results, whitespaceNode)
 	}
 
-	if node.IsAs {
-		if node.As != nil {
-			results = append(results,
-				node.As,
-				whitespaceNode,
-				Eval(node.AliasedName, env),
-			)
-		} else {
-			results = append(results,
-				Eval(node.AliasedName, env),
-			)
-		}
-	} else {
+	// Add AS keyword and aliased name
+	if node.IsAs && node.As != nil {
+		results = append(results,
+			node.As,
+			whitespaceNode,
+			Eval(node.AliasedName, env),
+		)
+	} else if node.AliasedName != nil {
 		results = append(results,
 			Eval(node.AliasedName, env),
 		)
