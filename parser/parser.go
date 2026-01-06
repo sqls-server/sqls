@@ -499,7 +499,30 @@ func parseAliasedWithoutAs(reader *astutil.NodeReader) ast.Node {
 }
 
 func parseAliased(reader *astutil.NodeReader) ast.Node {
-	if !reader.CurNodeIs(aliasLeftMatcher) {
+	// Check if current node is a literal Item (number, string, boolean, etc.)
+	if item, ok := reader.CurNode.(*ast.Item); ok {
+		tok := item.GetToken()
+		// Allow literals to have aliases
+		isLiteral := tok.Kind == token.Number ||
+			tok.Kind == token.Char ||
+			tok.Kind == token.SingleQuotedString ||
+			tok.Kind == token.NationalStringLiteral
+
+		// Also allow TRUE/FALSE/NULL keywords as literals
+		if !isLiteral && tok.Kind == token.SQLKeyword {
+			if sqlWord, ok := tok.Value.(*token.SQLWord); ok {
+				keyword := sqlWord.Keyword
+				isLiteral = keyword == "TRUE" || keyword == "FALSE" || keyword == "NULL"
+			}
+		}
+
+		if !isLiteral {
+			// Non-literal Item, check normal matcher
+			if !reader.CurNodeIs(aliasLeftMatcher) {
+				return reader.CurNode
+			}
+		}
+	} else if !reader.CurNodeIs(aliasLeftMatcher) {
 		return reader.CurNode
 	}
 
@@ -552,6 +575,7 @@ var identifierListTargetMatcher = astutil.NodeMatcher{
 		ast.TypeComparison,
 		ast.TypeOperator,
 		ast.TypeSwitchCase,
+		ast.TypeItem,
 	},
 	ExpectKeyword: []string{
 		"NULL",
@@ -559,6 +583,14 @@ var identifierListTargetMatcher = astutil.NodeMatcher{
 }
 
 func parseIdentifierList(reader *astutil.NodeReader) ast.Node {
+	// Don't start identifier list with a comment
+	if item, ok := reader.CurNode.(*ast.Item); ok {
+		tok := item.GetToken()
+		if tok.Kind == token.Comment || tok.Kind == token.MultilineComment {
+			return reader.CurNode
+		}
+	}
+
 	if !reader.CurNodeIs(identifierListTargetMatcher) {
 		return reader.CurNode
 	}

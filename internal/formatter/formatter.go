@@ -362,7 +362,7 @@ func formatAliased(node *ast.Aliased, env *formatEnvironment) ast.Node {
 	results = append(results, realNameTokens)
 
 	// Add whitespace before alias
-	if node.As != nil || node.AliasedName != nil {
+	if node.IsAs || node.AliasedName != nil {
 		results = append(results, whitespaceNode)
 	}
 
@@ -648,6 +648,20 @@ func shouldAddSpaceAfter(curNode ast.Node, reader *astutil.NodeReader, formatted
 	// Add space after Item (keyword) unless specific exceptions
 	if curItem, ok := curNode.(*ast.Item); ok {
 		curTok := curItem.GetToken()
+
+		// Add space before AS keyword for literals
+		if nextItem, ok := nextNode.(*ast.Item); ok {
+			if nextTok := nextItem.GetToken(); nextTok.Kind == token.SQLKeyword {
+				if sqlWord, ok := nextTok.Value.(*token.SQLWord); ok {
+					if sqlWord.Keyword == "AS" {
+						// Add space before AS for any literal (number, string, boolean, etc.)
+						if curTok.Kind != token.SQLKeyword {
+							return true
+						}
+					}
+				}
+			}
+		}
 
 		// Only process SQL keywords
 		if curTok.Kind != token.SQLKeyword {
