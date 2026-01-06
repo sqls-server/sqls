@@ -17,7 +17,7 @@ build:
 	go build -ldflags=$(BUILD_LDFLAGS) -o $(BIN) .
 
 .PHONY: release
-release:
+release: $(GOBIN)/gobump
 	go build -ldflags=$(BUILD_LDFLAGS) -o $(BIN) .
 	zip -r sqls-$(GOOS)-$(VERSION).zip $(BIN)
 
@@ -27,10 +27,10 @@ install:
 
 .PHONY: show-version
 show-version: $(GOBIN)/gobump
-	$(GOBIN)/gobump show -r .
+	@$(GOBIN)/gobump show -r .
 
 $(GOBIN)/gobump:
-	echo "Installing gobump tool..."
+	@echo "Installing gobump tool to $(GOBIN)..."
 	go install github.com/x-motemen/gobump/cmd/gobump@latest
 
 .PHONY: test
