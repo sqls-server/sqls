@@ -11,6 +11,20 @@ import (
 	"github.com/sqls-server/sqls/token"
 )
 
+func isLParenToken(node ast.Node) bool {
+	if item, ok := node.(*ast.Item); ok {
+		return item.GetToken().Kind == token.LParen
+	}
+	return false
+}
+
+func isRParenToken(node ast.Node) bool {
+	if item, ok := node.(*ast.Item); ok {
+		return item.GetToken().Kind == token.RParen
+	}
+	return false
+}
+
 func Format(text string, params lsp.DocumentFormattingParams, cfg *config.Config) ([]lsp.TextEdit, error) {
 	if text == "" {
 		return nil, errors.New("empty")
@@ -317,20 +331,38 @@ func formatMultiKeyword(node *ast.MultiKeyword, env *formatEnvironment) ast.Node
 
 func formatAliased(node *ast.Aliased, env *formatEnvironment) ast.Node {
 	var results []ast.Node
+	// Handle real name which may be a FunctionLiteral (e.g., INT(11))
+	realNameTokens := Eval(node.RealName, env)
+	results = append(results, realNameTokens)
+
+	// Check if realNameTokens ends with RPAREN - if so, add whitespace
+	if toks, ok := realNameTokens.(ast.TokenList); ok {
+		tokList := toks.GetTokens()
+		if len(tokList) > 0 {
+			lastTok := tokList[len(tokList)-1]
+			if isRParenToken(lastTok) {
+				results = append(results, whitespaceNode)
+			}
+		}
+	} else {
+		// If it's a single node, check if it's RPAREN
+		if isRParenToken(realNameTokens) {
+			results = append(results, whitespaceNode)
+		}
+	}
+
 	if node.IsAs {
-		results = []ast.Node{
-			Eval(node.RealName, env),
+		results = append(results,
 			whitespaceNode,
 			node.As,
 			whitespaceNode,
 			Eval(node.AliasedName, env),
-		}
+		)
 	} else {
-		results = []ast.Node{
-			Eval(node.RealName, env),
+		results = append(results,
 			whitespaceNode,
 			Eval(node.AliasedName, env),
-		}
+		)
 	}
 	return &ast.ItemWith{Toks: results}
 }
