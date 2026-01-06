@@ -2,7 +2,7 @@ BIN := sqls
 ifeq ($(OS),Windows_NT)
 BIN := $(BIN).exe
 endif
-VERSION := $$(make -s show-version)
+VERSION := $(shell make -s show-version)
 CURRENT_REVISION := $(shell git rev-parse --short HEAD)
 BUILD_LDFLAGS := "-s -w -X main.revision=$(CURRENT_REVISION)"
 GOOS := $(shell go env GOOS)
