@@ -11,20 +11,6 @@ import (
 	"github.com/sqls-server/sqls/token"
 )
 
-func isLParenToken(node ast.Node) bool {
-	if item, ok := node.(*ast.Item); ok {
-		return item.GetToken().Kind == token.LParen
-	}
-	return false
-}
-
-func isRParenToken(node ast.Node) bool {
-	if item, ok := node.(*ast.Item); ok {
-		return item.GetToken().Kind == token.RParen
-	}
-	return false
-}
-
 func Format(text string, params lsp.DocumentFormattingParams, cfg *config.Config) ([]lsp.TextEdit, error) {
 	if text == "" {
 		return nil, errors.New("empty")
@@ -93,20 +79,6 @@ func (e *formatEnvironment) genIndent() []ast.Node {
 		nodes = append(nodes, indent...)
 	}
 	return nodes
-}
-
-type prefixFormatFn func(nodes []ast.Node, reader *astutil.NodeReader, env formatEnvironment) ([]ast.Node, formatEnvironment)
-
-type prefixFormatMap struct {
-	matcher   *astutil.NodeMatcher
-	formatter prefixFormatFn
-}
-
-func (pfm *prefixFormatMap) isMatch(reader *astutil.NodeReader) bool {
-	if pfm.matcher != nil && reader.CurNodeIs(*pfm.matcher) {
-		return true
-	}
-	return false
 }
 
 func Eval(node ast.Node, env *formatEnvironment) ast.Node {
@@ -365,17 +337,6 @@ func formatAliased(node *ast.Aliased, env *formatEnvironment) ast.Node {
 
 func formatIdentifier(node ast.Node, env *formatEnvironment) ast.Node {
 	results := []ast.Node{node}
-	// results := []ast.Node{node, whitespaceNode}
-
-	// commaMatcher := astutil.NodeMatcher{
-	// 	ExpectTokens: []token.Kind{
-	// 		token.Comma,
-	// 	},
-	// }
-	// if !env.reader.PeekNodeIs(true, commaMatcher) {
-	// 	results = append(results, whitespaceNode)
-	// }
-
 	return &ast.ItemWith{Toks: results}
 }
 
@@ -412,7 +373,6 @@ func formatComparison(node *ast.Comparison, env *formatEnvironment) ast.Node {
 
 func formatParenthesis(node *ast.Parenthesis, env *formatEnvironment) ast.Node {
 	results := []ast.Node{}
-	// results = append(results, whitespaceNode)
 	results = append(results, lparenNode)
 	startIndentLevel := env.indentLevel
 	env.indentLevelUp()
@@ -423,7 +383,6 @@ func formatParenthesis(node *ast.Parenthesis, env *formatEnvironment) ast.Node {
 	results = append(results, linebreakNode)
 	results = append(results, env.genIndent()...)
 	results = append(results, rparenNode)
-	// results = append(results, whitespaceNode)
 	return &ast.ItemWith{Toks: results}
 }
 
