@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 
 	"github.com/sourcegraph/jsonrpc2"
 	"github.com/urfave/cli/v2"
@@ -61,6 +62,10 @@ func realMain() error {
 					editorEnv := os.Getenv("EDITOR")
 					if editorEnv == "" {
 						editorEnv = "vim"
+					}
+					dir := filepath.Dir(config.YamlConfigPath)
+					if _, err := os.Stat(dir); errors.Is(err, os.ErrNotExist) {
+						os.MkdirAll(dir, 0755)
 					}
 					return openEditor(editorEnv, config.YamlConfigPath)
 				},
