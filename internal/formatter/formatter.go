@@ -380,6 +380,33 @@ func formatParenthesis(node *ast.Parenthesis, env *formatEnvironment) ast.Node {
 }
 
 func formatFunctionLiteral(node *ast.FunctionLiteral, env *formatEnvironment) ast.Node {
+	// Check if this is a simple function call like SUM(x) or COUNT(y)
+	// In this case, keep it on one line
+	if len(node.Toks) == 2 {
+		// First token should be the function name (Item)
+		// Second token should be a Parenthesis
+		if _, ok := node.Toks[0].(*ast.Item); ok {
+			if paren, ok := node.Toks[1].(*ast.Parenthesis); ok {
+				inner := paren.Inner()
+				// Check if inner contains only a single identifier
+				innerToks := inner.GetTokens()
+				if len(innerToks) == 1 {
+					if _, ok := innerToks[0].(*ast.Identifier); ok {
+						// Simple function call like SUM(x)
+						results := []ast.Node{
+							node.Toks[0], // function name
+							lparenNode,
+							Eval(innerToks[0], env), // identifier
+							rparenNode,
+						}
+						return &ast.ItemWith{Toks: results}
+					}
+				}
+			}
+		}
+	}
+
+	// Default: format recursively
 	results := []ast.Node{}
 	for _, tok := range node.Toks {
 		results = append(results, Eval(tok, env))
