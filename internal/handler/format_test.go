@@ -217,7 +217,7 @@ func loadFormatTestCaseByTestdata(targetDir string) ([]formattingTestCase, error
 		testCase = append(testCase, formattingTestCase{
 			name:  testName,
 			input: string(input),
-			want:  string(golden)[:len(string(golden))-len("\n")],
+			want:  string(golden),
 		})
 	}
 	return testCase, nil

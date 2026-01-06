@@ -2,6 +2,7 @@ package formatter
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/sqls-server/sqls/ast"
 	"github.com/sqls-server/sqls/ast/astutil"
@@ -329,6 +330,22 @@ func formatAliased(node *ast.Aliased, env *formatEnvironment) ast.Node {
 }
 
 func formatIdentifier(node ast.Node, env *formatEnvironment) ast.Node {
+	// Handle special case: IF keyword parsed as Identifier
+	if ident, ok := node.(*ast.Identifier); ok {
+		keyword := ident.String()
+		if keyword == "IF" {
+			// Convert to lowercase keyword Item
+			lowerItem := ast.NewItem(&token.Token{
+				Kind: token.SQLKeyword,
+				Value: &token.SQLWord{
+					Value:   strings.ToLower(keyword),
+					Keyword: strings.ToLower(keyword),
+				},
+			})
+			return formatItem(lowerItem, env)
+		}
+	}
+	
 	results := []ast.Node{node}
 	return &ast.ItemWith{Toks: results}
 }
@@ -367,14 +384,44 @@ func formatComparison(node *ast.Comparison, env *formatEnvironment) ast.Node {
 func formatParenthesis(node *ast.Parenthesis, env *formatEnvironment) ast.Node {
 	results := []ast.Node{}
 	results = append(results, lparenNode)
-	startIndentLevel := env.indentLevel
-	env.indentLevelUp()
-	results = append(results, linebreakNode)
-	results = append(results, env.genIndent()...)
-	results = append(results, Eval(node.Inner(), env))
-	env.indentLevel = startIndentLevel
-	results = append(results, linebreakNode)
-	results = append(results, env.genIndent()...)
+	
+	// Check if should format multi-line (has comma or SELECT keyword)
+	innerToks := node.Inner().GetTokens()
+	shouldMultiLine := false
+	for _, tok := range innerToks {
+		if item, ok := tok.(*ast.Item); ok {
+			tokKind := item.GetToken().Kind
+			// Multi-line if has comma
+			if tokKind == token.Comma {
+				shouldMultiLine = true
+				break
+			}
+			// Multi-line if has SELECT keyword (subquery)
+			if tokKind == token.SQLKeyword {
+				if sqlWord, ok := item.GetToken().Value.(*token.SQLWord); ok {
+					if sqlWord.Keyword == "SELECT" {
+						shouldMultiLine = true
+						break
+					}
+				}
+			}
+		}
+	}
+	
+	if shouldMultiLine {
+		startIndentLevel := env.indentLevel
+		env.indentLevelUp()
+		results = append(results, linebreakNode)
+		results = append(results, env.genIndent()...)
+		results = append(results, Eval(node.Inner(), env))
+		env.indentLevel = startIndentLevel
+		results = append(results, linebreakNode)
+		results = append(results, env.genIndent()...)
+	} else {
+		// Single line for simple cases like VARCHAR(100), function args
+		results = append(results, Eval(node.Inner(), env))
+	}
+	
 	results = append(results, rparenNode)
 	return &ast.ItemWith{Toks: results}
 }
@@ -432,10 +479,94 @@ func formatTokenList(list ast.TokenList, env *formatEnvironment) ast.Node {
 	reader := astutil.NewNodeReader(list)
 	for reader.NextNode(true) {
 		env.reader = reader
-		results = append(results, Eval(reader.CurNode, env))
+		formatted := Eval(reader.CurNode, env)
+		results = append(results, formatted)
+		
+		// Add whitespace between adjacent tokens when needed
+		// Check if we should add space after current token
+		if shouldAddSpaceAfter(reader.CurNode, reader, formatted) {
+			results = append(results, whitespaceNode)
+		}
 	}
 	reader.Node.SetTokens(results)
 	return reader.Node
+}
+
+func shouldAddSpaceAfter(curNode ast.Node, reader *astutil.NodeReader, formatted ast.Node) bool {
+	// Don't add space if already ends with whitespace/linebreak
+	if endsWithWhitespace(formatted) {
+		return false
+	}
+	
+	// Check next node (ignoreWhitespace=true to skip linebreaks)
+	_, nextNode := reader.PeekNode(true)
+	if nextNode == nil {
+		return false
+	}
+	
+	// Don't add space before punctuation
+	if item, ok := nextNode.(*ast.Item); ok {
+		tok := item.GetToken()
+		if tok.Kind == token.Comma || tok.Kind == token.RParen || 
+		   tok.Kind == token.Semicolon || tok.Kind == token.Period {
+			return false
+		}
+		// Don't add space before comment
+		if tok.Kind == token.Comment {
+			return false
+		}
+	}
+	
+	// Add space after Item (keyword) if next is Item, Identifier, or FunctionLiteral
+	if _, ok := curNode.(*ast.Item); ok {
+		// But not after comment
+		if item, ok := curNode.(*ast.Item); ok {
+			if item.GetToken().Kind == token.Comment {
+				return false
+			}
+		}
+		if _, ok := nextNode.(*ast.Item); ok {
+			return true
+		}
+		if _, ok := nextNode.(*ast.Identifier); ok {
+			return true
+		}
+		if _, ok := nextNode.(*ast.FunctionLiteral); ok {
+			return true
+		}
+	}
+	
+	// Add space after Identifier if next is Item (keyword) or FunctionLiteral
+	if _, ok := curNode.(*ast.Identifier); ok {
+		if _, ok := nextNode.(*ast.Item); ok {
+			return true
+		}
+		if _, ok := nextNode.(*ast.FunctionLiteral); ok {
+			return true
+		}
+	}
+	
+	// Add space after FunctionLiteral if next is Item (keyword)
+	if _, ok := curNode.(*ast.FunctionLiteral); ok {
+		if _, ok := nextNode.(*ast.Item); ok {
+			return true
+		}
+	}
+	
+	return false
+}
+
+func endsWithWhitespace(node ast.Node) bool {
+	if itemWith, ok := node.(*ast.ItemWith); ok {
+		toks := itemWith.GetTokens()
+		if len(toks) > 0 {
+			return endsWithWhitespace(toks[len(toks)-1])
+		}
+	}
+	if item, ok := node.(*ast.Item); ok {
+		return item.GetToken().Kind == token.Whitespace
+	}
+	return false
 }
 
 func formatNode(node ast.Node, env *formatEnvironment) ast.Node {
