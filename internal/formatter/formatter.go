@@ -345,7 +345,7 @@ func formatIdentifier(node ast.Node, env *formatEnvironment) ast.Node {
 			return formatItem(lowerItem, env)
 		}
 	}
-	
+
 	results := []ast.Node{node}
 	return &ast.ItemWith{Toks: results}
 }
@@ -384,10 +384,30 @@ func formatComparison(node *ast.Comparison, env *formatEnvironment) ast.Node {
 func formatParenthesis(node *ast.Parenthesis, env *formatEnvironment) ast.Node {
 	results := []ast.Node{}
 	results = append(results, lparenNode)
-	
+
+	inner := node.Inner()
+
+	// Check if inner contains IdentifierList
+	innerToks := inner.GetTokens()
+	if len(innerToks) == 1 {
+		if idList, ok := innerToks[0].(*ast.IdentifierList); ok {
+			// IdentifierList - format with linebreaks and indentation
+			startIndentLevel := env.indentLevel
+			env.indentLevelUp()
+			results = append(results, linebreakNode)
+			results = append(results, env.genIndent()...)
+			results = append(results, Eval(idList, env))
+			env.indentLevel = startIndentLevel
+			results = append(results, linebreakNode)
+			results = append(results, env.genIndent()...)
+			results = append(results, rparenNode)
+			return &ast.ItemWith{Toks: results}
+		}
+	}
+
 	// Check if should format multi-line (has comma or SELECT keyword)
-	innerToks := node.Inner().GetTokens()
 	shouldMultiLine := false
+
 	for _, tok := range innerToks {
 		if item, ok := tok.(*ast.Item); ok {
 			tokKind := item.GetToken().Kind
@@ -407,21 +427,21 @@ func formatParenthesis(node *ast.Parenthesis, env *formatEnvironment) ast.Node {
 			}
 		}
 	}
-	
+
 	if shouldMultiLine {
 		startIndentLevel := env.indentLevel
 		env.indentLevelUp()
 		results = append(results, linebreakNode)
 		results = append(results, env.genIndent()...)
-		results = append(results, Eval(node.Inner(), env))
+		results = append(results, Eval(inner, env))
 		env.indentLevel = startIndentLevel
 		results = append(results, linebreakNode)
 		results = append(results, env.genIndent()...)
 	} else {
 		// Single line for simple cases like VARCHAR(100), function args
-		results = append(results, Eval(node.Inner(), env))
+		results = append(results, Eval(inner, env))
 	}
-	
+
 	results = append(results, rparenNode)
 	return &ast.ItemWith{Toks: results}
 }
@@ -481,7 +501,7 @@ func formatTokenList(list ast.TokenList, env *formatEnvironment) ast.Node {
 		env.reader = reader
 		formatted := Eval(reader.CurNode, env)
 		results = append(results, formatted)
-		
+
 		// Add whitespace between adjacent tokens when needed
 		// Check if we should add space after current token
 		if shouldAddSpaceAfter(reader.CurNode, reader, formatted) {
@@ -497,35 +517,81 @@ func shouldAddSpaceAfter(curNode ast.Node, reader *astutil.NodeReader, formatted
 	if endsWithWhitespace(formatted) {
 		return false
 	}
-	
+
+	// Don't add space after comment
+	if item, ok := curNode.(*ast.Item); ok {
+		tok := item.GetToken()
+		if tok.Kind == token.Comment || tok.Kind == token.MultilineComment {
+			return false
+		}
+	}
+
 	// Check next node (ignoreWhitespace=true to skip linebreaks)
 	_, nextNode := reader.PeekNode(true)
 	if nextNode == nil {
 		return false
 	}
-	
-	// Don't add space before punctuation
+
+	// Debug: check if nextNode is comment
 	if item, ok := nextNode.(*ast.Item); ok {
 		tok := item.GetToken()
-		if tok.Kind == token.Comma || tok.Kind == token.RParen || 
-		   tok.Kind == token.Semicolon || tok.Kind == token.Period {
-			return false
-		}
-		// Don't add space before comment
-		if tok.Kind == token.Comment {
+		if tok.Kind == token.Comment || tok.Kind == token.MultilineComment {
+			// fmt.Printf("DEBUG: Next is comment after %T, not adding space\n", curNode)
 			return false
 		}
 	}
-	
-	// Add space after Item (keyword) if next is Item, Identifier, or FunctionLiteral
-	if _, ok := curNode.(*ast.Item); ok {
-		// But not after comment
-		if item, ok := curNode.(*ast.Item); ok {
-			if item.GetToken().Kind == token.Comment {
-				return false
+
+	// Don't add space before punctuation or comment
+	if item, ok := nextNode.(*ast.Item); ok {
+		tok := item.GetToken()
+		if tok.Kind == token.Comma || tok.Kind == token.RParen ||
+			tok.Kind == token.Semicolon || tok.Kind == token.Period ||
+			tok.Kind == token.Comment {
+			return false
+		}
+
+		// Don't add space before keywords that add linebreak before themselves
+		if tok.Kind == token.SQLKeyword {
+			if sqlWord, ok := tok.Value.(*token.SQLWord); ok {
+				kw := sqlWord.Keyword
+				// These keywords add linebreak before (via linebreakBeforeMatcher, outdentBeforeMatcher, etc)
+				linebreakBeforeKeywords := []string{
+					"FROM", "JOIN", "WHERE", "HAVING", "LIMIT", "UNION", "VALUES", "SET", "EXCEPT", "END",
+					"ON", "AND", "OR", "WHEN", "ELSE",
+				}
+				for _, lbkw := range linebreakBeforeKeywords {
+					if kw == lbkw {
+						return false
+					}
+				}
 			}
 		}
-		if _, ok := nextNode.(*ast.Item); ok {
+	}
+
+	// Add space after Item (keyword) if next is Item, Identifier, or FunctionLiteral
+	if _, ok := curNode.(*ast.Item); ok {
+		// Check if current item is BETWEEN, USING, THEN (handled by whitespaceAroundMatcher)
+		if item, ok := curNode.(*ast.Item); ok {
+			if tok := item.GetToken(); tok.Kind == token.SQLKeyword {
+				if sqlWord, ok := tok.Value.(*token.SQLWord); ok {
+					kw := sqlWord.Keyword
+					if kw == "BETWEEN" || kw == "USING" || kw == "THEN" {
+						return false // Already handled by formatItem
+					}
+				}
+			}
+		}
+
+		if item, ok := nextNode.(*ast.Item); ok {
+			// Don't add space before BETWEEN, USING, THEN (handled by whitespaceAroundMatcher)
+			if tok := item.GetToken(); tok.Kind == token.SQLKeyword {
+				if sqlWord, ok := tok.Value.(*token.SQLWord); ok {
+					kw := sqlWord.Keyword
+					if kw == "BETWEEN" || kw == "USING" || kw == "THEN" {
+						return false
+					}
+				}
+			}
 			return true
 		}
 		if _, ok := nextNode.(*ast.Identifier); ok {
@@ -535,24 +601,33 @@ func shouldAddSpaceAfter(curNode ast.Node, reader *astutil.NodeReader, formatted
 			return true
 		}
 	}
-	
+
 	// Add space after Identifier if next is Item (keyword) or FunctionLiteral
 	if _, ok := curNode.(*ast.Identifier); ok {
-		if _, ok := nextNode.(*ast.Item); ok {
+		if item, ok := nextNode.(*ast.Item); ok {
+			// Don't add space before BETWEEN, USING, THEN (handled by whitespaceAroundMatcher)
+			if tok := item.GetToken(); tok.Kind == token.SQLKeyword {
+				if sqlWord, ok := tok.Value.(*token.SQLWord); ok {
+					kw := sqlWord.Keyword
+					if kw == "BETWEEN" || kw == "USING" || kw == "THEN" {
+						return false
+					}
+				}
+			}
 			return true
 		}
 		if _, ok := nextNode.(*ast.FunctionLiteral); ok {
 			return true
 		}
 	}
-	
+
 	// Add space after FunctionLiteral if next is Item (keyword)
 	if _, ok := curNode.(*ast.FunctionLiteral); ok {
 		if _, ok := nextNode.(*ast.Item); ok {
 			return true
 		}
 	}
-	
+
 	return false
 }
 
