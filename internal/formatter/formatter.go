@@ -84,16 +84,6 @@ func (e *formatEnvironment) genIndent() []ast.Node {
 }
 
 func Eval(node ast.Node, env *formatEnvironment) ast.Node {
-	// Debug
-	if item, ok := node.(*ast.Item); ok {
-		if tok := item.GetToken(); tok.Kind == token.SQLKeyword {
-			if sqlWord, ok := tok.Value.(*token.SQLWord); ok {
-				if sqlWord.Keyword == "DELETE" || sqlWord.Keyword == "FROM" {
-				}
-			}
-		}
-	}
-
 	switch node := node.(type) {
 	// case *ast.Query:
 	// 	return formatQuery(node, env)
