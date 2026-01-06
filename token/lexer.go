@@ -217,11 +217,23 @@ func (t *Tokenizer) next() (Kind, interface{}, error) {
 
 	case '0' <= r && r <= '9':
 		var s []rune
+		hasE := false
 		for {
 			n := t.Scanner.Peek()
 			if ('0' <= n && n <= '9') || n == '.' {
 				s = append(s, n)
 				t.Scanner.Next()
+			} else if !hasE && (n == 'e' || n == 'E') {
+				// Check for scientific notation
+				s = append(s, n)
+				t.Scanner.Next()
+				hasE = true
+				// Check for optional +/- after e/E
+				next := t.Scanner.Peek()
+				if next == '+' || next == '-' {
+					s = append(s, next)
+					t.Scanner.Next()
+				}
 			} else {
 				break
 			}

@@ -1,0 +1,6 @@
+SELECT
+	1 AS number,
+	'string' AS str,
+	1.2 AS FLOAT,
+	1.2e-3 AS negative_scientific,
+	TRUE AS BOOLEAN
