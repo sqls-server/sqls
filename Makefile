@@ -30,6 +30,7 @@ show-version: $(GOBIN)/gobump
 	$(GOBIN)/gobump show -r .
 
 $(GOBIN)/gobump:
+	echo "Installing gobump tool..."
 	go install github.com/x-motemen/gobump/cmd/gobump@latest
 
 .PHONY: test
