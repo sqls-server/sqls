@@ -116,7 +116,7 @@ func genMysqlConfig(connCfg *DBConfig) (*mysql.Config, error) {
 		}
 		cfg.Addr = connCfg.Path
 		cfg.Net = string(connCfg.Proto)
-  case ProtoHTTP:
+	case ProtoHTTP:
 	default:
 		return nil, fmt.Errorf("default addr for network %s unknown", connCfg.Proto)
 	}

@@ -15,30 +15,30 @@ func TestGenClickhouseDsn(t *testing.T) {
 			name: "use datasource name",
 			connCfg: &DBConfig{
 				DataSourceName: "clickhouse://user:pwd@localhost:9001",
-      	Driver:         "clickhouse",
+				Driver:         "clickhouse",
 			},
 			want:    "clickhouse://user:pwd@localhost:9001",
 			wantErr: false,
 		},
-    {
-      name: "use config properties",
-      connCfg: &DBConfig{
-      	Alias:          "",
-      	DataSourceName: "",
-      	Driver:         "clickhouse",
-      	Proto:          "tcp",
-      	User:           "test",
-      	Passwd:         "secure",
-      	Host:           "localhost",
-      	Port:           9001,
-      	Path:           "",
-      	DBName:         "default",
-      	Params:         map[string]string{
-          "dial_timeout": "200ms",
-        },
-      },
-      want: "clickhouse://test:secure@localhost:9001/default?dial_timeout=200ms",
-    },
+		{
+			name: "use config properties",
+			connCfg: &DBConfig{
+				Alias:          "",
+				DataSourceName: "",
+				Driver:         "clickhouse",
+				Proto:          "tcp",
+				User:           "test",
+				Passwd:         "secure",
+				Host:           "localhost",
+				Port:           9001,
+				Path:           "",
+				DBName:         "default",
+				Params: map[string]string{
+					"dial_timeout": "200ms",
+				},
+			},
+			want: "clickhouse://test:secure@localhost:9001/default?dial_timeout=200ms",
+		},
 	}
 
 	for _, tt := range tests {

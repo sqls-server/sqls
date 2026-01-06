@@ -129,7 +129,7 @@ func (c *DBConfig) Validate() error {
 					return errors.New("required: connections[].host")
 				}
 			case ProtoUDP, ProtoUnix:
-      default:
+			default:
 				return errors.New("invalid: connections[].proto")
 			}
 			if c.SSHCfg != nil {

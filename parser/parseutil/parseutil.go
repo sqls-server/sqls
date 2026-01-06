@@ -247,7 +247,7 @@ func extractTables(parsed ast.TokenList, pos token.Pos, stopOnPos bool) ([]*Tabl
 	cleanTables := []*TableInfo{}
 
 	for _, table := range tables {
-		tableKey := table.DatabaseSchema+"\t"+table.Name
+		tableKey := table.DatabaseSchema + "\t" + table.Name
 		if _, ok := tableMap[tableKey]; !ok {
 			tableMap[tableKey] = table
 			cleanTables = append(cleanTables, table)

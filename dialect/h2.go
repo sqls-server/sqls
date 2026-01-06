@@ -104,4 +104,3 @@ var h2Keywords = []string{
 	"YEAR",
 	"_ROWID_",
 }
-
