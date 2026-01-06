@@ -1,0 +1,1 @@
+CREATE TRIGGER update_timestamp BEFORE UPDATE ON users FOR EACH ROW BEGIN SET NEW.updated_at = NOW(); END;

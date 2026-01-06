@@ -99,7 +99,12 @@ func (mk *MultiKeyword) String() string {
 	return joinString(mk.Toks)
 }
 func (mk *MultiKeyword) Render(opts *RenderOptions) string {
-	return joinRender(mk.Toks, opts)
+	// Render keywords with spaces between them
+	var parts []string
+	for _, kw := range mk.Keywords {
+		parts = append(parts, kw.Render(opts))
+	}
+	return strings.Join(parts, " ")
 }
 func (mk *MultiKeyword) Type() NodeType        { return TypeMultiKeyword }
 func (mk *MultiKeyword) GetTokens() []Node     { return mk.Toks }
