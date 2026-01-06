@@ -1,14 +1,14 @@
 -- hoge --
 SELECT
-		x/*x*/,
-		/*x*/y
-	FROM
-		zzz;
+	x/*x*/,
+	/*x*/y
+FROM
+	zzz;
 -- zzzz
 SELECT
-		*
-	FROM
-		yyy;
+	*
+FROM
+	yyy;
 -- yyyy
 -- hage --
 SELECT
