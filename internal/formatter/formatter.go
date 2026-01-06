@@ -53,6 +53,7 @@ type formatEnvironment struct {
 	reader      *astutil.NodeReader
 	indentLevel int
 	options     lsp.FormattingOptions
+	lastKeyword string // Track last processed keyword
 }
 
 func (e *formatEnvironment) indentLevelReset() {
@@ -83,6 +84,16 @@ func (e *formatEnvironment) genIndent() []ast.Node {
 }
 
 func Eval(node ast.Node, env *formatEnvironment) ast.Node {
+	// Debug
+	if item, ok := node.(*ast.Item); ok {
+		if tok := item.GetToken(); tok.Kind == token.SQLKeyword {
+			if sqlWord, ok := tok.Value.(*token.SQLWord); ok {
+				if sqlWord.Keyword == "DELETE" || sqlWord.Keyword == "FROM" {
+				}
+			}
+		}
+	}
+
 	switch node := node.(type) {
 	// case *ast.Query:
 	// 	return formatQuery(node, env)
@@ -122,6 +133,19 @@ func Eval(node ast.Node, env *formatEnvironment) ast.Node {
 func formatItem(node ast.Node, env *formatEnvironment) ast.Node {
 	results := []ast.Node{node}
 
+	// Track certain keywords that affect formatting of subsequent keywords
+	if item, ok := node.(*ast.Item); ok {
+		if tok := item.GetToken(); tok.Kind == token.SQLKeyword {
+			if sqlWord, ok := tok.Value.(*token.SQLWord); ok {
+				kw := sqlWord.Keyword
+				// Only track keywords that matter for context-sensitive formatting
+				if kw == "JOIN" || kw == "DELETE" || kw == "INSERT" || kw == "CREATE" {
+					env.lastKeyword = kw
+				}
+			}
+		}
+	}
+
 	whitespaceAfterMatcher := astutil.NodeMatcher{
 		ExpectKeyword: []string{
 			"JOIN",
@@ -132,6 +156,18 @@ func formatItem(node ast.Node, env *formatEnvironment) ast.Node {
 			"WHEN",
 			"ELSE",
 			"AS",
+			"DELETE",
+			"UPDATE",
+			"SET",
+			"BEFORE",
+			"AFTER",
+			"TRIGGER",
+			"INDEX",
+			"ALTER",
+			"ADD",
+			"DROP",
+			"MODIFY",
+			"COLUMN",
 		},
 	}
 	if whitespaceAfterMatcher.IsMatch(node) {
@@ -175,9 +211,21 @@ func formatItem(node ast.Node, env *formatEnvironment) ast.Node {
 		},
 	}
 	if indentBeforeMatcher.IsMatch(node) {
-		env.indentLevelUp()
-		results = unshift(results, env.genIndent()...)
-		results = unshift(results, linebreakNode)
+		// Only indent ON if preceded by JOIN keyword
+		// CREATE INDEX ON and CREATE TRIGGER ON should not be indented
+		shouldIndent := false
+		if env.lastKeyword == "JOIN" {
+			shouldIndent = true
+		}
+
+		if shouldIndent {
+			env.indentLevelUp()
+			results = unshift(results, env.genIndent()...)
+			results = unshift(results, linebreakNode)
+		} else {
+			// Still add linebreak for ON keyword, just without indent
+			results = unshift(results, linebreakNode)
+		}
 	}
 	linebreakBeforeMatcher := astutil.NodeMatcher{
 		ExpectKeyword: []string{
@@ -251,10 +299,24 @@ func formatItem(node ast.Node, env *formatEnvironment) ast.Node {
 
 func formatMultiKeyword(node *ast.MultiKeyword, env *formatEnvironment) ast.Node {
 	results := []ast.Node{}
-	for i, kw := range node.GetKeywords() {
+
+	keywords := node.GetKeywords()
+	for i, kw := range keywords {
 		results = append(results, kw)
-		if i != len(node.GetKeywords())-1 {
+		if i != len(keywords)-1 {
 			results = append(results, whitespaceNode)
+		}
+	}
+
+	// Track last keyword in MultiKeyword
+	if len(keywords) > 0 {
+		lastKw := keywords[len(keywords)-1]
+		if item, ok := lastKw.(*ast.Item); ok {
+			if tok := item.GetToken(); tok.Kind == token.SQLKeyword {
+				if sqlWord, ok := tok.Value.(*token.SQLWord); ok {
+					env.lastKeyword = sqlWord.Keyword
+				}
+			}
 		}
 	}
 
@@ -532,11 +594,15 @@ func shouldAddSpaceAfter(curNode ast.Node, reader *astutil.NodeReader, formatted
 		return false
 	}
 
+	// Don't add space before MultiKeyword (e.g., "GROUP BY") - always
+	if _, ok := nextNode.(*ast.MultiKeyword); ok {
+		return false
+	}
+
 	// Debug: check if nextNode is comment
 	if item, ok := nextNode.(*ast.Item); ok {
 		tok := item.GetToken()
 		if tok.Kind == token.Comment || tok.Kind == token.MultilineComment {
-			// fmt.Printf("DEBUG: Next is comment after %T, not adding space\n", curNode)
 			return false
 		}
 	}
@@ -546,8 +612,18 @@ func shouldAddSpaceAfter(curNode ast.Node, reader *astutil.NodeReader, formatted
 		tok := item.GetToken()
 		if tok.Kind == token.Comma || tok.Kind == token.RParen ||
 			tok.Kind == token.Semicolon || tok.Kind == token.Period ||
-			tok.Kind == token.Comment {
+			tok.Kind == token.LParen || tok.Kind == token.Comment {
 			return false
+		}
+
+		// Don't add space before BETWEEN, USING, THEN (they add their own space before)
+		if tok.Kind == token.SQLKeyword {
+			if sqlWord, ok := tok.Value.(*token.SQLWord); ok {
+				kw := sqlWord.Keyword
+				if kw == "BETWEEN" || kw == "USING" || kw == "THEN" {
+					return false
+				}
+			}
 		}
 
 		// Don't add space before keywords that add linebreak before themselves
@@ -561,6 +637,17 @@ func shouldAddSpaceAfter(curNode ast.Node, reader *astutil.NodeReader, formatted
 				}
 				for _, lbkw := range linebreakBeforeKeywords {
 					if kw == lbkw {
+						// Exception: if current keyword is DELETE and next is FROM, always add space
+						// because "DELETE FROM" should be on one line
+						if curItem, ok := curNode.(*ast.Item); ok {
+							if curTok := curItem.GetToken(); curTok.Kind == token.SQLKeyword {
+								if curSqlWord, ok := curTok.Value.(*token.SQLWord); ok {
+									if curSqlWord.Keyword == "DELETE" && kw == "FROM" {
+										return true // DELETE FROM should have space
+									}
+								}
+							}
+						}
 						return false
 					}
 				}
@@ -568,21 +655,31 @@ func shouldAddSpaceAfter(curNode ast.Node, reader *astutil.NodeReader, formatted
 		}
 	}
 
-	// Add space after Item (keyword) if next is Item, Identifier, or FunctionLiteral
+	// Add space after Item (keyword) unless specific exceptions
 	if curItem, ok := curNode.(*ast.Item); ok {
-		// Check if current item is BETWEEN, USING, THEN (handled by whitespaceAroundMatcher)
 		curTok := curItem.GetToken()
-		if tok := curTok; tok.Kind == token.SQLKeyword {
-			if sqlWord, ok := tok.Value.(*token.SQLWord); ok {
-				kw := sqlWord.Keyword
-				if kw == "BETWEEN" || kw == "USING" || kw == "THEN" {
-					return false // Already handled by formatItem
-				}
+
+		// Only process SQL keywords
+		if curTok.Kind != token.SQLKeyword {
+			return false
+		}
+
+		// Check if current item is BETWEEN, USING, THEN (handled by whitespaceAroundMatcher)
+		if sqlWord, ok := curTok.Value.(*token.SQLWord); ok {
+			kw := sqlWord.Keyword
+			if kw == "BETWEEN" || kw == "USING" || kw == "THEN" {
+				return false // Already handled by formatItem
 			}
 		}
 
+		// Don't add space before Parenthesis (e.g., VALUES(...))
+		if _, ok := nextNode.(*ast.Parenthesis); ok {
+			return false
+		}
+
+		// Don't add space before punctuation (already checked above)
+		// Don't add space before BETWEEN, USING, THEN
 		if item, ok := nextNode.(*ast.Item); ok {
-			// Don't add space before BETWEEN, USING, THEN (handled by whitespaceAroundMatcher)
 			if tok := item.GetToken(); tok.Kind == token.SQLKeyword {
 				if sqlWord, ok := tok.Value.(*token.SQLWord); ok {
 					kw := sqlWord.Keyword
@@ -591,17 +688,10 @@ func shouldAddSpaceAfter(curNode ast.Node, reader *astutil.NodeReader, formatted
 					}
 				}
 			}
-			return true
 		}
-		if _, ok := nextNode.(*ast.Identifier); ok {
-			return true
-		}
-		if _, ok := nextNode.(*ast.FunctionLiteral); ok {
-			return true
-		}
-		if _, ok := nextNode.(*ast.Aliased); ok {
-			return true
-		}
+
+		// Default: add space after any SQL keyword
+		return true
 	}
 
 	// Add space after Identifier if next is Item (keyword) or FunctionLiteral
@@ -618,6 +708,10 @@ func shouldAddSpaceAfter(curNode ast.Node, reader *astutil.NodeReader, formatted
 			}
 			return true
 		}
+		// Don't add space before MultiKeyword (e.g., "GROUP BY") - it adds its own linebreak
+		if _, ok := nextNode.(*ast.MultiKeyword); ok {
+			return false
+		}
 		if _, ok := nextNode.(*ast.FunctionLiteral); ok {
 			return true
 		}
@@ -627,6 +721,52 @@ func shouldAddSpaceAfter(curNode ast.Node, reader *astutil.NodeReader, formatted
 	if _, ok := curNode.(*ast.FunctionLiteral); ok {
 		if _, ok := nextNode.(*ast.Item); ok {
 			return true
+		}
+	}
+
+	// Add space after ItemWith (e.g., MultiKeyword result like "DELETE FROM")
+	if _, ok := formatted.(*ast.ItemWith); ok {
+		// Don't add space before punctuation
+		if item, ok := nextNode.(*ast.Item); ok {
+			tok := item.GetToken()
+			if tok.Kind == token.Comma || tok.Kind == token.RParen ||
+				tok.Kind == token.Semicolon || tok.Kind == token.Period ||
+				tok.Kind == token.LParen || tok.Kind == token.Comment {
+				return false
+			}
+		}
+
+		// Don't add space before Parenthesis (e.g., VALUES(...))
+		if _, ok := nextNode.(*ast.Parenthesis); ok {
+			return false
+		}
+
+		// Don't add space before MultiKeyword (e.g., "GROUP BY")
+		if _, ok := nextNode.(*ast.MultiKeyword); ok {
+			return false
+		}
+
+		// Add space before most node types
+		switch nextNode.(type) {
+		case *ast.Identifier, *ast.Item, *ast.Aliased:
+			return true
+		}
+	}
+
+	// Add space after MultiKeyword (e.g., "DELETE FROM") if it has multiple keywords
+	if mk, ok := curNode.(*ast.MultiKeyword); ok {
+		// Only add space if MultiKeyword has multiple keywords (e.g., "DELETE FROM")
+		// Single keyword MultiKeywords (e.g., just "FROM") are handled by formatItem
+		if len(mk.GetKeywords()) > 1 {
+			// Don't add space if already ends with whitespace
+			if endsWithWhitespace(formatted) {
+				return false
+			}
+			// Add space before most node types
+			switch nextNode.(type) {
+			case *ast.Identifier, *ast.Item, *ast.Aliased:
+				return true
+			}
 		}
 	}
 

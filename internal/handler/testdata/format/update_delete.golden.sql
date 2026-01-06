@@ -1,11 +1,11 @@
 update users
-setemail = 'new@example.com'
+set email = 'new@example.com'
 where
 	id = 1;
-delete fromusers
+delete from users
 where
 	id = 1;
 update users
-setage = age + 1
+set age = age + 1
 where
 	status = 'active';
