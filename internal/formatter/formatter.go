@@ -569,15 +569,14 @@ func shouldAddSpaceAfter(curNode ast.Node, reader *astutil.NodeReader, formatted
 	}
 
 	// Add space after Item (keyword) if next is Item, Identifier, or FunctionLiteral
-	if _, ok := curNode.(*ast.Item); ok {
+	if curItem, ok := curNode.(*ast.Item); ok {
 		// Check if current item is BETWEEN, USING, THEN (handled by whitespaceAroundMatcher)
-		if item, ok := curNode.(*ast.Item); ok {
-			if tok := item.GetToken(); tok.Kind == token.SQLKeyword {
-				if sqlWord, ok := tok.Value.(*token.SQLWord); ok {
-					kw := sqlWord.Keyword
-					if kw == "BETWEEN" || kw == "USING" || kw == "THEN" {
-						return false // Already handled by formatItem
-					}
+		curTok := curItem.GetToken()
+		if tok := curTok; tok.Kind == token.SQLKeyword {
+			if sqlWord, ok := tok.Value.(*token.SQLWord); ok {
+				kw := sqlWord.Keyword
+				if kw == "BETWEEN" || kw == "USING" || kw == "THEN" {
+					return false // Already handled by formatItem
 				}
 			}
 		}
@@ -598,6 +597,9 @@ func shouldAddSpaceAfter(curNode ast.Node, reader *astutil.NodeReader, formatted
 			return true
 		}
 		if _, ok := nextNode.(*ast.FunctionLiteral); ok {
+			return true
+		}
+		if _, ok := nextNode.(*ast.Aliased); ok {
 			return true
 		}
 	}
