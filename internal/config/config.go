@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/sqls-server/sqls/internal/database"
 	"gopkg.in/yaml.v2"
@@ -93,12 +94,22 @@ func configFilePath(fileName string) string {
 		return filepath.Join(xdgConfigHome, "sqls", fileName)
 	}
 
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		panic(err)
+	var configDir string
+	if runtime.GOOS == "darwin" {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			panic(err)
+		}
+		configDir = filepath.Join(homeDir, ".config")
+	} else {
+		var err error
+		configDir, err = os.UserConfigDir()
+		if err != nil {
+			panic(err)
+		}
 	}
 
-	return filepath.Join(homeDir, ".config", "sqls", fileName)
+	return filepath.Join(configDir, "sqls", fileName)
 }
 
 func expand(path string) (string, error) {
