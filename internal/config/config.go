@@ -93,12 +93,12 @@ func configFilePath(fileName string) string {
 		return filepath.Join(xdgConfigHome, "sqls", fileName)
 	}
 
-	homeDir, err := os.UserHomeDir()
+	configDir, err := os.UserConfigDir()
 	if err != nil {
 		panic(err)
 	}
 
-	return filepath.Join(homeDir, ".config", "sqls", fileName)
+	return filepath.Join(configDir, "sqls", fileName)
 }
 
 func expand(path string) (string, error) {
