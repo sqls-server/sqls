@@ -1,3 +1,7 @@
+ -- hoge --
+SELECT x/*x*/, /*x*/y FROM zzz; -- zzzz
+SELECT * FROM yyy; -- yyyy
+            -- hage --
 SELECT
     ap.autograph_purchase_id AS "id",
     ap.order_number AS "order",
@@ -11,5 +15,5 @@ JOIN influencer AS i
     ON autograph_purchase.influencer_id = influencer.influencer_id
 LEFT JOIN product AS p
     ON product.product_id = autograph_purchase.product_id
-LEFT JOIN USER1 AS u
-    ON USER1.user_id = autograph_purchase.user_id
+LEFT JOIN users AS u
+    ON users.user_id = autograph_purchase.user_id

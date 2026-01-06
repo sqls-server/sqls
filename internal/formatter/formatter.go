@@ -158,6 +158,7 @@ func formatItem(node ast.Node, env *formatEnvironment) ast.Node {
 			"LIMIT",
 			"WHEN",
 			"ELSE",
+			"AS",
 		},
 	}
 	if whitespaceAfterMatcher.IsMatch(node) {
@@ -335,32 +336,27 @@ func formatAliased(node *ast.Aliased, env *formatEnvironment) ast.Node {
 	realNameTokens := Eval(node.RealName, env)
 	results = append(results, realNameTokens)
 
-	// Check if realNameTokens ends with RPAREN - if so, add whitespace
-	if toks, ok := realNameTokens.(ast.TokenList); ok {
-		tokList := toks.GetTokens()
-		if len(tokList) > 0 {
-			lastTok := tokList[len(tokList)-1]
-			if isRParenToken(lastTok) {
-				results = append(results, whitespaceNode)
-			}
-		}
-	} else {
-		// If it's a single node, check if it's RPAREN
-		if isRParenToken(realNameTokens) {
-			results = append(results, whitespaceNode)
-		}
+	// Add whitespace before alias keyword or AS
+	if node.As != nil {
+		results = append(results, whitespaceNode)
+	} else if node.AliasedName != nil {
+		results = append(results, whitespaceNode)
 	}
 
 	if node.IsAs {
-		results = append(results,
-			whitespaceNode,
-			node.As,
-			whitespaceNode,
-			Eval(node.AliasedName, env),
-		)
+		if node.As != nil {
+			results = append(results,
+				node.As,
+				whitespaceNode,
+				Eval(node.AliasedName, env),
+			)
+		} else {
+			results = append(results,
+				Eval(node.AliasedName, env),
+			)
+		}
 	} else {
 		results = append(results,
-			whitespaceNode,
 			Eval(node.AliasedName, env),
 		)
 	}
@@ -432,7 +428,10 @@ func formatParenthesis(node *ast.Parenthesis, env *formatEnvironment) ast.Node {
 }
 
 func formatFunctionLiteral(node *ast.FunctionLiteral, env *formatEnvironment) ast.Node {
-	results := []ast.Node{node}
+	results := []ast.Node{}
+	for _, tok := range node.Toks {
+		results = append(results, Eval(tok, env))
+	}
 	return &ast.ItemWith{Toks: results}
 }
 
