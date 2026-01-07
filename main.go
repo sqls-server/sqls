@@ -134,7 +134,7 @@ func serve(c *cli.Context) error {
 	} else {
 		// Load default config
 		cfg, err := config.GetDefaultConfig()
-		if err != nil && !errors.Is(config.ErrNotFoundConfig, err) {
+		if err != nil && !errors.Is(err, config.ErrNotFoundConfig) {
 			return fmt.Errorf("cannot read default config, %w", err)
 		}
 		server.DefaultFileCfg = cfg
