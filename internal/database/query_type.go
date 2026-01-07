@@ -226,6 +226,9 @@ var createIgnore = map[string]bool{
 }
 
 func splitMultiSep(s string, sep []string) []string {
+	if len(sep) == 0 {
+		return []string{s}
+	}
 	var ret []string
 	ret = strings.Split(s, sep[0])
 	if len(sep) > 1 {
