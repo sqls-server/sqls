@@ -234,7 +234,7 @@ func splitMultiSep(s string, sep []string) []string {
 	if len(sep) > 1 {
 		ret2 := []string{}
 		for _, r := range ret {
-			ret2 = append(ret2, splitMultiSep(r, sep[1:])...)
+			ret2 = append(ret2, splitMultiSep(r, sep[1:])...) //nolint:gosec
 		}
 		ret = ret2
 	}
