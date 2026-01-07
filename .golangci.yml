@@ -1,17 +1,56 @@
+version: "2"
 run:
   tests: false
-  timeout: 5m
 linters:
+  enable:
+    - asasalint
+    - asciicheck
+    - bidichk
+    - bodyclose
+    - contextcheck
+    - durationcheck
+    - errchkjson
+    - errorlint
+    - exhaustive
+    - gocheckcompilerdirectives
+    - gochecksumtype
+    - gosec
+    - gosmopolitan
+    - loggercheck
+    - makezero
+    - musttag
+    - nilerr
+    - nilnesserr
+    - noctx
+    - protogetter
+    - reassign
+    - recvcheck
+    - spancheck
+    - sqlclosecheck
+    - testifylint
+    - zerologlint
   disable:
-    - maligned
     - prealloc
     - rowserrcheck
-  disable-all: false
-  presets:
-    - bugs
-  fast: false
-issues:
-  exclude-rules:
-    - linters:
-        - gosec
-      text: "G106:"
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - gosec
+        text: 'G106:'
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
