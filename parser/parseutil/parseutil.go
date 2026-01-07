@@ -26,10 +26,7 @@ func (ti *TableInfo) isMatchTableName(name string) bool {
 }
 
 func (ti *TableInfo) hasSubQuery() bool {
-	if ti.SubQueryColumns != nil && len(ti.SubQueryColumns) > 0 {
-		return true
-	}
-	return false
+	return len(ti.SubQueryColumns) > 0
 }
 
 type SubQueryInfo struct {
@@ -60,7 +57,7 @@ func extractFocusedStatement(parsed ast.TokenList, pos token.Pos) (ast.TokenList
 	nodeWalker := NewNodeWalker(parsed, pos)
 	matcher := astutil.NodeMatcher{NodeTypes: []ast.NodeType{ast.TypeStatement}}
 	if !nodeWalker.CurNodeIs(matcher) {
-		return nil, fmt.Errorf("Not found statement, Node: %q, Position: (%d, %d)", parsed.String(), pos.Line, pos.Col)
+		return nil, fmt.Errorf("not found statement, Node: %q, Position: (%d, %d)", parsed.String(), pos.Line, pos.Col)
 	}
 	stmt := nodeWalker.CurNodeTopMatched(matcher).(ast.TokenList)
 	return stmt, nil

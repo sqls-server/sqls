@@ -69,7 +69,7 @@ func mssqlOpen(dbConnCfg *DBConfig) (*DBConnection, error) {
 		}
 	}
 
-	if err = conn.Ping(); err != nil {
+	if err = conn.PingContext(context.Background()); err != nil {
 		return nil, err
 	}
 

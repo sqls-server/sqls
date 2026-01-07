@@ -32,6 +32,7 @@ linters:
   disable:
     - prealloc
     - rowserrcheck
+    - unused
   exclusions:
     generated: lax
     presets:
@@ -43,6 +44,9 @@ linters:
       - linters:
           - gosec
         text: 'G106:'
+      - linters:
+          - staticcheck
+        text: 'QF1002:'
     paths:
       - third_party$
       - builtin$

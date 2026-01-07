@@ -104,8 +104,5 @@ func (nw *NodeWalker) PrevNodesIs(ignoreWitespace bool, matcher astutil.NodeMatc
 
 func (nw *NodeWalker) PrevNodesIsWithDepth(ignoreWitespace bool, matcher astutil.NodeMatcher, depth int) bool {
 	reader := nw.Paths[depth]
-	if reader.PrevNodeIs(ignoreWitespace, matcher) {
-		return true
-	}
-	return false
+	return reader.PrevNodeIs(ignoreWitespace, matcher)
 }

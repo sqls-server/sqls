@@ -33,7 +33,7 @@ func main() {
 
 func realMain() error {
 	app := &cli.App{
-		Name:    "sqls",
+		Name:    name,
 		Version: fmt.Sprintf("Version:%s, Revision:%s\n", version, revision),
 		Usage:   "An implementation of the Language Server Protocol for SQL.",
 		Flags: []cli.Flag{
@@ -134,7 +134,7 @@ func serve(c *cli.Context) error {
 	} else {
 		// Load default config
 		cfg, err := config.GetDefaultConfig()
-		if err != nil && !errors.Is(config.ErrNotFoundConfig, err) {
+		if err != nil && !errors.Is(err, config.ErrNotFoundConfig) {
 			return fmt.Errorf("cannot read default config, %w", err)
 		}
 		server.DefaultFileCfg = cfg
@@ -177,7 +177,7 @@ func (stdrwc) Close() error {
 }
 
 func openEditor(program string, args ...string) error {
-	cmd := exec.Command(program, args...)
+	cmd := exec.CommandContext(context.Background(), program, args...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

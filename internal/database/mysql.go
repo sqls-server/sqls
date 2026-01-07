@@ -48,7 +48,7 @@ func mysqlOpen(dbConnCfg *DBConfig) (*DBConnection, error) {
 		}
 		conn = dbConn
 	}
-	if err := conn.Ping(); err != nil {
+	if err := conn.PingContext(context.Background()); err != nil {
 		return nil, fmt.Errorf("cannot ping to database, %w", err)
 	}
 

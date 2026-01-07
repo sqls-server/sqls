@@ -44,7 +44,7 @@ func genH2Config(connCfg *DBConfig) (string, error) {
 		return connCfg.DataSourceName, nil
 	}
 
-	return "", fmt.Errorf("Only DataSourceName is supported")
+	return "", fmt.Errorf("only DataSourceName is supported")
 }
 
 type H2DBRepository struct {

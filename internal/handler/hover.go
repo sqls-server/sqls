@@ -86,15 +86,16 @@ func hover(text string, params lsp.HoverParams, dbCache *database.DBCache) (*lsp
 		identName := ident.NoQuoteString()
 		parentName := memIdent.ParentTok.NoQuoteString()
 		childName := memIdent.ChildTok.NoQuoteString()
-		if identName == parentName {
+		switch identName {
+		case parentName:
 			// The cursor is on the member identifier parent.
 			// example "w[o]rld.city"
 			hoverContent = hoverContentFromParentIdent(ctx, identName, dbCache, hoverEnv)
-		} else if identName == childName {
+		case childName:
 			// The cursor is on the member identifier child.
 			// example "world.c[i]ty"
 			hoverContent = hoverContentFromChildIdent(ctx, identName, dbCache, hoverEnv)
-		} else {
+		default:
 			// Invalid
 			hoverContent = nil
 		}

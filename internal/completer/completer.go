@@ -454,7 +454,7 @@ func getBeforeCursorText(text string, line, char int) string {
 			writer.Write([]byte(t[:char]))
 			break
 		}
-		writer.Write([]byte(fmt.Sprintln(scanner.Text())))
+		fmt.Fprintln(writer, scanner.Text())
 		i++
 	}
 	return writer.String()

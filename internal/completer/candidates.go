@@ -280,7 +280,7 @@ func generateForeignKeyCandidate(target string,
 			onKw = "on"
 		}
 		for _, b := range builder {
-			b.sb.WriteString(fmt.Sprintf("%s %s %s ", target, b.alias, onKw))
+			fmt.Fprintf(b.sb, "%s %s %s ", target, b.alias, onKw)
 		}
 	}
 	andKw := " AND "
