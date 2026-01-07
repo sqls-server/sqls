@@ -177,7 +177,7 @@ func (stdrwc) Close() error {
 }
 
 func openEditor(program string, args ...string) error {
-	cmd := exec.Command(program, args...)
+	cmd := exec.CommandContext(context.Background(), program, args...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
