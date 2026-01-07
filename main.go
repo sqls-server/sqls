@@ -33,7 +33,7 @@ func main() {
 
 func realMain() error {
 	app := &cli.App{
-		Name:    "sqls",
+		Name:    name,
 		Version: fmt.Sprintf("Version:%s, Revision:%s\n", version, revision),
 		Usage:   "An implementation of the Language Server Protocol for SQL.",
 		Flags: []cli.Flag{
