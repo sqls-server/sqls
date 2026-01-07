@@ -26,10 +26,7 @@ func (ti *TableInfo) isMatchTableName(name string) bool {
 }
 
 func (ti *TableInfo) hasSubQuery() bool {
-	if ti.SubQueryColumns != nil && len(ti.SubQueryColumns) > 0 {
-		return true
-	}
-	return false
+	return len(ti.SubQueryColumns) > 0
 }
 
 type SubQueryInfo struct {
