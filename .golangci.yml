@@ -32,6 +32,7 @@ linters:
   disable:
     - prealloc
     - rowserrcheck
+    - unused
   exclusions:
     generated: lax
     presets:
