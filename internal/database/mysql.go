@@ -94,8 +94,13 @@ func genMysqlConfig(connCfg *DBConfig) (*mysql.Config, error) {
 		return mysql.ParseDSN(connCfg.DataSourceName)
 	}
 
+	passwd, err := connCfg.ResolvePassword()
+	if err != nil {
+		return nil, err
+	}
+
 	cfg.User = connCfg.User
-	cfg.Passwd = connCfg.Passwd
+	cfg.Passwd = passwd
 	cfg.DBName = connCfg.DBName
 
 	switch connCfg.Proto {

@@ -40,6 +40,16 @@ func TestGetConfig(t *testing.T) {
 						Params: map[string]string{"autocommit": "true", "tls": "skip-verify"},
 					},
 					{
+						Alias:     "sqls_managed",
+						Driver:    "mysql",
+						Proto:     "tcp",
+						User:      "root",
+						PasswdCmd: []string{"echo", "topsecret"},
+						Host:      "127.0.0.1",
+						Port:      13306,
+						DBName:    "world",
+					},
+					{
 						Alias:          "sqls_sqlite3",
 						Driver:         "sqlite3",
 						DataSourceName: "file:/home/sqls-server/chinook.db",
