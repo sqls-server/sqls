@@ -43,6 +43,9 @@ linters:
       - linters:
           - gosec
         text: 'G106:'
+      - linters:
+          - staticcheck
+        text: 'QF1002:'
     paths:
       - third_party$
       - builtin$
