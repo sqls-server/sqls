@@ -2,11 +2,8 @@ package database
 
 import (
 	"errors"
-	"fmt"
-	"os"
 
 	"github.com/sqls-server/sqls/dialect"
-	"golang.org/x/crypto/ssh"
 )
 
 type Proto string
@@ -162,35 +159,4 @@ func (s *SSHConfig) Validate() error {
 		return errors.New("required: connections[].sshConfig.privateKey")
 	}
 	return nil
-}
-
-func (s *SSHConfig) Endpoint() string {
-	return fmt.Sprintf("%s:%d", s.Host, s.Port)
-}
-
-func (s *SSHConfig) ClientConfig() (*ssh.ClientConfig, error) {
-	buffer, err := os.ReadFile(s.PrivateKey)
-	if err != nil {
-		return nil, fmt.Errorf("cannot read SSH private key file, PrivateKey=%s, %w", s.PrivateKey, err)
-	}
-
-	var key ssh.Signer
-	if s.PassPhrase != "" {
-		key, err = ssh.ParsePrivateKeyWithPassphrase(buffer, []byte(s.PassPhrase))
-		if err != nil {
-			return nil, fmt.Errorf("cannot parse SSH private key file with passphrase, PrivateKey=%s, %w", s.PrivateKey, err)
-		}
-	} else {
-		key, err = ssh.ParsePrivateKey(buffer)
-		if err != nil {
-			return nil, fmt.Errorf("cannot parse SSH private key file, PrivateKey=%s, %w", s.PrivateKey, err)
-		}
-	}
-
-	sshConfig := &ssh.ClientConfig{
-		User:            s.User,
-		Auth:            []ssh.AuthMethod{ssh.PublicKeys(key)},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-	}
-	return sshConfig, nil
 }
