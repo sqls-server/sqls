@@ -125,6 +125,16 @@ func TestInitialized(t *testing.T) {
 			DocumentFormattingProvider:      true,
 			DocumentRangeFormattingProvider: true,
 			RenameProvider:                  true,
+			ExecuteCommandProvider: &lsp.ExecuteCommandOptions{
+				Commands: []string{
+					CommandExecuteQuery,
+					CommandShowDatabases,
+					CommandShowSchemas,
+					CommandShowConnections,
+					CommandSwitchDatabase,
+					CommandSwitchConnection,
+					CommandShowTables,
+				}},
 		},
 	}
 	var got lsp.InitializeResult
