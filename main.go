@@ -19,7 +19,7 @@ import (
 
 const name = "sqls"
 
-const version = "0.2.45"
+const version = "0.2.46"
 
 var revision = "HEAD"
 
