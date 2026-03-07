@@ -64,11 +64,10 @@ func sqlValToString(pointer interface{}) (string, error) {
 
 	// extract pointer value
 	if reflectVal.Kind() == reflect.Pointer {
-		val = reflectVal.Elem().Interface()
-
-		if val == nil {
+		if reflectVal.IsNil() {
 			return "", nil
 		}
+		val = reflectVal.Elem().Interface()
 	}
 
 	switch v := (val).(type) {

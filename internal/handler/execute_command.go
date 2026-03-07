@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/olekukonko/tablewriter"
+	"github.com/olekukonko/tablewriter/tw"
 	"github.com/sourcegraph/jsonrpc2"
 	"github.com/sqls-server/sqls/ast"
 	"github.com/sqls-server/sqls/internal/database"
@@ -230,7 +231,9 @@ func (s *Server) query(ctx context.Context, query string, vertical bool) (string
 		}
 		table.render()
 	} else {
-		table := tablewriter.NewWriter(buf)
+		table := tablewriter.NewTable(buf, tablewriter.WithHeaderConfig(tw.CellConfig{
+			Formatting: tw.CellFormatting{AutoFormat: tw.Off},
+		}))
 		// Convert []string to []any for Header
 		headers := make([]any, len(columns))
 		for i, v := range columns {
