@@ -49,6 +49,9 @@ func ScanRows(rows *sql.Rows, columnLength int) ([][]string, error) {
 		}
 		stringRows = append(stringRows, stringRow)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return stringRows, nil
 }
 

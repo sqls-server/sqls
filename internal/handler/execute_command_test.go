@@ -141,6 +141,28 @@ func Test_extractRangeText(t *testing.T) {
 			},
 			want: "lect",
 		},
+		{
+			name: "extract unicode using utf16 offsets",
+			args: args{
+				text:      "SELECT 'あ😀い';",
+				startLine: 0,
+				startChar: 8,
+				endLine:   0,
+				endChar:   12,
+			},
+			want: "あ😀い",
+		},
+		{
+			name: "extract long single line without scanner limit",
+			args: args{
+				text:      strings.Repeat("a", 70000) + "SELECT",
+				startLine: 0,
+				startChar: 70000,
+				endLine:   0,
+				endChar:   70006,
+			},
+			want: "SELECT",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
