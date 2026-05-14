@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -10,6 +9,7 @@ import (
 	"io"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/olekukonko/tablewriter"
 	"github.com/olekukonko/tablewriter/tw"
@@ -178,30 +178,101 @@ func (s *Server) executeQuery(ctx context.Context, params lsp.ExecuteCommandPara
 }
 
 func extractRangeText(text string, startLine, startChar, endLine, endChar int) string {
-	writer := bytes.NewBufferString("")
-	scanner := bufio.NewScanner(strings.NewReader(text))
-
-	i := 0
-	for scanner.Scan() {
-		t := scanner.Text()
-		if i >= startLine && i <= endLine {
-			st, en := 0, len(t)
-
-			if i == startLine {
-				st = startChar
-			}
-			if i == endLine {
-				en = endChar
-			}
-
-			writer.Write([]byte(t[st:en]))
-			if i != endLine {
-				writer.Write([]byte("\n"))
-			}
-		}
-		i++
+	lines := strings.Split(text, "\n")
+	if startLine < 0 {
+		startLine = 0
 	}
-	return writer.String()
+	if endLine >= len(lines) {
+		endLine = len(lines) - 1
+	}
+	if startLine >= len(lines) || startLine > endLine {
+		return ""
+	}
+
+	var builder strings.Builder
+	for i := startLine; i <= endLine; i++ {
+		line := strings.TrimSuffix(lines[i], "\r")
+		st, en := 0, utf16Len(line)
+		if i == startLine {
+			st = startChar
+		}
+		if i == endLine {
+			en = endChar
+		}
+		builder.WriteString(sliceUTF16(line, st, en))
+		if i != endLine {
+			builder.WriteByte('\n')
+		}
+	}
+	return builder.String()
+}
+
+func utf16Len(s string) int {
+	length := 0
+	for _, r := range s {
+		length++
+		if r > utf8.MaxRune || r < 0 {
+			continue
+		}
+		if r > 0xFFFF {
+			length++
+		}
+	}
+	return length
+}
+
+func sliceUTF16(s string, start, end int) string {
+	if start < 0 {
+		start = 0
+	}
+	if end < start {
+		end = start
+	}
+
+	utf16Pos := 0
+	startByte, endByte := len(s), len(s)
+	startFound, endFound := false, false
+
+	for bytePos, r := range s {
+		runeWidth := 1
+		if r > 0xFFFF {
+			runeWidth = 2
+		}
+
+		if !startFound && start <= utf16Pos {
+			startByte = bytePos
+			startFound = true
+		}
+		if !endFound && end <= utf16Pos {
+			endByte = bytePos
+			endFound = true
+			break
+		}
+
+		nextUTF16Pos := utf16Pos + runeWidth
+		if !startFound && start < nextUTF16Pos {
+			startByte = bytePos
+			startFound = true
+		}
+		if !endFound && end < nextUTF16Pos {
+			endByte = bytePos + utf8.RuneLen(r)
+			endFound = true
+			break
+		}
+
+		utf16Pos = nextUTF16Pos
+	}
+
+	if !startFound && start <= utf16Pos {
+		startByte = len(s)
+	}
+	if !endFound {
+		endByte = len(s)
+	}
+	if startByte > endByte {
+		startByte = endByte
+	}
+	return s[startByte:endByte]
 }
 
 func (s *Server) query(ctx context.Context, query string, vertical bool) (string, error) {
@@ -213,6 +284,7 @@ func (s *Server) query(ctx context.Context, query string, vertical bool) (string
 	if err != nil {
 		return "", err
 	}
+	defer func() { _ = rows.Close() }()
 	columns, err := database.Columns(rows)
 	if err != nil {
 		return "", err
