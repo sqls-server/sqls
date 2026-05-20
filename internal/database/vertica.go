@@ -51,7 +51,12 @@ func genVerticaConfig(connCfg *DBConfig) (string, error) {
 		port = 5433
 	}
 
-	DSName := connCfg.User + "/" + connCfg.Passwd + "@" + host + ":" + strconv.Itoa(port) + "/" + connCfg.DBName
+	passwd, err := connCfg.ResolvePassword()
+	if err != nil {
+		return "", err
+	}
+
+	DSName := connCfg.User + "/" + passwd + "@" + host + ":" + strconv.Itoa(port) + "/" + connCfg.DBName
 	return DSName, nil
 }
 

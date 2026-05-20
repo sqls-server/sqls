@@ -13,6 +13,16 @@ connections:
     params:
       autocommit: "true"
       tls: skip-verify
+  - alias: sqls_managed
+    driver: mysql
+    dataSourceName: ""
+    proto: tcp
+    user: root
+    passwdCmd: ["echo", "topsecret"]
+    host: 127.0.0.1
+    port: 13306
+    path: ""
+    dbName: world
   - alias: sqls_sqlite3
     driver: sqlite3
     dataSourceName: "file:/home/sqls-server/chinook.db"

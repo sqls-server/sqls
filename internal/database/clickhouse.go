@@ -101,10 +101,15 @@ func genClickhouseDsn(dbConfig *DBConfig) (string, error) {
 		return "", fmt.Errorf("unsupported protocol %s", dbConfig.Proto)
 	}
 
-	if dbConfig.Passwd == "" {
+	passwd, err := dbConfig.ResolvePassword()
+	if err != nil {
+		return "", err
+	}
+
+	if passwd == "" {
 		u.User = url.User(dbConfig.User)
 	} else {
-		u.User = url.UserPassword(dbConfig.User, dbConfig.Passwd)
+		u.User = url.UserPassword(dbConfig.User, passwd)
 	}
 
 	u.Host = fmt.Sprintf("%s:%d", dbConfig.Host, dbConfig.Port)
@@ -131,8 +136,13 @@ func genClickhouseConfig(dbConfig *DBConfig) (*clickhouse.Options, error) {
 
 	cfg := &clickhouse.Options{}
 
+	passwd, err := dbConfig.ResolvePassword()
+	if err != nil {
+		return nil, err
+	}
+
 	cfg.Auth.Username = dbConfig.User
-	cfg.Auth.Password = dbConfig.Passwd
+	cfg.Auth.Password = passwd
 	cfg.Auth.Database = dbConfig.DBName
 
 	switch dbConfig.Proto {
