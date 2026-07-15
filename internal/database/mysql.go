@@ -34,6 +34,8 @@ func mysqlOpen(dbConnCfg *DBConfig) (*DBConnection, error) {
 	}
 
 	if dbConnCfg.SSHCfg != nil {
+		// Route the connection through the dialer registered by openMySQLViaSSH.
+		cfg.Net = "mysql+tcp"
 		dbConn, dbSSHConn, err := openMySQLViaSSH(cfg.FormatDSN(), dbConnCfg.SSHCfg)
 		if err != nil {
 			return nil, err
@@ -109,11 +111,11 @@ func genMysqlConfig(connCfg *DBConfig) (*mysql.Config, error) {
 		cfg.Addr = host + ":" + strconv.Itoa(port)
 		cfg.Net = string(connCfg.Proto)
 	case ProtoUnix:
-		if connCfg.Path != "" {
+		if connCfg.Path == "" {
 			cfg.Addr = "/tmp/mysql.sock"
-			break
+		} else {
+			cfg.Addr = connCfg.Path
 		}
-		cfg.Addr = connCfg.Path
 		cfg.Net = string(connCfg.Proto)
 	case ProtoHTTP:
 	default:
