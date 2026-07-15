@@ -52,7 +52,7 @@ type H2DBRepository struct {
 }
 
 func NewH2DBRepository(conn *sql.DB) DBRepository {
-	return &H2DBRepository{Conn: conn}
+	return &H2DBRepository{Conn: conn, driver: dialect.DatabaseDriverH2}
 }
 
 func (db *H2DBRepository) Driver() dialect.DatabaseDriver {
