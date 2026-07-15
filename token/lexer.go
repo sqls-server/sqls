@@ -171,7 +171,8 @@ func (t *Tokenizer) next() (Kind, interface{}, error) {
 
 	case r == '\t':
 		t.Scanner.Next()
-		t.Col += 4
+		// A tab is a single character in LSP position terms.
+		t.Col++
 		return Whitespace, "\t", nil
 
 	case r == '\n':
@@ -419,6 +420,7 @@ func (t *Tokenizer) tokenizeWord(f rune) string {
 func (t *Tokenizer) tokenizeSingleQuotedString() string {
 	var str []rune
 	t.Scanner.Next()
+	cols := 1
 	isClosed := false
 
 	for {
@@ -426,10 +428,14 @@ func (t *Tokenizer) tokenizeSingleQuotedString() string {
 		if n == '\'' {
 			t.Scanner.Next()
 			if t.Scanner.Peek() == '\'' {
+				// An escaped quote consumes two source columns
+				// but is stored as a single rune.
 				str = append(str, '\'')
 				t.Scanner.Next()
+				cols += 2
 			} else {
 				isClosed = true
+				cols++
 				break
 			}
 			continue
@@ -440,13 +446,13 @@ func (t *Tokenizer) tokenizeSingleQuotedString() string {
 
 		t.Scanner.Next()
 		str = append(str, n)
+		cols++
 	}
 
+	t.Col += cols
 	if isClosed {
-		t.Col += 2 + len(str)
 		return "'" + string(str) + "'"
 	}
-	t.Col += 1 + len(str)
 	return "'" + string(str)
 }
 
