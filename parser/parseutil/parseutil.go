@@ -293,8 +293,10 @@ func extractSubQueryColumns(selectStmt ast.TokenList) ([]*SubQueryColumn, []*Tab
 
 	// extract select identifiers
 	reader := astutil.NewNodeReader(selectStmt)
-	if !reader.NextNode(true) || !reader.NextNode(true) {
-		return []*SubQueryColumn{}, tables, nil
+	for i := 0; i < 2; i++ {
+		if !reader.NextNode(true) {
+			return []*SubQueryColumn{}, tables, nil
+		}
 	}
 	identsObj := reader.CurNode
 	cols, err := parseSubQueryColumns(identsObj, tables)
