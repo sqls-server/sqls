@@ -39,6 +39,16 @@ func TestGenClickhouseDsn(t *testing.T) {
 			},
 			want: "clickhouse://test:secure@localhost:9001/default?dial_timeout=200ms",
 		},
+		{
+			name: "default host and port",
+			connCfg: &DBConfig{
+				Driver: "clickhouse",
+				Proto:  "tcp",
+				User:   "test",
+				DBName: "default",
+			},
+			want: "clickhouse://test@127.0.0.1:9000/default",
+		},
 	}
 
 	for _, tt := range tests {

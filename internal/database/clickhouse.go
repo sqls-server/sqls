@@ -57,6 +57,7 @@ func clickhouseOpen(dbConnCfg *DBConfig) (*DBConnection, error) {
 	return &DBConnection{
 		Conn:    conn,
 		SSHConn: sshConn,
+		Driver:  dbConnCfg.Driver,
 	}, nil
 }
 
@@ -107,7 +108,18 @@ func genClickhouseDsn(dbConfig *DBConfig) (string, error) {
 		u.User = url.UserPassword(dbConfig.User, dbConfig.Passwd)
 	}
 
-	u.Host = fmt.Sprintf("%s:%d", dbConfig.Host, dbConfig.Port)
+	host, port := dbConfig.Host, dbConfig.Port
+	if host == "" {
+		host = "127.0.0.1"
+	}
+	if port == 0 {
+		if dbConfig.Proto == ProtoHTTP {
+			port = 8123
+		} else {
+			port = 9000
+		}
+	}
+	u.Host = fmt.Sprintf("%s:%d", host, port)
 
 	if dbConfig.DBName != "" {
 		u.Path = dbConfig.DBName

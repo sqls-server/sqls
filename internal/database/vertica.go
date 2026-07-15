@@ -4,10 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
+	"net/url"
+	"strconv"
+
 	"github.com/sqls-server/sqls/dialect"
 	_ "github.com/vertica/vertica-sql-go"
-	"log"
-	"strconv"
 )
 
 func init() {
@@ -51,8 +53,13 @@ func genVerticaConfig(connCfg *DBConfig) (string, error) {
 		port = 5433
 	}
 
-	DSName := connCfg.User + "/" + connCfg.Passwd + "@" + host + ":" + strconv.Itoa(port) + "/" + connCfg.DBName
-	return DSName, nil
+	u := url.URL{
+		Scheme: "vertica",
+		User:   url.UserPassword(connCfg.User, connCfg.Passwd),
+		Host:   host + ":" + strconv.Itoa(port),
+		Path:   "/" + connCfg.DBName,
+	}
+	return u.String(), nil
 }
 
 type VerticaDBRepository struct {
