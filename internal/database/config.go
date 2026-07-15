@@ -165,7 +165,11 @@ func (s *SSHConfig) Validate() error {
 }
 
 func (s *SSHConfig) Endpoint() string {
-	return fmt.Sprintf("%s:%d", s.Host, s.Port)
+	port := s.Port
+	if port == 0 {
+		port = 22
+	}
+	return fmt.Sprintf("%s:%d", s.Host, port)
 }
 
 func (s *SSHConfig) ClientConfig() (*ssh.ClientConfig, error) {

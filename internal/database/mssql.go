@@ -34,9 +34,7 @@ func mssqlOpen(dbConnCfg *DBConfig) (*DBConnection, error) {
 			return nil, err
 		}
 
-		remoteAddr := fmt.Sprintf("%s:%d", dbConnCfg.SSHCfg.Host, dbConnCfg.SSHCfg.Port)
-
-		tunnel, err = sshdb.New(cfg, remoteAddr)
+		tunnel, err = sshdb.New(cfg, dbConnCfg.SSHCfg.Endpoint())
 		if err != nil {
 			return nil, fmt.Errorf("%w", err)
 		}
