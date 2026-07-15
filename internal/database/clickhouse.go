@@ -246,7 +246,7 @@ WHERE  ( c.database = currentDatabase()
        AND c.table NOT LIKE '%inner%'
 `)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	defer rows.Close()
 	tableInfos := []*ColumnDesc{}

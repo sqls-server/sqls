@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/sqls-server/sqls/dialect"
@@ -75,7 +74,7 @@ func (db *SQLite3DBRepository) Tables(ctx context.Context) ([]string, error) {
 	  name
 	`)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	defer rows.Close()
 	tables := []string{}
@@ -92,7 +91,7 @@ func (db *SQLite3DBRepository) Tables(ctx context.Context) ([]string, error) {
 func (db *SQLite3DBRepository) describeTable(ctx context.Context, tableName string) ([]*ColumnDesc, error) {
 	rows, err := db.Conn.QueryContext(ctx, fmt.Sprintf("PRAGMA table_info(%s);", tableName))
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	defer rows.Close()
 	tableInfos := []*ColumnDesc{}
@@ -157,7 +156,7 @@ func (db *SQLite3DBRepository) DescribeForeignKeysBySchema(ctx context.Context, 
 	ORDER BY 1, p."seq"
 		`)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	defer func() { _ = rows.Close() }()
 	return parseForeignKeys(rows, schemaName)

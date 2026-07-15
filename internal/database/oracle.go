@@ -252,7 +252,7 @@ func (db *OracleDBRepository) DescribeForeignKeysBySchema(ctx context.Context, s
 	ORDER BY a.CONSTRAINT_NAME, a.POSITION
 		`, schemaName)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	defer func() { _ = rows.Close() }()
 	return parseForeignKeys(rows, schemaName)

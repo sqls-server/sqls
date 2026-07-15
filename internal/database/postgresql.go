@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
 	"net"
 	"net/url"
 	"sort"
@@ -110,7 +109,7 @@ func (db *PostgreSQLDBRepository) Databases(ctx context.Context) ([]string, erro
 	SELECT datname FROM pg_database
 	`)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	defer rows.Close()
 	databases := []string{}
@@ -143,7 +142,7 @@ func (db *PostgreSQLDBRepository) Schemas(ctx context.Context) ([]string, error)
 	SELECT schema_name FROM information_schema.schemata
 	`)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	defer rows.Close()
 	databases := []string{}
@@ -205,7 +204,7 @@ func (db *PostgreSQLDBRepository) Tables(ctx context.Context) ([]string, error) 
 	  table_name
 	`)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	defer rows.Close()
 	tables := []string{}
@@ -259,7 +258,7 @@ func (db *PostgreSQLDBRepository) DescribeDatabaseTable(ctx context.Context) ([]
 		c.ordinal_position
 	`)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	defer rows.Close()
 	tableInfos := []*ColumnDesc{}
@@ -326,7 +325,7 @@ func (db *PostgreSQLDBRepository) DescribeDatabaseTableBySchema(ctx context.Cont
 		c.ordinal_position
 	`, schemaName, schemaName)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	defer rows.Close()
 	tableInfos := []*ColumnDesc{}
@@ -376,7 +375,7 @@ func (db *PostgreSQLDBRepository) DescribeForeignKeysBySchema(ctx context.Contex
 			 kcu.ORDINAL_POSITION
 		`, schemaName)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	defer func() { _ = rows.Close() }()
 	return parseForeignKeys(rows, schemaName)
