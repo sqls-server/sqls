@@ -23,6 +23,10 @@ hogetable
 		{input, 2, 3, "SELECT\na, "},
 		{input, 3, 4, "SELECT\na, b, c\nFROM"},
 		{input, 4, 5, "SELECT\na, b, c\nFROM\nhoget"},
+		{"select 'テスト', ci", 1, 16, "select 'テスト', ci"},
+		{"select '😀', ci", 1, 15, "select '😀', ci"},
+		{"select '😀', ci", 1, 13, "select '😀', "},
+		{"select 1", 1, 100, "select 1"},
 	}
 	for _, tt := range tests {
 		got := getBeforeCursorText(tt.in, tt.line, tt.char)
