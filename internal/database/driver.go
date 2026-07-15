@@ -3,6 +3,7 @@ package database
 import (
 	"database/sql"
 	"fmt"
+	"io"
 
 	"github.com/sqls-server/sqls/dialect"
 	"golang.org/x/crypto/ssh"
@@ -17,6 +18,7 @@ type Factory func(*sql.DB) DBRepository
 type DBConnection struct {
 	Conn    *sql.DB
 	SSHConn *ssh.Client
+	Tunnel  io.Closer
 	Driver  dialect.DatabaseDriver
 }
 
@@ -29,6 +31,11 @@ func (db *DBConnection) Close() error {
 	}
 	if db.SSHConn != nil {
 		if err := db.SSHConn.Close(); err != nil {
+			return err
+		}
+	}
+	if db.Tunnel != nil {
+		if err := db.Tunnel.Close(); err != nil {
 			return err
 		}
 	}
