@@ -23,6 +23,8 @@ func NewWorker() *Worker {
 }
 
 func (w *Worker) Cache() *DBCache {
+	w.lock.Lock()
+	defer w.lock.Unlock()
 	return w.dbCache
 }
 
@@ -36,7 +38,11 @@ func (w *Worker) setColumnCache(col map[string][]*ColumnDesc) {
 	w.lock.Lock()
 	defer w.lock.Unlock()
 	if w.dbCache != nil {
-		w.dbCache.ColumnsWithParent = col
+		// Swap in a copy so that readers holding the previous
+		// *DBCache keep seeing a consistent snapshot.
+		newCache := *w.dbCache
+		newCache.ColumnsWithParent = col
+		w.dbCache = &newCache
 	}
 }
 
@@ -53,6 +59,7 @@ func (w *Worker) Start() {
 				col, err := generator.GenerateDBCacheSecondary(context.Background())
 				if err != nil {
 					log.Println(err)
+					continue
 				}
 				w.setColumnCache(col)
 				log.Println("db worker: Update db cache secondary complete")
