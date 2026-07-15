@@ -33,6 +33,20 @@ func Test_genPostgresConfig(t *testing.T) {
 			want:    "dbname=dvdrental host=127.0.0.1 password=mysecretpassword1234 port=15432 sslmode=disable user=postgres",
 			wantErr: false,
 		},
+		{
+			name: "password with space and quote",
+			connCfg: &DBConfig{
+				Driver: "postgresql",
+				Proto:  "tcp",
+				User:   "postgres",
+				Passwd: `p@ss w'ord`,
+				Host:   "127.0.0.1",
+				Port:   15432,
+				DBName: "dvdrental",
+			},
+			want:    `dbname=dvdrental host=127.0.0.1 password='p@ss w\'ord' port=15432 user=postgres`,
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
