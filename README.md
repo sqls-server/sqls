@@ -256,7 +256,7 @@ The first setting in `connections` is the default connection.
 | host       | ssh host. Required.         |
 | port       | ssh port. Required.         |
 | user       | ssh user. Optional.         |
-| privateKey | private key path. Required. |
+| privateKey | private key path. Required. Also supports ssh-agent via `agent://`, `agent://<name>` or `agent://<hash>`. |
 | passPhrase | passPhrase. Optional.       |
 
 #### DSN (Data Source Name)

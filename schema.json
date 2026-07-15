@@ -83,7 +83,7 @@
                 "type": "string"
               },
               "privateKey": {
-                "description": "private key path. Required",
+                "description": "private key path. Required. Also supports ssh-agent via 'agent://', 'agent://<name>' or 'agent://<hash>'",
                 "type": "string"
               },
               "passPhrase": {
