@@ -35,7 +35,7 @@ func (s *Server) handleTextDocumentHover(ctx context.Context, conn *jsonrpc2.Con
 
 	res, err := hover(f.Text, params, s.worker.Cache())
 	if err != nil {
-		if errors.Is(ErrNoHover, err) {
+		if errors.Is(err, ErrNoHover) {
 			return nil, nil
 		}
 		return nil, err

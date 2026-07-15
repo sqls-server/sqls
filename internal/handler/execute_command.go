@@ -443,11 +443,14 @@ func (s *Server) switchConnections(ctx context.Context, params lsp.ExecuteComman
 		}
 	}
 	if index <= 0 {
-		index, _ = strconv.Atoi(indexStr)
+		index, err = strconv.Atoi(indexStr)
+		if err != nil {
+			return nil, fmt.Errorf("specify the connection index as a number, %w", err)
+		}
 	}
 
 	if index <= 0 {
-		return nil, fmt.Errorf("specify the connection index as a number, %w", err)
+		return nil, fmt.Errorf("specify the connection index as a number")
 	}
 	index = index - 1
 
@@ -501,7 +504,7 @@ func getStatements(text string) ([]*ast.Statement, error) {
 	for _, node := range parsed.GetTokens() {
 		stmt, ok := node.(*ast.Statement)
 		if !ok {
-			return nil, fmt.Errorf("invalid type want Statement parsed %T", stmt)
+			return nil, fmt.Errorf("invalid type want Statement parsed %T", node)
 		}
 		stmts = append(stmts, stmt)
 	}
