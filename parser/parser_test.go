@@ -1231,6 +1231,15 @@ func TestParseCase(t *testing.T) {
 				testIdentifierList(t, list[0], input)
 			},
 		},
+		{
+			name:  "case without end",
+			input: "SELECT CASE WHEN a THEN b",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 3, input)
+				list := stmts[0].GetTokens()
+				testSwitchCase(t, list[2], "CASE WHEN a THEN b")
+			},
+		},
 	}
 	for _, tt := range testcases {
 		t.Run(tt.name, func(t *testing.T) {
