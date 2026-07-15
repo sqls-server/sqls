@@ -565,6 +565,15 @@ func TestParseMultiKeyword(t *testing.T) {
 			},
 		},
 		{
+			name:  "partial multi keyword",
+			input: "select * from a natural left foo",
+			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
+				testStatement(t, stmts[0], 11, input)
+				list := stmts[0].GetTokens()
+				testMultiKeyword(t, list[8], "natural left")
+			},
+		},
+		{
 			name:  "select with group keyword",
 			input: "select a, b, c from abc group by d, e, f",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
