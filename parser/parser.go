@@ -284,6 +284,11 @@ func parseMultiKeyword(reader *astutil.NodeReader) ast.Node {
 			break
 		}
 		if !reader.PeekNodeIs(true, astutil.NodeMatcher{ExpectKeyword: peekKeywords}) {
+			if len(keywords) > 1 {
+				// Partial match. Keep the keywords consumed so far
+				// so they are not dropped from the statement.
+				break
+			}
 			return reader.CurNode
 		}
 		reader.NextNode(true)
