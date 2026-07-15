@@ -413,9 +413,9 @@ func genPostgresConfig(connCfg *DBConfig) (string, error) {
 	}
 
 	q := url.Values{}
-	q.Set("user", connCfg.User)
-	q.Set("password", connCfg.Passwd)
-	q.Set("dbname", connCfg.DBName)
+	q.Set("user", quotePostgresParam(connCfg.User))
+	q.Set("password", quotePostgresParam(connCfg.Passwd))
+	q.Set("dbname", quotePostgresParam(connCfg.DBName))
 
 	switch connCfg.Proto {
 	case ProtoTCP, ProtoUDP:
@@ -426,20 +426,31 @@ func genPostgresConfig(connCfg *DBConfig) (string, error) {
 		if port == 0 {
 			port = 5432
 		}
-		q.Set("host", host)
+		q.Set("host", quotePostgresParam(host))
 		q.Set("port", strconv.Itoa(port))
 	case ProtoUnix:
-		q.Set("host", connCfg.Path)
+		q.Set("host", quotePostgresParam(connCfg.Path))
 	case ProtoHTTP:
 	default:
 		return "", fmt.Errorf("default addr for network %s unknown", connCfg.Proto)
 	}
 
 	for k, v := range connCfg.Params {
-		q.Set(k, v)
+		q.Set(k, quotePostgresParam(v))
 	}
 
 	return genOptions(q, "", "=", " ", ",", true), nil
+}
+
+// quotePostgresParam single-quotes a keyword/value connection string
+// value when it contains characters that would otherwise terminate or
+// corrupt the value (libpq requires quoting for spaces and quotes).
+func quotePostgresParam(v string) string {
+	if !strings.ContainsAny(v, " '\\") {
+		return v
+	}
+	r := strings.NewReplacer(`\`, `\\`, `'`, `\'`)
+	return "'" + r.Replace(v) + "'"
 }
 
 // genOptions takes URL values and generates options, joining together with
