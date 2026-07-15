@@ -90,6 +90,9 @@ func (db *OracleDBRepository) Databases(ctx context.Context) ([]string, error) {
 		}
 		databases = append(databases, database)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return databases, nil
 }
 
@@ -126,6 +129,9 @@ func (db *OracleDBRepository) SchemaTables(ctx context.Context) (map[string][]st
 			databaseTables[schema] = []string{table}
 		}
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return databaseTables, nil
 }
 
@@ -142,6 +148,9 @@ func (db *OracleDBRepository) Tables(ctx context.Context) ([]string, error) {
 			return nil, err
 		}
 		tables = append(tables, table)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return tables, nil
 }
@@ -182,6 +191,9 @@ FROM SYS.ALL_TAB_COLUMNS
 			return nil, err
 		}
 		tableInfos = append(tableInfos, &tableInfo)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return tableInfos, nil
 }
@@ -227,6 +239,9 @@ func (db *OracleDBRepository) DescribeDatabaseTableBySchema(ctx context.Context,
 			return nil, err
 		}
 		tableInfos = append(tableInfos, &tableInfo)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return tableInfos, nil
 }

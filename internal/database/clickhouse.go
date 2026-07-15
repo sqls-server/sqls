@@ -229,6 +229,9 @@ func (db *clickhouseSQLDBRepository) Databases(ctx context.Context) ([]string, e
 		}
 		databases = append(databases, database)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return databases, nil
 }
 
@@ -282,6 +285,9 @@ WHERE  ( c.database = currentDatabase()
 			tableInfo.Name = *columnName
 		}
 		tableInfos = append(tableInfos, &tableInfo)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return tableInfos, nil
 }
@@ -338,6 +344,9 @@ WHERE  ( c.database = ?
 		}
 		tableInfos = append(tableInfos, &tableInfo)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return tableInfos, nil
 }
 
@@ -382,6 +391,9 @@ func (db *clickhouseSQLDBRepository) SchemaTables(ctx context.Context) (map[stri
 		} else {
 			databaseTables[schema] = []string{table}
 		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return databaseTables, nil
 }

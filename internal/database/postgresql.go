@@ -120,6 +120,9 @@ func (db *PostgreSQLDBRepository) Databases(ctx context.Context) ([]string, erro
 		}
 		databases = append(databases, database)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return databases, nil
 }
 
@@ -152,6 +155,9 @@ func (db *PostgreSQLDBRepository) Schemas(ctx context.Context) ([]string, error)
 			return nil, err
 		}
 		databases = append(databases, database)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return databases, nil
 }
@@ -186,6 +192,9 @@ func (db *PostgreSQLDBRepository) SchemaTables(ctx context.Context) (map[string]
 			databaseTables[schema] = []string{table}
 		}
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return databaseTables, nil
 }
 
@@ -214,6 +223,9 @@ func (db *PostgreSQLDBRepository) Tables(ctx context.Context) ([]string, error) 
 			return nil, err
 		}
 		tables = append(tables, table)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return tables, nil
 }
@@ -278,6 +290,9 @@ func (db *PostgreSQLDBRepository) DescribeDatabaseTable(ctx context.Context) ([]
 			return nil, err
 		}
 		tableInfos = append(tableInfos, &tableInfo)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return tableInfos, nil
 }
@@ -345,6 +360,9 @@ func (db *PostgreSQLDBRepository) DescribeDatabaseTableBySchema(ctx context.Cont
 			return nil, err
 		}
 		tableInfos = append(tableInfos, &tableInfo)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return tableInfos, nil
 }

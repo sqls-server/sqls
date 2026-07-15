@@ -216,5 +216,8 @@ func parseForeignKeys(rows *sql.Rows, schemaName string) ([]*ForeignKey, error) 
 	if cur != nil {
 		retVal = append(retVal, cur)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return retVal, nil
 }
