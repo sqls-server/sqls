@@ -101,6 +101,7 @@ func (db *SQLite3DBRepository) describeTable(ctx context.Context, tableName stri
 	for rows.Next() {
 		var id int
 		var nonnull int
+		var pk int
 		var tableInfo ColumnDesc
 		err := rows.Scan(
 			&id,
@@ -108,7 +109,7 @@ func (db *SQLite3DBRepository) describeTable(ctx context.Context, tableName stri
 			&tableInfo.Type,
 			&nonnull,
 			&tableInfo.Default,
-			&tableInfo.Key,
+			&pk,
 		)
 		if err != nil {
 			return nil, err
@@ -118,6 +119,11 @@ func (db *SQLite3DBRepository) describeTable(ctx context.Context, tableName stri
 			tableInfo.Null = "NO"
 		} else {
 			tableInfo.Null = "YES"
+		}
+		if pk != 0 {
+			tableInfo.Key = "YES"
+		} else {
+			tableInfo.Key = "NO"
 		}
 		tableInfos = append(tableInfos, &tableInfo)
 	}
