@@ -163,6 +163,9 @@ func (db *MySQLDBRepository) Databases(ctx context.Context) ([]string, error) {
 		}
 		databases = append(databases, database)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return databases, nil
 }
 
@@ -204,6 +207,9 @@ func (db *MySQLDBRepository) SchemaTables(ctx context.Context) (map[string][]str
 			databaseTables[schema] = []string{table}
 		}
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return databaseTables, nil
 }
 
@@ -220,6 +226,9 @@ func (db *MySQLDBRepository) Tables(ctx context.Context) ([]string, error) {
 			return nil, err
 		}
 		tables = append(tables, table)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return tables, nil
 }
@@ -261,6 +270,9 @@ FROM information_schema.COLUMNS
 		}
 		tableInfos = append(tableInfos, &tableInfo)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return tableInfos, nil
 }
 
@@ -301,6 +313,9 @@ WHERE information_schema.COLUMNS.TABLE_SCHEMA = ?
 			return nil, err
 		}
 		tableInfos = append(tableInfos, &tableInfo)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return tableInfos, nil
 }

@@ -110,6 +110,9 @@ func (db *MssqlDBRepository) Databases(ctx context.Context) ([]string, error) {
 		}
 		databases = append(databases, database)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return databases, nil
 }
 
@@ -142,6 +145,9 @@ func (db *MssqlDBRepository) Schemas(ctx context.Context) ([]string, error) {
 			return nil, err
 		}
 		databases = append(databases, database)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return databases, nil
 }
@@ -176,6 +182,9 @@ func (db *MssqlDBRepository) SchemaTables(ctx context.Context) (map[string][]str
 			databaseTables[schema] = []string{table}
 		}
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return databaseTables, nil
 }
 
@@ -204,6 +213,9 @@ func (db *MssqlDBRepository) Tables(ctx context.Context) ([]string, error) {
 			return nil, err
 		}
 		tables = append(tables, table)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return tables, nil
 }
@@ -260,6 +272,9 @@ func (db *MssqlDBRepository) DescribeDatabaseTable(ctx context.Context) ([]*Colu
 			return nil, err
 		}
 		tableInfos = append(tableInfos, &tableInfo)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return tableInfos, nil
 }
@@ -318,6 +333,9 @@ func (db *MssqlDBRepository) DescribeDatabaseTableBySchema(ctx context.Context, 
 			return nil, err
 		}
 		tableInfos = append(tableInfos, &tableInfo)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return tableInfos, nil
 }

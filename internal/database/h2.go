@@ -89,6 +89,9 @@ func (db *H2DBRepository) Schemas(ctx context.Context) ([]string, error) {
 		}
 		schemas = append(schemas, schema)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return schemas, nil
 }
 
@@ -122,6 +125,9 @@ func (db *H2DBRepository) SchemaTables(ctx context.Context) (map[string][]string
 			databaseTables[schema] = []string{table}
 		}
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return databaseTables, nil
 }
 
@@ -150,6 +156,9 @@ func (db *H2DBRepository) Tables(ctx context.Context) ([]string, error) {
 			return nil, err
 		}
 		tables = append(tables, table)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return tables, nil
 }
@@ -202,6 +211,9 @@ func (db *H2DBRepository) DescribeDatabaseTable(ctx context.Context) ([]*ColumnD
 			return nil, err
 		}
 		tableInfos = append(tableInfos, &tableInfo)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return tableInfos, nil
 }
@@ -257,6 +269,9 @@ func (db *H2DBRepository) DescribeDatabaseTableBySchema(ctx context.Context, sch
 			return nil, err
 		}
 		tableInfos = append(tableInfos, &tableInfo)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return tableInfos, nil
 }

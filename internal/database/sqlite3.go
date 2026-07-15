@@ -85,6 +85,9 @@ func (db *SQLite3DBRepository) Tables(ctx context.Context) ([]string, error) {
 		}
 		tables = append(tables, table)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return tables, nil
 }
 
@@ -117,6 +120,9 @@ func (db *SQLite3DBRepository) describeTable(ctx context.Context, tableName stri
 			tableInfo.Null = "YES"
 		}
 		tableInfos = append(tableInfos, &tableInfo)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return tableInfos, nil
 }

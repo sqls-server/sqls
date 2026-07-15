@@ -90,6 +90,9 @@ func (db *VerticaDBRepository) Databases(ctx context.Context) ([]string, error) 
 		}
 		databases = append(databases, database)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return databases, nil
 }
 
@@ -126,6 +129,9 @@ func (db *VerticaDBRepository) SchemaTables(ctx context.Context) (map[string][]s
 			databaseTables[schema] = []string{table}
 		}
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return databaseTables, nil
 }
 
@@ -142,6 +148,9 @@ func (db *VerticaDBRepository) Tables(ctx context.Context) ([]string, error) {
 			return nil, err
 		}
 		tables = append(tables, table)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return tables, nil
 }
@@ -181,6 +190,9 @@ SELECT table_schema,
 			return nil, err
 		}
 		tableInfos = append(tableInfos, &tableInfo)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return tableInfos, nil
 }
@@ -225,6 +237,9 @@ func (db *VerticaDBRepository) DescribeDatabaseTableBySchema(ctx context.Context
 			return nil, err
 		}
 		tableInfos = append(tableInfos, &tableInfo)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return tableInfos, nil
 }
