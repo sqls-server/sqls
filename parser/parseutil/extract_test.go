@@ -328,6 +328,24 @@ func TestExtractInsertValues(t *testing.T) {
 				"123, 'aaa', '2020'",
 			},
 		},
+		{
+			name:  "empty values",
+			input: "insert into city (ID) VALUES ()",
+			pos: token.Pos{
+				Line: 0,
+				Col:  30,
+			},
+			want: []string{},
+		},
+		{
+			name:  "open parenthesis",
+			input: "insert into city (ID) VALUES (",
+			pos: token.Pos{
+				Line: 0,
+				Col:  30,
+			},
+			want: []string{},
+		},
 	}
 	for _, tt := range testcases {
 		t.Run(tt.name, func(t *testing.T) {

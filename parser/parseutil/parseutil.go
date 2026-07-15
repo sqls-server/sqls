@@ -292,7 +292,13 @@ func extractSubQueryColumns(selectStmt ast.TokenList) ([]*SubQueryColumn, []*Tab
 	}
 
 	// extract select identifiers
-	identsObj := selectStmt.GetTokens()[2]
+	reader := astutil.NewNodeReader(selectStmt)
+	for i := 0; i < 2; i++ {
+		if !reader.NextNode(true) {
+			return []*SubQueryColumn{}, tables, nil
+		}
+	}
+	identsObj := reader.CurNode
 	cols, err := parseSubQueryColumns(identsObj, tables)
 	if err != nil {
 		return nil, nil, err
@@ -444,10 +450,12 @@ func aliasedToTableInfo(aliased *ast.Aliased) (*TableInfo, error) {
 	case *ast.Parenthesis:
 		tables, err := extractAllTableIdentifiers(v.Inner(), true)
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
-		ti.DatabaseSchema = tables[0].DatabaseSchema
-		ti.Name = tables[0].Name
+		if len(tables) > 0 {
+			ti.DatabaseSchema = tables[0].DatabaseSchema
+			ti.Name = tables[0].Name
+		}
 	default:
 		return nil, fmt.Errorf(
 			"failed parse real name of alias, unknown node type %T, value %q",

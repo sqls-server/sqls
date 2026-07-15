@@ -225,7 +225,11 @@ func parseInsertValues(reader *astutil.NodeReader) []ast.Node {
 	if !ok {
 		return []ast.Node{}
 	}
-	identList, ok := parenthesis.Inner().GetTokens()[0].(*ast.IdentifierList)
+	list := parenthesis.Inner().GetTokens()
+	if len(list) == 0 {
+		return []ast.Node{}
+	}
+	identList, ok := list[0].(*ast.IdentifierList)
 	if !ok {
 		return []ast.Node{}
 	}

@@ -583,6 +583,30 @@ func TestExtractSubQueryViews(t *testing.T) {
 	}
 }
 
+func TestExtractSubQueryViewsIncomplete(t *testing.T) {
+	testcases := []struct {
+		name  string
+		input string
+	}{
+		{
+			name:  "empty select",
+			input: "select * from (select) as t",
+		},
+		{
+			name:  "nested sub query without from",
+			input: "select * from (select * from (select 1) as x) as y",
+		},
+	}
+	for _, tt := range testcases {
+		t.Run(tt.name, func(t *testing.T) {
+			query := initExtractTable(t, tt.input)
+			if _, err := ExtractSubQueryViews(query, token.Pos{Line: 0, Col: 1}); err != nil {
+				t.Logf("error: %+v", err)
+			}
+		})
+	}
+}
+
 func TestExtractTable(t *testing.T) {
 	testcases := []struct {
 		name  string
