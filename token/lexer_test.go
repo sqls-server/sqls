@@ -470,6 +470,18 @@ comment */`,
 			},
 		},
 		{
+			name: "/* comment with asterisk",
+			in:   `/* 1*2 */`,
+			out: []*Token{
+				{
+					Kind:  MultilineComment,
+					Value: " 1*2 ",
+					From:  Pos{Line: 0, Col: 0},
+					To:    Pos{Line: 0, Col: 9},
+				},
+			},
+		},
+		{
 			name: "operators",
 			in:   "1/1*1+1%1=1.1-.",
 			out: []*Token{

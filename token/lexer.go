@@ -505,9 +505,8 @@ func (t *Tokenizer) tokenizeMultilineComment() (string, error) {
 		if mayBeClosingComment {
 			if n == '/' {
 				break
-			} else {
-				str = append(str, n)
 			}
+			str = append(str, '*')
 		}
 		mayBeClosingComment = n == '*'
 		if !mayBeClosingComment {
