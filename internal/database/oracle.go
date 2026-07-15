@@ -209,6 +209,7 @@ func (db *OracleDBRepository) DescribeDatabaseTableBySchema(ctx context.Context,
 		log.Println("schema", schemaName, err.Error())
 		return nil, err
 	}
+	defer rows.Close()
 	tableInfos := []*ColumnDesc{}
 	for rows.Next() {
 		var tableInfo ColumnDesc
@@ -227,7 +228,6 @@ func (db *OracleDBRepository) DescribeDatabaseTableBySchema(ctx context.Context,
 		}
 		tableInfos = append(tableInfos, &tableInfo)
 	}
-	defer rows.Close()
 	return tableInfos, nil
 }
 
