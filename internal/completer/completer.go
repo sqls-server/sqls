@@ -451,13 +451,29 @@ func getBeforeCursorText(text string, line, char int) string {
 	for scanner.Scan() {
 		if i == line {
 			t := scanner.Text()
-			writer.Write([]byte(t[:char]))
+			writer.WriteString(t[:byteOffsetForUTF16(t, char)])
 			break
 		}
 		fmt.Fprintln(writer, scanner.Text())
 		i++
 	}
 	return writer.String()
+}
+
+// byteOffsetForUTF16 converts an LSP UTF-16 character offset to a byte
+// offset in s, clamping to the end of the string.
+func byteOffsetForUTF16(s string, char int) int {
+	utf16Pos := 0
+	for bytePos, r := range s {
+		if utf16Pos >= char {
+			return bytePos
+		}
+		utf16Pos++
+		if r > 0xFFFF {
+			utf16Pos++
+		}
+	}
+	return len(s)
 }
 
 func toQuotedCandidates(candidates []lsp.CompletionItem) []lsp.CompletionItem {
