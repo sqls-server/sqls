@@ -115,10 +115,10 @@ func TestParseComments(t *testing.T) {
 			name:  "multi line range comment with identiger",
 			input: "/*\n * foo\n */\nbar",
 			checkFn: func(t *testing.T, stmts []*ast.Statement, input string) {
-				testStatement(t, stmts[0], 3, "/*\n   foo\n */\nbar")
+				testStatement(t, stmts[0], 3, "/*\n * foo\n */\nbar")
 
 				list := stmts[0].GetTokens()
-				testItem(t, list[0], "/*\n   foo\n */")
+				testItem(t, list[0], "/*\n * foo\n */")
 				testItem(t, list[1], "\n")
 				testIdentifier(t, list[2], "bar")
 			},
