@@ -5,14 +5,12 @@ import (
 	"database/sql"
 	"fmt"
 	"net/url"
-	"os"
 	"strconv"
 
 	_ "github.com/denisenkom/go-mssqldb"
 	"github.com/jfcote87/sshdb"
 	"github.com/jfcote87/sshdb/mssql"
 	"github.com/sqls-server/sqls/dialect"
-	"golang.org/x/crypto/ssh"
 )
 
 func init() {
@@ -29,28 +27,16 @@ func mssqlOpen(dbConnCfg *DBConfig) (*DBConnection, error) {
 		return nil, err
 	}
 
+	var tunnel *sshdb.Tunnel
 	if dbConnCfg.SSHCfg != nil {
-		key, err := os.ReadFile(dbConnCfg.SSHCfg.PrivateKey)
+		cfg, err := dbConnCfg.SSHCfg.ClientConfig()
 		if err != nil {
-			return nil, fmt.Errorf("unable to open private key")
-		}
-
-		signer, err := ssh.ParsePrivateKeyWithPassphrase(key, []byte(dbConnCfg.SSHCfg.PassPhrase))
-		if err != nil {
-			return nil, fmt.Errorf("unable to decrypt private key")
-		}
-
-		cfg := &ssh.ClientConfig{
-			User: dbConnCfg.SSHCfg.User,
-			Auth: []ssh.AuthMethod{
-				ssh.PublicKeys(signer),
-			},
-			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+			return nil, err
 		}
 
 		remoteAddr := fmt.Sprintf("%s:%d", dbConnCfg.SSHCfg.Host, dbConnCfg.SSHCfg.Port)
 
-		tunnel, err := sshdb.New(cfg, remoteAddr)
+		tunnel, err = sshdb.New(cfg, remoteAddr)
 		if err != nil {
 			return nil, fmt.Errorf("%w", err)
 		}
@@ -75,9 +61,14 @@ func mssqlOpen(dbConnCfg *DBConfig) (*DBConnection, error) {
 	conn.SetMaxIdleConns(DefaultMaxIdleConns)
 	conn.SetMaxOpenConns(DefaultMaxOpenConns)
 
-	return &DBConnection{
-		Conn: conn,
-	}, nil
+	dbConn := &DBConnection{
+		Conn:   conn,
+		Driver: dbConnCfg.Driver,
+	}
+	if tunnel != nil {
+		dbConn.Tunnel = tunnel
+	}
+	return dbConn, nil
 }
 
 type MssqlDBRepository struct {
