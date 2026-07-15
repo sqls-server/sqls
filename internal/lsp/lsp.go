@@ -121,7 +121,7 @@ type DidCloseTextDocumentParams struct {
 
 type CompletionParams struct {
 	TextDocumentPositionParams
-	CompletionContext CompletionContext `json:"contentChanges"`
+	CompletionContext CompletionContext `json:"context"`
 }
 
 type CompletionContext struct {
