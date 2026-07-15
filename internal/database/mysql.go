@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
 	"net"
 	"strconv"
 
@@ -323,7 +322,7 @@ func (db *MySQLDBRepository) DescribeForeignKeysBySchema(ctx context.Context, sc
 			 kcu.ORDINAL_POSITION
 		`, schemaName)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	defer func() { _ = rows.Close() }()
 	return parseForeignKeys(rows, schemaName)

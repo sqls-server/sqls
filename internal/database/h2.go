@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
 
 	_ "github.com/CodinGame/h2go"
 	"github.com/sqls-server/sqls/dialect"
@@ -79,7 +78,7 @@ func (db *H2DBRepository) Schemas(ctx context.Context) ([]string, error) {
 	SELECT schema_name FROM information_schema.schemata
 	`)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	defer rows.Close()
 	schemas := []string{}
@@ -141,7 +140,7 @@ func (db *H2DBRepository) Tables(ctx context.Context) ([]string, error) {
 		table_name
 	`)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	defer rows.Close()
 	tables := []string{}
@@ -183,7 +182,7 @@ func (db *H2DBRepository) DescribeDatabaseTable(ctx context.Context) ([]*ColumnD
 		c.ordinal_position
 	`)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	defer rows.Close()
 	tableInfos := []*ColumnDesc{}
@@ -238,7 +237,7 @@ func (db *H2DBRepository) DescribeDatabaseTableBySchema(ctx context.Context, sch
 		c.ordinal_position
 	`, schemaName))
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	defer rows.Close()
 	tableInfos := []*ColumnDesc{}
