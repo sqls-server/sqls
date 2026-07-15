@@ -173,7 +173,7 @@ func (s *Server) handleInitialize(ctx context.Context, conn *jsonrpc2.Conn, req 
 	// NOTE: If no connection is found at this point, it is possible that the connection settings are sent to workspace config, so don't make an error
 	messenger := lsp.NewMessenger(conn)
 	if err := s.reconnectionDB(ctx); err != nil {
-		if !errors.Is(ErrNoConnection, err) {
+		if errors.Is(err, ErrNoConnection) {
 			if err := messenger.ShowInfo(ctx, err.Error()); err != nil {
 				log.Println("send info", err.Error())
 				return nil, err
@@ -232,6 +232,9 @@ func (s *Server) handleTextDocumentDidChange(ctx context.Context, conn *jsonrpc2
 		return nil, err
 	}
 
+	if len(params.ContentChanges) == 0 {
+		return nil, nil
+	}
 	if err := s.updateFile(params.TextDocument.URI, params.ContentChanges[0].Text); err != nil {
 		return nil, err
 	}
@@ -318,7 +321,7 @@ func (s *Server) handleWorkspaceDidChangeConfiguration(ctx context.Context, conn
 	// Initialize database database connection
 	messenger := lsp.NewMessenger(conn)
 	if err := s.reconnectionDB(ctx); err != nil {
-		if !errors.Is(ErrNoConnection, err) {
+		if errors.Is(err, ErrNoConnection) {
 			if err := messenger.ShowInfo(ctx, err.Error()); err != nil {
 				log.Println("send info", err.Error())
 				return nil, err
@@ -380,6 +383,9 @@ func (s *Server) newDBConnection(ctx context.Context) (*database.DBConnection, e
 }
 
 func (s *Server) newDBRepository(ctx context.Context) (database.DBRepository, error) {
+	if s.curDBCfg == nil || s.dbConn == nil {
+		return nil, ErrNoConnection
+	}
 	repo, err := database.CreateRepository(s.curDBCfg.Driver, s.dbConn.Conn)
 	if err != nil {
 		return nil, err
@@ -402,7 +408,7 @@ func (s *Server) topConnection() *database.DBConfig {
 
 func (s *Server) getConnection(index int) *database.DBConfig {
 	cfg := s.getConfig()
-	if cfg == nil || (index < 0 && len(cfg.Connections) <= index) {
+	if cfg == nil || index < 0 || len(cfg.Connections) <= index {
 		return nil
 	}
 	return cfg.Connections[index]
