@@ -32,23 +32,36 @@ func mysqlOpen(dbConnCfg *DBConfig) (*DBConnection, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Round-trip through the DSN so entries in `params` are turned into driver
+	// options instead of session variables, the way they were when the DSN was
+	// handed straight to sql.Open.
+	cfg, err = mysql.ParseDSN(cfg.FormatDSN())
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse data source name, %w", err)
+	}
 
 	if dbConnCfg.SSHCfg != nil {
-		// Route the connection through the dialer registered by openMySQLViaSSH.
+		sshConn, err = dbConnCfg.SSHCfg.Dial()
+		if err != nil {
+			return nil, err
+		}
+		// Route the connection through the ssh tunnel.
 		cfg.Net = "mysql+tcp"
-		dbConn, dbSSHConn, err := openMySQLViaSSH(cfg.FormatDSN(), dbConnCfg.SSHCfg)
-		if err != nil {
-			return nil, err
-		}
-		conn = dbConn
-		sshConn = dbSSHConn
-	} else {
-		dbConn, err := sql.Open("mysql", cfg.FormatDSN())
-		if err != nil {
-			return nil, err
-		}
-		conn = dbConn
+		mysql.RegisterDialContext(cfg.Net, (&MySQLViaSSHDialer{sshConn}).Dial)
 	}
+
+	if dbConnCfg.AzureAuth != nil {
+		if err := applyMysqlAzureAuth(cfg, dbConnCfg.AzureAuth); err != nil {
+			return nil, err
+		}
+	}
+
+	connector, err := mysql.NewConnector(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("cannot create connector, %w", err)
+	}
+	conn = sql.OpenDB(connector)
+
 	if err := conn.PingContext(context.Background()); err != nil {
 		return nil, fmt.Errorf("cannot ping to database, %w", err)
 	}
@@ -71,21 +84,29 @@ func (d *MySQLViaSSHDialer) Dial(ctx context.Context, addr string) (net.Conn, er
 	return d.client.Dial("tcp", addr)
 }
 
-func openMySQLViaSSH(dsn string, sshCfg *SSHConfig) (*sql.DB, *ssh.Client, error) {
-	sshConfig, err := sshCfg.ClientConfig()
+// applyMysqlAzureAuth makes the driver present an Azure AD access token as the
+// password on every new connection. Azure Database for MySQL expects that token
+// through the cleartext password plugin, which is only safe over TLS, so TLS is
+// turned on unless the connection already configures it.
+func applyMysqlAzureAuth(cfg *mysql.Config, azureCfg *AzureAuthConfig) error {
+	provider, err := azureCfg.TokenProvider(AzureScopeOSSRDBMS)
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
-	sshConn, err := ssh.Dial("tcp", sshCfg.Endpoint(), sshConfig)
-	if err != nil {
-		return nil, nil, fmt.Errorf("cannot ssh dial, %w", err)
+
+	cfg.AllowCleartextPasswords = true
+	if cfg.TLSConfig == "" {
+		cfg.TLSConfig = "true"
 	}
-	mysql.RegisterDialContext("mysql+tcp", (&MySQLViaSSHDialer{sshConn}).Dial)
-	conn, err := sql.Open("mysql", dsn)
-	if err != nil {
-		return nil, nil, fmt.Errorf("cannot connect database, %w", err)
-	}
-	return conn, sshConn, nil
+
+	return cfg.Apply(mysql.BeforeConnect(func(ctx context.Context, connCfg *mysql.Config) error {
+		token, err := provider.Token(ctx, AzureScopeOSSRDBMS)
+		if err != nil {
+			return err
+		}
+		connCfg.Passwd = token
+		return nil
+	}))
 }
 
 func genMysqlConfig(connCfg *DBConfig) (*mysql.Config, error) {

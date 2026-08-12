@@ -1,0 +1,19 @@
+connections:
+  - alias: azure_sql
+    driver: mssql
+    proto: tcp
+    host: myserver.database.windows.net
+    port: 1433
+    dbName: mydb
+    azureAuth:
+      method: azcli
+  - alias: azure_postgresql
+    driver: postgresql
+    proto: tcp
+    user: me@example.com
+    host: myserver.postgres.database.azure.com
+    port: 5432
+    dbName: mydb
+    azureAuth:
+      method: default
+      tenantId: 00000000-0000-0000-0000-000000000000

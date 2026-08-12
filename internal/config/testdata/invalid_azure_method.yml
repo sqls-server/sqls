@@ -1,0 +1,9 @@
+connections:
+  - alias: azure_sql
+    driver: mssql
+    proto: tcp
+    host: myserver.database.windows.net
+    port: 1433
+    dbName: mydb
+    azureAuth:
+      method: kerberos

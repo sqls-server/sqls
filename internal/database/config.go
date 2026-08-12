@@ -4,10 +4,21 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 
 	"github.com/sqls-server/sqls/dialect"
 	"golang.org/x/crypto/ssh"
 )
+
+// azureAuthDrivers are the drivers that can log in with an Azure AD token.
+var azureAuthDrivers = []dialect.DatabaseDriver{
+	dialect.DatabaseDriverMySQL,
+	dialect.DatabaseDriverMySQL8,
+	dialect.DatabaseDriverMySQL57,
+	dialect.DatabaseDriverMySQL56,
+	dialect.DatabaseDriverPostgreSQL,
+	dialect.DatabaseDriverMssql,
+}
 
 type Proto string
 
@@ -31,11 +42,21 @@ type DBConfig struct {
 	DBName         string                 `json:"dbName" yaml:"dbName"`
 	Params         map[string]string      `json:"params" yaml:"params"`
 	SSHCfg         *SSHConfig             `json:"sshConfig" yaml:"sshConfig"`
+	AzureAuth      *AzureAuthConfig       `json:"azureAuth" yaml:"azureAuth"`
 }
 
 func (c *DBConfig) Validate() error {
 	if c.Driver == "" {
 		return errors.New("required: connections[].driver")
+	}
+
+	if c.AzureAuth != nil {
+		if !slices.Contains(azureAuthDrivers, c.Driver) {
+			return fmt.Errorf("invalid: connections[].azureAuth is not supported by driver %s", c.Driver)
+		}
+		if err := c.AzureAuth.Validate(); err != nil {
+			return err
+		}
 	}
 
 	switch c.Driver {
@@ -80,7 +101,8 @@ func (c *DBConfig) Validate() error {
 			return errors.New("required: connections[].dataSourceName or connections[].proto")
 		}
 		if c.DataSourceName == "" && c.Proto != "" {
-			if c.User == "" {
+			// With Azure AD auth the login name comes from the access token.
+			if c.User == "" && c.AzureAuth == nil {
 				return errors.New("required: connections[].user")
 			}
 			switch c.Proto {
@@ -170,6 +192,19 @@ func (s *SSHConfig) Endpoint() string {
 		port = 22
 	}
 	return fmt.Sprintf("%s:%d", s.Host, port)
+}
+
+// Dial opens an ssh client connection that database drivers can tunnel through.
+func (s *SSHConfig) Dial() (*ssh.Client, error) {
+	sshConfig, err := s.ClientConfig()
+	if err != nil {
+		return nil, err
+	}
+	conn, err := ssh.Dial("tcp", s.Endpoint(), sshConfig)
+	if err != nil {
+		return nil, fmt.Errorf("cannot ssh dial, %w", err)
+	}
+	return conn, nil
 }
 
 func (s *SSHConfig) ClientConfig() (*ssh.ClientConfig, error) {

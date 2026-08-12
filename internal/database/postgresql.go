@@ -22,29 +22,37 @@ func init() {
 }
 
 func postgreSQLOpen(dbConnCfg *DBConfig) (*DBConnection, error) {
-	var (
-		conn    *sql.DB
-		sshConn *ssh.Client
-	)
+	var sshConn *ssh.Client
 	dsn, err := genPostgresConfig(dbConnCfg)
 	if err != nil {
 		return nil, err
 	}
 
-	if dbConnCfg.SSHCfg != nil {
-		dbConn, dbSSHConn, err := openPostgreSQLViaSSH(dsn, dbConnCfg.SSHCfg)
-		if err != nil {
-			return nil, err
-		}
-		conn = dbConn
-		sshConn = dbSSHConn
-	} else {
-		dbConn, err := sql.Open("pgx", dsn)
-		if err != nil {
-			return nil, err
-		}
-		conn = dbConn
+	connConfig, err := pgx.ParseConfig(dsn)
+	if err != nil {
+		return nil, err
 	}
+
+	if dbConnCfg.SSHCfg != nil {
+		sshConn, err = dbConnCfg.SSHCfg.Dial()
+		if err != nil {
+			return nil, err
+		}
+		connConfig.DialFunc = func(ctx context.Context, network, addr string) (net.Conn, error) {
+			return sshConn.Dial(network, addr)
+		}
+	}
+
+	var opts []stdlib.OptionOpenDB
+	if dbConnCfg.AzureAuth != nil {
+		opt, err := azurePostgresOption(dbConnCfg.AzureAuth)
+		if err != nil {
+			return nil, err
+		}
+		opts = append(opts, opt)
+	}
+
+	conn := stdlib.OpenDB(*connConfig, opts...)
 	if err = conn.PingContext(context.Background()); err != nil {
 		return nil, err
 	}
@@ -58,27 +66,22 @@ func postgreSQLOpen(dbConnCfg *DBConfig) (*DBConnection, error) {
 	}, nil
 }
 
-func openPostgreSQLViaSSH(dsn string, sshCfg *SSHConfig) (*sql.DB, *ssh.Client, error) {
-	sshConfig, err := sshCfg.ClientConfig()
+// azurePostgresOption replaces the password with a freshly minted Azure AD
+// access token every time a connection is opened, so a pool outliving the
+// token lifetime keeps working.
+func azurePostgresOption(azureCfg *AzureAuthConfig) (stdlib.OptionOpenDB, error) {
+	provider, err := azureCfg.TokenProvider(AzureScopeOSSRDBMS)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	sshConn, err := ssh.Dial("tcp", sshCfg.Endpoint(), sshConfig)
-	if err != nil {
-		return nil, nil, fmt.Errorf("cannot ssh dial, %w", err)
-	}
-
-	conf, err := pgx.ParseConfig(dsn)
-	if err != nil {
-		return nil, nil, err
-	}
-	conf.DialFunc = func(ctx context.Context, network, addr string) (net.Conn, error) {
-		return sshConn.Dial(network, addr)
-	}
-
-	conn := stdlib.OpenDB(*conf)
-
-	return conn, sshConn, nil
+	return stdlib.OptionBeforeConnect(func(ctx context.Context, connConfig *pgx.ConnConfig) error {
+		token, err := provider.Token(ctx, AzureScopeOSSRDBMS)
+		if err != nil {
+			return err
+		}
+		connConfig.Password = token
+		return nil
+	}), nil
 }
 
 type PostgreSQLDBRepository struct {

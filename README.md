@@ -69,6 +69,27 @@ If the tables are connected with a foreign key sqls can complete ```JOIN``` stat
 go install github.com/sqls-server/sqls@latest
 ```
 
+### Nix
+
+This repository is a flake, so it can be referenced directly from a NixOS or
+home-manager configuration:
+
+```nix
+{
+  inputs.sqls.url = "github:sqls-server/sqls";
+
+  # Either take the package straight from the flake ...
+  environment.systemPackages = [ inputs.sqls.packages.${pkgs.system}.default ];
+
+  # ... or apply the overlay and use pkgs.sqls everywhere.
+  nixpkgs.overlays = [ inputs.sqls.overlays.default ];
+}
+```
+
+`nix build` produces the binary at `./result/bin/sqls`, and `nix develop` drops
+you into a shell with the Go toolchain, gopls, staticcheck, golangci-lint and
+delve.
+
 ## Editor Plugins
 
 - [sqls.vim](https://github.com/sqls-server/sqls.vim)
@@ -248,6 +269,60 @@ The first setting in `connections` is the default connection.
 | dbName         | Database name                               |
 | params         | Option params. Optional.                    |
 | sshConfig      | ssh config. Optional.                       |
+| azureAuth      | Azure AD authentication. Optional.          |
+
+#### azureAuth
+
+Authenticate to Azure SQL, Azure Database for PostgreSQL or Azure Database for
+MySQL with Azure AD (Microsoft Entra ID) instead of a password. By default the
+session created by `az login` is reused, so no secret ends up in the config.
+
+| Key      | Description                                                      |
+| -------- | ---------------------------------------------------------------- |
+| method   | Credential source. Optional, defaults to `azcli`.                |
+| tenantId | Tenant to request the token from. Optional.                      |
+| clientId | Client id of a user-assigned managed identity. Optional.         |
+| scope    | Override the token scope. Optional.                              |
+
+| Method            | Credential                                          |
+| ----------------- | --------------------------------------------------- |
+| `azcli`           | The session of `az login`.                          |
+| `devcli`          | The session of `azd auth login`.                    |
+| `default`         | `DefaultAzureCredential`, ending at the Azure CLI.  |
+| `managedidentity` | The identity assigned to the host.                  |
+| `environment`     | The `AZURE_*` service principal variables.          |
+
+`passwd` is ignored for these connections; an access token is fetched per
+connection and refreshed before it expires. For PostgreSQL and MySQL, `user`
+must be the Azure AD principal name (for example `me@example.com` or the name of
+a managed identity). For Azure SQL the login name comes from the token, so
+`user` can be left out.
+
+```yaml
+connections:
+  - alias: azure_sql
+    driver: mssql
+    proto: tcp
+    host: myserver.database.windows.net
+    port: 1433
+    dbName: mydb
+    azureAuth:
+      method: azcli
+  - alias: azure_postgresql
+    driver: postgresql
+    proto: tcp
+    user: me@example.com
+    host: myserver.postgres.database.azure.com
+    port: 5432
+    dbName: mydb
+    azureAuth: {}
+```
+
+`azureAuth: {}` enables the default (`azcli`) method. A bare `azureAuth:` with
+no value is an empty key and leaves Azure AD authentication off.
+
+Run `az login` before starting your editor. If the session has expired, sqls
+reports the Azure CLI error when it tries to connect.
 
 #### sshConfig
 

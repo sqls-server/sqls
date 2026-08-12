@@ -1,0 +1,6 @@
+connections:
+  - alias: azure_sqlite3
+    driver: sqlite3
+    dataSourceName: "file:/home/sqls-server/chinook.db"
+    azureAuth:
+      method: azcli

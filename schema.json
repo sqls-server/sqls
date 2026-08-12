@@ -66,6 +66,36 @@
             "type": "object",
             "properties": {}
           },
+          "azureAuth": {
+            "description": "Azure AD (Microsoft Entra ID) authentication. Optional. Supported by mysql, postgresql and mssql",
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "method": {
+                "description": "Credential source. Defaults to azcli, which reuses the `az login` session",
+                "type": "string",
+                "enum": [
+                  "azcli",
+                  "devcli",
+                  "default",
+                  "managedidentity",
+                  "environment"
+                ]
+              },
+              "tenantId": {
+                "description": "Tenant to request the token from. Optional",
+                "type": "string"
+              },
+              "clientId": {
+                "description": "Client id of a user-assigned managed identity. Optional",
+                "type": "string"
+              },
+              "scope": {
+                "description": "Override the token scope. Optional",
+                "type": "string"
+              }
+            }
+          },
           "sshConfig": {
             "description": "ssh config. Optional",
             "type": "object",

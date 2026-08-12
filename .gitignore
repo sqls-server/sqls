@@ -32,8 +32,13 @@ docker
 sqls
 dist/
 
+# nix
+result
+result-*
+
 # direnv
 .envrc
+.direnv/
 
 # vim
 tags

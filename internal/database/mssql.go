@@ -7,9 +7,10 @@ import (
 	"net/url"
 	"strconv"
 
-	_ "github.com/denisenkom/go-mssqldb"
+	mssql "github.com/microsoft/go-mssqldb"
+	"github.com/microsoft/go-mssqldb/msdsn"
+
 	"github.com/jfcote87/sshdb"
-	"github.com/jfcote87/sshdb/mssql"
 	"github.com/sqls-server/sqls/dialect"
 )
 
@@ -27,6 +28,11 @@ func mssqlOpen(dbConnCfg *DBConfig) (*DBConnection, error) {
 		return nil, err
 	}
 
+	connector, err := newMssqlConnector(dsn, dbConnCfg.AzureAuth)
+	if err != nil {
+		return nil, err
+	}
+
 	var tunnel *sshdb.Tunnel
 	if dbConnCfg.SSHCfg != nil {
 		cfg, err := dbConnCfg.SSHCfg.ClientConfig()
@@ -39,18 +45,10 @@ func mssqlOpen(dbConnCfg *DBConfig) (*DBConnection, error) {
 			return nil, fmt.Errorf("%w", err)
 		}
 
-		connector, err := tunnel.OpenConnector(mssql.TunnelDriver, dsn)
-		if err != nil {
-			return nil, err
-		}
-
-		conn = sql.OpenDB(connector)
-	} else {
-		conn, err = sql.Open("mssql", dsn)
-		if err != nil {
-			return nil, err
-		}
+		// Route every network operation of the connector through the ssh tunnel.
+		connector.Dialer = mssql.Dialer(tunnel)
 	}
+	conn = sql.OpenDB(connector)
 
 	if err = conn.PingContext(context.Background()); err != nil {
 		return nil, err
@@ -375,6 +373,36 @@ func (db *MssqlDBRepository) Exec(ctx context.Context, query string) (sql.Result
 
 func (db *MssqlDBRepository) Query(ctx context.Context, query string) (*sql.Rows, error) {
 	return db.Conn.QueryContext(ctx, query)
+}
+
+// mssqlDefaultScope is the token scope of Azure SQL in the public cloud. It is
+// only a fallback: the scope actually used is derived from the server SPN sent
+// during the login handshake, which keeps sovereign clouds working.
+const mssqlDefaultScope = "https://database.windows.net/.default"
+
+// newMssqlConnector builds a connector for dsn. Without azureCfg it is an
+// ordinary username/password connector; with it the driver logs in using an
+// Azure AD access token and any user/passwd in the DSN is ignored.
+func newMssqlConnector(dsn string, azureCfg *AzureAuthConfig) (*mssql.Connector, error) {
+	if azureCfg == nil {
+		return mssql.NewConnector(dsn)
+	}
+
+	provider, err := azureCfg.TokenProvider(mssqlDefaultScope)
+	if err != nil {
+		return nil, err
+	}
+	cfg, err := msdsn.Parse(dsn)
+	if err != nil {
+		return nil, err
+	}
+	return mssql.NewActiveDirectoryTokenConnector(
+		cfg,
+		mssql.FedAuthADALWorkflowPassword,
+		func(ctx context.Context, serverSPN, stsURL string) (string, error) {
+			return provider.Token(ctx, serverSPN)
+		},
+	)
 }
 
 func genMssqlConfig(connCfg *DBConfig) (string, error) {

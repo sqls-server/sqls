@@ -77,6 +77,59 @@ func TestGetConfig(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "azure ad auth",
+			args: args{
+				fp: "azure.yml",
+			},
+			want: &Config{
+				Connections: []*database.DBConfig{
+					{
+						Alias:  "azure_sql",
+						Driver: "mssql",
+						Proto:  "tcp",
+						Host:   "myserver.database.windows.net",
+						Port:   1433,
+						DBName: "mydb",
+						AzureAuth: &database.AzureAuthConfig{
+							Method: "azcli",
+						},
+					},
+					{
+						Alias:  "azure_postgresql",
+						Driver: "postgresql",
+						Proto:  "tcp",
+						User:   "me@example.com",
+						Host:   "myserver.postgres.database.azure.com",
+						Port:   5432,
+						DBName: "mydb",
+						AzureAuth: &database.AzureAuthConfig{
+							Method:   "default",
+							TenantID: "00000000-0000-0000-0000-000000000000",
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "invalid azure ad auth method",
+			args: args{
+				fp: "invalid_azure_method.yml",
+			},
+			want:    nil,
+			wantErr: true,
+			errMsg:  `failed validation, invalid: connections[].azureAuth.method, "kerberos" is not one of azcli, devcli, default, managedidentity, environment`,
+		},
+		{
+			name: "azure ad auth on an unsupported driver",
+			args: args{
+				fp: "azure_unsupported_driver.yml",
+			},
+			want:    nil,
+			wantErr: true,
+			errMsg:  "failed validation, invalid: connections[].azureAuth is not supported by driver sqlite3",
+		},
+		{
 			name: "no driver",
 			args: args{
 				fp: "no_driver.yml",
