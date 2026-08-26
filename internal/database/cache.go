@@ -19,7 +19,7 @@ func NewDBCacheUpdater(repo DBRepository) *DBCacheGenerator {
 func (u *DBCacheGenerator) GenerateDBCachePrimary(ctx context.Context) (*DBCache, error) {
 	var err error
 	dbCache := &DBCache{}
-	dbCache.defaultSchema, err = u.repo.CurrentSchema(ctx)
+	dbCache.DefaultSchema, err = u.repo.CurrentSchema(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -32,13 +32,13 @@ func (u *DBCacheGenerator) GenerateDBCachePrimary(ctx context.Context) (*DBCache
 		dbCache.Schemas[strings.ToUpper(index)] = element
 	}
 
-	if dbCache.defaultSchema == "" {
+	if dbCache.DefaultSchema == "" {
 		var topKey string
 		for k := range dbCache.Schemas {
 			topKey = k
 			continue
 		}
-		dbCache.defaultSchema = dbCache.Schemas[topKey]
+		dbCache.DefaultSchema = dbCache.Schemas[topKey]
 	}
 	schemaTables, err := u.repo.SchemaTables(ctx)
 	if err != nil {
@@ -49,11 +49,11 @@ func (u *DBCacheGenerator) GenerateDBCachePrimary(ctx context.Context) (*DBCache
 		dbCache.SchemaTables[strings.ToUpper(index)] = element
 	}
 
-	dbCache.ColumnsWithParent, err = u.genColumnCacheCurrent(ctx, dbCache.defaultSchema)
+	dbCache.ColumnsWithParent, err = u.genColumnCacheCurrent(ctx, dbCache.DefaultSchema)
 	if err != nil {
 		return nil, err
 	}
-	dbCache.ForeignKeys, err = u.genForeignKeysCache(ctx, dbCache.defaultSchema)
+	dbCache.ForeignKeys, err = u.genForeignKeysCache(ctx, dbCache.DefaultSchema)
 	if err != nil {
 		return nil, err
 	}
@@ -128,7 +128,7 @@ func genColumnMap(columnDescs []*ColumnDesc) map[string][]*ColumnDesc {
 }
 
 type DBCache struct {
-	defaultSchema     string
+	DefaultSchema     string
 	Schemas           map[string]string
 	SchemaTables      map[string][]string
 	ColumnsWithParent map[string][]*ColumnDesc
@@ -156,12 +156,12 @@ func (dc *DBCache) SortedTablesByDBName(dbName string) (tbls []string, ok bool) 
 }
 
 func (dc *DBCache) SortedTables() []string {
-	tbls, _ := dc.SortedTablesByDBName(dc.defaultSchema)
+	tbls, _ := dc.SortedTablesByDBName(dc.DefaultSchema)
 	return tbls
 }
 
 func (dc *DBCache) ColumnDescs(tableName string) (cols []*ColumnDesc, ok bool) {
-	cols, ok = dc.ColumnsWithParent[columnDatabaseKey(dc.defaultSchema, tableName)]
+	cols, ok = dc.ColumnsWithParent[columnDatabaseKey(dc.DefaultSchema, tableName)]
 	return
 }
 
@@ -171,7 +171,7 @@ func (dc *DBCache) ColumnDatabase(dbName, tableName string) (cols []*ColumnDesc,
 }
 
 func (dc *DBCache) Column(tableName, colName string) (*ColumnDesc, bool) {
-	cols, ok := dc.ColumnsWithParent[columnDatabaseKey(dc.defaultSchema, tableName)]
+	cols, ok := dc.ColumnsWithParent[columnDatabaseKey(dc.DefaultSchema, tableName)]
 	if !ok {
 		return nil, false
 	}
