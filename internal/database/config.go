@@ -76,6 +76,7 @@ func (c *DBConfig) Validate() error {
 			return errors.New("required: connections[].dataSourceName")
 		}
 	case dialect.DatabaseDriverMssql:
+	case dialect.DatabaseDriverAzure:
 		if c.DataSourceName == "" && c.Proto == "" {
 			return errors.New("required: connections[].dataSourceName or connections[].proto")
 		}

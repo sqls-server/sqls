@@ -386,6 +386,7 @@ const (
 	DatabaseDriverPostgreSQL DatabaseDriver = "postgresql"
 	DatabaseDriverSQLite3    DatabaseDriver = "sqlite3"
 	DatabaseDriverMssql      DatabaseDriver = "mssql"
+	DatabaseDriverAzure      DatabaseDriver = "azuresql"
 	DatabaseDriverOracle     DatabaseDriver = "oracle"
 	DatabaseDriverH2         DatabaseDriver = "h2"
 	DatabaseDriverVertica    DatabaseDriver = "vertica"
@@ -407,6 +408,8 @@ func DataBaseKeywords(driver DatabaseDriver) []string {
 	case DatabaseDriverSQLite3:
 		return sqliteKeywords
 	case DatabaseDriverMssql:
+		return mssqlKeywords
+	case DatabaseDriverAzure:
 		return mssqlKeywords
 	case DatabaseDriverOracle:
 		return oracleKeyWords
@@ -436,6 +439,8 @@ func DataBaseFunctions(driver DatabaseDriver) []string {
 	case DatabaseDriverSQLite3:
 		return []string{}
 	case DatabaseDriverMssql:
+		return []string{}
+	case DatabaseDriverAzure:
 		return []string{}
 	case DatabaseDriverOracle:
 		return oracleReservedWords
