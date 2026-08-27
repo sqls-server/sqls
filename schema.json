@@ -14,10 +14,11 @@
             "type": "string"
           },
           "driver": {
-            "description": "mysql, postgresql, sqlite3, mssql, h2. Required",
+            "description": "mysql, azuresql, postgresql, sqlite3, mssql, h2. Required",
             "type": "string",
             "enum": [
               "mysql",
+              "azuresql",
               "postgresql",
               "sqlite3",
               "mssql",
