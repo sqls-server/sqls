@@ -133,6 +133,8 @@ func (s *Server) handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.
 	case "window/showMessage":
 		return
 	}
+	// Per the LSP specification, notifications with a $/ prefix should be ignored if unused.
+	// https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#dollarRequests
 	if req.Notif && strings.HasPrefix(req.Method, "$/") {
 		return
 	}
