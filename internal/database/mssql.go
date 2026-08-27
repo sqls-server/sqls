@@ -324,7 +324,7 @@ func (db *MssqlDBRepository) DescribeDatabaseTableBySchema(ctx context.Context, 
 		AND tc.TABLE_NAME = c.TABLE_NAME
 		AND tc.CONSTRAINT_NAME = ccu.CONSTRAINT_NAME
 	WHERE
-		c.TABLE_SCHEMA = @p1
+		c.TABLE_SCHEMA = ?
 	ORDER BY
 		c.TABLE_NAME,
 		c.ORDINAL_POSITION
@@ -378,7 +378,7 @@ func (db *MssqlDBRepository) DescribeForeignKeysBySchema(ctx context.Context, sc
 				  ON dst_tbl.object_id = fkc.referenced_object_id
 			 JOIN sys.columns dst_col
 				  ON dst_col.column_id = referenced_column_id AND dst_col.object_id = dst_tbl.object_id
-	where sch.name = @p1
+	where sch.name = ?
 	order by fk.name, fkc.constraint_object_id
 		`, schemaName)
 	if err != nil {
