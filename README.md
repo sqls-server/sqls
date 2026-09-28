@@ -75,6 +75,7 @@ go install github.com/sqls-server/sqls@latest
 - [vscode-sqls](https://github.com/lighttiger2505/vscode-sqls)
 - [sqls.nvim](https://github.com/nanotee/sqls.nvim)
 - [Emacs LSP mode](https://emacs-lsp.github.io/lsp-mode/page/lsp-sqls/)
+- [Nova SQL Extension](https://github.com/stonerl/nova-sql-extension)
 
 ## DB Configuration
 
