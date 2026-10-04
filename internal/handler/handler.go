@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
 	"runtime"
 
 	"github.com/sourcegraph/jsonrpc2"
@@ -20,9 +21,10 @@ var (
 )
 
 type Server struct {
-	SpecificFileCfg *config.Config
-	DefaultFileCfg  *config.Config
-	WSCfg           *config.Config
+	SpecificFileCfg  *config.Config
+	WorkspaceFileCfg *config.Config
+	DefaultFileCfg   *config.Config
+	WSCfg            *config.Config
 
 	dbConn *database.DBConnection
 
@@ -168,6 +170,14 @@ func (s *Server) handleInitialize(ctx context.Context, conn *jsonrpc2.Conn, req 
 	}
 
 	s.initOptionDBConfig = params.InitializationOptions.ConnectionConfig
+
+	// Try loading workspace configuration if no specific config file was provided via CLI
+	if s.SpecificFileCfg == nil {
+		wsDir := s.resolveWorkspaceDir(params.RootURI, params.RootPath)
+		if wsCfg, err := config.GetWorkspaceConfig(wsDir); err == nil && wsCfg != nil {
+			s.WorkspaceFileCfg = wsCfg
+		}
+	}
 
 	// Initialize database database connection
 	// NOTE: If no connection is found at this point, it is possible that the connection settings are sent to workspace config, so don't make an error
@@ -421,12 +431,28 @@ func (s *Server) getConfig() *config.Config {
 		cfg = s.SpecificFileCfg
 	case validConfig(s.WSCfg):
 		cfg = s.WSCfg
+	case validConfig(s.WorkspaceFileCfg):
+		cfg = s.WorkspaceFileCfg
 	case validConfig(s.DefaultFileCfg):
 		cfg = s.DefaultFileCfg
 	default:
 		cfg = config.NewConfig()
 	}
 	return cfg
+}
+
+func (s *Server) resolveWorkspaceDir(rootURI, rootPath string) string {
+	if rootPath != "" {
+		return rootPath
+	}
+	if rootURI != "" {
+		return config.URItoPath(rootURI)
+	}
+	wd, err := os.Getwd()
+	if err != nil {
+		return "."
+	}
+	return wd
 }
 
 func validConfig(cfg *config.Config) bool {

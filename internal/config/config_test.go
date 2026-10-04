@@ -208,3 +208,105 @@ func TestGetConfig(t *testing.T) {
 		})
 	}
 }
+
+func TestFindWorkspaceConfig(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// 1. Initially empty
+	if fp := FindWorkspaceConfigPath(tmpDir); fp != "" {
+		t.Fatalf("expected empty, got %s", fp)
+	}
+
+	// 2. Add .config/sqls/config.yml
+	cfgDir := filepath.Join(tmpDir, ".config", "sqls")
+	if err := os.MkdirAll(cfgDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	nestedPath := filepath.Join(cfgDir, "config.yml")
+	if err := os.WriteFile(nestedPath, []byte("lowercaseKeywords: true\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if fp := FindWorkspaceConfigPath(tmpDir); fp != nestedPath {
+		t.Fatalf("expected %s, got %s", nestedPath, fp)
+	}
+
+	// 3. Add sqls.yaml (should take priority over .config/sqls/config.yml)
+	sqlsYamlPath := filepath.Join(tmpDir, "sqls.yaml")
+	if err := os.WriteFile(sqlsYamlPath, []byte("lowercaseKeywords: false\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if fp := FindWorkspaceConfigPath(tmpDir); fp != sqlsYamlPath {
+		t.Fatalf("expected %s, got %s", sqlsYamlPath, fp)
+	}
+
+	// 4. Add .sqls.yml (should take top priority)
+	dotSqlsYmlPath := filepath.Join(tmpDir, ".sqls.yml")
+	if err := os.WriteFile(dotSqlsYmlPath, []byte("lowercaseKeywords: true\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if fp := FindWorkspaceConfigPath(tmpDir); fp != dotSqlsYmlPath {
+		t.Fatalf("expected %s, got %s", dotSqlsYmlPath, fp)
+	}
+
+	// 5. Test GetWorkspaceConfig
+	cfg, err := GetWorkspaceConfig(tmpDir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !cfg.LowercaseKeywords {
+		t.Fatalf("expected LowercaseKeywords true")
+	}
+}
+
+func TestFindDefaultConfigPath(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
+
+	// Initially neither exists
+	if fp := FindDefaultConfigPath(); fp != "" {
+		t.Fatalf("expected empty, got %s", fp)
+	}
+
+	sqlsDir := filepath.Join(tmpDir, "sqls")
+	if err := os.MkdirAll(sqlsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create config.yaml
+	yamlPath := filepath.Join(sqlsDir, "config.yaml")
+	if err := os.WriteFile(yamlPath, []byte("lowercaseKeywords: true\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	if fp := FindDefaultConfigPath(); fp != yamlPath {
+		t.Fatalf("expected %s, got %s", yamlPath, fp)
+	}
+
+	// Create config.yml (takes precedence over config.yaml)
+	ymlPath := filepath.Join(sqlsDir, "config.yml")
+	if err := os.WriteFile(ymlPath, []byte("lowercaseKeywords: false\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	if fp := FindDefaultConfigPath(); fp != ymlPath {
+		t.Fatalf("expected %s, got %s", ymlPath, fp)
+	}
+}
+
+func TestURItoPath(t *testing.T) {
+	tests := []struct {
+		uri  string
+		want string
+	}{
+		{uri: "", want: ""},
+		{uri: "/local/path", want: "/local/path"},
+		{uri: "file:///home/user/project", want: "/home/user/project"},
+		{uri: "file:///var/data", want: "/var/data"},
+	}
+	for _, tt := range tests {
+		got := URItoPath(tt.uri)
+		if got != tt.want {
+			t.Errorf("URItoPath(%q) = %q, want %q", tt.uri, got, tt.want)
+		}
+	}
+}

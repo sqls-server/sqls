@@ -8,6 +8,9 @@ import (
 	"reflect"
 	"testing"
 
+	"os"
+	"path/filepath"
+
 	"github.com/sourcegraph/jsonrpc2"
 
 	"github.com/sqls-server/sqls/internal/config"
@@ -136,6 +139,33 @@ func TestInitialized(t *testing.T) {
 	}
 	if !reflect.DeepEqual(want, got) {
 		t.Errorf("not match \n%+v\n%+v", want, got)
+	}
+}
+
+
+func TestInitializeWithWorkspaceConfig(t *testing.T) {
+	tx := newTestContext()
+	tx.setup(t)
+	defer tx.tearDown()
+
+	tmpDir := t.TempDir()
+	dotSqls := filepath.Join(tmpDir, ".sqls.yml")
+	configContent := "lowercaseKeywords: true\n"
+	if err := os.WriteFile(dotSqls, []byte(configContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	params := lsp.InitializeParams{
+		RootURI: "file://" + tmpDir,
+	}
+	var got lsp.InitializeResult
+	if err := tx.conn.Call(tx.ctx, "initialize", params, &got); err != nil {
+		t.Fatal("conn.Call initialize:", err)
+	}
+
+	cfg := tx.server.getConfig()
+	if !cfg.LowercaseKeywords {
+		t.Errorf("expected LowercaseKeywords true from workspace config, got false")
 	}
 }
 

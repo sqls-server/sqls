@@ -63,13 +63,17 @@ func realMain() error {
 					if editorEnv == "" {
 						editorEnv = "vim"
 					}
-					dir := filepath.Dir(config.YamlConfigPath)
+					targetPath := config.FindDefaultConfigPath()
+					if targetPath == "" {
+						targetPath = config.YamlConfigPath
+					}
+					dir := filepath.Dir(targetPath)
 					if _, err := os.Stat(dir); errors.Is(err, os.ErrNotExist) {
 						if err := os.MkdirAll(dir, 0755); err != nil {
 							return fmt.Errorf("cannot create config directory, %w", err)
 						}
 					}
-					return openEditor(editorEnv, config.YamlConfigPath)
+					return openEditor(editorEnv, targetPath)
 				},
 			},
 		},

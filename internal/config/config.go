@@ -4,9 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/sqls-server/sqls/internal/database"
 	"gopkg.in/yaml.v2"
@@ -18,6 +20,24 @@ var (
 
 var (
 	YamlConfigPath = configFilePath("config.yml")
+)
+
+var (
+	DefaultConfigFiles = []string{
+		"config.yml",
+		"config.yaml",
+	}
+
+	WorkspaceConfigFiles = []string{
+		".sqls.yml",
+		".sqls.yaml",
+		"sqls.yml",
+		"sqls.yaml",
+		filepath.Join(".config", "sqls", "config.yml"),
+		filepath.Join(".config", "sqls", "config.yaml"),
+		filepath.Join(".config", "sqls.yml"),
+		filepath.Join(".config", "sqls.yaml"),
+	}
 )
 
 type Config struct {
@@ -38,9 +58,44 @@ func NewConfig() *Config {
 	return cfg
 }
 
+func FindDefaultConfigPath() string {
+	for _, fn := range DefaultConfigFiles {
+		fp := configFilePath(fn)
+		if IsFileExist(fp) {
+			return fp
+		}
+	}
+	return ""
+}
+
+func FindWorkspaceConfigPath(workspaceDir string) string {
+	if workspaceDir == "" {
+		workspaceDir = "."
+	}
+	for _, fn := range WorkspaceConfigFiles {
+		fp := filepath.Join(workspaceDir, fn)
+		if IsFileExist(fp) {
+			return fp
+		}
+	}
+	return ""
+}
+
+func GetWorkspaceConfig(workspaceDir string) (*Config, error) {
+	fp := FindWorkspaceConfigPath(workspaceDir)
+	if fp == "" {
+		return nil, ErrNotFoundConfig
+	}
+	return GetConfig(fp)
+}
+
 func GetDefaultConfig() (*Config, error) {
+	fp := FindDefaultConfigPath()
+	if fp == "" {
+		fp = YamlConfigPath
+	}
 	cfg := NewConfig()
-	if err := cfg.Load(YamlConfigPath); err != nil {
+	if err := cfg.Load(fp); err != nil {
 		return nil, err
 	}
 	return cfg, nil
@@ -74,8 +129,17 @@ func (c *Config) Load(fp string) error {
 		return fmt.Errorf("cannot read config, %w", err)
 	}
 
-	if err = yaml.Unmarshal(b, c); err != nil {
-		return fmt.Errorf("failed unmarshal yaml, %w, %s", err, string(b))
+	ext := strings.ToLower(filepath.Ext(fp))
+	switch ext {
+	case ".yml", ".yaml":
+		if err = yaml.Unmarshal(b, c); err != nil {
+			return fmt.Errorf("failed unmarshal yaml, %w, %s", err, string(b))
+		}
+	default:
+		// Default to yaml unmarshal for fallback
+		if err = yaml.Unmarshal(b, c); err != nil {
+			return fmt.Errorf("failed unmarshal yaml, %w, %s", err, string(b))
+		}
 	}
 
 	if err := c.Validate(); err != nil {
@@ -122,4 +186,19 @@ func expand(path string) (string, error) {
 		return "", err
 	}
 	return filepath.Join(homeDir, path[1:]), nil
+}
+
+func URItoPath(uriStr string) string {
+	if uriStr == "" {
+		return ""
+	}
+	u, err := url.Parse(uriStr)
+	if err != nil || u.Scheme != "file" {
+		return uriStr
+	}
+	path := u.Path
+	if runtime.GOOS == "windows" && strings.HasPrefix(path, "/") {
+		path = strings.TrimPrefix(path, "/")
+	}
+	return filepath.FromSlash(path)
 }
