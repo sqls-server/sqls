@@ -19,18 +19,18 @@ const (
 )
 
 type DBConfig struct {
-	Alias          string                 `json:"alias" yaml:"alias"`
-	Driver         dialect.DatabaseDriver `json:"driver" yaml:"driver"`
-	DataSourceName string                 `json:"dataSourceName" yaml:"dataSourceName"`
-	Proto          Proto                  `json:"proto" yaml:"proto"`
-	User           string                 `json:"user" yaml:"user"`
-	Passwd         string                 `json:"passwd" yaml:"passwd"`
-	Host           string                 `json:"host" yaml:"host"`
-	Port           int                    `json:"port" yaml:"port"`
-	Path           string                 `json:"path" yaml:"path"`
-	DBName         string                 `json:"dbName" yaml:"dbName"`
-	Params         map[string]string      `json:"params" yaml:"params"`
-	SSHCfg         *SSHConfig             `json:"sshConfig" yaml:"sshConfig"`
+	Alias          string                 `json:"alias" yaml:"alias" toml:"alias"`
+	Driver         dialect.DatabaseDriver `json:"driver" yaml:"driver" toml:"driver"`
+	DataSourceName string                 `json:"dataSourceName" yaml:"dataSourceName" toml:"dataSourceName"`
+	Proto          Proto                  `json:"proto" yaml:"proto" toml:"proto"`
+	User           string                 `json:"user" yaml:"user" toml:"user"`
+	Passwd         string                 `json:"passwd" yaml:"passwd" toml:"passwd"`
+	Host           string                 `json:"host" yaml:"host" toml:"host"`
+	Port           int                    `json:"port" yaml:"port" toml:"port"`
+	Path           string                 `json:"path" yaml:"path" toml:"path"`
+	DBName         string                 `json:"dbName" yaml:"dbName" toml:"dbName"`
+	Params         map[string]string      `json:"params" yaml:"params" toml:"params"`
+	SSHCfg         *SSHConfig             `json:"sshConfig" yaml:"sshConfig" toml:"sshConfig"`
 }
 
 func (c *DBConfig) Validate() error {
@@ -144,11 +144,11 @@ func (c *DBConfig) Validate() error {
 }
 
 type SSHConfig struct {
-	Host       string `json:"host" yaml:"host"`
-	Port       int    `json:"port" yaml:"port"`
-	User       string `json:"user" yaml:"user"`
-	PassPhrase string `json:"passPhrase" yaml:"passPhrase"`
-	PrivateKey string `json:"privateKey" yaml:"privateKey"`
+	Host       string `json:"host" yaml:"host" toml:"host"`
+	Port       int    `json:"port" yaml:"port" toml:"port"`
+	User       string `json:"user" yaml:"user" toml:"user"`
+	PassPhrase string `json:"passPhrase" yaml:"passPhrase" toml:"passPhrase"`
+	PrivateKey string `json:"privateKey" yaml:"privateKey" toml:"privateKey"`
 }
 
 func (s *SSHConfig) Validate() error {

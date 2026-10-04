@@ -169,6 +169,33 @@ func TestInitializeWithWorkspaceConfig(t *testing.T) {
 	}
 }
 
+
+func TestInitializeWithWorkspaceTOMLConfig(t *testing.T) {
+	tx := newTestContext()
+	tx.setup(t)
+	defer tx.tearDown()
+
+	tmpDir := t.TempDir()
+	dotSqls := filepath.Join(tmpDir, ".sqls.toml")
+	configContent := "lowercaseKeywords = true\n"
+	if err := os.WriteFile(dotSqls, []byte(configContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	params := lsp.InitializeParams{
+		RootURI: "file://" + tmpDir,
+	}
+	var got lsp.InitializeResult
+	if err := tx.conn.Call(tx.ctx, "initialize", params, &got); err != nil {
+		t.Fatal("conn.Call initialize:", err)
+	}
+
+	cfg := tx.server.getConfig()
+	if !cfg.LowercaseKeywords {
+		t.Errorf("expected LowercaseKeywords true from workspace toml config, got false")
+	}
+}
+
 func TestFileWatch(t *testing.T) {
 	tx := newTestContext()
 	tx.setup(t)

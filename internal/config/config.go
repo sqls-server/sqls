@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/pelletier/go-toml/v2"
 	"github.com/sqls-server/sqls/internal/database"
 	"gopkg.in/yaml.v2"
 )
@@ -26,23 +27,28 @@ var (
 	DefaultConfigFiles = []string{
 		"config.yml",
 		"config.yaml",
+		"config.toml",
 	}
 
 	WorkspaceConfigFiles = []string{
 		".sqls.yml",
 		".sqls.yaml",
+		".sqls.toml",
 		"sqls.yml",
 		"sqls.yaml",
+		"sqls.toml",
 		filepath.Join(".config", "sqls", "config.yml"),
 		filepath.Join(".config", "sqls", "config.yaml"),
+		filepath.Join(".config", "sqls", "config.toml"),
 		filepath.Join(".config", "sqls.yml"),
 		filepath.Join(".config", "sqls.yaml"),
+		filepath.Join(".config", "sqls.toml"),
 	}
 )
 
 type Config struct {
-	LowercaseKeywords bool                 `json:"lowercaseKeywords" yaml:"lowercaseKeywords"`
-	Connections       []*database.DBConfig `json:"connections" yaml:"connections"`
+	LowercaseKeywords bool                 `json:"lowercaseKeywords" yaml:"lowercaseKeywords" toml:"lowercaseKeywords"`
+	Connections       []*database.DBConfig `json:"connections" yaml:"connections" toml:"connections"`
 }
 
 func (c *Config) Validate() error {
@@ -131,14 +137,21 @@ func (c *Config) Load(fp string) error {
 
 	ext := strings.ToLower(filepath.Ext(fp))
 	switch ext {
+	case ".toml":
+		if err = toml.Unmarshal(b, c); err != nil {
+			return fmt.Errorf("failed unmarshal toml, %w, %s", err, string(b))
+		}
 	case ".yml", ".yaml":
 		if err = yaml.Unmarshal(b, c); err != nil {
 			return fmt.Errorf("failed unmarshal yaml, %w, %s", err, string(b))
 		}
 	default:
-		// Default to yaml unmarshal for fallback
 		if err = yaml.Unmarshal(b, c); err != nil {
-			return fmt.Errorf("failed unmarshal yaml, %w, %s", err, string(b))
+			if tomlErr := toml.Unmarshal(b, c); tomlErr == nil {
+				err = nil
+			} else {
+				return fmt.Errorf("failed unmarshal config, %w, %s", err, string(b))
+			}
 		}
 	}
 

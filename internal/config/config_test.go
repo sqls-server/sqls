@@ -310,3 +310,66 @@ func TestURItoPath(t *testing.T) {
 		}
 	}
 }
+
+func TestGetConfigTOML(t *testing.T) {
+	tmpDir := t.TempDir()
+	tomlPath := filepath.Join(tmpDir, "config.toml")
+	tomlData := `lowercaseKeywords = true
+
+[[connections]]
+alias = "my_pg"
+driver = "postgresql"
+proto = "tcp"
+user = "postgres"
+passwd = "secretpassword"
+host = "localhost"
+port = 5432
+dbName = "testdb"
+
+[connections.params]
+sslmode = "disable"
+
+[connections.sshConfig]
+host = "ssh.example.com"
+port = 2222
+user = "sshuser"
+privateKey = "/tmp/id_rsa"
+`
+	if err := os.WriteFile(tomlPath, []byte(tomlData), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := GetConfig(tomlPath)
+	if err != nil {
+		t.Fatalf("GetConfig() unexpected error: %v", err)
+	}
+
+	want := &Config{
+		LowercaseKeywords: true,
+		Connections: []*database.DBConfig{
+			{
+				Alias:  "my_pg",
+				Driver: "postgresql",
+				Proto:  "tcp",
+				User:   "postgres",
+				Passwd: "secretpassword",
+				Host:   "localhost",
+				Port:   5432,
+				DBName: "testdb",
+				Params: map[string]string{
+					"sslmode": "disable",
+				},
+				SSHCfg: &database.SSHConfig{
+					Host:       "ssh.example.com",
+					Port:       2222,
+					User:       "sshuser",
+					PrivateKey: "/tmp/id_rsa",
+				},
+			},
+		},
+	}
+
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("unmatch (- want, + got):\n%s", diff)
+	}
+}
