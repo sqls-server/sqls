@@ -408,6 +408,40 @@ select`,
 			},
 		},
 		{
+			name: "closed double quote identifier with space",
+			in:   `"Hello World"`,
+			out: []*Token{
+				{
+					Kind: SQLKeyword,
+					Value: &SQLWord{
+						Value:      "Hello World",
+						Keyword:    "HELLO WORLD",
+						QuoteStyle: 0x22,
+						Kind:       dialect.Unmatched,
+					},
+					From: Pos{Line: 0, Col: 0},
+					To:   Pos{Line: 0, Col: 13},
+				},
+			},
+		},
+		{
+			name: "closed back quote identifier with space",
+			in:   "`first name`",
+			out: []*Token{
+				{
+					Kind: SQLKeyword,
+					Value: &SQLWord{
+						Value:      "first name",
+						Keyword:    "FIRST NAME",
+						QuoteStyle: 0x60,
+						Kind:       dialect.Unmatched,
+					},
+					From: Pos{Line: 0, Col: 0},
+					To:   Pos{Line: 0, Col: 12},
+				},
+			},
+		},
+		{
 			name: "parents with number",
 			in:   "(123),",
 			out: []*Token{

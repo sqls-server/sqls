@@ -110,8 +110,29 @@ func ComparePos(x, y Pos) int {
 type Tokenizer struct {
 	Dialect dialect.Dialect
 	Scanner *scanner.Scanner
+	buf     []rune
 	Line    int
 	Col     int
+}
+
+func (t *Tokenizer) nextRune() rune {
+	if len(t.buf) > 0 {
+		r := t.buf[0]
+		t.buf = t.buf[1:]
+		return r
+	}
+	return t.Scanner.Next()
+}
+
+func (t *Tokenizer) peekRune() rune {
+	if len(t.buf) > 0 {
+		return t.buf[0]
+	}
+	return t.Scanner.Peek()
+}
+
+func (t *Tokenizer) unreadRunes(runes []rune) {
+	t.buf = append(runes, t.buf...)
 }
 
 func NewTokenizer(src io.Reader, dialect dialect.Dialect) *Tokenizer {
@@ -162,38 +183,38 @@ func (t *Tokenizer) Pos() Pos {
 }
 
 func (t *Tokenizer) next() (Kind, interface{}, error) {
-	r := t.Scanner.Peek()
+	r := t.peekRune()
 	switch {
 	case r == ' ':
-		t.Scanner.Next()
+		t.nextRune()
 		t.Col++
 		return Whitespace, " ", nil
 
 	case r == '\t':
-		t.Scanner.Next()
+		t.nextRune()
 		// A tab is a single character in LSP position terms.
 		t.Col++
 		return Whitespace, "\t", nil
 
 	case r == '\n':
-		t.Scanner.Next()
+		t.nextRune()
 		t.Line++
 		t.Col = 0
 		return Whitespace, "\n", nil
 
 	case r == '\r':
-		t.Scanner.Next()
-		n := t.Scanner.Peek()
+		t.nextRune()
+		n := t.peekRune()
 		if n == '\n' {
-			t.Scanner.Next()
+			t.nextRune()
 		}
 		t.Line++
 		t.Col = 0
 		return Whitespace, "\n", nil
 
 	case r == 'N':
-		t.Scanner.Next()
-		n := t.Scanner.Peek()
+		t.nextRune()
+		n := t.peekRune()
 		if n == '\'' {
 			t.Col++
 			str := t.tokenizeSingleQuotedString()
@@ -204,7 +225,7 @@ func (t *Tokenizer) next() (Kind, interface{}, error) {
 		return SQLKeyword, v, nil
 
 	case t.Dialect.IsIdentifierStart(r):
-		t.Scanner.Next()
+		t.nextRune()
 		s := t.tokenizeWord(r)
 		return SQLKeyword, MakeKeyword(s, 0), nil
 
@@ -220,20 +241,20 @@ func (t *Tokenizer) next() (Kind, interface{}, error) {
 		var s []rune
 		hasE := false
 		for {
-			n := t.Scanner.Peek()
+			n := t.peekRune()
 			if ('0' <= n && n <= '9') || n == '.' {
 				s = append(s, n)
-				t.Scanner.Next()
+				t.nextRune()
 			} else if !hasE && (n == 'e' || n == 'E') {
 				// Check for scientific notation
 				s = append(s, n)
-				t.Scanner.Next()
+				t.nextRune()
 				hasE = true
 				// Check for optional +/- after e/E
-				next := t.Scanner.Peek()
+				next := t.peekRune()
 				if next == '+' || next == '-' {
 					s = append(s, next)
-					t.Scanner.Next()
+					t.nextRune()
 				}
 			} else {
 				break
@@ -243,31 +264,31 @@ func (t *Tokenizer) next() (Kind, interface{}, error) {
 		return Number, string(s), nil
 
 	case r == '(':
-		t.Scanner.Next()
+		t.nextRune()
 		t.Col++
 		return LParen, "(", nil
 
 	case r == ')':
-		t.Scanner.Next()
+		t.nextRune()
 		t.Col++
 		return RParen, ")", nil
 
 	case r == ',':
-		t.Scanner.Next()
+		t.nextRune()
 		t.Col++
 		return Comma, ",", nil
 
 	case r == '-':
-		t.Scanner.Next()
+		t.nextRune()
 
-		if t.Scanner.Peek() == '-' {
-			t.Scanner.Next()
+		if t.peekRune() == '-' {
+			t.nextRune()
 
 			var s []rune
 			for {
-				ch := t.Scanner.Peek()
+				ch := t.peekRune()
 				if ch != scanner.EOF && ch != '\n' {
-					t.Scanner.Next()
+					t.nextRune()
 					s = append(s, ch)
 				} else {
 					t.Col += len(s) + 2
@@ -279,10 +300,10 @@ func (t *Tokenizer) next() (Kind, interface{}, error) {
 		return Minus, "-", nil
 
 	case r == '/':
-		t.Scanner.Next()
+		t.nextRune()
 
-		if t.Scanner.Peek() == '*' {
-			t.Scanner.Next()
+		if t.peekRune() == '*' {
+			t.nextRune()
 			str, err := t.tokenizeMultilineComment()
 			if err != nil {
 				return ILLEGAL, str, err
@@ -293,49 +314,49 @@ func (t *Tokenizer) next() (Kind, interface{}, error) {
 		return Div, "/", nil
 
 	case r == '+':
-		t.Scanner.Next()
+		t.nextRune()
 		t.Col++
 		return Plus, "+", nil
 	case r == '*':
-		t.Scanner.Next()
+		t.nextRune()
 		t.Col++
 		return Mult, "*", nil
 	case r == '%':
-		t.Scanner.Next()
+		t.nextRune()
 		t.Col++
 		return Mod, "%", nil
 	case r == '^':
-		t.Scanner.Next()
+		t.nextRune()
 		t.Col++
 		return Caret, "^", nil
 	case r == '=':
-		t.Scanner.Next()
+		t.nextRune()
 		t.Col++
 		return Eq, "=", nil
 	case r == '.':
-		t.Scanner.Next()
+		t.nextRune()
 		t.Col++
 		return Period, ".", nil
 
 	case r == '!':
-		t.Scanner.Next()
-		n := t.Scanner.Peek()
+		t.nextRune()
+		n := t.peekRune()
 		if n == '=' {
-			t.Scanner.Next()
+			t.nextRune()
 			t.Col += 2
 			return Neq, "!=", nil
 		}
 		return ILLEGAL, "", fmt.Errorf("tokenizer error: illegal sequence %s%s", string(r), string(n))
 
 	case r == '<':
-		t.Scanner.Next()
-		switch t.Scanner.Peek() {
+		t.nextRune()
+		switch t.peekRune() {
 		case '=':
-			t.Scanner.Next()
+			t.nextRune()
 			t.Col += 2
 			return LtEq, "<=", nil
 		case '>':
-			t.Scanner.Next()
+			t.nextRune()
 			t.Col += 2
 			return Neq, "<>", nil
 		default:
@@ -343,10 +364,10 @@ func (t *Tokenizer) next() (Kind, interface{}, error) {
 			return Lt, "<", nil
 		}
 	case r == '>':
-		t.Scanner.Next()
-		switch t.Scanner.Peek() {
+		t.nextRune()
+		switch t.peekRune() {
 		case '=':
-			t.Scanner.Next()
+			t.nextRune()
 			t.Col += 2
 			return GtEq, ">=", nil
 		default:
@@ -354,47 +375,47 @@ func (t *Tokenizer) next() (Kind, interface{}, error) {
 			return Gt, ">", nil
 		}
 	case r == ':':
-		t.Scanner.Next()
-		n := t.Scanner.Peek()
+		t.nextRune()
+		n := t.peekRune()
 		if n == ':' {
-			t.Scanner.Next()
+			t.nextRune()
 			t.Col += 2
 			return DoubleColon, "::", nil
 		}
 		t.Col++
 		return Colon, ":", nil
 	case r == ';':
-		t.Scanner.Next()
+		t.nextRune()
 		t.Col++
 		return Semicolon, ";", nil
 	case r == '\\':
-		t.Scanner.Next()
+		t.nextRune()
 		t.Col++
 		return Backslash, "\\", nil
 	case r == '[':
-		t.Scanner.Next()
+		t.nextRune()
 		t.Col++
 		return LBracket, "[", nil
 	case r == ']':
-		t.Scanner.Next()
+		t.nextRune()
 		t.Col++
 		return RBracket, "]", nil
 	case r == '&':
-		t.Scanner.Next()
+		t.nextRune()
 		t.Col++
 		return Ampersand, "&", nil
 	case r == '{':
-		t.Scanner.Next()
+		t.nextRune()
 		t.Col++
 		return LBrace, "{", nil
 	case r == '}':
-		t.Scanner.Next()
+		t.nextRune()
 		t.Col++
 		return RBrace, "}", nil
 	case scanner.EOF == r:
 		return ILLEGAL, "", io.EOF
 	default:
-		t.Scanner.Next()
+		t.nextRune()
 		t.Col++
 		return Char, string(r), nil
 	}
@@ -405,9 +426,9 @@ func (t *Tokenizer) tokenizeWord(f rune) string {
 	str = append(str, f)
 
 	for {
-		r := t.Scanner.Peek()
+		r := t.peekRune()
 		if t.Dialect.IsIdentifierPart(r) {
-			t.Scanner.Next()
+			t.nextRune()
 			str = append(str, r)
 		} else {
 			break
@@ -419,19 +440,19 @@ func (t *Tokenizer) tokenizeWord(f rune) string {
 
 func (t *Tokenizer) tokenizeSingleQuotedString() string {
 	var str []rune
-	t.Scanner.Next()
+	t.nextRune()
 	cols := 1
 	isClosed := false
 
 	for {
-		n := t.Scanner.Peek()
+		n := t.peekRune()
 		if n == '\'' {
-			t.Scanner.Next()
-			if t.Scanner.Peek() == '\'' {
+			t.nextRune()
+			if t.peekRune() == '\'' {
 				// An escaped quote consumes two source columns
 				// but is stored as a single rune.
 				str = append(str, '\'')
-				t.Scanner.Next()
+				t.nextRune()
 				cols += 2
 			} else {
 				isClosed = true
@@ -444,7 +465,7 @@ func (t *Tokenizer) tokenizeSingleQuotedString() string {
 			break
 		}
 
-		t.Scanner.Next()
+		t.nextRune()
 		str = append(str, n)
 		cols++
 	}
@@ -457,32 +478,51 @@ func (t *Tokenizer) tokenizeSingleQuotedString() string {
 }
 
 func (t *Tokenizer) tokenizeDelimitedIdentifier(r rune) *SQLWord {
-	t.Scanner.Next()
+	t.nextRune()
 	end := matchingEndQuote(r)
-	isClosed := false
 
-	var s []rune
+	var read []rune
+	hasEnd := false
+
 	for {
-		n := t.Scanner.Next()
-		if n == scanner.EOF {
+		ch := t.nextRune()
+		if ch == scanner.EOF {
 			break
 		}
-		if n == end {
-			isClosed = true
+		read = append(read, ch)
+		if ch == end {
+			hasEnd = true
 			break
 		}
-		s = append(s, n)
-		if t.Scanner.Peek() == ' ' {
+		if ch == '\n' || ch == '\r' || ch == ';' {
 			break
 		}
 	}
 
-	if isClosed {
-		t.Col += 2 + len(s)
-		return MakeKeyword(string(s), r)
+	if hasEnd {
+		content := read[:len(read)-1]
+		t.Col += 2 + len(content)
+		return MakeKeyword(string(content), r)
 	}
-	t.Col += 1 + len(s)
-	return MakeKeyword(string(r)+string(s), 0)
+
+	firstSpaceIdx := -1
+	for i, ch := range read {
+		if ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r' {
+			firstSpaceIdx = i
+			break
+		}
+	}
+
+	if firstSpaceIdx != -1 {
+		word := read[:firstSpaceIdx]
+		remaining := read[firstSpaceIdx:]
+		t.unreadRunes(remaining)
+		t.Col += 1 + len(word)
+		return MakeKeyword(string(r)+string(word), 0)
+	}
+
+	t.Col += 1 + len(read)
+	return MakeKeyword(string(r)+string(read), 0)
 }
 
 func (t *Tokenizer) tokenizeMultilineComment() (string, error) {
@@ -490,12 +530,12 @@ func (t *Tokenizer) tokenizeMultilineComment() (string, error) {
 	var mayBeClosingComment bool
 	t.Col += 2
 	for {
-		n := t.Scanner.Next()
+		n := t.nextRune()
 
 		switch n {
 		case '\r':
-			if t.Scanner.Peek() == '\n' {
-				t.Scanner.Next()
+			if t.peekRune() == '\n' {
+				t.nextRune()
 			}
 			t.Col = 0
 			t.Line++
