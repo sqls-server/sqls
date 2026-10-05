@@ -74,6 +74,7 @@ go install github.com/sqls-server/sqls@latest
 - [sqls.vim](https://github.com/sqls-server/sqls.vim)
 - [vscode-sqls](https://github.com/lighttiger2505/vscode-sqls)
 - [sqls.nvim](https://github.com/nanotee/sqls.nvim)
+- [zed-sqls-extension](https://github.com/Mr-Tomate/zed-sqls-extension)
 - [Emacs LSP mode](https://emacs-lsp.github.io/lsp-mode/page/lsp-sqls/)
 
 ## DB Configuration
@@ -88,10 +89,17 @@ Whichever method you choose, the settings you make will remain the same.
 
 1. Configuration file specified by the `-config` flag
 1. `workspace/configuration` set to LSP client
-1. Configuration file located in the following location
-    - `$XDG_CONFIG_HOME`/sqls/config.yml ("`$HOME`/.config" is used instead of `$XDG_CONFIG_HOME` if it's not set)
+1. Workspace / Project configuration file located in the project root:
+    - `.sqls.yml`, `.sqls.yaml`, `.sqls.toml`
+    - `sqls.yml`, `sqls.yaml`, `sqls.toml`
+    - `.config/sqls/config.yml`, `.config/sqls/config.yaml`, `.config/sqls/config.toml`
+    - `.config/sqls.yml`, `.config/sqls.yaml`, `.config/sqls.toml`
+1. Global configuration file located in the user config directory:
+    - `$XDG_CONFIG_HOME`/sqls/config.{yml,yaml,toml} ("`$HOME`/.config" is used instead of `$XDG_CONFIG_HOME` if it's not set)
 
 ### Configuration file sample
+
+#### YAML (`.sqls.yml` / `config.yml`)
 
 ```yaml
 # Set to true to use lowercase keywords instead of uppercase.
@@ -128,6 +136,54 @@ connections:
   - alias: dsn_vertica
     driver: vertica
     dataSourceName: vertica://user:pass@host:5433/dbname
+```
+
+#### TOML (`.sqls.toml` / `config.toml`)
+
+```toml
+# Set to true to use lowercase keywords instead of uppercase.
+lowercaseKeywords = false
+
+[[connections]]
+alias = "dsn_mysql"
+driver = "mysql"
+dataSourceName = "root:root@tcp(127.0.0.1:13306)/world"
+
+[[connections]]
+alias = "individual_mysql"
+driver = "mysql"
+proto = "tcp"
+user = "root"
+passwd = "root"
+host = "127.0.0.1"
+port = 13306
+dbName = "world"
+
+[connections.params]
+autocommit = "true"
+tls = "skip-verify"
+
+[[connections]]
+alias = "mysql_via_ssh"
+driver = "mysql"
+proto = "tcp"
+user = "admin"
+passwd = "Q+ACgv12ABx/"
+host = "192.168.121.163"
+port = 3306
+dbName = "world"
+
+[connections.sshConfig]
+host = "192.168.121.168"
+port = 22
+user = "sshuser"
+passPhrase = "ssspass"
+privateKey = "/home/sqls-server/.ssh/id_rsa"
+
+[[connections]]
+alias = "dsn_vertica"
+driver = "vertica"
+dataSourceName = "vertica://user:pass@host:5433/dbname"
 ```
 
 ### Workspace configuration Sample
