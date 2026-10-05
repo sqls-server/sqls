@@ -110,33 +110,289 @@ func (p *Parser) Parse() (ast.TokenList, error) {
 	return root, nil
 }
 
-var statementMatcher = astutil.NodeMatcher{
-	ExpectTokens: []token.Kind{
-		token.Semicolon,
-	},
+func isTopLevelStatementKeyword(kw string) bool {
+	switch kw {
+	case "SELECT", "INSERT", "UPDATE", "DELETE", "CREATE", "ALTER", "DROP",
+		"TRUNCATE", "WITH", "USE", "SHOW", "DESCRIBE", "EXPLAIN",
+		"GRANT", "REVOKE", "MERGE", "CALL", "OPTIMIZE", "PRAGMA", "ATTACH", "DETACH":
+		return true
+	}
+	return false
+}
+
+func isDMLKeyword(kw string) bool {
+	switch kw {
+	case "SELECT", "INSERT", "UPDATE", "DELETE":
+		return true
+	}
+	return false
+}
+
+func isSetOperator(kw string) bool {
+	switch kw {
+	case "UNION", "INTERSECT", "EXCEPT", "MINUS":
+		return true
+	}
+	return false
+}
+
+func isSetModifier(kw string) bool {
+	switch kw {
+	case "ALL", "DISTINCT":
+		return true
+	}
+	return false
+}
+
+func isSpecialTrackingKeyword(kw string) bool {
+	return isSetOperator(kw) || isSetModifier(kw) || kw == "AS" || kw == "BEGIN" || kw == "END" || kw == "BEFORE" || kw == "AFTER" || kw == "INSTEAD" || kw == "KEY" || kw == "DO"
+}
+
+func isAlterTableDropClause(nextKW string) bool {
+	switch nextKW {
+	case "COLUMN", "CONSTRAINT", "INDEX", "KEY", "FOREIGN", "PRIMARY", "CHECK", "PARTITION":
+		return true
+	}
+	return false
 }
 
 func parseStatement(reader *astutil.NodeReader) ast.TokenList {
+	tokens := reader.Node.GetTokens()
+	if len(tokens) == 0 {
+		return reader.Node
+	}
+
 	var replaceNodes []ast.Node
 	var startIndex int
-	for reader.NextNode(false) {
-		if list, ok := reader.CurNode.(ast.TokenList); ok {
+
+	parenDepth := 0
+	blockDepth := 0
+	stmtFirstKeyword := ""
+	lastNonWsKeyword := ""
+	prevNonWsKeyword := ""
+	lastCodeTokenIndex := -1
+	hasNewlineSinceLastCode := false
+	hasSeenSelectInInsert := false
+	hasSeenValuesInInsert := false
+	hasSeenMainQueryInWith := false
+
+	isStatementBoundary := func(i int, upperVal string) bool {
+		if parenDepth > 0 || blockDepth > 0 {
+			return false
+		}
+		if !hasNewlineSinceLastCode {
+			return false
+		}
+		if !isTopLevelStatementKeyword(upperVal) {
+			return false
+		}
+		if stmtFirstKeyword == "" {
+			return false
+		}
+
+		// Safeguard 1: UNION / INTERSECT / EXCEPT / MINUS
+		if upperVal == "SELECT" {
+			if isSetOperator(lastNonWsKeyword) ||
+				(isSetModifier(lastNonWsKeyword) && isSetOperator(prevNonWsKeyword)) {
+				return false
+			}
+		}
+
+		// Safeguard 2: CREATE ... AS SELECT
+		if upperVal == "SELECT" && lastNonWsKeyword == "AS" {
+			return false
+		}
+
+		// Safeguard 3: INSERT / REPLACE ... SELECT
+		if upperVal == "SELECT" && (stmtFirstKeyword == "INSERT" || stmtFirstKeyword == "REPLACE") && !hasSeenSelectInInsert && !hasSeenValuesInInsert {
+			hasSeenSelectInInsert = true
+			return false
+		}
+
+		// Safeguard 4: WITH ... [SELECT|INSERT|UPDATE|DELETE]
+		if stmtFirstKeyword == "WITH" && isDMLKeyword(upperVal) && !hasSeenMainQueryInWith {
+			hasSeenMainQueryInWith = true
+			return false
+		}
+
+		// Safeguard 5: ALTER TABLE ... DROP COLUMN / CONSTRAINT ...
+		if stmtFirstKeyword == "ALTER" && upperVal == "DROP" {
+			// Check next non-whitespace keyword
+			for j := i + 1; j < len(tokens); j++ {
+				nextTok, ok := tokens[j].(ast.Token)
+				if !ok {
+					continue
+				}
+				sTok := nextTok.GetToken()
+				if sTok.MatchKind(token.Whitespace) || sTok.MatchKind(token.Comment) || sTok.MatchKind(token.MultilineComment) {
+					continue
+				}
+				if isAlterTableDropClause(strings.ToUpper(sTok.String())) {
+					return false
+				}
+				break
+			}
+		}
+
+		// Safeguard 6: Trigger events (BEFORE/AFTER/INSTEAD OF UPDATE|INSERT|DELETE)
+		if lastNonWsKeyword == "BEFORE" || lastNonWsKeyword == "AFTER" || lastNonWsKeyword == "INSTEAD" {
+			return false
+		}
+
+		// Safeguard 7: ON DUPLICATE KEY UPDATE / ON CONFLICT DO UPDATE
+		if upperVal == "UPDATE" && (lastNonWsKeyword == "KEY" || lastNonWsKeyword == "DO") {
+			return false
+		}
+
+		return true
+	}
+
+	for i := 0; i < len(tokens); i++ {
+		node := tokens[i]
+		if list, ok := node.(ast.TokenList); ok {
 			replaceNodes = append(replaceNodes, parseStatement(astutil.NewNodeReader(list)))
 			continue
 		}
 
-		tmpReader, node := reader.FindNode(true, statementMatcher)
-		if node != nil {
-			stmt := &ast.Statement{Toks: reader.NodesWithRange(startIndex, tmpReader.Index)}
-			replaceNodes = append(replaceNodes, stmt)
-			reader = tmpReader
-			startIndex = reader.Index
+		tok, ok := node.(ast.Token)
+		if !ok {
+			continue
+		}
+		sqlTok := tok.GetToken()
+
+		// Track parentheses
+		if sqlTok.MatchKind(token.LParen) {
+			parenDepth++
+			lastCodeTokenIndex = i
+			hasNewlineSinceLastCode = false
+			continue
+		} else if sqlTok.MatchKind(token.RParen) {
+			if parenDepth > 0 {
+				parenDepth--
+			}
+			lastCodeTokenIndex = i
+			hasNewlineSinceLastCode = false
+			continue
+		}
+
+		// Explicit semicolon
+		if sqlTok.MatchKind(token.Semicolon) {
+			if parenDepth == 0 && blockDepth == 0 {
+				stmt := &ast.Statement{Toks: tokens[startIndex : i+1]}
+				replaceNodes = append(replaceNodes, stmt)
+				startIndex = i + 1
+				stmtFirstKeyword = ""
+				lastNonWsKeyword = ""
+				prevNonWsKeyword = ""
+				lastCodeTokenIndex = i
+				hasNewlineSinceLastCode = false
+				hasSeenSelectInInsert = false
+				hasSeenValuesInInsert = false
+				hasSeenMainQueryInWith = false
+				continue
+			}
+		}
+
+		// Track newlines in whitespace
+		if sqlTok.MatchKind(token.Whitespace) {
+			if strings.Contains(sqlTok.String(), "\n") {
+				hasNewlineSinceLastCode = true
+			}
+			continue
+		}
+
+		// Comments
+		if sqlTok.MatchKind(token.Comment) || sqlTok.MatchKind(token.MultilineComment) {
+			if strings.Contains(sqlTok.String(), "\n") {
+				hasNewlineSinceLastCode = true
+			}
+			continue
+		}
+
+		upperVal := strings.ToUpper(sqlTok.String())
+		if upperVal == "VALUES" && parenDepth == 0 {
+			hasSeenValuesInInsert = true
+		}
+
+		// Check for REPLACE INTO
+		if upperVal == "REPLACE" && i+1 < len(tokens) {
+			for j := i + 1; j < len(tokens); j++ {
+				nextTok, ok := tokens[j].(ast.Token)
+				if !ok {
+					continue
+				}
+				nextSQLTok := nextTok.GetToken()
+				if nextSQLTok.MatchKind(token.Whitespace) || nextSQLTok.MatchKind(token.Comment) || nextSQLTok.MatchKind(token.MultilineComment) {
+					continue
+				}
+				if strings.EqualFold(nextSQLTok.String(), "INTO") {
+					upperVal = "INSERT"
+				}
+				break
+			}
+		}
+
+		// Track BEGIN ... END blocks (PL/pgSQL, T-SQL)
+		if parenDepth == 0 {
+			if upperVal == "BEGIN" {
+				blockDepth++
+			} else if upperVal == "END" && blockDepth > 0 {
+				blockDepth--
+			}
+		}
+
+		// Check if this keyword marks a new statement boundary
+		if isStatementBoundary(i, upperVal) {
+			splitIndex := i
+			for k := lastCodeTokenIndex + 1; k < i; k++ {
+				tok, ok := tokens[k].(ast.Token)
+				if !ok {
+					continue
+				}
+				sTok := tok.GetToken()
+				if sTok.MatchKind(token.Whitespace) && strings.Contains(sTok.String(), "\n") {
+					splitIndex = k + 1
+					break
+				}
+			}
+
+			if splitIndex > startIndex {
+				stmt := &ast.Statement{Toks: tokens[startIndex:splitIndex]}
+				replaceNodes = append(replaceNodes, stmt)
+			}
+			startIndex = splitIndex
+			stmtFirstKeyword = upperVal
+			lastNonWsKeyword = upperVal
+			prevNonWsKeyword = ""
+			lastCodeTokenIndex = i
+			hasNewlineSinceLastCode = false
+			hasSeenSelectInInsert = false
+			hasSeenValuesInInsert = false
+			hasSeenMainQueryInWith = false
+			continue
+		}
+
+		lastCodeTokenIndex = i
+		hasNewlineSinceLastCode = false
+
+		// Update keyword tracking for current statement
+		if isTopLevelStatementKeyword(upperVal) || isSpecialTrackingKeyword(upperVal) {
+			if stmtFirstKeyword == "" && parenDepth == 0 && isTopLevelStatementKeyword(upperVal) {
+				stmtFirstKeyword = upperVal
+			}
+			prevNonWsKeyword = lastNonWsKeyword
+			lastNonWsKeyword = upperVal
+		} else {
+			prevNonWsKeyword = lastNonWsKeyword
+			lastNonWsKeyword = ""
 		}
 	}
-	if reader.Index != startIndex {
-		stmt := &ast.Statement{Toks: reader.NodesWithRange(startIndex, reader.Index)}
+
+	if startIndex < len(tokens) {
+		stmt := &ast.Statement{Toks: tokens[startIndex:]}
 		replaceNodes = append(replaceNodes, stmt)
 	}
+
 	reader.Node.SetTokens(replaceNodes)
 	return reader.Node
 }
