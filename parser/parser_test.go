@@ -2,6 +2,7 @@ package parser
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/sqls-server/sqls/ast"
@@ -1483,4 +1484,22 @@ func testPos(t *testing.T, node ast.Node, pos, end token.Pos) {
 
 func genPosOneline(col int) token.Pos {
 	return token.Pos{Line: 0, Col: col}
+}
+
+func TestIssue167_DoubleQuotedStringWithSpaces(t *testing.T) {
+	text := "DROP TABLE IF EXISTS myTable;\nCREATE TABLE myTable(name varchar(20));\nINSERT INTO myTable VALUES(\"Hello World\");\nSELECT * FROM myTable;\n\nA"
+	parsed, err := Parse(text)
+	if err != nil {
+		t.Fatalf("unexpected parse error: %v", err)
+	}
+	stmts := parsed.GetTokens()
+	if len(stmts) < 5 {
+		t.Fatalf("expected at least 5 statements, got %d", len(stmts))
+	}
+	if !strings.Contains(stmts[2].String(), "Hello World") {
+		t.Errorf("expected statement 2 to contain 'Hello World', got %q", stmts[2].String())
+	}
+	if !strings.Contains(stmts[3].String(), "SELECT * FROM myTable") {
+		t.Errorf("expected statement 3 to contain 'SELECT * FROM myTable', got %q", stmts[3].String())
+	}
 }
