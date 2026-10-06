@@ -77,6 +77,41 @@ func TestQueryExecType(t *testing.T) {
 			wantPrefix:   "DELETE",
 			wantExecType: false,
 		},
+		{
+			name:         "issue #178: select with leading block comment",
+			prefix:       "/* With Comment */ SELECT * FROM users;",
+			sqlstr:       "",
+			wantPrefix:   "SELECT",
+			wantExecType: true,
+		},
+		{
+			name:         "issue #178: select with leading line comment",
+			prefix:       "-- With Comment\nSELECT * FROM users;",
+			sqlstr:       "",
+			wantPrefix:   "SELECT",
+			wantExecType: true,
+		},
+		{
+			name:         "issue #178: select with multiple leading comments",
+			prefix:       "-- Comment 1\n/* Comment 2 */\n# MySQL comment\nSELECT * FROM users;",
+			sqlstr:       "",
+			wantPrefix:   "SELECT",
+			wantExecType: true,
+		},
+		{
+			name:         "issue #178: insert with leading block comment",
+			prefix:       "/* insert comment */ INSERT INTO users (id) VALUES (1);",
+			sqlstr:       "",
+			wantPrefix:   "INSERT",
+			wantExecType: false,
+		},
+		{
+			name:         "issue #178: comments only returns EXEC false",
+			prefix:       "/* just a comment */",
+			sqlstr:       "",
+			wantPrefix:   "EXEC",
+			wantExecType: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

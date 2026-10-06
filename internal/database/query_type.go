@@ -241,15 +241,48 @@ func splitMultiSep(s string, sep []string) []string {
 	return ret
 }
 
+func stripLeadingComments(s string) string {
+	for {
+		s = strings.TrimLeft(s, " \t\r\n")
+		if strings.HasPrefix(s, "--") {
+			idx := strings.IndexByte(s, '\n')
+			if idx == -1 {
+				return ""
+			}
+			s = s[idx+1:]
+			continue
+		}
+		if strings.HasPrefix(s, "#") {
+			idx := strings.IndexByte(s, '\n')
+			if idx == -1 {
+				return ""
+			}
+			s = s[idx+1:]
+			continue
+		}
+		if strings.HasPrefix(s, "/*") {
+			idx := strings.Index(s, "*/")
+			if idx == -1 {
+				return ""
+			}
+			s = s[idx+2:]
+			continue
+		}
+		break
+	}
+	return s
+}
+
 // QueryExecType is the default way to determine the "EXEC" prefix for a SQL
 // query and whether or not it should be Exec'd or Query'd.
 func QueryExecType(prefix, sqlstr string) (string, bool) {
+	prefix = stripLeadingComments(prefix)
 	if prefix == "" {
 		return "EXEC", false
 	}
 
 	var pref string
-	sp := splitMultiSep(prefix, []string{" ", "\t", "\n"})
+	sp := splitMultiSep(prefix, []string{" ", "\t", "\n", "\r"})
 	if len(sp) == 0 {
 		return pref, false
 	}
