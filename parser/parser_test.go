@@ -1484,3 +1484,81 @@ func testPos(t *testing.T, node ast.Node, pos, end token.Pos) {
 func genPosOneline(col int) token.Pos {
 	return token.Pos{Line: 0, Col: col}
 }
+
+func TestParseStatement_SemicolonTolerance(t *testing.T) {
+	testcases := []struct {
+		name          string
+		input         string
+		expectedStmts int
+	}{
+		{
+			name:          "two select queries separated only by newline",
+			input:         "SELECT * FROM users\nSELECT * FROM orders",
+			expectedStmts: 2,
+		},
+		{
+			name:          "three select queries without semicolon",
+			input:         "SELECT 1\nSELECT 2\nSELECT 3",
+			expectedStmts: 3,
+		},
+		{
+			name:          "subquery inside parentheses should not split",
+			input:         "SELECT * FROM (SELECT id FROM users)\nSELECT * FROM orders",
+			expectedStmts: 2,
+		},
+		{
+			name:          "UNION ALL should not split into two statements",
+			input:         "SELECT 1\nUNION ALL\nSELECT 2\nSELECT 3",
+			expectedStmts: 2,
+		},
+		{
+			name:          "INTERSECT and EXCEPT should not split",
+			input:         "SELECT 1\nINTERSECT\nSELECT 2\nEXCEPT\nSELECT 3",
+			expectedStmts: 1,
+		},
+		{
+			name:          "INSERT INTO ... SELECT should not split the select",
+			input:         "INSERT INTO backup_users\nSELECT * FROM users\nSELECT * FROM orders",
+			expectedStmts: 2,
+		},
+		{
+			name:          "CREATE VIEW ... AS SELECT should not split the view definition",
+			input:         "CREATE VIEW v1 AS\nSELECT * FROM users\nSELECT * FROM orders",
+			expectedStmts: 2,
+		},
+		{
+			name:          "WITH CTE followed by main query should not split before main query",
+			input:         "WITH cte AS (\n    SELECT 1\n)\nSELECT * FROM cte\nSELECT * FROM users",
+			expectedStmts: 2,
+		},
+		{
+			name:          "statements with comments between them without semicolon",
+			input:         "SELECT 1\n\n-- get users\nSELECT * FROM users",
+			expectedStmts: 2,
+		},
+		{
+			name:          "INSERT VALUES followed by SELECT without semicolon",
+			input:         "INSERT INTO users (id) VALUES (1)\nSELECT * FROM orders",
+			expectedStmts: 2,
+		},
+		{
+			name:          "different DML and DDL statements without semicolon",
+			input:         "UPDATE users SET name = 'foo'\nDELETE FROM orders WHERE id = 1\nDROP TABLE temp_logs",
+			expectedStmts: 3,
+		},
+		{
+			name:          "ClickHouse style queries with FORMAT",
+			input:         "SELECT * FROM users FORMAT JSON\nSELECT * FROM orders",
+			expectedStmts: 2,
+		},
+	}
+
+	for _, tt := range testcases {
+		t.Run(tt.name, func(t *testing.T) {
+			stmts := parseInit(t, tt.input)
+			if len(stmts) != tt.expectedStmts {
+				t.Fatalf("expected %d statements, got %d", tt.expectedStmts, len(stmts))
+			}
+		})
+	}
+}
