@@ -218,3 +218,11 @@ func (tx *TestContext) testFile(t *testing.T, uri, text string) {
 		t.Errorf("not match %s. got: %s", text, f.Text)
 	}
 }
+
+func TestServer_Stop_NilDB(t *testing.T) {
+	server := NewServer()
+	// Server was created but dbConn was never initialized
+	if err := server.Stop(); err != nil {
+		t.Errorf("expected nil error when stopping server with nil dbConn, got: %v", err)
+	}
+}

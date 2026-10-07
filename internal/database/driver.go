@@ -26,8 +26,10 @@ func (db *DBConnection) Close() error {
 	if db == nil {
 		return nil
 	}
-	if err := db.Conn.Close(); err != nil {
-		return err
+	if db.Conn != nil {
+		if err := db.Conn.Close(); err != nil {
+			return err
+		}
 	}
 	if db.SSHConn != nil {
 		if err := db.SSHConn.Close(); err != nil {

@@ -69,8 +69,10 @@ func panicf(r interface{}, format string, v ...interface{}) error {
 }
 
 func (s *Server) Stop() error {
-	if err := s.dbConn.Close(); err != nil {
-		return err
+	if s.dbConn != nil {
+		if err := s.dbConn.Close(); err != nil {
+			return err
+		}
 	}
 	s.worker.Stop()
 	return nil
@@ -338,8 +340,10 @@ func (s *Server) handleWorkspaceDidChangeConfiguration(ctx context.Context, conn
 }
 
 func (s *Server) reconnectionDB(ctx context.Context) error {
-	if err := s.dbConn.Close(); err != nil {
-		return err
+	if s.dbConn != nil {
+		if err := s.dbConn.Close(); err != nil {
+			return err
+		}
 	}
 
 	dbConn, err := s.newDBConnection(ctx)
