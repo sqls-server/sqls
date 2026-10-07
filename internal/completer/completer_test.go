@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/sqls-server/sqls/internal/database"
 	"github.com/sqls-server/sqls/internal/lsp"
 )
 
@@ -203,4 +204,122 @@ func TestGenerateAlias(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestComplete_SchemaAware(t *testing.T) {
+	// Setup a DBCache with a non-default schema
+	cache := &database.DBCache{
+		Schemas: map[string]string{
+			"PUBLIC":    "public",
+			"MY_SCHEMA": "my_schema",
+		},
+		SchemaTables: map[string][]string{
+			"PUBLIC":    {"cat"},
+			"MY_SCHEMA": {"owner"},
+		},
+		ColumnsWithParent: map[string][]*database.ColumnDesc{
+			"PUBLIC\tCAT": {
+				{
+					ColumnBase: database.ColumnBase{Schema: "public", Table: "cat", Name: "age"},
+					Type:       "integer",
+				},
+				{
+					ColumnBase: database.ColumnBase{Schema: "public", Table: "cat", Name: "owner_name"},
+					Type:       "varchar(40)",
+				},
+			},
+			"MY_SCHEMA\tOWNER": {
+				{
+					ColumnBase: database.ColumnBase{Schema: "my_schema", Table: "owner", Name: "age"},
+					Type:       "integer",
+				},
+				{
+					ColumnBase: database.ColumnBase{Schema: "my_schema", Table: "owner", Name: "name"},
+					Type:       "varchar(40)",
+				},
+			},
+		},
+	}
+
+	c := NewCompleter(cache)
+
+	t.Run("column candidates with alias on non-default schema", func(t *testing.T) {
+		text := "SELECT o. FROM my_schema.owner AS o"
+		// Position cursor right after 'o.'
+		items, err := c.Complete(text, lsp.CompletionParams{
+			TextDocumentPositionParams: lsp.TextDocumentPositionParams{
+				Position: lsp.Position{
+					Line:      0,
+					Character: 9,
+				},
+			},
+		}, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		labels := make(map[string]bool)
+		for _, it := range items {
+			labels[it.Label] = true
+		}
+		if !labels["age"] {
+			t.Errorf("expected 'age' in completion items, got: %+v", items)
+		}
+		if !labels["name"] {
+			t.Errorf("expected 'name' in completion items, got: %+v", items)
+		}
+	})
+
+	t.Run("column candidates without alias on non-default schema", func(t *testing.T) {
+		text := "SELECT owner. FROM my_schema.owner"
+		// Position cursor right after 'owner.'
+		items, err := c.Complete(text, lsp.CompletionParams{
+			TextDocumentPositionParams: lsp.TextDocumentPositionParams{
+				Position: lsp.Position{
+					Line:      0,
+					Character: 13,
+				},
+			},
+		}, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		labels := make(map[string]bool)
+		for _, it := range items {
+			labels[it.Label] = true
+		}
+		if !labels["age"] {
+			t.Errorf("expected 'age' in completion items, got: %+v", items)
+		}
+		if !labels["name"] {
+			t.Errorf("expected 'name' in completion items, got: %+v", items)
+		}
+	})
+
+	t.Run("table candidates after schema prefix", func(t *testing.T) {
+		text := "SELECT * FROM my_schema."
+		items, err := c.Complete(text, lsp.CompletionParams{
+			TextDocumentPositionParams: lsp.TextDocumentPositionParams{
+				Position: lsp.Position{
+					Line:      0,
+					Character: 24,
+				},
+			},
+		}, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		labels := make(map[string]bool)
+		for _, it := range items {
+			labels[it.Label] = true
+			if it.Label == "owner" && it.Documentation == nil {
+				t.Errorf("expected documentation with columns for 'owner', got nil")
+			}
+		}
+		if !labels["owner"] {
+			t.Errorf("expected 'owner' table in completion items, got: %+v", items)
+		}
+	})
 }

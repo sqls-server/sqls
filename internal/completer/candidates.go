@@ -68,7 +68,14 @@ func (c *Completer) columnCandidates(targetTables []*parseutil.TableInfo, parent
 			if table.Name != parent.Name && table.Alias != parent.Name {
 				continue
 			}
-			columns, ok := c.DBCache.ColumnDescs(table.Name)
+			var columns []*database.ColumnDesc
+			var ok bool
+			if table.DatabaseSchema != "" {
+				columns, ok = c.DBCache.ColumnDatabase(table.DatabaseSchema, table.Name)
+			}
+			if !ok {
+				columns, ok = c.DBCache.ColumnDescs(table.Name)
+			}
 			if !ok {
 				continue
 			}
@@ -146,7 +153,7 @@ func (c *Completer) TableCandidates(parent *completionParent, targetTables []*pa
 	case ParentTypeSchema:
 		tables, ok := c.DBCache.SortedTablesByDBName(parent.Name)
 		if ok {
-			candidates = append(candidates, generateTableCandidates(tables, c.DBCache)...)
+			candidates = append(candidates, generateTableCandidatesBySchema(parent.Name, tables, c.DBCache)...)
 		}
 	case ParentTypeTable:
 		// pass
@@ -320,6 +327,10 @@ func generateForeignKeyCandidate(target string,
 }
 
 func generateTableCandidates(tables []string, dbCache *database.DBCache) []lsp.CompletionItem {
+	return generateTableCandidatesBySchema("", tables, dbCache)
+}
+
+func generateTableCandidatesBySchema(schemaName string, tables []string, dbCache *database.DBCache) []lsp.CompletionItem {
 	candidates := []lsp.CompletionItem{}
 	for _, tableName := range tables {
 		candidate := lsp.CompletionItem{
@@ -327,7 +338,14 @@ func generateTableCandidates(tables []string, dbCache *database.DBCache) []lsp.C
 			Kind:   lsp.ClassCompletion,
 			Detail: "table",
 		}
-		cols, ok := dbCache.ColumnDescs(tableName)
+		var cols []*database.ColumnDesc
+		var ok bool
+		if schemaName != "" {
+			cols, ok = dbCache.ColumnDatabase(schemaName, tableName)
+		}
+		if !ok {
+			cols, ok = dbCache.ColumnDescs(tableName)
+		}
 		if ok {
 			candidate.Documentation = &lsp.MarkupContent{
 				Kind:  lsp.Markdown,
@@ -353,7 +371,14 @@ func generateTableCandidatesByInfos(tables []*parseutil.TableInfo, dbCache *data
 			Kind:   lsp.ClassCompletion,
 			Detail: detail,
 		}
-		cols, ok := dbCache.ColumnDescs(table.Name)
+		var cols []*database.ColumnDesc
+		var ok bool
+		if table.DatabaseSchema != "" {
+			cols, ok = dbCache.ColumnDatabase(table.DatabaseSchema, table.Name)
+		}
+		if !ok {
+			cols, ok = dbCache.ColumnDescs(table.Name)
+		}
 		if ok {
 			candidate.Documentation = &lsp.MarkupContent{
 				Kind:  lsp.Markdown,
