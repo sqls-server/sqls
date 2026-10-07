@@ -148,6 +148,15 @@ func (e *hoverEnvironment) getTableRealName(aliasName string) (string, bool) {
 	return "", false
 }
 
+func (e *hoverEnvironment) getTableInfo(nameOrAlias string) (*parseutil.TableInfo, bool) {
+	for _, table := range e.tables {
+		if table.Alias == nameOrAlias || table.Name == nameOrAlias {
+			return table, true
+		}
+	}
+	return nil, false
+}
+
 func (e *hoverEnvironment) getColumnRealName(aliasedName string) (string, bool) {
 	for _, v := range e.aliases {
 		alias, _ := v.(*ast.Aliased)
@@ -228,7 +237,14 @@ func hoverContentFromIdent(ctx *hoverContext, identName string, dbCache *databas
 		}
 		hoverContents := []*lsp.MarkupContent{}
 		for _, table := range hoverEnv.tables {
-			colDesc, ok := dbCache.Column(table.Name, columnName)
+			var colDesc *database.ColumnDesc
+			var ok bool
+			if table.DatabaseSchema != "" {
+				colDesc, ok = dbCache.ColumnByDatabase(table.DatabaseSchema, table.Name, columnName)
+			}
+			if !ok {
+				colDesc, ok = dbCache.Column(table.Name, columnName)
+			}
 			if ok {
 				hoverContents = append(
 					hoverContents,
@@ -244,15 +260,26 @@ func hoverContentFromIdent(ctx *hoverContext, identName string, dbCache *databas
 		}
 	}
 	if hoverTypeIs(ctx.types, hoverTypeTable) {
-		// translate table alias
 		tableName := identName
+		var schema string
 		for _, table := range hoverEnv.tables {
 			if table.Alias == tableName {
 				tableName = table.Name
+				schema = table.DatabaseSchema
+				break
+			} else if table.Name == tableName {
+				schema = table.DatabaseSchema
+				break
 			}
 		}
-		// find table
-		cols, ok := dbCache.ColumnDescs(tableName)
+		var cols []*database.ColumnDesc
+		var ok bool
+		if schema != "" {
+			cols, ok = dbCache.ColumnDatabase(schema, tableName)
+		}
+		if !ok {
+			cols, ok = dbCache.ColumnDescs(tableName)
+		}
 		if ok {
 			return tableHoverInfo(tableName, cols)
 		}
@@ -275,11 +302,19 @@ func hoverContentFromParentIdent(ctx *hoverContext, identName string, dbCache *d
 	case parentTypeSchema:
 	case parentTypeTable:
 		tableName := identName
-		realName, ok := hoverEnv.getTableRealName(tableName)
-		if ok {
-			tableName = realName
+		var schema string
+		if tInfo, ok := hoverEnv.getTableInfo(tableName); ok {
+			tableName = tInfo.Name
+			schema = tInfo.DatabaseSchema
 		}
-		columns, ok := dbCache.ColumnDescs(tableName)
+		var columns []*database.ColumnDesc
+		var ok bool
+		if schema != "" {
+			columns, ok = dbCache.ColumnDatabase(schema, tableName)
+		}
+		if !ok {
+			columns, ok = dbCache.ColumnDescs(tableName)
+		}
 		if ok {
 			return tableHoverInfo(tableName, columns)
 		}
@@ -299,17 +334,34 @@ func hoverContentFromChildIdent(ctx *hoverContext, identName string, dbCache *da
 	case parentTypeNone:
 		return nil
 	case parentTypeSchema:
-		columns, ok := dbCache.ColumnDescs(identName)
+		schemaName := ctx.parent.Name
+		var columns []*database.ColumnDesc
+		var ok bool
+		if schemaName != "" {
+			columns, ok = dbCache.ColumnDatabase(schemaName, identName)
+		}
+		if !ok {
+			columns, ok = dbCache.ColumnDescs(identName)
+		}
 		if ok {
 			return tableHoverInfo(identName, columns)
 		}
 	case parentTypeTable:
 		tableName := ctx.parent.Name
-		realName, ok := hoverEnv.getTableRealName(tableName)
-		if ok {
-			tableName = realName
+		var schema string
+		if tInfo, ok := hoverEnv.getTableInfo(tableName); ok {
+			tableName = tInfo.Name
+			schema = tInfo.DatabaseSchema
 		}
-		if colDesc, ok := dbCache.Column(tableName, identName); ok {
+		var colDesc *database.ColumnDesc
+		var ok bool
+		if schema != "" {
+			colDesc, ok = dbCache.ColumnByDatabase(schema, tableName, identName)
+		}
+		if !ok {
+			colDesc, ok = dbCache.Column(tableName, identName)
+		}
+		if ok {
 			return columnHoverInfo(tableName, identName, colDesc)
 		}
 		return nil

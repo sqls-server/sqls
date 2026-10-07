@@ -162,7 +162,20 @@ func (dc *DBCache) SortedTables() []string {
 
 func (dc *DBCache) ColumnDescs(tableName string) (cols []*ColumnDesc, ok bool) {
 	cols, ok = dc.ColumnsWithParent[columnDatabaseKey(dc.defaultSchema, tableName)]
-	return
+	if ok {
+		return cols, true
+	}
+	// Fallback: search across all cached schemas
+	targetUpper := strings.ToUpper(tableName)
+	for _, schema := range dc.Schemas {
+		if strings.EqualFold(schema, dc.defaultSchema) {
+			continue
+		}
+		if cols, ok = dc.ColumnsWithParent[columnDatabaseKey(schema, targetUpper)]; ok {
+			return cols, true
+		}
+	}
+	return nil, false
 }
 
 func (dc *DBCache) ColumnDatabase(dbName, tableName string) (cols []*ColumnDesc, ok bool) {
@@ -171,7 +184,20 @@ func (dc *DBCache) ColumnDatabase(dbName, tableName string) (cols []*ColumnDesc,
 }
 
 func (dc *DBCache) Column(tableName, colName string) (*ColumnDesc, bool) {
-	cols, ok := dc.ColumnsWithParent[columnDatabaseKey(dc.defaultSchema, tableName)]
+	cols, ok := dc.ColumnDescs(tableName)
+	if !ok {
+		return nil, false
+	}
+	for _, col := range cols {
+		if strings.EqualFold(col.Name, colName) {
+			return col, true
+		}
+	}
+	return nil, false
+}
+
+func (dc *DBCache) ColumnByDatabase(dbName, tableName, colName string) (*ColumnDesc, bool) {
+	cols, ok := dc.ColumnDatabase(dbName, tableName)
 	if !ok {
 		return nil, false
 	}

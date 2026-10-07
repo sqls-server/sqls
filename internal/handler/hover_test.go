@@ -281,3 +281,130 @@ func TestHoverNoneDBConnection(t *testing.T) {
 		})
 	}
 }
+
+func TestHover_SchemaAware(t *testing.T) {
+	cache := &database.DBCache{
+		Schemas: map[string]string{
+			"PUBLIC":    "public",
+			"MY_SCHEMA": "my_schema",
+		},
+		SchemaTables: map[string][]string{
+			"PUBLIC":    {"cat"},
+			"MY_SCHEMA": {"owner"},
+		},
+		ColumnsWithParent: map[string][]*database.ColumnDesc{
+			"PUBLIC\tCAT": {
+				{
+					ColumnBase: database.ColumnBase{Schema: "public", Table: "cat", Name: "age"},
+					Type:       "integer",
+				},
+				{
+					ColumnBase: database.ColumnBase{Schema: "public", Table: "cat", Name: "owner_name"},
+					Type:       "varchar(40)",
+				},
+			},
+			"MY_SCHEMA\tOWNER": {
+				{
+					ColumnBase: database.ColumnBase{Schema: "my_schema", Table: "owner", Name: "age"},
+					Type:       "integer",
+				},
+				{
+					ColumnBase: database.ColumnBase{Schema: "my_schema", Table: "owner", Name: "name"},
+					Type:       "varchar(40)",
+				},
+			},
+		},
+	}
+
+	t.Run("hover on column with alias of non-default schema table", func(t *testing.T) {
+		text := "SELECT o.age FROM my_schema.owner AS o"
+		// Cursor on 'age' (column 9)
+		got, err := hover(text, lsp.HoverParams{
+			TextDocumentPositionParams: lsp.TextDocumentPositionParams{
+				Position: lsp.Position{
+					Line:      0,
+					Character: 9,
+				},
+			},
+		}, cache)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got == nil || got.Contents.Value == "" {
+			t.Fatalf("expected hover content, got nil")
+		}
+		expected := "`owner`.`age` column\n\n`integer`\n"
+		if diff := cmp.Diff(expected, got.Contents.Value); diff != "" {
+			t.Errorf("unmatch hover contents (- want, + got):\n%s", diff)
+		}
+	})
+
+	t.Run("hover on table alias of non-default schema table", func(t *testing.T) {
+		text := "SELECT o.age FROM my_schema.owner AS o"
+		// Cursor on 'o' in 'o.age' (column 7)
+		got, err := hover(text, lsp.HoverParams{
+			TextDocumentPositionParams: lsp.TextDocumentPositionParams{
+				Position: lsp.Position{
+					Line:      0,
+					Character: 7,
+				},
+			},
+		}, cache)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got == nil || got.Contents.Value == "" {
+			t.Fatalf("expected hover content, got nil")
+		}
+		expected := "# `owner` table\n\n\n| Name&nbsp;&nbsp; | Type&nbsp;&nbsp; | Primary&nbsp;key&nbsp;&nbsp; | Default&nbsp;&nbsp; | Extra&nbsp;&nbsp; |\n| :--------------- | :--------------- | :---------------------- | :------------------ | :---------------- |\n| `age` | `integer` | `` | `-` |  |\n| `name` | `varchar(40)` | `` | `-` |  |\n"
+		if diff := cmp.Diff(expected, got.Contents.Value); diff != "" {
+			t.Errorf("unmatch hover contents (- want, + got):\n%s", diff)
+		}
+	})
+	
+	t.Run("hover on column without alias of non-default schema table", func(t *testing.T) {
+		text := "SELECT owner.age FROM my_schema.owner"
+		// Cursor on 'age' (column 13)
+		got, err := hover(text, lsp.HoverParams{
+			TextDocumentPositionParams: lsp.TextDocumentPositionParams{
+				Position: lsp.Position{
+					Line:      0,
+					Character: 13,
+				},
+			},
+		}, cache)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got == nil || got.Contents.Value == "" {
+			t.Fatalf("expected hover content, got nil")
+		}
+		expected := "`owner`.`age` column\n\n`integer`\n"
+		if diff := cmp.Diff(expected, got.Contents.Value); diff != "" {
+			t.Errorf("unmatch hover contents (- want, + got):\n%s", diff)
+		}
+	})
+
+	t.Run("hover on table name prefixed by schema", func(t *testing.T) {
+		text := "SELECT * FROM my_schema.owner"
+		// Cursor on 'owner' (column 25)
+		got, err := hover(text, lsp.HoverParams{
+			TextDocumentPositionParams: lsp.TextDocumentPositionParams{
+				Position: lsp.Position{
+					Line:      0,
+					Character: 25,
+				},
+			},
+		}, cache)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got == nil || got.Contents.Value == "" {
+			t.Fatalf("expected hover content, got nil")
+		}
+		expected := "# `owner` table\n\n\n| Name&nbsp;&nbsp; | Type&nbsp;&nbsp; | Primary&nbsp;key&nbsp;&nbsp; | Default&nbsp;&nbsp; | Extra&nbsp;&nbsp; |\n| :--------------- | :--------------- | :---------------------- | :------------------ | :---------------- |\n| `age` | `integer` | `` | `-` |  |\n| `name` | `varchar(40)` | `` | `-` |  |\n"
+		if diff := cmp.Diff(expected, got.Contents.Value); diff != "" {
+			t.Errorf("unmatch hover contents (- want, + got):\n%s", diff)
+		}
+	})
+}
