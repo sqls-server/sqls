@@ -1,10 +1,17 @@
 package database
 
 import (
+	"context"
+	"database/sql/driver"
+	"fmt"
+	"net"
 	"testing"
 
-	_ "github.com/denisenkom/go-mssqldb"
+	"github.com/jfcote87/sshdb"
+	mssql "github.com/microsoft/go-mssqldb"
 )
+
+var _ sshdb.Driver = mssqlTunnelDriver{}
 
 func Test_genMssqlConfig(t *testing.T) {
 	tests := []struct {
@@ -46,4 +53,71 @@ func Test_genMssqlConfig(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_mssqlTunnelDriver_Name(t *testing.T) {
+	d := mssqlTunnelDriver{}
+	if got := d.Name(); got != "mssql" {
+		t.Errorf("Name() = %q, want %q", got, "mssql")
+	}
+}
+
+type stubMssqlDialer struct {
+	called bool
+}
+
+func (s *stubMssqlDialer) DialContext(ctx context.Context, network, addr string) (net.Conn, error) {
+	s.called = true
+	return nil, fmt.Errorf("stubMssqlDialer should not be invoked by OpenConnector")
+}
+
+func Test_mssqlTunnelDriver_OpenConnector(t *testing.T) {
+	validDSN := "server=127.0.0.1;user=sa;password=secret;database=dvdrental"
+	invalidDSN := "log=abc"
+
+	t.Run("success assigns dialer to connector", func(t *testing.T) {
+		dialer := &stubMssqlDialer{}
+		d := mssqlTunnelDriver{}
+
+		got, err := d.OpenConnector(dialer, validDSN)
+		if err != nil {
+			t.Fatalf("OpenConnector() unexpected error: %v", err)
+		}
+		if got == nil {
+			t.Fatal("OpenConnector() returned nil connector")
+		}
+
+		mc, ok := got.(*mssql.Connector)
+		if !ok {
+			t.Fatalf("OpenConnector() returned %T, want *mssql.Connector", got)
+		}
+		if mc.Dialer == nil {
+			t.Fatal("connector.Dialer is nil, expected the sshdb dialer to be assigned")
+		}
+		if assigned, ok := mc.Dialer.(*stubMssqlDialer); !ok || assigned != dialer {
+			t.Fatalf("connector.Dialer = %p (%T), want the same *stubMssqlDialer instance passed in", mc.Dialer, mc.Dialer)
+		}
+		if dialer.called {
+			t.Fatal("OpenConnector() must not invoke the dialer")
+		}
+	})
+
+	t.Run("invalid DSN propagates parse error", func(t *testing.T) {
+		d := mssqlTunnelDriver{}
+		got, err := d.OpenConnector(&stubMssqlDialer{}, invalidDSN)
+		if err == nil {
+			t.Fatal("OpenConnector() expected error for invalid DSN, got nil")
+		}
+		if got != nil {
+			t.Fatalf("OpenConnector() returned non-nil connector %T on error", got)
+		}
+	})
+
+	t.Run("returned connector satisfies driver.Connector", func(t *testing.T) {
+		got, err := mssqlTunnelDriver{}.OpenConnector(&stubMssqlDialer{}, validDSN)
+		if err != nil {
+			t.Fatalf("OpenConnector() unexpected error: %v", err)
+		}
+		var _ driver.Connector = got
+	})
 }

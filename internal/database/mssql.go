@@ -3,19 +3,38 @@ package database
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
 	"fmt"
 	"net/url"
 	"strconv"
 
-	_ "github.com/denisenkom/go-mssqldb"
 	"github.com/jfcote87/sshdb"
-	"github.com/jfcote87/sshdb/mssql"
+	mssql "github.com/microsoft/go-mssqldb"
 	"github.com/sqls-server/sqls/dialect"
 )
 
 func init() {
 	RegisterOpen("mssql", mssqlOpen)
 	RegisterFactory("mssql", NewMssqlDBRepository)
+}
+
+// mssqlTunnelDriver adapts github.com/microsoft/go-mssqldb to the
+// sshdb.Driver interface so MSSQL connections can be tunneled over SSH.
+// This replaces github.com/jfcote87/sshdb/mssql, which is hardwired to
+// the unmaintained github.com/denisenkom/go-mssqldb.
+type mssqlTunnelDriver struct{}
+
+func (mssqlTunnelDriver) Name() string {
+	return "mssql"
+}
+
+func (mssqlTunnelDriver) OpenConnector(dialer sshdb.Dialer, dsn string) (driver.Connector, error) {
+	connector, err := mssql.NewConnector(dsn)
+	if err != nil {
+		return nil, err
+	}
+	connector.Dialer = mssql.Dialer(dialer)
+	return connector, nil
 }
 
 func mssqlOpen(dbConnCfg *DBConfig) (*DBConnection, error) {
@@ -39,14 +58,14 @@ func mssqlOpen(dbConnCfg *DBConfig) (*DBConnection, error) {
 			return nil, fmt.Errorf("%w", err)
 		}
 
-		connector, err := tunnel.OpenConnector(mssql.TunnelDriver, dsn)
+		connector, err := tunnel.OpenConnector(mssqlTunnelDriver{}, dsn)
 		if err != nil {
 			return nil, err
 		}
 
 		conn = sql.OpenDB(connector)
 	} else {
-		conn, err = sql.Open("mssql", dsn)
+		conn, err = sql.Open("sqlserver", dsn)
 		if err != nil {
 			return nil, err
 		}

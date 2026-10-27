@@ -1,10 +1,9 @@
 module github.com/sqls-server/sqls
 
-go 1.25.0
+go 1.25.7
 
 require (
 	github.com/CodinGame/h2go v0.6.1
-	github.com/denisenkom/go-mssqldb v0.12.3
 	github.com/go-sql-driver/mysql v1.10.0
 	github.com/godror/godror v0.51.0
 	github.com/google/go-cmp v0.7.0
@@ -21,6 +20,7 @@ require (
 	github.com/ClickHouse/clickhouse-go/v2 v2.47.0
 	github.com/k0kubun/pp v3.0.1+incompatible
 	github.com/mattn/go-sqlite3 v1.14.48
+	github.com/microsoft/go-mssqldb v1.10.0
 	github.com/olekukonko/tablewriter v1.1.4
 	github.com/vertica/vertica-sql-go v1.3.7
 )
