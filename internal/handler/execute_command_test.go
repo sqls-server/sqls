@@ -172,3 +172,88 @@ func Test_extractRangeText(t *testing.T) {
 		})
 	}
 }
+
+func Test_parseQueryFlags(t *testing.T) {
+	tests := []struct {
+		name         string
+		args         []interface{}
+		wantVertical bool
+	}{
+		{name: "no flags", args: nil},
+		{name: "show vertical", args: []interface{}{"-show-vertical"}, wantVertical: true},
+		{name: "non-string argument is ignored", args: []interface{}{nil, 1.0}},
+		{name: "unknown flag is ignored", args: []interface{}{"-unknown"}},
+		{name: "flag after a non-string argument", args: []interface{}{nil, "-show-vertical"}, wantVertical: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := parseQueryFlags(tt.args); got != tt.wantVertical {
+				t.Errorf("parseQueryFlags() = %v, want %v", got, tt.wantVertical)
+			}
+		})
+	}
+}
+
+func Test_renderQueryResult(t *testing.T) {
+	columns := []string{"id", "user_name"}
+	rows := [][]string{{"1", "alice"}, {"2", "bob"}}
+
+	tests := []struct {
+		name     string
+		columns  []string
+		rows     [][]string
+		vertical bool
+		want     string
+	}{
+		{
+			name:    "table",
+			columns: columns,
+			rows:    rows,
+			want: `┌───┬─────────┐
+│id │user_name│
+├───┼─────────┤
+│ 1 │ alice   │
+│ 2 │ bob     │
+└───┴─────────┘
+2 rows in set
+
+`,
+		},
+		{
+			name:    "table without rows",
+			columns: columns,
+			want: `┌──┬─────────┐
+│id│user_name│
+└──┴─────────┘
+0 rows in set
+
+`,
+		},
+		{
+			name:     "vertical",
+			columns:  columns,
+			rows:     rows,
+			vertical: true,
+			want: `***************************[ 1. row ]***************************
+       id | 1
+user_name | alice
+***************************[ 2. row ]***************************
+       id | 2
+user_name | bob
+2 rows in set
+
+`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := renderQueryResult(tt.columns, tt.rows, tt.vertical)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got != tt.want {
+				t.Errorf("renderQueryResult() =\n%s\nwant\n%s", got, tt.want)
+			}
+		})
+	}
+}
