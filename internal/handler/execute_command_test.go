@@ -178,17 +178,22 @@ func Test_parseQueryFlags(t *testing.T) {
 		name         string
 		args         []interface{}
 		wantVertical bool
+		wantMarkdown bool
 	}{
 		{name: "no flags", args: nil},
 		{name: "show vertical", args: []interface{}{"-show-vertical"}, wantVertical: true},
 		{name: "non-string argument is ignored", args: []interface{}{nil, 1.0}},
 		{name: "unknown flag is ignored", args: []interface{}{"-unknown"}},
 		{name: "flag after a non-string argument", args: []interface{}{nil, "-show-vertical"}, wantVertical: true},
+		{name: "markdown", args: []interface{}{"-markdown"}, wantMarkdown: true},
+		{name: "markdown after nil show vertical", args: []interface{}{nil, "-markdown"}, wantMarkdown: true},
+		{name: "vertical takes precedence over markdown", args: []interface{}{"-show-vertical", "-markdown"}, wantVertical: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := parseQueryFlags(tt.args); got != tt.wantVertical {
-				t.Errorf("parseQueryFlags() = %v, want %v", got, tt.wantVertical)
+			gotVertical, gotMarkdown := parseQueryFlags(tt.args)
+			if gotVertical != tt.wantVertical || gotMarkdown != tt.wantMarkdown {
+				t.Errorf("parseQueryFlags() = (%v, %v), want (%v, %v)", gotVertical, gotMarkdown, tt.wantVertical, tt.wantMarkdown)
 			}
 		})
 	}
@@ -203,6 +208,7 @@ func Test_renderQueryResult(t *testing.T) {
 		columns  []string
 		rows     [][]string
 		vertical bool
+		markdown bool
 		want     string
 	}{
 		{
@@ -244,10 +250,43 @@ user_name | bob
 
 `,
 		},
+		{
+			name:     "markdown",
+			columns:  columns,
+			rows:     rows,
+			markdown: true,
+			want:     "\n| id | user_name |\n|:--|:--------|\n| 1 | alice   |\n| 2 | bob     |\n\n2 rows in set\n\n",
+		},
+		{
+			name:     "markdown without rows",
+			columns:  columns,
+			markdown: true,
+			want:     "\n| id | user_name |\n|:--|:--------|\n\n0 rows in set\n\n",
+		},
+		{
+			name:     "markdown escapes pipes, backslashes and newlines",
+			columns:  []string{"a|b", "note"},
+			rows:     [][]string{{"x\ny", `p\|q`}},
+			markdown: true,
+			want:     "\n| a\\|b   | note   |\n|:-------|:-------|\n| x<br>y | p\\\\\\|q |\n\n1 rows in set\n\n",
+		},
+		{
+			name:     "vertical takes precedence over markdown in the renderer",
+			columns:  columns,
+			rows:     rows[:1],
+			vertical: true,
+			markdown: true,
+			want: `***************************[ 1. row ]***************************
+       id | 1
+user_name | alice
+1 rows in set
+
+`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := renderQueryResult(tt.columns, tt.rows, tt.vertical)
+			got, err := renderQueryResult(tt.columns, tt.rows, tt.vertical, tt.markdown)
 			if err != nil {
 				t.Fatal(err)
 			}
