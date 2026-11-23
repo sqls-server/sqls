@@ -295,11 +295,15 @@ func (s *Server) query(ctx context.Context, query string, vertical bool) (string
 		return "", err
 	}
 
+	return renderQueryResult(columns, stringRows, vertical)
+}
+
+func renderQueryResult(columns []string, rows [][]string, vertical bool) (string, error) {
 	buf := new(bytes.Buffer)
 	if vertical {
 		table := newVerticalTableWriter(buf)
 		table.setHeaders(columns)
-		for _, stringRow := range stringRows {
+		for _, stringRow := range rows {
 			table.appendRow(stringRow)
 		}
 		table.render()
@@ -313,7 +317,7 @@ func (s *Server) query(ctx context.Context, query string, vertical bool) (string
 			headers[i] = v
 		}
 		table.Header(headers...)
-		for _, stringRow := range stringRows {
+		for _, stringRow := range rows {
 			// Convert []string to []any for Append
 			row := make([]any, len(stringRow))
 			for i, v := range stringRow {
@@ -327,7 +331,7 @@ func (s *Server) query(ctx context.Context, query string, vertical bool) (string
 			return "", err
 		}
 	}
-	fmt.Fprintf(buf, "%d rows in set", len(stringRows))
+	fmt.Fprintf(buf, "%d rows in set", len(rows))
 	fmt.Fprintln(buf, "")
 	fmt.Fprintln(buf, "")
 	return buf.String(), nil
