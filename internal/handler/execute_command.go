@@ -126,15 +126,7 @@ func (s *Server) executeQuery(ctx context.Context, params lsp.ExecuteCommandPara
 		return nil, fmt.Errorf("document not found, %q", uri)
 	}
 
-	showVertical := false
-	if len(params.Arguments) > 1 {
-		showVerticalFlag, ok := params.Arguments[1].(string)
-		if ok {
-			if showVerticalFlag == "-show-vertical" {
-				showVertical = true
-			}
-		}
-	}
+	showVertical := parseQueryFlags(params.Arguments[1:])
 
 	// extract target query
 	text := f.Text
@@ -175,6 +167,15 @@ func (s *Server) executeQuery(ctx context.Context, params lsp.ExecuteCommandPara
 		}
 	}
 	return buf.String(), nil
+}
+
+func parseQueryFlags(args []interface{}) (showVertical bool) {
+	for _, arg := range args {
+		if flag, ok := arg.(string); ok && flag == "-show-vertical" {
+			showVertical = true
+		}
+	}
+	return showVertical
 }
 
 func extractRangeText(text string, startLine, startChar, endLine, endChar int) string {
