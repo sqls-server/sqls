@@ -334,6 +334,18 @@ func renderQueryResult(columns []string, rows [][]string, vertical, markdown boo
 	return buf.String(), nil
 }
 
+// markdownEscaper makes sure a value can't add columns or rows, or be interpreted as HTML (which would hide values such as `<nil>`).
+var markdownEscaper = strings.NewReplacer(
+	`\`, `\\`,
+	"|", `\|`,
+	"&", "&amp;",
+	"<", "&lt;",
+	">", "&gt;",
+	"\r\n", "<br>",
+	"\n", "<br>",
+	"\r", "<br>",
+)
+
 func renderTable(buf *bytes.Buffer, columns []string, rows [][]string, markdown bool) error {
 	opts := []tablewriter.Option{
 		tablewriter.WithHeaderConfig(tw.CellConfig{
@@ -352,7 +364,7 @@ func renderTable(buf *bytes.Buffer, columns []string, rows [][]string, markdown 
 	table := tablewriter.NewTable(buf, opts...)
 	escape := func(v string) string {
 		if markdown {
-			return strings.NewReplacer(`\`, `\\`, "|", `\|`, "\r\n", "<br>", "\n", "<br>", "\r", "<br>").Replace(v)
+			return markdownEscaper.Replace(v)
 		}
 		return v
 	}

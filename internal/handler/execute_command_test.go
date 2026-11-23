@@ -271,6 +271,13 @@ user_name | bob
 			want:     "\n| a\\|b   | note   |\n|:-------|:-------|\n| x<br>y | p\\\\\\|q |\n\n1 rows in set\n\n",
 		},
 		{
+			name:     "markdown escapes HTML so values such as NULL are visible",
+			columns:  []string{"a"},
+			rows:     [][]string{{"<nil>"}, {"a&b"}},
+			markdown: true,
+			want:     "\n| a           |\n|:------------|\n| &lt;nil&gt; |\n| a&amp;b     |\n\n2 rows in set\n\n",
+		},
+		{
 			name:     "vertical takes precedence over markdown in the renderer",
 			columns:  columns,
 			rows:     rows[:1],
