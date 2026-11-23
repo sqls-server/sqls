@@ -12,6 +12,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/olekukonko/tablewriter"
+	"github.com/olekukonko/tablewriter/renderer"
 	"github.com/olekukonko/tablewriter/tw"
 	"github.com/sourcegraph/jsonrpc2"
 	"github.com/sqls-server/sqls/ast"
@@ -126,15 +127,7 @@ func (s *Server) executeQuery(ctx context.Context, params lsp.ExecuteCommandPara
 		return nil, fmt.Errorf("document not found, %q", uri)
 	}
 
-	showVertical := false
-	if len(params.Arguments) > 1 {
-		showVerticalFlag, ok := params.Arguments[1].(string)
-		if ok {
-			if showVerticalFlag == "-show-vertical" {
-				showVertical = true
-			}
-		}
-	}
+	showVertical, markdown := parseQueryFlags(params.Arguments[1:])
 
 	// extract target query
 	text := f.Text
@@ -161,7 +154,7 @@ func (s *Server) executeQuery(ctx context.Context, params lsp.ExecuteCommandPara
 		}
 
 		if _, isQuery := database.QueryExecType(query, ""); isQuery {
-			res, err := s.query(ctx, query, showVertical)
+			res, err := s.query(ctx, query, showVertical, markdown)
 			if err != nil {
 				return nil, err
 			}
@@ -175,6 +168,26 @@ func (s *Server) executeQuery(ctx context.Context, params lsp.ExecuteCommandPara
 		}
 	}
 	return buf.String(), nil
+}
+
+func parseQueryFlags(args []interface{}) (showVertical, markdown bool) {
+	for _, arg := range args {
+		flag, ok := arg.(string)
+		if !ok {
+			continue
+		}
+		switch flag {
+		case "-show-vertical":
+			showVertical = true
+		case "-markdown":
+			markdown = true
+		}
+	}
+	// the vertical output has no table to convert, so it takes precedence
+	if showVertical {
+		markdown = false
+	}
+	return showVertical, markdown
 }
 
 func extractRangeText(text string, startLine, startChar, endLine, endChar int) string {
@@ -275,7 +288,7 @@ func sliceUTF16(s string, start, end int) string {
 	return s[startByte:endByte]
 }
 
-func (s *Server) query(ctx context.Context, query string, vertical bool) (string, error) {
+func (s *Server) query(ctx context.Context, query string, vertical, markdown bool) (string, error) {
 	repo, err := s.newDBRepository(ctx)
 	if err != nil {
 		return "", err
@@ -294,42 +307,82 @@ func (s *Server) query(ctx context.Context, query string, vertical bool) (string
 		return "", err
 	}
 
+	return renderQueryResult(columns, stringRows, vertical, markdown)
+}
+
+func renderQueryResult(columns []string, rows [][]string, vertical, markdown bool) (string, error) {
 	buf := new(bytes.Buffer)
 	if vertical {
 		table := newVerticalTableWriter(buf)
 		table.setHeaders(columns)
-		for _, stringRow := range stringRows {
-			table.appendRow(stringRow)
+		for _, row := range rows {
+			table.appendRow(row)
 		}
 		table.render()
 	} else {
-		table := tablewriter.NewTable(buf, tablewriter.WithHeaderConfig(tw.CellConfig{
-			Formatting: tw.CellFormatting{AutoFormat: tw.Off},
-		}))
-		// Convert []string to []any for Header
-		headers := make([]any, len(columns))
-		for i, v := range columns {
-			headers[i] = v
-		}
-		table.Header(headers...)
-		for _, stringRow := range stringRows {
-			// Convert []string to []any for Append
-			row := make([]any, len(stringRow))
-			for i, v := range stringRow {
-				row[i] = v
-			}
-			if err := table.Append(row...); err != nil {
-				return "", err
-			}
-		}
-		if err := table.Render(); err != nil {
+		if err := renderTable(buf, columns, rows, markdown); err != nil {
 			return "", err
 		}
+		if markdown {
+			// a blank line is needed so the footer isn't treated as a table row
+			fmt.Fprintln(buf, "")
+		}
 	}
-	fmt.Fprintf(buf, "%d rows in set", len(stringRows))
+	fmt.Fprintf(buf, "%d rows in set", len(rows))
 	fmt.Fprintln(buf, "")
 	fmt.Fprintln(buf, "")
 	return buf.String(), nil
+}
+
+// markdownEscaper makes sure a value can't add columns or rows, or be interpreted as HTML (which would hide values such as `<nil>`).
+var markdownEscaper = strings.NewReplacer(
+	`\`, `\\`,
+	"|", `\|`,
+	"&", "&amp;",
+	"<", "&lt;",
+	">", "&gt;",
+	"\r\n", "<br>",
+	"\n", "<br>",
+	"\r", "<br>",
+)
+
+func renderTable(buf *bytes.Buffer, columns []string, rows [][]string, markdown bool) error {
+	opts := []tablewriter.Option{
+		tablewriter.WithHeaderConfig(tw.CellConfig{
+			Formatting: tw.CellFormatting{AutoFormat: tw.Off},
+		}),
+	}
+	if markdown {
+		opts = append(opts,
+			tablewriter.WithRenderer(renderer.NewMarkdown()),
+			tablewriter.WithHeaderAlignment(tw.AlignLeft),
+			tablewriter.WithRowAlignment(tw.AlignLeft),
+		)
+		// a blank line is needed so the table isn't merged with preceding text
+		fmt.Fprintln(buf, "")
+	}
+	table := tablewriter.NewTable(buf, opts...)
+	escape := func(v string) string {
+		if markdown {
+			return markdownEscaper.Replace(v)
+		}
+		return v
+	}
+	headers := make([]any, len(columns))
+	for i, v := range columns {
+		headers[i] = escape(v)
+	}
+	table.Header(headers...)
+	for _, row := range rows {
+		vals := make([]any, len(row))
+		for i, v := range row {
+			vals[i] = escape(v)
+		}
+		if err := table.Append(vals...); err != nil {
+			return err
+		}
+	}
+	return table.Render()
 }
 
 func (s *Server) exec(ctx context.Context, query string, vertical bool) (string, error) {
